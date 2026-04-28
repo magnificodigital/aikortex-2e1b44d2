@@ -1,1 +1,7 @@
-project_id = "jcahtniqqiaefszhgpqx"
+project_id = "ldngvhemcqsfcjehvfyd"
+
+[functions.ai-gateway]
+verify_jwt = false
+
+[functions.agent-runtime]
+verify_jwt = false

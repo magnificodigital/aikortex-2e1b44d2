@@ -1,74 +1,98 @@
+#lovable-badge {
+  display: none !important;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    /* AIKortex - Dark futuristic neon */
-    --background: 230 35% 5%;
-    --foreground: 210 40% 98%;
+    --background: 220 20% 97%;
+    --foreground: 223 23% 15%;
 
-    --card: 232 30% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 223 23% 15%;
 
-    --popover: 232 30% 8%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 223 23% 15%;
 
-    --primary: 180 100% 55%;
-    --primary-foreground: 230 35% 5%;
-    --primary-glow: 180 100% 70%;
+    --primary: 219 20% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 232 25% 14%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 215 16% 47%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 232 20% 12%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 220 14% 92%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 280 100% 65%;
-    --accent-foreground: 210 40% 98%;
-    --accent-glow: 280 100% 75%;
+    --accent: 223 23% 15%;
+    --accent-foreground: 0 0% 100%;
 
-    --success: 150 90% 55%;
-    --warning: 40 100% 60%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --destructive: 0 90% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --border: 220 14% 86%;
+    --input: 220 14% 86%;
+    --ring: 219 20% 55%;
 
-    --border: 232 25% 16%;
-    --input: 232 25% 14%;
-    --ring: 180 100% 55%;
+    --radius: 0.5rem;
 
-    --radius: 0.75rem;
+    --sidebar-background: 220 20% 98%;
+    --sidebar-foreground: 215 16% 47%;
+    --sidebar-primary: 219 20% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 93%;
+    --sidebar-accent-foreground: 223 23% 15%;
+    --sidebar-border: 220 14% 90%;
+    --sidebar-ring: 219 20% 55%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(180 100% 55%), hsl(280 100% 65%));
-    --gradient-glow: radial-gradient(ellipse at top, hsl(180 100% 55% / 0.15), transparent 60%);
-    --gradient-card: linear-gradient(145deg, hsl(232 30% 9% / 0.9), hsl(232 30% 7% / 0.9));
-    --gradient-violet: linear-gradient(135deg, hsl(280 100% 65%), hsl(320 100% 65%));
-
-    --shadow-neon: 0 0 30px hsl(180 100% 55% / 0.35);
-    --shadow-violet: 0 0 30px hsl(280 100% 65% / 0.35);
-    --shadow-elegant: 0 10px 40px -10px hsl(180 100% 55% / 0.25);
-
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-    --sidebar-background: 232 35% 6%;
-    --sidebar-foreground: 215 20% 75%;
-    --sidebar-primary: 180 100% 55%;
-    --sidebar-primary-foreground: 230 35% 5%;
-    --sidebar-accent: 232 25% 12%;
-    --sidebar-accent-foreground: 180 100% 70%;
-    --sidebar-border: 232 25% 14%;
-    --sidebar-ring: 180 100% 55%;
+    --success: 142 71% 45%;
+    --warning: 38 95% 50%;
+    --info: 199 89% 48%;
   }
 
   .dark {
-    /* same as root - app is dark by default */
-    --background: 230 35% 5%;
-    --foreground: 210 40% 98%;
+    --background: 230 15% 9%;
+    --foreground: 220 15% 94%;
+
+    --card: 230 13% 12%;
+    --card-foreground: 220 15% 94%;
+
+    --popover: 230 13% 12%;
+    --popover-foreground: 220 15% 94%;
+
+    --primary: 220 20% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 230 10% 15%;
+    --secondary-foreground: 220 12% 88%;
+
+    --muted: 230 10% 13%;
+    --muted-foreground: 220 8% 48%;
+
+    --accent: 230 10% 14%;
+    --accent-foreground: 220 15% 94%;
+
+    --destructive: 0 68% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 230 8% 16%;
+    --input: 230 8% 16%;
+    --ring: 220 20% 55%;
+
+    --sidebar-background: 230 15% 8%;
+    --sidebar-foreground: 220 8% 52%;
+    --sidebar-primary: 220 20% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 230 10% 12%;
+    --sidebar-accent-foreground: 220 15% 94%;
+    --sidebar-border: 230 8% 14%;
+    --sidebar-ring: 220 20% 55%;
+
+    --success: 152 60% 48%;
+    --warning: 42 88% 56%;
+    --info: 205 85% 52%;
   }
 }
 
@@ -77,30 +101,338 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
-  html {
-    @apply dark;
-  }
-
   body {
     @apply bg-background text-foreground antialiased;
-    background-image:
-      radial-gradient(ellipse 80% 50% at 50% -10%, hsl(180 100% 55% / 0.12), transparent),
-      radial-gradient(ellipse 60% 50% at 90% 10%, hsl(280 100% 65% / 0.08), transparent);
-    background-attachment: fixed;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-size: 17px;
   }
 }
 
 @layer utilities {
+  .glass-card {
+    @apply bg-card border border-border rounded-xl;
+  }
+
+  .dark .glass-card {
+    background: hsl(var(--card));
+    border-color: hsl(225 10% 16% / 0.6);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 16px -4px hsl(217 91% 60% / 0.25);
+  }
+
+  .dark .glow-primary {
+    box-shadow: 0 0 20px -4px hsl(217 91% 60% / 0.3);
+  }
+
   .text-gradient {
-    @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-primary);
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-[hsl(199,89%,48%)];
   }
-  .bg-grid {
-    background-image:
-      linear-gradient(hsl(var(--border) / 0.5) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--border) / 0.5) 1px, transparent 1px);
-    background-size: 32px 32px;
+}
+
+/* Animated mesh gradient background for landing page */
+@keyframes mesh-move {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -50px) scale(1.05); }
+  50% { transform: translate(-20px, 20px) scale(0.95); }
+  75% { transform: translate(50px, 30px) scale(1.02); }
+}
+
+@keyframes mesh-move-alt {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-40px, 30px) scale(1.03); }
+  50% { transform: translate(30px, -40px) scale(0.97); }
+  75% { transform: translate(-20px, -20px) scale(1.05); }
+}
+
+@keyframes mesh-move-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, -30px) scale(1.08); }
+  66% { transform: translate(-40px, 50px) scale(0.94); }
+}
+
+.landing-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-bg::before,
+.landing-bg::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.landing-bg::before {
+  width: 600px;
+  height: 600px;
+  top: -10%;
+  right: -5%;
+  background: radial-gradient(circle, hsl(220 18% 48% / 0.15), transparent 70%);
+  animation: mesh-move 20s ease-in-out infinite;
+}
+
+.landing-bg::after {
+  width: 500px;
+  height: 500px;
+  bottom: -5%;
+  left: -5%;
+  background: radial-gradient(circle, hsl(199 89% 48% / 0.1), transparent 70%);
+  animation: mesh-move-alt 25s ease-in-out infinite;
+}
+
+.landing-bg-orb {
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  top: 40%;
+  left: 50%;
+  margin-left: -200px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle, hsl(220 20% 55% / 0.12), transparent 70%);
+  animation: mesh-move-slow 30s ease-in-out infinite;
+}
+
+.dark .landing-bg::before {
+  background: radial-gradient(circle, hsl(224 64% 57% / 0.25), transparent 65%);
+  opacity: 0.7;
+  width: 700px;
+  height: 700px;
+}
+
+.dark .landing-bg::after {
+  background: radial-gradient(circle, hsl(199 70% 50% / 0.18), transparent 65%);
+  opacity: 0.6;
+  width: 600px;
+  height: 600px;
+}
+
+.dark .landing-bg-orb {
+  background: radial-gradient(circle, hsl(260 50% 55% / 0.15), transparent 65%);
+  opacity: 0.5;
+  width: 500px;
+  height: 500px;
+}
+
+/* Ambient top light animation */
+@keyframes ambient-drift {
+  0%, 100% { transform: translateX(-10%) scaleX(1); opacity: 0.5; }
+  25% { transform: translateX(15%) scaleX(1.2); opacity: 0.7; }
+  50% { transform: translateX(-5%) scaleX(0.9); opacity: 0.4; }
+  75% { transform: translateX(10%) scaleX(1.1); opacity: 0.6; }
+}
+
+@keyframes ambient-drift-alt {
+  0%, 100% { transform: translateX(10%) scaleX(1.1); opacity: 0.3; }
+  33% { transform: translateX(-15%) scaleX(0.85); opacity: 0.5; }
+  66% { transform: translateX(5%) scaleX(1.15); opacity: 0.35; }
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: -80px;
+  left: -10%;
+  width: 120%;
+  height: 200px;
+  background: radial-gradient(ellipse 60% 100% at 50% 0%, hsl(var(--primary) / 0.07), transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+  animation: ambient-drift 18s ease-in-out infinite;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: -60px;
+  left: 0%;
+  width: 100%;
+  height: 160px;
+  background: radial-gradient(ellipse 40% 100% at 40% 0%, hsl(var(--info) / 0.05), transparent 70%);
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 0;
+  animation: ambient-drift-alt 24s ease-in-out infinite;
+}
+
+.dark body::before {
+  background: radial-gradient(ellipse 60% 100% at 50% 0%, hsl(224 64% 57% / 0.12), transparent 70%);
+  height: 250px;
+  filter: blur(50px);
+}
+
+.dark body::after {
+  background: radial-gradient(ellipse 40% 100% at 40% 0%, hsl(199 70% 50% / 0.08), transparent 70%);
+  height: 200px;
+  filter: blur(60px);
+}
+
+/* Dark mode - deep gradient background */
+.dark body {
+  background: 
+    radial-gradient(ellipse 80% 60% at 50% 0%, hsl(224 64% 57% / 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 80% 20%, hsl(224 64% 57% / 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 20% 80%, hsl(199 70% 25% / 0.03) 0%, transparent 50%),
+    linear-gradient(180deg, hsl(228 16% 10%) 0%, hsl(228 18% 7%) 100%);
+  min-height: 100vh;
+}
+
+.dark aside {
+  background: hsl(var(--sidebar-background));
+  border-right-color: hsl(228 8% 14%);
+}
+
+/* Space stars background */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes twinkle-alt {
+  0%, 100% { opacity: 0.1; }
+  30% { opacity: 0.5; }
+  70% { opacity: 0.2; }
+}
+
+@keyframes drift-stars {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-100%); }
+}
+
+.space-stars,
+.space-stars-layer2,
+.space-stars-layer3 {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.space-stars {
+  background-image:
+    radial-gradient(1px 1px at 10% 15%, hsl(var(--primary) / 0.35), transparent),
+    radial-gradient(1px 1px at 25% 45%, hsl(var(--info) / 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 40% 80%, hsl(var(--primary) / 0.25), transparent),
+    radial-gradient(1px 1px at 55% 20%, hsl(var(--info) / 0.3), transparent),
+    radial-gradient(1px 1px at 70% 60%, hsl(var(--primary) / 0.2), transparent),
+    radial-gradient(1.5px 1.5px at 85% 35%, hsl(var(--info) / 0.25), transparent),
+    radial-gradient(1px 1px at 95% 75%, hsl(var(--primary) / 0.3), transparent),
+    radial-gradient(1px 1px at 15% 90%, hsl(var(--info) / 0.2), transparent),
+    radial-gradient(1px 1px at 50% 50%, hsl(var(--primary) / 0.15), transparent),
+    radial-gradient(1.5px 1.5px at 65% 10%, hsl(var(--info) / 0.2), transparent),
+    radial-gradient(1px 1px at 30% 70%, hsl(var(--primary) / 0.25), transparent),
+    radial-gradient(1px 1px at 80% 90%, hsl(var(--info) / 0.2), transparent);
+  background-size: 100% 100%;
+  animation: twinkle 8s ease-in-out infinite;
+}
+
+.space-stars-layer2 {
+  background-image:
+    radial-gradient(1px 1px at 5% 30%, hsl(var(--primary) / 0.2), transparent),
+    radial-gradient(1px 1px at 20% 65%, hsl(var(--info) / 0.25), transparent),
+    radial-gradient(1px 1px at 35% 10%, hsl(var(--primary) / 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 48% 85%, hsl(var(--info) / 0.2), transparent),
+    radial-gradient(1px 1px at 62% 40%, hsl(var(--primary) / 0.2), transparent),
+    radial-gradient(1px 1px at 78% 15%, hsl(var(--info) / 0.3), transparent),
+    radial-gradient(1px 1px at 90% 55%, hsl(var(--primary) / 0.25), transparent),
+    radial-gradient(1px 1px at 42% 25%, hsl(var(--info) / 0.15), transparent);
+  background-size: 100% 100%;
+  animation: twinkle-alt 12s ease-in-out infinite;
+}
+
+.space-stars-layer3 {
+  background-image:
+    radial-gradient(2px 2px at 18% 50%, hsl(var(--primary) / 0.12), transparent),
+    radial-gradient(2px 2px at 72% 28%, hsl(var(--info) / 0.1), transparent),
+    radial-gradient(1.5px 1.5px at 45% 72%, hsl(var(--primary) / 0.15), transparent),
+    radial-gradient(2px 2px at 88% 65%, hsl(var(--info) / 0.12), transparent),
+    radial-gradient(1.5px 1.5px at 32% 38%, hsl(var(--primary) / 0.1), transparent);
+  background-size: 100% 100%;
+  animation: twinkle 15s ease-in-out infinite reverse;
+}
+
+/* Brighter in dark mode */
+.dark .space-stars { opacity: 0.9; }
+.dark .space-stars-layer2 { opacity: 0.7; }
+.dark .space-stars-layer3 { opacity: 0.6; }
+
+/* Subtle in light mode */
+.space-stars { opacity: 0.3; }
+.space-stars-layer2 { opacity: 0.2; }
+.space-stars-layer3 { opacity: 0.15; }
+
+/* ── Prevent browser translation on meeting elements ── */
+.lk-meeting-container,
+.lk-meeting-container * {
+  -webkit-translate: none;
+}
+
+/* ── LiveKit control bar translations (PT-BR) ── */
+.lk-meeting-container .lk-button-label {
+  font-size: 0;
+}
+
+/* Translate individual buttons */
+.lk-meeting-container .lk-camera-button .lk-button-label::after { content: "Câmera"; font-size: 0.75rem; }
+.lk-meeting-container .lk-microphone-button .lk-button-label::after { content: "Microfone"; font-size: 0.75rem; }
+.lk-meeting-container .lk-screen-share-button .lk-button-label::after { content: "Compartilhar tela"; font-size: 0.75rem; }
+.lk-meeting-container .lk-chat-toggle .lk-button-label::after { content: "Chat"; font-size: 0.75rem; }
+.lk-meeting-container .lk-disconnect-button .lk-button-label::after { content: "Sair"; font-size: 0.75rem; }
+.lk-meeting-container .lk-start-audio-button .lk-button-label::after { content: "Iniciar Áudio"; font-size: 0.75rem; }
+.lk-meeting-container .lk-settings-button .lk-button-label::after { content: "Configurações"; font-size: 0.75rem; }
+
+/* ── LiveKit chat styling ── */
+.lk-meeting-container .lk-chat-form-input {
+  font-size: 0.875rem;
+}
+
+/* Style the file upload button in chat */
+.lk-meeting-container .lk-chat-form [data-file-btn] {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 4px 6px;
+  min-width: auto;
+  display: flex;
+  align-items: center;
+}
+.lk-meeting-container .lk-chat-form [data-file-btn]:hover {
+  color: white;
+}
+
+/* ── Mobile meeting fixes ── */
+.lk-meeting-container {
+  height: 100dvh !important;
+}
+
+.lk-meeting-container .lk-video-conference {
+  height: 100% !important;
+}
+
+.lk-meeting-container .lk-focus-layout,
+.lk-meeting-container .lk-grid-layout {
+  min-height: 0 !important;
+}
+
+/* Ensure video elements fill their containers on mobile */
+.lk-meeting-container .lk-participant-tile video {
+  object-fit: cover !important;
+}
+
+/* Fix for iOS safe area */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .lk-meeting-container .lk-control-bar {
+    padding-bottom: env(safe-area-inset-bottom);
   }
-  .glow-primary { box-shadow: var(--shadow-neon); }
-  .glow-violet { box-shadow: var(--shadow-violet); }
 }
