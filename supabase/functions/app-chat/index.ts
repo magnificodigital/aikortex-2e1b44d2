@@ -475,7 +475,11 @@ async function buildStructuredResponse({
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const corsResp = handleCors(req);
+  if (corsResp) return corsResp;
+
+  const authResult = await getSharedAuthContext(req);
+  if (authResult instanceof Response) return authResult;
 
   try {
     const body = await req.json();
