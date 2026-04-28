@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getAuthContext, handleCors } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -462,7 +463,12 @@ RETORNE SOMENTE O JSON.`;
 
 // ── Main handler ──────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const corsResp = handleCors(req);
+  if (corsResp) return corsResp;
+
+  const authResult = await getAuthContext(req);
+  if (authResult instanceof Response) return authResult;
+  // const { user, profile, agencyId, supabase } = authResult;
 
   try {
     const body = await req.json();
