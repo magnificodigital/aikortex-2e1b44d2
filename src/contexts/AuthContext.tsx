@@ -46,16 +46,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (data && !error) {
       setProfile(data as UserProfile);
     } else {
-      // Default profile for new users before trigger fires
-      setProfile({
-        id: "",
-        user_id: userId,
-        full_name: null,
-        avatar_url: null,
-        role: "agency_owner",
-        tenant_type: "agency",
-        is_active: true,
-      });
+      console.error("Profile não encontrado para user", userId, error);
+      setProfile(null);
     }
     setLoading(false);
   };
@@ -92,6 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isClient = profile?.tenant_type === "client";
 
   const getRedirectPath = () => {
+    if (!profile) return "/";
     if (isPlatformOwner || isPlatformAdmin) return "/admin";
     if (isClient) return "/workspace";
     return "/home";
