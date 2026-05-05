@@ -44,7 +44,33 @@ serve(async (req) => {
   // ── POST: Incoming messages ──
   if (req.method === "POST") {
     try {
-      const body = await req.json();
+      const rawBody = await req.text();
+
+      // Verify Meta HMAC signature when META_APP_SECRET is configured
+      const appSecret = Deno.env.get("META_APP_SECRET");
+      if (appSecret) {
+        const sigHeader = req.headers.get("x-hub-signature-256") || "";
+        const expected = sigHeader.startsWith("sha256=") ? sigHeader.slice(7) : "";
+        if (!expected) {
+          return new Response("Forbidden", { status: 403 });
+        }
+        const enc = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+          "raw", enc.encode(appSecret),
+          { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+        );
+        const sig = await crypto.subtle.sign("HMAC", key, enc.encode(rawBody));
+        const computed = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+        // constant-time compare
+        if (computed.length !== expected.length) return new Response("Forbidden", { status: 403 });
+        let diff = 0;
+        for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ expected.charCodeAt(i);
+        if (diff !== 0) return new Response("Forbidden", { status: 403 });
+      } else {
+        console.warn("META_APP_SECRET not configured — webhook signature not verified");
+      }
+
+      const body = JSON.parse(rawBody);
       const entry = body.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;
