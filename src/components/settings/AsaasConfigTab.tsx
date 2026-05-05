@@ -27,15 +27,13 @@ const AsaasConfigTab = () => {
       // Only fetch wallet id + a boolean indicator. Never load the full API key into the browser.
       const { data } = await supabase
         .from("agency_profiles")
-        .select("asaas_wallet_id, asaas_api_key")
+        .select("asaas_wallet_id, asaas_connected")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (data?.asaas_api_key) {
+      if ((data as any)?.asaas_connected) {
         setExistingKey(true);
         setConnected(true);
-        // Display a masked placeholder instead of the real key
-        const masked = "••••••••••••" + String(data.asaas_api_key).slice(-4);
-        setApiKey(masked);
+        setApiKey("••••••••••••••••");
       }
     };
     load();
