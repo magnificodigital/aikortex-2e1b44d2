@@ -81,6 +81,7 @@ export type Database = {
           active_clients_count: number | null
           agency_name: string | null
           asaas_api_key: string | null
+          asaas_connected: boolean | null
           asaas_wallet_id: string | null
           created_at: string | null
           custom_pricing: Json | null
@@ -96,6 +97,7 @@ export type Database = {
           active_clients_count?: number | null
           agency_name?: string | null
           asaas_api_key?: string | null
+          asaas_connected?: boolean | null
           asaas_wallet_id?: string | null
           created_at?: string | null
           custom_pricing?: Json | null
@@ -111,6 +113,7 @@ export type Database = {
           active_clients_count?: number | null
           agency_name?: string | null
           asaas_api_key?: string | null
+          asaas_connected?: boolean | null
           asaas_wallet_id?: string | null
           created_at?: string | null
           custom_pricing?: Json | null
