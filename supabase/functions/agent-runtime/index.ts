@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getAuthContext, handleCors } from "../_shared/auth.ts";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -469,6 +470,16 @@ Deno.serve(async (req) => {
   const authResult = await getAuthContext(req);
   if (authResult instanceof Response) return authResult;
   // const { user, profile, agencyId, supabase } = authResult;
+
+  if (authResult.agencyId) {
+    const allowed = await checkRateLimit(authResult.agencyId);
+    if (!allowed) {
+      return new Response(
+        streamText("⚠️ Limite de requisições excedido. Tente novamente em instantes."),
+        { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } }
+      );
+    }
+  }
 
   try {
     const body = await req.json();

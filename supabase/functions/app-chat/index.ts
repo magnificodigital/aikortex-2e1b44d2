@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getAuthContext as getSharedAuthContext, handleCors, corsHeaders } from "../_shared/auth.ts";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 /* ── Structuring prompt ── */
 
@@ -480,6 +481,16 @@ serve(async (req) => {
 
   const authResult = await getSharedAuthContext(req);
   if (authResult instanceof Response) return authResult;
+
+  if (authResult.agencyId) {
+    const allowed = await checkRateLimit(authResult.agencyId);
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em instantes." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  }
 
   try {
     const body = await req.json();

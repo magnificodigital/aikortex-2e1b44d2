@@ -124,6 +124,24 @@ export type Database = {
         }
         Relationships: []
       }
+      agency_rate_limits: {
+        Row: {
+          agency_id: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          agency_id: string
+          request_count?: number
+          window_start: string
+        }
+        Update: {
+          agency_id?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       agency_wallets: {
         Row: {
           balance: number
@@ -1705,6 +1723,10 @@ export type Database = {
       add_to_wallet_consumed: {
         Args: { consumed: number; user_uuid: string }
         Returns: undefined
+      }
+      check_and_increment_rate_limit: {
+        Args: { p_agency_id: string; p_limit: number; p_window_start: string }
+        Returns: boolean
       }
       increment_monthly_usage: {
         Args: { p_user_id: string; p_year_month: string }
