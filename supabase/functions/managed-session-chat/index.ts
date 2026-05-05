@@ -55,6 +55,15 @@ serve(async (req) => {
     let isPlatformUser = false;
 
     if (isWhatsAppMode) {
+      // WhatsApp mode is server-to-server only — require service role key in Authorization header
+      const authHeader = req.headers.get("Authorization") || "";
+      const provided = authHeader.replace(/^Bearer\s+/i, "");
+      if (!provided || provided !== serviceKey) {
+        return new Response(JSON.stringify({ error: "Não autorizado" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       userId = owner_user_id;
       const { data: profileData } = await adminClient
         .from("profiles").select("role").eq("user_id", userId).single();
