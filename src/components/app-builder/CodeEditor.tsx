@@ -7,10 +7,13 @@ interface CodeEditorProps {
   channel?: "whatsapp" | "web";
 }
 
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
 const syntaxHighlight = (line: string) => {
-  return line
-    .replace(/(import|from|export|default|function|return|const|let|var|if|else|switch|case|break|new|this|await|async|class|private|interface|type)/g, '<span class="text-purple-400">$1</span>')
-    .replace(/(".*?"|'.*?'|`.*?`)/g, '<span class="text-green-400">$1</span>')
+  return escapeHtml(line)
+    .replace(/\b(import|from|export|default|function|return|const|let|var|if|else|switch|case|break|new|this|await|async|class|private|interface|type)\b/g, '<span class="text-purple-400">$1</span>')
+    .replace(/(&quot;.*?&quot;|&#39;.*?&#39;|`.*?`)/g, '<span class="text-green-400">$1</span>')
     .replace(/(\/\/.*)/g, '<span class="text-muted-foreground">$1</span>');
 };
 
