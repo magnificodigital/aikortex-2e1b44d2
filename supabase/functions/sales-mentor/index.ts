@@ -1,9 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { handleCors, getAuthContext, corsHeaders } from "../_shared/auth.ts";
 
 const SYSTEM_PROMPT = `Você é um mentor de vendas experiente que acompanha reuniões de vendas em tempo real. Seu papel é guiar o vendedor (host da reunião) com sugestões práticas e discretas.
 
@@ -33,7 +29,11 @@ PARA FECHAMENTO, oriente:
 Use emojis com moderação para tornar a leitura rápida. Formate com markdown.`;
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const corsResp = handleCors(req);
+  if (corsResp) return corsResp;
+
+  const authResult = await getAuthContext(req);
+  if (authResult instanceof Response) return authResult;
 
   try {
     const { messages, meetingTitle } = await req.json();
