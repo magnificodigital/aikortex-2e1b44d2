@@ -29,7 +29,7 @@ async function processCrmLeadBlock(text: string): Promise<string> {
       });
     }
 
-    const { error } = await supabase.from("leads").insert({
+    const { error } = await (supabase as any).from("leads").insert({
       user_id: user.id,
       name: data.name || "Lead sem nome",
       email: data.email || "",
