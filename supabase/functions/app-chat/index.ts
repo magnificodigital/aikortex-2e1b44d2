@@ -402,60 +402,6 @@ function pickPreferredProvider(
   return ["openai", "gemini", "anthropic", "openrouter"].find((provider) => !!keys[provider as SupportedProvider]) as SupportedProvider | null;
 }
 
-function buildGatewayResponse(messages: Array<{ role: string; content: string }>, requestedModel?: string, stream = true) {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-  return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: requestedModel || DEFAULT_GATEWAY_MODEL,
-      messages,
-      stream,
-      ...(stream ? {} : { response_format: { type: "json_object" } }),
-    }),
-  });
-}
-
-async function proxyAgentChat(body: Record<string, unknown>, authHeader: string | null) {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  if (!supabaseUrl) throw new Error("SUPABASE_URL is not configured");
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (authHeader) {
-    headers.Authorization = authHeader;
-  }
-
-  let response = await fetch(`${supabaseUrl}/functions/v1/agent-chat`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  if (response.status === 401 && ((body.useGateway === true) || !body.provider)) {
-    response = await buildGatewayResponse((body.messages as Array<{ role: string; content: string }>) || [], body.model as string | undefined, true);
-  }
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    return new Response(errorText, {
-      status: response.status,
-      headers: { ...corsHeaders, "Content-Type": response.headers.get("Content-Type") || "application/json" },
-    });
-  }
-
-  return new Response(response.body, {
-    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-  });
-}
-
 async function buildStructuredResponse({
   messages,
   systemPrompt,
