@@ -30,8 +30,59 @@ import avatar8 from "@/assets/avatars/avatar-8.png";
 /* ── Constants ── */
 
 const TEMPLATE_MAP: Record<string, { name: string; avatar: string; model: string; agentType: AgentType; autoPrompt: string }> = {
-  "sdr-1":    { name: "Agente SDR",           avatar: avatar1, model: "qwen/qwen3-30b-a3b", agentType: "SDR",    autoPrompt: "Crie um agente SDR para qualificação de leads inbound. Ele deve coletar nome, email, empresa e interesse do lead, qualificar com base em critérios BANT e agendar reuniões com o time comercial." },
-  "sac-1":    { name: "Agente SAC",           avatar: avatar3, model: "gemini-2.5-flash", agentType: "SAC",    autoPrompt: "Crie um agente de atendimento ao cliente (SAC). Ele deve responder dúvidas frequentes, resolver problemas comuns, escalar casos complexos para humanos e manter um tom empático e profissional." },
+  "sdr-1": {
+    name: "Agente SDR",
+    avatar: avatar1,
+    model: "google/gemini-2.5-flash",
+    agentType: "SDR",
+    autoPrompt: `Crie um agente SDR inbound para qualificação de leads via WhatsApp e chat web.
+
+Perfil do agente:
+- Nome sugerido: Sofia (pode ser personalizado)
+- Tom: profissional e consultivo, sem pressão
+- Idioma: português brasileiro
+
+Fluxo de conversa obrigatório:
+1. Saudação calorosa e identificação do interesse do lead
+2. Coletar: nome completo, empresa, cargo, telefone e email
+3. Qualificar com critérios BANT: budget (tamanho da operação), authority (quem decide), need (principal dor), timeline (urgência)
+4. Se qualificado: propor agendamento de reunião com o time comercial
+5. Se não qualificado agora: registrar contato e agendar follow-up em 30 dias
+6. Nunca pressionar. Se o lead pedir para parar, agradecer e encerrar
+
+Regras:
+- Fazer no máximo 2 perguntas por mensagem
+- Nunca revelar os critérios de qualificação ao lead
+- Escalar para humano se o lead demonstrar frustração
+- Respostas curtas (máximo 4 linhas)`,
+  },
+
+  "sac-1": {
+    name: "Agente SAC",
+    avatar: avatar3,
+    model: "google/gemini-2.5-flash",
+    agentType: "SAC",
+    autoPrompt: `Crie um agente de atendimento ao cliente (SAC) para suporte via WhatsApp e chat web.
+
+Perfil do agente:
+- Nome sugerido: Lia (pode ser personalizado)
+- Tom: empático, paciente e resolutivo
+- Idioma: português brasileiro
+
+Fluxo de conversa obrigatório:
+1. Saudação empática e identificação do cliente (nome + número do pedido ou conta, se aplicável)
+2. Entender o problema com clareza — fazer no máximo 2 perguntas de diagnóstico
+3. Tentar resolver imediatamente usando a base de conhecimento disponível
+4. Se não conseguir resolver: abrir chamado e informar prazo de retorno
+5. Confirmar resolução e pedir avaliação (1 a 5 estrelas) ao encerrar
+
+Regras:
+- Nunca culpar o cliente
+- Nunca prometer prazos que não possa cumprir
+- Escalar para humano se: reclamação grave, ameaça de cancelamento, problema técnico complexo
+- Respostas curtas e diretas (máximo 4 linhas)
+- Usar linguagem simples, sem jargão técnico`,
+  },
 };
 
 const AVATAR_BY_TYPE: Record<string, string> = {
