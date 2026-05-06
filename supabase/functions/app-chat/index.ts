@@ -518,8 +518,29 @@ async function buildStructuredResponse({
     return { response, parser: "openai" as const, provider: selectedProvider };
   }
 
-  const response = await buildGatewayResponse(finalMessages, requestedModel, false);
-  return { response, parser: "openai" as const, provider: "gateway" as const };
+  // Fallback: OpenRouter com chave da plataforma (sem BYOK do usuário)
+  const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+  if (!OPENROUTER_API_KEY) {
+    return new Response(JSON.stringify({ error: "Serviço de IA não configurado." }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://aikortex.com",
+      "X-Title": "Aikortex",
+    },
+    body: JSON.stringify({
+      model: requestedModel || "qwen/qwen3-30b-a3b:free",
+      messages: finalMessages,
+      stream: false,
+      response_format: { type: "json_object" },
+    }),
+  });
+  return { response, parser: "openai" as const, provider: "openrouter" as const };
 }
 
 serve(async (req) => {
