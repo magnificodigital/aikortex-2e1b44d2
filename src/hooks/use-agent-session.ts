@@ -54,8 +54,6 @@ export function useAgentSession(options: UseAgentSessionOptions) {
     setTimeout(doFlush, FLUSH_INTERVAL_MS);
   }, []);
 
-  const useManagedSession = options.provider === "anthropic";
-
   const sendMessage = useCallback(async (userText: string) => {
     if (!userText.trim() || isStreaming) return;
 
@@ -70,112 +68,30 @@ export function useAgentSession(options: UseAgentSessionOptions) {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      let resp: Response;
+      const apiMessages: Array<{ role: string; content: string }> = nextMessages.map((m) => ({
+        role: m.role === "agent" ? "assistant" : m.role,
+        content: m.text,
+      }));
 
-      if (useManagedSession) {
-        resp = await fetch(MANAGED_SESSION_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            agent_db_id: options.agentDbId,
-            message: userText,
-            contact_identifier: options.contactIdentifier,
-            channel: options.channel || "chat",
-          }),
-        });
-      } else {
-        const apiMessages: Array<{ role: string; content: string }> = nextMessages.map((m) => ({
-          role: m.role === "agent" ? "assistant" : m.role,
-          content: m.text,
-        }));
+      if (options.systemPrompt) {
+        apiMessages.unshift({ role: "system", content: options.systemPrompt });
+      }
 
-        if (options.systemPrompt) {
-          apiMessages.unshift({ role: "system", content: options.systemPrompt });
-        }
-
-        const payload: Record<string, unknown> = {
+      const resp = await fetch(APP_CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
           mode: "agent-chat",
           messages: apiMessages,
-          useGateway: options.useGateway ?? false,
-          provider: options.provider,
-          model: options.model,
           agentContext: options.agentContext,
-        };
-
-        if (options.useGateway) {
-          payload.model = options.gatewayModel || "google/gemini-2.5-flash";
-        }
-
-        if (options.apiConfig) {
-          Object.assign(payload, options.apiConfig);
-        }
-
-        resp = await fetch(AGENT_CHAT_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(payload),
-        });
-      }
+        }),
+      });
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Erro desconhecido" }));
-
-        // ── Rule 5: Handle BYOK_REQUIRED error with clear feedback ──
-        if (err?.code === "BYOK_REQUIRED") {
-          toast.error(err.error || "Chave de API própria é necessária.", {
-            description: "Acesse Configurações → Integrações para adicionar sua chave.",
-            duration: 8000,
-            action: {
-              label: "Ir para Integrações",
-              onClick: () => {
-                window.location.href = "/integrations";
-              },
-            },
-          });
-          if (mountedRef.current) {
-            setMessages((prev) => [
-              ...prev,
-              { role: "agent", text: `🔑 ${err.error}` },
-            ]);
-          }
-          return;
-        }
-
-        // Fallback: if managed session fails, try regular agent-chat
-        if (useManagedSession && resp.status >= 500) {
-          console.warn("Managed session failed, falling back to agent-chat");
-          const apiMessages: Array<{ role: string; content: string }> = nextMessages.map((m) => ({
-            role: m.role === "agent" ? "assistant" : m.role,
-            content: m.text,
-          }));
-
-          const fallbackResp = await fetch(AGENT_CHAT_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
-              mode: "agent-chat",
-              messages: apiMessages,
-              useGateway: true,
-              model: "google/gemini-2.5-flash",
-              agentContext: options.agentContext,
-            }),
-          });
-
-          if (fallbackResp.ok && fallbackResp.body) {
-            await processStream(fallbackResp.body);
-            return;
-          }
-        }
-
         throw new Error(err?.error || `Erro ${resp.status}`);
       }
 
