@@ -71,22 +71,36 @@ const BrowserCallWidget = ({
       messagesRef.current.push({ role: "user", content: text });
 
       try {
-        // Get AI response
-        const { data, error } = await supabase.functions.invoke("agent-chat", {
-          body: {
-            agent_id: agentId,
-            messages: messagesRef.current,
-            channel: "voice",
-          },
-        });
+        const session = (await supabase.auth.getSession()).data.session;
+        const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-        if (error || !data?.response) {
-          console.error("agent-chat error:", error);
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              mode: "agent-chat",
+              stream: false,
+              agentId,
+              messages: messagesRef.current,
+            }),
+          }
+        );
+
+        if (!resp.ok) {
+          console.error("app-chat error:", resp.status);
           processingRef.current = false;
           return;
         }
 
-        const aiText = data.response;
+        const data = await resp.json();
+        const aiText = data?.response;
+        if (!aiText) { processingRef.current = false; return; }
+
         setTranscript(prev => [...prev, { role: "agent", text: aiText }]);
         messagesRef.current.push({ role: "assistant", content: aiText });
 

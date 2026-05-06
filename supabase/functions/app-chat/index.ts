@@ -3,6 +3,107 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getAuthContext as getSharedAuthContext, handleCors, corsHeaders } from "../_shared/auth.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 
+// ── OpenRouter platform helpers ───────────────────────────────────────────
+const PLATFORM_FREE_MODELS = [
+  "qwen/qwen3-30b-a3b:free",
+  "google/gemini-2.5-flash-preview-04-17:free",
+  "google/gemma-3-27b-it:free",
+  "deepseek/deepseek-chat-v3-0324:free",
+];
+
+function streamText(text: string): ReadableStream {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    start(ctrl) {
+      const words = text.split(" ");
+      for (let i = 0; i < words.length; i++) {
+        const chunk = i === words.length - 1 ? words[i] : words[i] + " ";
+        ctrl.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: chunk } }] })}\n\n`));
+      }
+      ctrl.enqueue(encoder.encode("data: [DONE]\n\n"));
+      ctrl.close();
+    },
+  });
+}
+
+async function streamFromOpenRouterPlatform(messages: Array<{ role: string; content: string }>): Promise<Response | null> {
+  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  if (!apiKey) { console.error("OPENROUTER_API_KEY not set"); return null; }
+  for (const model of PLATFORM_FREE_MODELS) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://aikortex.com",
+          "X-Title": "Aikortex",
+        },
+        body: JSON.stringify({ model, messages, stream: true, max_tokens: 2048 }),
+      });
+      clearTimeout(timeout);
+      if ([400, 404, 429, 500, 502, 503].includes(resp.status)) continue;
+      if (!resp.ok) continue;
+      return resp;
+    } catch { continue; }
+  }
+  return null;
+}
+
+async function bufferFromOpenRouterPlatform(messages: Array<{ role: string; content: string }>): Promise<string> {
+  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  if (!apiKey) return "";
+  for (const model of PLATFORM_FREE_MODELS) {
+    try {
+      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://aikortex.com",
+          "X-Title": "Aikortex",
+        },
+        body: JSON.stringify({ model, messages, stream: false, max_tokens: 2048 }),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const content = data?.choices?.[0]?.message?.content || "";
+      if (content) return content;
+    } catch { continue; }
+  }
+  return "";
+}
+
+function buildAgentSystemPrompt(agentConfig: Record<string, unknown>): string {
+  const name = String(agentConfig?.name || "Assistente");
+  const role = String(agentConfig?.role || "").toLowerCase();
+  const objective = String(agentConfig?.objective || "");
+  const instructions = String(agentConfig?.instructions || "");
+  const tone = String(agentConfig?.toneOfVoice || "Profissional e Amigável");
+  const company = String(agentConfig?.companyName || "");
+  const isSdr = role.includes("sdr") || role.includes("vendas") || role.includes("sales") ||
+    objective.toLowerCase().includes("qualific") || instructions.toLowerCase().includes("bant");
+  if (isSdr) {
+    return `Você é ${name}, agente SDR${company ? ` da ${company}` : ""}.
+Objetivo: ${objective || "Qualificar leads e agendar reuniões."}
+Tom: ${tone}
+Instruções: ${instructions}
+Regras: faça UMA pergunta por vez. Colete nome, email, telefone, empresa, cargo. Qualifique com BANT. Responda em português do Brasil.`;
+  }
+  return `Você é ${name}${company ? ` da ${company}` : ""}.
+Objetivo: ${objective}
+Tom: ${tone}
+Instruções: ${instructions}
+Responda em português do Brasil.`;
+}
+
+function buildWizardSystemPrompt(agentType: string): string {
+  return `Você é um configurador de agentes IA. Configure um agente do tipo "${agentType}". Faça perguntas UMA por vez aguardando a resposta. Máximo 1 frase por mensagem. Sem introduções. Responda em português do Brasil.`;
+}
+
 /* ── Structuring prompt ── */
 
 function buildStructuringPrompt(appType: string, language: string) {
@@ -206,7 +307,7 @@ Crie a V1 mais sólida possível. Priorize clareza e coerência.`}
 RETORNE SOMENTE O JSON.`;
 }
 
-const DEFAULT_GATEWAY_MODEL = "google/gemini-2.5-flash";
+
 
 const OPENAI_MODEL_MAP: Record<string, string> = {
   "gpt-5.2": "gpt-4o",
@@ -299,60 +400,6 @@ function pickPreferredProvider(
   }
 
   return ["openai", "gemini", "anthropic", "openrouter"].find((provider) => !!keys[provider as SupportedProvider]) as SupportedProvider | null;
-}
-
-function buildGatewayResponse(messages: Array<{ role: string; content: string }>, requestedModel?: string, stream = true) {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-  return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: requestedModel || DEFAULT_GATEWAY_MODEL,
-      messages,
-      stream,
-      ...(stream ? {} : { response_format: { type: "json_object" } }),
-    }),
-  });
-}
-
-async function proxyAgentChat(body: Record<string, unknown>, authHeader: string | null) {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  if (!supabaseUrl) throw new Error("SUPABASE_URL is not configured");
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (authHeader) {
-    headers.Authorization = authHeader;
-  }
-
-  let response = await fetch(`${supabaseUrl}/functions/v1/agent-chat`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  if (response.status === 401 && ((body.useGateway === true) || !body.provider)) {
-    response = await buildGatewayResponse((body.messages as Array<{ role: string; content: string }>) || [], body.model as string | undefined, true);
-  }
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    return new Response(errorText, {
-      status: response.status,
-      headers: { ...corsHeaders, "Content-Type": response.headers.get("Content-Type") || "application/json" },
-    });
-  }
-
-  return new Response(response.body, {
-    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-  });
 }
 
 async function buildStructuredResponse({
@@ -471,8 +518,29 @@ async function buildStructuredResponse({
     return { response, parser: "openai" as const, provider: selectedProvider };
   }
 
-  const response = await buildGatewayResponse(finalMessages, requestedModel, false);
-  return { response, parser: "openai" as const, provider: "gateway" as const };
+  // Fallback: OpenRouter com chave da plataforma (sem BYOK do usuário)
+  const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+  if (!OPENROUTER_API_KEY) {
+    return new Response(JSON.stringify({ error: "Serviço de IA não configurado." }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://aikortex.com",
+      "X-Title": "Aikortex",
+    },
+    body: JSON.stringify({
+      model: requestedModel || "qwen/qwen3-30b-a3b:free",
+      messages: finalMessages,
+      stream: false,
+      response_format: { type: "json_object" },
+    }),
+  });
+  return { response, parser: "openai" as const, provider: "openrouter" as const };
 }
 
 serve(async (req) => {
@@ -497,9 +565,60 @@ serve(async (req) => {
     const { messages, appContext, mode, model: requestedModel, provider: requestedProvider } = body;
     const authHeader = req.headers.get("Authorization");
 
-    /* ── Mode: agent-chat (streaming, for agent configuration assistant) ── */
-    if (mode === "agent-chat") {
-      return await proxyAgentChat(body, authHeader);
+    /* ── Mode: agent-chat / wizard-setup ── */
+    if (mode === "agent-chat" || mode === "wizard-setup") {
+      const { agentId, agentConfig = {}, stream: streamMode = true } = body as {
+        agentId?: string;
+        agentConfig?: Record<string, unknown>;
+        stream?: boolean;
+      };
+      const sseHeaders = { ...corsHeaders, "Content-Type": "text/event-stream" };
+
+      // Ownership validation
+      if (agentId) {
+        const supabaseSvc = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const { data: agent } = await supabaseSvc
+          .from("agents")
+          .select("agency_id")
+          .eq("id", agentId)
+          .maybeSingle();
+        if (!agent || agent.agency_id !== authResult.agencyId) {
+          return new Response(JSON.stringify({ error: "Agente não encontrado ou sem permissão." }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+      }
+
+      const system = mode === "wizard-setup"
+        ? buildWizardSystemPrompt(String((body as Record<string, unknown>).agentType || "custom"))
+        : buildAgentSystemPrompt((agentConfig || {}) as Record<string, unknown>);
+
+      const chatMessages: Array<{ role: string; content: string }> = [
+        { role: "system", content: system },
+        ...((messages || []) as Array<{ role: string; content: string }>),
+      ];
+
+      // Non-streaming: voz e preview (stream: false no body)
+      if (streamMode === false) {
+        const content = await bufferFromOpenRouterPlatform(chatMessages);
+        return new Response(
+          JSON.stringify({ response: content || "Não foi possível gerar resposta." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Streaming SSE
+      const orResp = await streamFromOpenRouterPlatform(chatMessages);
+      if (!orResp?.body) {
+        return new Response(
+          streamText("⚠️ Serviço de IA temporariamente indisponível. Tente novamente."),
+          { headers: sseHeaders }
+        );
+      }
+      return new Response(orResp.body, { headers: sseHeaders });
     }
 
     /* ── Mode: structure (non-streaming JSON) ── */
