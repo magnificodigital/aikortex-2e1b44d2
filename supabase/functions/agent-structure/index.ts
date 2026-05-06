@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getAuthContext } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,9 @@ const GATEWAY_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const authResult = await getAuthContext(req);
+  if (authResult instanceof Response) return authResult;
 
   try {
     const { description, agent_type, language } = await req.json();
