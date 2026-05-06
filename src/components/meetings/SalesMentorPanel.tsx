@@ -13,8 +13,9 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
-const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sales-mentor`;
+const APP_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`;
 
 interface Message {
   role: "user" | "assistant";
