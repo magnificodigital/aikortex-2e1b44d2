@@ -307,7 +307,7 @@ Crie a V1 mais sólida possível. Priorize clareza e coerência.`}
 RETORNE SOMENTE O JSON.`;
 }
 
-const DEFAULT_GATEWAY_MODEL = "google/gemini-2.5-flash";
+
 
 const OPENAI_MODEL_MAP: Record<string, string> = {
   "gpt-5.2": "gpt-4o",
