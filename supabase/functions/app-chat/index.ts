@@ -3,6 +3,107 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getAuthContext as getSharedAuthContext, handleCors, corsHeaders } from "../_shared/auth.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 
+// ── OpenRouter platform helpers ───────────────────────────────────────────
+const PLATFORM_FREE_MODELS = [
+  "qwen/qwen3-30b-a3b:free",
+  "google/gemini-2.5-flash-preview-04-17:free",
+  "google/gemma-3-27b-it:free",
+  "deepseek/deepseek-chat-v3-0324:free",
+];
+
+function streamText(text: string): ReadableStream {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    start(ctrl) {
+      const words = text.split(" ");
+      for (let i = 0; i < words.length; i++) {
+        const chunk = i === words.length - 1 ? words[i] : words[i] + " ";
+        ctrl.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: chunk } }] })}\n\n`));
+      }
+      ctrl.enqueue(encoder.encode("data: [DONE]\n\n"));
+      ctrl.close();
+    },
+  });
+}
+
+async function streamFromOpenRouterPlatform(messages: Array<{ role: string; content: string }>): Promise<Response | null> {
+  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  if (!apiKey) { console.error("OPENROUTER_API_KEY not set"); return null; }
+  for (const model of PLATFORM_FREE_MODELS) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://aikortex.com",
+          "X-Title": "Aikortex",
+        },
+        body: JSON.stringify({ model, messages, stream: true, max_tokens: 2048 }),
+      });
+      clearTimeout(timeout);
+      if ([400, 404, 429, 500, 502, 503].includes(resp.status)) continue;
+      if (!resp.ok) continue;
+      return resp;
+    } catch { continue; }
+  }
+  return null;
+}
+
+async function bufferFromOpenRouterPlatform(messages: Array<{ role: string; content: string }>): Promise<string> {
+  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  if (!apiKey) return "";
+  for (const model of PLATFORM_FREE_MODELS) {
+    try {
+      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://aikortex.com",
+          "X-Title": "Aikortex",
+        },
+        body: JSON.stringify({ model, messages, stream: false, max_tokens: 2048 }),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const content = data?.choices?.[0]?.message?.content || "";
+      if (content) return content;
+    } catch { continue; }
+  }
+  return "";
+}
+
+function buildAgentSystemPrompt(agentConfig: Record<string, unknown>): string {
+  const name = String(agentConfig?.name || "Assistente");
+  const role = String(agentConfig?.role || "").toLowerCase();
+  const objective = String(agentConfig?.objective || "");
+  const instructions = String(agentConfig?.instructions || "");
+  const tone = String(agentConfig?.toneOfVoice || "Profissional e Amigável");
+  const company = String(agentConfig?.companyName || "");
+  const isSdr = role.includes("sdr") || role.includes("vendas") || role.includes("sales") ||
+    objective.toLowerCase().includes("qualific") || instructions.toLowerCase().includes("bant");
+  if (isSdr) {
+    return `Você é ${name}, agente SDR${company ? ` da ${company}` : ""}.
+Objetivo: ${objective || "Qualificar leads e agendar reuniões."}
+Tom: ${tone}
+Instruções: ${instructions}
+Regras: faça UMA pergunta por vez. Colete nome, email, telefone, empresa, cargo. Qualifique com BANT. Responda em português do Brasil.`;
+  }
+  return `Você é ${name}${company ? ` da ${company}` : ""}.
+Objetivo: ${objective}
+Tom: ${tone}
+Instruções: ${instructions}
+Responda em português do Brasil.`;
+}
+
+function buildWizardSystemPrompt(agentType: string): string {
+  return `Você é um configurador de agentes IA. Configure um agente do tipo "${agentType}". Faça perguntas UMA por vez aguardando a resposta. Máximo 1 frase por mensagem. Sem introduções. Responda em português do Brasil.`;
+}
+
 /* ── Structuring prompt ── */
 
 function buildStructuringPrompt(appType: string, language: string) {
