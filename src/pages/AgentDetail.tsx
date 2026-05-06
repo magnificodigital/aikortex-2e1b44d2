@@ -542,10 +542,19 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     {
       useGateway: true,
       gatewayModel: setupModel,
-      mode: "wizard-setup",
-      agentType: wizardAgentTypeKey,
+      systemPrompt: `Você é um assistente de configuração de agentes de IA da plataforma Aikortex. Seu papel é conduzir uma entrevista rápida para entender o negócio do usuário e configurar o agente corretamente.
+
+Tipo de agente: ${wizardAgentTypeKey}.
+
+Regras obrigatórias:
+- Faça APENAS UMA pergunta por mensagem, máximo 2 linhas.
+- Comece perguntando o nome do negócio e o que ele faz.
+- Em seguida, pergunte quem é o público-alvo.
+- Depois, qual a principal dor ou objetivo que o agente deve resolver.
+- Por fim, qual tom de comunicação (formal, casual, empático).
+- Após 4-5 respostas, produza o bloco de configuração no formato \`\`\`agent-config com os campos: agent_name, agent_type, description, objective, tone, greeting_message, instructions.
+- Nunca faça mais de 5 perguntas no total.`,
       persistKey: shouldPersistTemplateDraft ? `${storagePrefix}-wizard-messages` : undefined,
-      disableCrmExtraction: true,
     }
   );
 
