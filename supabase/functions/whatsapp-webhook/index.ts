@@ -217,33 +217,25 @@ function handleAgentReply(
 
       const usedPhoneId = phoneNumberId || keyMap.whatsapp_phone_number_id;
 
-      // Call managed-session-chat in WhatsApp mode (no auth header, uses owner_user_id)
-      const sessionResp = await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/functions/v1/managed-session-chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          },
-          body: JSON.stringify({
-            agent_db_id: agentConfig.api_key,
-            message: messageContent,
-            contact_identifier: contactNumber,
-            channel: "whatsapp",
-            owner_user_id: ownerUserId,
-          }),
-        },
+      // Load agent config from agents table
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("name, role, objective, instructions, tone_of_voice, company_name")
+        .eq("id", agentConfig.api_key)
+        .maybeSingle();
+
+      if (!agent) return;
+
+      const system = `Você é ${agent.name || "Assistente"}${agent.company_name ? ` da ${agent.company_name}` : ""}.
+Objetivo: ${agent.objective || "Atender e qualificar leads via WhatsApp."}
+Tom: ${agent.tone_of_voice || "Profissional e Amigável"}
+Instruções: ${agent.instructions || ""}
+Responda sempre em português do Brasil. Seja natural e conversacional.`;
+
+      const replyText = await callOpenRouterDirect(
+        [{ role: "user", content: messageContent }],
+        system,
       );
-
-      if (!sessionResp.ok) {
-        const errText = await sessionResp.text();
-        console.error("managed-session-chat error:", sessionResp.status, errText);
-        return;
-      }
-
-      const result = await sessionResp.json();
-      const replyText = result?.reply;
 
       if (replyText && usedPhoneId) {
         // Send reply via WhatsApp Graph API directly (no auth needed, we have token)
