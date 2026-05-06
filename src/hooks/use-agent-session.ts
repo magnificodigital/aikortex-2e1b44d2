@@ -159,7 +159,7 @@ export function useAgentSession(options: UseAgentSessionOptions) {
 
       flushPendingText(true);
     }
-  }, [isStreaming, useManagedSession, options, flushPendingText]);
+  }, [isStreaming, options, flushPendingText]);
 
   return { messages, setMessages, sendMessage, isStreaming, sessionStatus };
 }
