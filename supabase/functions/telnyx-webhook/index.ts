@@ -419,30 +419,49 @@ async function generateTTS(
   return urlData.publicUrl;
 }
 
+async function callOpenRouterDirect(
+  messages: Array<{ role: string; content: string }>,
+  system: string,
+): Promise<string | null> {
+  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  if (!apiKey) return null;
+  const models = ["qwen/qwen3-30b-a3b:free", "google/gemini-2.5-flash-preview-04-17:free", "google/gemma-3-27b-it:free"];
+  const fullMessages = [{ role: "system", content: system }, ...messages];
+  for (const model of models) {
+    try {
+      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://aikortex.com",
+          "X-Title": "Aikortex",
+        },
+        body: JSON.stringify({ model, messages: fullMessages, stream: false, max_tokens: 1024 }),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const content = data?.choices?.[0]?.message?.content || "";
+      if (content) return content;
+    } catch { continue; }
+  }
+  return null;
+}
+
 async function getAgentLLMResponse(
   agent: Record<string, unknown>,
   messages: Array<{ role: string; content: string }>,
-  userId: string
+  _userId: string,
 ): Promise<string | null> {
   try {
-    const res = await fetch(
-      `${Deno.env.get("SUPABASE_URL")}/functions/v1/agent-chat`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-        },
-        body: JSON.stringify({
-          agent_id: agent.id,
-          messages,
-          user_id: userId,
-          channel: "voice",
-        }),
-      }
-    );
-    const data = await res.json();
-    return (data.response as string) ?? null;
+    const config = (agent.config ?? {}) as Record<string, unknown>;
+    const system = `Você é ${String(agent.name || "Assistente")}.
+Objetivo: ${String(config.objective || agent.description || "Atender chamadas de voz.")}
+Tom: ${String(config.tone_of_voice || "Profissional e Amigável")}
+Instruções: ${String(config.instructions || "")}
+Responda em português do Brasil. Respostas curtas e naturais para voz.`;
+
+    return await callOpenRouterDirect(messages, system);
   } catch {
     return null;
   }

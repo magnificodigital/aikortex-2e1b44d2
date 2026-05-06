@@ -154,7 +154,36 @@ serve(async (req) => {
   return new Response("Method not allowed", { status: 405 });
 });
 
-/** Fire-and-forget: find agent config and invoke managed-session-chat */
+async function callOpenRouterDirect(
+  messages: Array<{ role: string; content: string }>,
+  system: string,
+): Promise<string | null> {
+  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  if (!apiKey) return null;
+  const models = ["qwen/qwen3-30b-a3b:free", "google/gemini-2.5-flash-preview-04-17:free", "google/gemma-3-27b-it:free"];
+  const fullMessages = [{ role: "system", content: system }, ...messages];
+  for (const model of models) {
+    try {
+      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://aikortex.com",
+          "X-Title": "Aikortex",
+        },
+        body: JSON.stringify({ model, messages: fullMessages, stream: false, max_tokens: 1024 }),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const content = data?.choices?.[0]?.message?.content || "";
+      if (content) return content;
+    } catch { continue; }
+  }
+  return null;
+}
+
+/** Fire-and-forget: find agent config and call OpenRouter directly */
 function handleAgentReply(
   supabase: any,
   ownerUserId: string,
@@ -188,33 +217,25 @@ function handleAgentReply(
 
       const usedPhoneId = phoneNumberId || keyMap.whatsapp_phone_number_id;
 
-      // Call managed-session-chat in WhatsApp mode (no auth header, uses owner_user_id)
-      const sessionResp = await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/functions/v1/managed-session-chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          },
-          body: JSON.stringify({
-            agent_db_id: agentConfig.api_key,
-            message: messageContent,
-            contact_identifier: contactNumber,
-            channel: "whatsapp",
-            owner_user_id: ownerUserId,
-          }),
-        },
+      // Load agent config from agents table
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("name, role, objective, instructions, tone_of_voice, company_name")
+        .eq("id", agentConfig.api_key)
+        .maybeSingle();
+
+      if (!agent) return;
+
+      const system = `Você é ${agent.name || "Assistente"}${agent.company_name ? ` da ${agent.company_name}` : ""}.
+Objetivo: ${agent.objective || "Atender e qualificar leads via WhatsApp."}
+Tom: ${agent.tone_of_voice || "Profissional e Amigável"}
+Instruções: ${agent.instructions || ""}
+Responda sempre em português do Brasil. Seja natural e conversacional.`;
+
+      const replyText = await callOpenRouterDirect(
+        [{ role: "user", content: messageContent }],
+        system,
       );
-
-      if (!sessionResp.ok) {
-        const errText = await sessionResp.text();
-        console.error("managed-session-chat error:", sessionResp.status, errText);
-        return;
-      }
-
-      const result = await sessionResp.json();
-      const replyText = result?.reply;
 
       if (replyText && usedPhoneId) {
         // Send reply via WhatsApp Graph API directly (no auth needed, we have token)

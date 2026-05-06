@@ -20,25 +20,59 @@ function interpolateTemplate(template: string, contact: Contact): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(contact[key] ?? ""));
 }
 
+async function callOpenRouterDirect(
+  messages: Array<{ role: string; content: string }>,
+  system: string,
+): Promise<string | null> {
+  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  if (!apiKey) return null;
+  const models = ["qwen/qwen3-30b-a3b:free", "google/gemini-2.5-flash-preview-04-17:free", "google/gemma-3-27b-it:free"];
+  const fullMessages = [{ role: "system", content: system }, ...messages];
+  for (const model of models) {
+    try {
+      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://aikortex.com",
+          "X-Title": "Aikortex",
+        },
+        body: JSON.stringify({ model, messages: fullMessages, stream: false, max_tokens: 512 }),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const content = data?.choices?.[0]?.message?.content || "";
+      if (content) return content;
+    } catch { continue; }
+  }
+  return null;
+}
+
 async function personalizeWithAgent(
   supabase: any,
   agentDbId: string,
   contact: Contact,
   template: string,
-  userId: string,
+  _userId: string,
 ): Promise<string | null> {
   try {
+    const { data: agent } = await supabase
+      .from("agents")
+      .select("name, objective, instructions, tone_of_voice")
+      .eq("id", agentDbId)
+      .maybeSingle();
+
+    const system = `Você é ${agent?.name || "Assistente"} especialista em comunicação.
+Objetivo: ${agent?.objective || "Personalizar mensagens de marketing de forma natural e persuasiva."}
+Tom: ${agent?.tone_of_voice || "Profissional e Amigável"}
+Instruções: ${agent?.instructions || ""}
+Responda APENAS com a mensagem personalizada, sem explicações adicionais.`;
+
     const interpolated = interpolateTemplate(template, contact);
-    const resp = await supabase.functions.invoke("managed-session-chat", {
-      body: {
-        agent_db_id: agentDbId,
-        message: `Personalize esta mensagem para ${contact.name || contact.phone}: ${interpolated}. Responda APENAS com a mensagem personalizada, sem explicações.`,
-        contact_identifier: `broadcast_${contact.phone}`,
-        channel: "whatsapp",
-        owner_user_id: userId,
-      },
-    });
-    return resp.data?.reply || null;
+    const prompt = `Personalize esta mensagem para ${contact.name || contact.phone}: "${interpolated}"`;
+
+    return await callOpenRouterDirect([{ role: "user", content: prompt }], system);
   } catch (err) {
     console.error(`AI personalization failed for ${contact.phone}:`, err);
     return null;

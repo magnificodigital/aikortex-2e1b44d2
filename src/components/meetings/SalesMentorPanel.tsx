@@ -13,8 +13,9 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
-const MENTOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sales-mentor`;
+const APP_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`;
 
 interface Message {
   role: "user" | "assistant";
@@ -86,13 +87,29 @@ const SalesMentorPanel = ({ meetingTitle, liveTranscript }: Props) => {
       let assistantContent = "";
 
       try {
-        const resp = await fetch(MENTOR_URL, {
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+        const resp = await fetch(APP_CHAT_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ messages: allMessages, meetingTitle }),
+          body: JSON.stringify({
+            mode: "agent-chat",
+            agentConfig: {
+              name: "Mentor de Vendas",
+              role: "mentor",
+              objective: `Dar orientações estratégicas de vendas em tempo real durante a reunião "${meetingTitle}". Seja direto, prático e use bullet points quando útil.`,
+              instructions: "Analise o contexto e dê sugestões acionáveis. Máximo 3 pontos por resposta. Foque no que o vendedor pode fazer AGORA.",
+              toneOfVoice: "Direto e estratégico",
+            },
+            messages: allMessages.map((m: Message) => ({
+              role: m.role === "assistant" ? "assistant" : "user",
+              content: m.content,
+            })),
+          }),
         });
 
         if (!resp.ok || !resp.body) {
