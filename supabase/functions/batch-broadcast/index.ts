@@ -58,7 +58,7 @@ async function personalizeWithAgent(
 ): Promise<string | null> {
   try {
     const { data: agent } = await supabase
-      .from("agents")
+      .from("user_agents")
       .select("name, objective, instructions, tone_of_voice")
       .eq("id", agentDbId)
       .maybeSingle();
