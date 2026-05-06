@@ -76,6 +76,27 @@ export type Database = {
           },
         ]
       }
+      agency_monthly_usage: {
+        Row: {
+          agency_id: string
+          message_count: number
+          updated_at: string
+          year_month: string
+        }
+        Insert: {
+          agency_id: string
+          message_count?: number
+          updated_at?: string
+          year_month: string
+        }
+        Update: {
+          agency_id?: string
+          message_count?: number
+          updated_at?: string
+          year_month?: string
+        }
+        Relationships: []
+      }
       agency_profiles: {
         Row: {
           active_clients_count: number | null
@@ -1730,6 +1751,10 @@ export type Database = {
       check_and_increment_rate_limit: {
         Args: { p_agency_id: string; p_limit: number; p_window_start: string }
         Returns: boolean
+      }
+      increment_agency_usage: {
+        Args: { p_agency_id: string; p_year_month: string }
+        Returns: number
       }
       increment_monthly_usage: {
         Args: { p_user_id: string; p_year_month: string }
