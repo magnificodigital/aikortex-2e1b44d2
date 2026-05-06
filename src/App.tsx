@@ -28,10 +28,7 @@ const AikortexCRM = lazy(() => import("./pages/AikortexCRM"));
 const AikortexAutomations = lazy(() => import("./pages/AikortexAutomations"));
 const AikortexMessages = lazy(() => import("./pages/AikortexMessages"));
 const AikortexBroadcasts = lazy(() => import("./pages/AikortexBroadcasts"));
-const WebEdit = lazy(() => import("./pages/WebEdit"));
-const AlowDigital = lazy(() => import("./pages/AlowDigital"));
-const IAgora = lazy(() => import("./pages/IAgora"));
-const SintonIA = lazy(() => import("./pages/SintonIA"));
+const AgentBuilder = lazy(() => import("./pages/AgentBuilder"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const ClientRegistration = lazy(() => import("./pages/ClientRegistration"));
 const AppBuilder = lazy(() => import("./pages/AppBuilder"));
@@ -107,10 +104,7 @@ const App = () => (
               <Route path="/aikortex/automations" element={<AgencyRoute><AikortexAutomations /></AgencyRoute>} />
               <Route path="/aikortex/messages" element={<AgencyRoute><AikortexMessages /></AgencyRoute>} />
               <Route path="/aikortex/broadcasts" element={<AgencyRoute><AikortexBroadcasts /></AgencyRoute>} />
-              <Route path="/webedit" element={<AgencyRoute><WebEdit /></AgencyRoute>} />
-              <Route path="/alowdigital" element={<AgencyRoute><AlowDigital /></AgencyRoute>} />
-              <Route path="/iagora" element={<AgencyRoute><IAgora /></AgencyRoute>} />
-              <Route path="/sintonia" element={<AgencyRoute><SintonIA /></AgencyRoute>} />
+              <Route path="/agent-builder" element={<AgencyRoute><AgentBuilder /></AgencyRoute>} />
               <Route path="/ai-setup" element={<AgencyRoute><Credits /></AgencyRoute>} />
               <Route path="/credits" element={<Navigate to="/ai-setup" replace />} />
               <Route path="/settings" element={<AgencyRoute><SettingsPage /></AgencyRoute>} />
