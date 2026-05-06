@@ -217,9 +217,9 @@ function handleAgentReply(
 
       const usedPhoneId = phoneNumberId || keyMap.whatsapp_phone_number_id;
 
-      // Load agent config from agents table
+      // Load agent config from user_agents table
       const { data: agent } = await supabase
-        .from("agents")
+        .from("user_agents")
         .select("name, role, objective, instructions, tone_of_voice, company_name")
         .eq("id", agentConfig.api_key)
         .maybeSingle();
