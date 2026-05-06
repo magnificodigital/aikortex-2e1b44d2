@@ -1,0 +1,1 @@
+UPDATE public.partner_tiers SET tier='hack', tier_upgraded_at=now() WHERE user_id='aad94909-2857-4dd2-86f7-e0d1b6398df4';
