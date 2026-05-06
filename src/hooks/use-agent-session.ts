@@ -1,10 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import type { ChatMessage } from "@/hooks/use-agent-chat";
 
-const MANAGED_SESSION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/managed-session-chat`;
-const AGENT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-chat`;
+const APP_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`;
 const FLUSH_INTERVAL_MS = 60;
 
 export interface UseAgentSessionOptions {
@@ -16,8 +14,6 @@ export interface UseAgentSessionOptions {
   systemPrompt?: string;
   agentContext?: Record<string, unknown>;
   apiConfig?: Record<string, unknown>;
-  useGateway?: boolean;
-  gatewayModel?: string;
 }
 
 export function useAgentSession(options: UseAgentSessionOptions) {
