@@ -565,9 +565,60 @@ serve(async (req) => {
     const { messages, appContext, mode, model: requestedModel, provider: requestedProvider } = body;
     const authHeader = req.headers.get("Authorization");
 
-    /* ── Mode: agent-chat (streaming, for agent configuration assistant) ── */
-    if (mode === "agent-chat") {
-      return await proxyAgentChat(body, authHeader);
+    /* ── Mode: agent-chat / wizard-setup ── */
+    if (mode === "agent-chat" || mode === "wizard-setup") {
+      const { agentId, agentConfig = {}, stream: streamMode = true } = body as {
+        agentId?: string;
+        agentConfig?: Record<string, unknown>;
+        stream?: boolean;
+      };
+      const sseHeaders = { ...corsHeaders, "Content-Type": "text/event-stream" };
+
+      // Ownership validation
+      if (agentId) {
+        const supabaseSvc = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const { data: agent } = await supabaseSvc
+          .from("agents")
+          .select("agency_id")
+          .eq("id", agentId)
+          .maybeSingle();
+        if (!agent || agent.agency_id !== authResult.agencyId) {
+          return new Response(JSON.stringify({ error: "Agente não encontrado ou sem permissão." }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+      }
+
+      const system = mode === "wizard-setup"
+        ? buildWizardSystemPrompt(String((body as Record<string, unknown>).agentType || "custom"))
+        : buildAgentSystemPrompt((agentConfig || {}) as Record<string, unknown>);
+
+      const chatMessages: Array<{ role: string; content: string }> = [
+        { role: "system", content: system },
+        ...((messages || []) as Array<{ role: string; content: string }>),
+      ];
+
+      // Non-streaming: voz e preview (stream: false no body)
+      if (streamMode === false) {
+        const content = await bufferFromOpenRouterPlatform(chatMessages);
+        return new Response(
+          JSON.stringify({ response: content || "Não foi possível gerar resposta." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Streaming SSE
+      const orResp = await streamFromOpenRouterPlatform(chatMessages);
+      if (!orResp?.body) {
+        return new Response(
+          streamText("⚠️ Serviço de IA temporariamente indisponível. Tente novamente."),
+          { headers: sseHeaders }
+        );
+      }
+      return new Response(orResp.body, { headers: sseHeaders });
     }
 
     /* ── Mode: structure (non-streaming JSON) ── */
