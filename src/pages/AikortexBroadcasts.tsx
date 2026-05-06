@@ -81,16 +81,31 @@ const AikortexBroadcasts = () => {
     setPreviewMsg(null);
     try {
       const exampleContact = parsedContacts[0];
-      const interpolated = template.replace(/\{\{(\w+)\}\}/g, (_, key) => String((exampleContact as any)[key] ?? ""));
-      const resp = await supabase.functions.invoke("managed-session-chat", {
-        body: {
-          agent_db_id: selectedAgent,
-          message: `Personalize esta mensagem para ${exampleContact.name || exampleContact.phone}: ${interpolated}. Responda APENAS com a mensagem personalizada, sem explicações.`,
-          contact_identifier: `preview_${Date.now()}`,
-          channel: "whatsapp",
-        },
-      });
-      setPreviewMsg(resp.data?.reply || "Não foi possível gerar preview");
+      const session = (await supabase.auth.getSession()).data.session;
+      const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const interpolated = template.replace(/\{\{(\w+)\}\}/g, (_, key) => String((exampleContact as Record<string, unknown>)[key] ?? ""));
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            mode: "agent-chat",
+            stream: false,
+            agentId: selectedAgent,
+            messages: [{
+              role: "user",
+              content: `Personalize esta mensagem para ${exampleContact.name || exampleContact.phone}: "${interpolated}". Responda APENAS com a mensagem personalizada, sem explicações.`,
+            }],
+          }),
+        }
+      );
+      const data = resp.ok ? await resp.json() : null;
+      setPreviewMsg(data?.response || "Não foi possível gerar preview");
     } catch {
       setPreviewMsg("Erro ao gerar preview");
     } finally {
