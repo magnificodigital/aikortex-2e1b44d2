@@ -181,16 +181,16 @@ Deno.serve(async (req) => {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), NODE_TIMEOUT);
             try {
-              const resp = await fetch(`${SUPABASE_URL}/functions/v1/managed-session-chat`, {
+              const resp = await fetch(`${SUPABASE_URL}/functions/v1/app-chat`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                   Authorization: authHeader,
                 },
                 body: JSON.stringify({
-                  agent_db_id: agentId,
-                  message,
-                  channel: "chat",
+                  mode: "agent-chat",
+                  agentId,
+                  messages: [{ role: "user", content: message }],
                 }),
                 signal: controller.signal,
               });
