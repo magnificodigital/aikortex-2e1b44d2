@@ -48,14 +48,21 @@ serve(async (req) => {
     ? 'https://api.asaas.com/v3'
     : 'https://sandbox.asaas.com/api/v3'
 
-  // Get agency
+  // Get agency + secret
   const { data: agency } = await supabase
     .from('agency_profiles')
     .select('*')
     .eq('user_id', userId)
     .single()
 
-  if (!agency?.asaas_api_key) {
+  const { data: secret } = await supabase
+    .from('agency_secrets')
+    .select('asaas_api_key')
+    .eq('agency_user_id', userId)
+    .maybeSingle()
+
+  const asaasApiKey = secret?.asaas_api_key
+  if (!agency || !asaasApiKey) {
     return new Response(JSON.stringify({ error: 'Asaas não configurado' }), { status: 400, headers: corsHeaders })
   }
 
@@ -99,7 +106,7 @@ serve(async (req) => {
   const subscriptionRes = await fetch(`${asaasBase}/subscriptions`, {
     method: 'POST',
     headers: {
-      'access_token': agency.asaas_api_key,
+      'access_token': asaasApiKey,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({

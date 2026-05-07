@@ -59,13 +59,21 @@ serve(async (req) => {
   })
   const accountData = await accountRes.json()
 
-  // Save to agency_profiles
+  // Save secret server-side, only metadata on agency_profiles
+  const { error: secretError } = await supabase
+    .from('agency_secrets')
+    .upsert({ agency_user_id: userId, asaas_api_key }, { onConflict: 'agency_user_id' })
+
+  if (secretError) {
+    return new Response(JSON.stringify({ error: 'Erro ao salvar credencial' }), { status: 500, headers: corsHeaders })
+  }
+
   const { error: upsertError } = await supabase
     .from('agency_profiles')
     .upsert({
       user_id: userId,
-      asaas_api_key,
-      asaas_wallet_id: accountData.walletId ?? accountData.id
+      asaas_wallet_id: accountData.walletId ?? accountData.id,
+      asaas_connected: true
     }, { onConflict: 'user_id' })
 
   if (upsertError) {

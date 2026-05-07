@@ -101,8 +101,7 @@ export type Database = {
         Row: {
           active_clients_count: number | null
           agency_name: string | null
-          asaas_api_key: string | null
-          asaas_connected: boolean | null
+          asaas_connected: boolean
           asaas_wallet_id: string | null
           created_at: string | null
           custom_pricing: Json | null
@@ -117,8 +116,7 @@ export type Database = {
         Insert: {
           active_clients_count?: number | null
           agency_name?: string | null
-          asaas_api_key?: string | null
-          asaas_connected?: boolean | null
+          asaas_connected?: boolean
           asaas_wallet_id?: string | null
           created_at?: string | null
           custom_pricing?: Json | null
@@ -133,8 +131,7 @@ export type Database = {
         Update: {
           active_clients_count?: number | null
           agency_name?: string | null
-          asaas_api_key?: string | null
-          asaas_connected?: boolean | null
+          asaas_connected?: boolean
           asaas_wallet_id?: string | null
           created_at?: string | null
           custom_pricing?: Json | null
@@ -163,6 +160,24 @@ export type Database = {
           agency_id?: string
           request_count?: number
           window_start?: string
+        }
+        Relationships: []
+      }
+      agency_secrets: {
+        Row: {
+          agency_user_id: string
+          asaas_api_key: string | null
+          updated_at: string
+        }
+        Insert: {
+          agency_user_id: string
+          asaas_api_key?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agency_user_id?: string
+          asaas_api_key?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
