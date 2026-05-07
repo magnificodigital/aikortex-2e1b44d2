@@ -26,10 +26,16 @@ function streamText(text: string): ReadableStream {
   });
 }
 
-async function streamFromOpenRouterPlatform(messages: Array<{ role: string; content: string }>): Promise<Response | null> {
+async function streamFromOpenRouterPlatform(
+  messages: Array<{ role: string; content: string }>,
+  preferredModel?: string
+): Promise<Response | null> {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
   if (!apiKey) { console.error("OPENROUTER_API_KEY not set"); return null; }
-  for (const model of PLATFORM_FREE_MODELS) {
+  const modelsToTry = preferredModel
+    ? [preferredModel, ...PLATFORM_FREE_MODELS.filter(m => m !== preferredModel)]
+    : PLATFORM_FREE_MODELS;
+  for (const model of modelsToTry) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
@@ -53,10 +59,16 @@ async function streamFromOpenRouterPlatform(messages: Array<{ role: string; cont
   return null;
 }
 
-async function bufferFromOpenRouterPlatform(messages: Array<{ role: string; content: string }>): Promise<string> {
+async function bufferFromOpenRouterPlatform(
+  messages: Array<{ role: string; content: string }>,
+  preferredModel?: string
+): Promise<string> {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
   if (!apiKey) return "";
-  for (const model of PLATFORM_FREE_MODELS) {
+  const modelsToTry = preferredModel
+    ? [preferredModel, ...PLATFORM_FREE_MODELS.filter(m => m !== preferredModel)]
+    : PLATFORM_FREE_MODELS;
+  for (const model of modelsToTry) {
     try {
       const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -643,26 +655,27 @@ serve(async (req) => {
         }
       }
 
-      const system = mode === "wizard-setup"
-        ? buildWizardSystemPrompt(String((body as Record<string, unknown>).agentType || "custom"))
-        : buildAgentSystemPrompt((agentConfig || {}) as Record<string, unknown>);
+      // Build messages: sem agentId, o frontend já incluiu o system prompt — usar as mensagens como estão
+      const chatMessages: Array<{ role: string; content: string }> = agentId
+        ? [
+            { role: "system", content: mode === "wizard-setup"
+              ? buildWizardSystemPrompt(String((body as Record<string, unknown>).agentType || "custom"))
+              : buildAgentSystemPrompt((agentConfig || {}) as Record<string, unknown>) },
+            ...((messages || []) as Array<{ role: string; content: string }>),
+          ]
+        : ((messages || []) as Array<{ role: string; content: string }>);
 
-      const chatMessages: Array<{ role: string; content: string }> = [
-        { role: "system", content: system },
-        ...((messages || []) as Array<{ role: string; content: string }>),
-      ];
-
-      // Non-streaming: voz e preview (stream: false no body)
+      // Non-streaming
       if (streamMode === false) {
-        const content = await bufferFromOpenRouterPlatform(chatMessages);
+        const content = await bufferFromOpenRouterPlatform(chatMessages, (body as any).model);
         return new Response(
           JSON.stringify({ response: content || "Não foi possível gerar resposta." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Streaming SSE
-      const orResp = await streamFromOpenRouterPlatform(chatMessages);
+      // Streaming SSE — tenta o modelo solicitado primeiro, depois os gratuitos como fallback
+      const orResp = await streamFromOpenRouterPlatform(chatMessages, (body as any).model);
       if (!orResp?.body) {
         return new Response(
           streamText("⚠️ Serviço de IA temporariamente indisponível. Tente novamente."),
