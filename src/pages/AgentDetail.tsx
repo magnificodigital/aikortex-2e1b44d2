@@ -538,7 +538,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
 
   const wizardAgentTypeKey = (loadedAgent.agentType || "Custom").toLowerCase();
   const wizardChat = useAgentChat(
-    [],
+    [{ role: "agent" as const, text: `Olá! 👋 Vou te ajudar a configurar seu agente ${loadedAgent.agentType}. Para começar: qual é o nome do seu negócio e o que ele faz?` }],
     {
       useGateway: true,
       gatewayModel: setupModel,
