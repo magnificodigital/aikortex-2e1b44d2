@@ -106,7 +106,7 @@ serve(async (req) => {
   const subscriptionRes = await fetch(`${asaasBase}/subscriptions`, {
     method: 'POST',
     headers: {
-      'access_token': agency.asaas_api_key,
+      'access_token': asaasApiKey,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
