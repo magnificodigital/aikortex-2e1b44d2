@@ -26,10 +26,16 @@ function streamText(text: string): ReadableStream {
   });
 }
 
-async function streamFromOpenRouterPlatform(messages: Array<{ role: string; content: string }>): Promise<Response | null> {
+async function streamFromOpenRouterPlatform(
+  messages: Array<{ role: string; content: string }>,
+  preferredModel?: string
+): Promise<Response | null> {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
   if (!apiKey) { console.error("OPENROUTER_API_KEY not set"); return null; }
-  for (const model of PLATFORM_FREE_MODELS) {
+  const modelsToTry = preferredModel
+    ? [preferredModel, ...PLATFORM_FREE_MODELS.filter(m => m !== preferredModel)]
+    : PLATFORM_FREE_MODELS;
+  for (const model of modelsToTry) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
