@@ -59,10 +59,16 @@ async function streamFromOpenRouterPlatform(
   return null;
 }
 
-async function bufferFromOpenRouterPlatform(messages: Array<{ role: string; content: string }>): Promise<string> {
+async function bufferFromOpenRouterPlatform(
+  messages: Array<{ role: string; content: string }>,
+  preferredModel?: string
+): Promise<string> {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
   if (!apiKey) return "";
-  for (const model of PLATFORM_FREE_MODELS) {
+  const modelsToTry = preferredModel
+    ? [preferredModel, ...PLATFORM_FREE_MODELS.filter(m => m !== preferredModel)]
+    : PLATFORM_FREE_MODELS;
+  for (const model of modelsToTry) {
     try {
       const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
