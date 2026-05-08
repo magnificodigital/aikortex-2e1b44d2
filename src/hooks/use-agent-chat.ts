@@ -327,6 +327,18 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
 
       flushPendingText(true);
 
+      // If the stream closed without any content, replace the empty placeholder with an error
+      if (!pendingTextRef.current && mountedRef.current) {
+        setMessages((prev) => {
+          if (!prev.length) return prev;
+          const last = prev[prev.length - 1];
+          if (last.role !== "agent" || last.text) return prev;
+          const next = prev.slice();
+          next[next.length - 1] = { role: "agent", text: "⚠️ Serviço de IA indisponível no momento. Tente novamente." };
+          return next;
+        });
+      }
+
       // After full stream completes, check for CRM_LEAD block and persist it.
       const finalText = pendingTextRef.current;
       if (!options.disableCrmExtraction && finalText && CRM_LEAD_REGEX.test(finalText)) {

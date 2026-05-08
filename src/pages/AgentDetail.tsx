@@ -537,23 +537,45 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
   /* ── Chat (wizard-setup mode — guided Q&A to fill agent config) ── */
 
   const wizardAgentTypeKey = (loadedAgent.agentType || "Custom").toLowerCase();
+
+  const wizardSystemPrompt = wizardAgentTypeKey === "sdr"
+    ? `Você é um assistente de configuração da plataforma Aikortex. Configure um agente SDR (qualificação de leads).
+
+O usuário já recebeu a primeira pergunta: "Qual é o nome do seu negócio e o que ele faz?" (esta conta como Q1).
+
+Continue com mais 5 perguntas, UMA por vez, nesta ordem:
+Q2: Quem é o cliente ideal? (cargo, segmento, tamanho de empresa)
+Q3: Qual é o principal diferencial ou proposta de valor?
+Q4: Quais são as principais objeções de venda que o agente deve superar?
+Q5: Qual tom de comunicação? (consultivo, direto, informal)
+Q6: Qual é o principal objetivo do agente? (agendar reunião, qualificar lead, coletar dados)
+
+Regras obrigatórias:
+- Faça UMA pergunta por mensagem, máximo 2 linhas.
+- Após receber resposta das 6 perguntas (incluindo Q1 já respondida), diga EXATAMENTE: "Perfeito! Vou configurar seu agente agora."
+- NÃO faça mais perguntas após a frase de encerramento.
+- Responda em português do Brasil.`
+    : `Você é um assistente de configuração da plataforma Aikortex. Configure um agente SAC (atendimento ao cliente).
+
+O usuário já recebeu a primeira pergunta: "Qual é o nome do seu negócio e o que ele faz?" (esta conta como Q1).
+
+Continue com mais 3 perguntas, UMA por vez, nesta ordem:
+Q2: Quem são os clientes atendidos? (perfil e necessidades)
+Q3: Quais são os principais problemas ou reclamações que o agente deve resolver?
+Q4: Qual tom de comunicação? (empático, formal, casual)
+
+Regras obrigatórias:
+- Faça UMA pergunta por mensagem, máximo 2 linhas.
+- Após receber resposta das 4 perguntas (incluindo Q1 já respondida), diga EXATAMENTE: "Perfeito! Vou configurar seu agente agora."
+- NÃO faça mais perguntas após a frase de encerramento.
+- Responda em português do Brasil.`;
+
   const wizardChat = useAgentChat(
     [{ role: "agent" as const, text: `Olá! 👋 Vou te ajudar a configurar seu agente ${loadedAgent.agentType}. Para começar: qual é o nome do seu negócio e o que ele faz?` }],
     {
       useGateway: true,
       gatewayModel: setupModel,
-      systemPrompt: `Você é um assistente de configuração de agentes de IA da plataforma Aikortex. Seu papel é conduzir uma entrevista rápida para entender o negócio do usuário e configurar o agente corretamente.
-
-Tipo de agente: ${wizardAgentTypeKey}.
-
-Regras obrigatórias:
-- Faça APENAS UMA pergunta por mensagem, máximo 2 linhas.
-- Comece perguntando o nome do negócio e o que ele faz.
-- Em seguida, pergunte quem é o público-alvo.
-- Depois, qual a principal dor ou objetivo que o agente deve resolver.
-- Por fim, qual tom de comunicação (formal, casual, empático).
-- Após 4-5 respostas, produza o bloco de configuração no formato \`\`\`agent-config com os campos: agent_name, agent_type, description, objective, tone, greeting_message, instructions.
-- Nunca faça mais de 5 perguntas no total.`,
+      systemPrompt: wizardSystemPrompt,
       persistKey: shouldPersistTemplateDraft ? `${storagePrefix}-wizard-messages` : undefined,
     }
   );
@@ -569,9 +591,9 @@ Regras obrigatórias:
     void wizardChat.sendMessage("start");
   }, [agentLoading, wizardStep, wizardChat]);
 
-  // Number of Q&A questions per agent type (first agent msg is intro, rest are questions)
+  // Safety guard: min user messages before auto-build (closing phrase is the primary trigger)
   const WIZARD_MIN_QUESTIONS: Record<string, number> = {
-    sdr: 8, sac: 6, support: 6, marketing: 6, custom: 6,
+    sdr: 6, sac: 4,
   };
 
   const wizardCompletedRef = useRef(false);
@@ -631,7 +653,24 @@ Regras obrigatórias:
     void runWizardBuild(summary);
   }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, wizardAgentTypeKey, runWizardBuild]);
 
-  // Also detect explicit ```agent-config``` block if AI generates one before minRequired
+  // Primary trigger: AI says the closing phrase
+  useEffect(() => {
+    if (wizardCompletedRef.current) return;
+    if (wizardChat.isStreaming) return;
+    if (wizardStep !== "discover") return;
+
+    const lastAgentMsg = [...wizardChat.messages].reverse().find(m => m.role === "agent");
+    if (!lastAgentMsg?.text) return;
+    if (!lastAgentMsg.text.includes("Vou configurar seu agente agora")) return;
+
+    const summary = wizardChat.messages
+      .map(m => m.role === "user" ? `Usuário: ${m.text}` : `Assistente: ${m.text}`)
+      .join("\n");
+
+    void runWizardBuild(summary);
+  }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, runWizardBuild]);
+
+  // Fallback: detect explicit ```agent-config``` block if AI generates one
   useEffect(() => {
     if (wizardCompletedRef.current) return;
     if (wizardChat.isStreaming) return;
