@@ -74,6 +74,8 @@ async function bufferFromOpenRouterPlatform(
     : PLATFORM_FREE_MODELS;
   for (const model of modelsToTry) {
     try {
+      const requestBody: Record<string, unknown> = { model, messages, stream: false, max_tokens: 2048 };
+      if (model.includes("qwen3")) requestBody.reasoning = { effort: "none" };
       const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -82,8 +84,9 @@ async function bufferFromOpenRouterPlatform(
           "HTTP-Referer": "https://aikortex26.lovable.app",
           "X-Title": "Aikortex",
         },
-        body: JSON.stringify({ model, messages, stream: false, max_tokens: 2048 }),
+        body: JSON.stringify(requestBody),
       });
+      if ([400, 402, 404, 429, 500, 502, 503].includes(resp.status)) continue;
       if (!resp.ok) continue;
       const data = await resp.json();
       const content = data?.choices?.[0]?.message?.content || "";
@@ -680,17 +683,13 @@ serve(async (req) => {
         );
       }
 
-      // Streaming SSE — tenta o modelo solicitado primeiro, depois os gratuitos como fallback
-      const orResp = await streamFromOpenRouterPlatform(chatMessages, (body as any).model);
-      if (!orResp?.body) {
-        return new Response(
-          streamText("⚠️ Serviço de IA temporariamente indisponível. Tente novamente."),
-          { headers: sseHeaders }
-        );
-      }
-      const { readable, writable } = new TransformStream();
-      orResp.body.pipeTo(writable).catch(() => {});
-      return new Response(readable, { headers: sseHeaders });
+      // Buffer first (tries all models, verifies non-empty), then restream as SSE.
+      // This avoids empty-stream issues caused by OpenRouter returning 200 with no content tokens.
+      const content = await bufferFromOpenRouterPlatform(chatMessages, (body as any).model);
+      return new Response(
+        streamText(content || "⚠️ Serviço de IA temporariamente indisponível. Tente novamente."),
+        { headers: sseHeaders }
+      );
     }
 
     /* ── Mode: structure (non-streaming JSON) ── */
