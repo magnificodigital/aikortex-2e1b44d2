@@ -72,6 +72,7 @@ async function bufferFromOpenRouterPlatform(
     try {
       const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
+        signal: AbortSignal.timeout(12000),
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
