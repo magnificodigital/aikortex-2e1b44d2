@@ -4,12 +4,11 @@ import { getAuthContext as getSharedAuthContext, handleCors, corsHeaders } from 
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 // ── OpenRouter platform helpers ───────────────────────────────────────────
-// Ordered: fastest/most reliable first; qwen3 (thinking model, slow) last
 const PLATFORM_FREE_MODELS = [
-  "google/gemini-2.5-flash-preview-04-17:free",
-  "google/gemma-3-27b-it:free",
-  "deepseek/deepseek-chat-v3-0324:free",
-  "qwen/qwen3-30b-a3b:free",
+  "google/gemma-4-31b-it:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "openai/gpt-oss-20b:free",
+  "openai/gpt-oss-120b:free",
 ];
 
 function streamText(text: string): ReadableStream {
@@ -40,9 +39,6 @@ async function streamFromOpenRouterPlatform(
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
-      const requestBody: Record<string, unknown> = { model, messages, stream: true, max_tokens: 2048 };
-      // Disable thinking mode for qwen3 to avoid long waits before content starts
-      if (model.includes("qwen3")) requestBody.reasoning = { effort: "none" };
       const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         signal: controller.signal,
@@ -52,7 +48,7 @@ async function streamFromOpenRouterPlatform(
           "HTTP-Referer": "https://aikortex26.lovable.app",
           "X-Title": "Aikortex",
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({ model, messages, stream: true, max_tokens: 2048 }),
       });
       clearTimeout(timeout);
       if ([400, 402, 404, 429, 500, 502, 503].includes(resp.status)) continue;
@@ -74,8 +70,6 @@ async function bufferFromOpenRouterPlatform(
     : PLATFORM_FREE_MODELS;
   for (const model of modelsToTry) {
     try {
-      const requestBody: Record<string, unknown> = { model, messages, stream: false, max_tokens: 2048 };
-      if (model.includes("qwen3")) requestBody.reasoning = { effort: "none" };
       const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -84,7 +78,7 @@ async function bufferFromOpenRouterPlatform(
           "HTTP-Referer": "https://aikortex26.lovable.app",
           "X-Title": "Aikortex",
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({ model, messages, stream: false, max_tokens: 2048 }),
       });
       if ([400, 402, 404, 429, 500, 502, 503].includes(resp.status)) continue;
       if (!resp.ok) continue;
