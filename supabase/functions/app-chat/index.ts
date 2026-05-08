@@ -576,55 +576,57 @@ serve(async (req) => {
     }
   }
 
-  // Rate limiting por agência
+  // Quota check — wrapped in try-catch (fail-open) to prevent unhandled throws
   if (authResult.agencyId) {
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { persistSession: false } }
-    );
-
-    const yearMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-
-    // Buscar tier e limite
-    const { data: agencyProfile } = await adminClient
-      .from("agency_profiles")
-      .select("tier")
-      .eq("id", authResult.agencyId)
-      .single();
-
-    const tier = agencyProfile?.tier ?? "starter";
-
-    const { data: limitRow } = await adminClient
-      .from("plan_message_limits")
-      .select("monthly_limit")
-      .eq("plan_slug", tier)
-      .single();
-
-    const monthlyLimit = limitRow?.monthly_limit ?? 100;
-
-    // Verificar uso atual
-    const { data: usageRow } = await adminClient
-      .from("agency_monthly_usage")
-      .select("message_count")
-      .eq("agency_id", authResult.agencyId)
-      .eq("year_month", yearMonth)
-      .single();
-
-    const currentCount = usageRow?.message_count ?? 0;
-
-    if (currentCount >= monthlyLimit) {
-      return new Response(
-        JSON.stringify({ error: "quota_exceeded", message: "Cota mensal atingida. Conecte sua chave de API para continuar." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    try {
+      const adminClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        { auth: { persistSession: false } }
       );
-    }
 
-    // Incrementar após verificação (fora do fluxo principal, não bloqueia resposta)
-    adminClient.rpc("increment_agency_usage", {
-      p_agency_id: authResult.agencyId,
-      p_year_month: yearMonth,
-    }).then(() => {}).catch(console.error);
+      const yearMonth = new Date().toISOString().slice(0, 7);
+
+      const { data: agencyProfile } = await adminClient
+        .from("agency_profiles")
+        .select("tier")
+        .eq("id", authResult.agencyId)
+        .single();
+
+      const tier = agencyProfile?.tier ?? "start";
+
+      const { data: limitRow } = await adminClient
+        .from("plan_message_limits")
+        .select("monthly_limit")
+        .eq("plan_slug", tier)
+        .single();
+
+      const monthlyLimit = limitRow?.monthly_limit ?? 100;
+
+      const { data: usageRow } = await adminClient
+        .from("agency_monthly_usage")
+        .select("message_count")
+        .eq("agency_id", authResult.agencyId)
+        .eq("year_month", yearMonth)
+        .single();
+
+      const currentCount = usageRow?.message_count ?? 0;
+
+      if (currentCount >= monthlyLimit) {
+        return new Response(
+          JSON.stringify({ error: "quota_exceeded", message: "Cota mensal atingida. Conecte sua chave de API para continuar." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      adminClient.rpc("increment_agency_usage", {
+        p_agency_id: authResult.agencyId,
+        p_year_month: yearMonth,
+      }).then(() => {}).catch(console.error);
+    } catch (quotaErr) {
+      console.error("quota check error (fail-open):", quotaErr);
+      // Fail-open: allow the request to proceed if quota check throws
+    }
   }
 
   try {
