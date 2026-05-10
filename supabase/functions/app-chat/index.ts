@@ -4,11 +4,12 @@ import { getAuthContext as getSharedAuthContext, handleCors, corsHeaders } from 
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 // ── OpenRouter platform helpers ───────────────────────────────────────────
+// Order matters: most reliable instruct (non-reasoning) models first.
 const PLATFORM_FREE_MODELS = [
-  "google/gemma-4-31b-it:free",
   "meta-llama/llama-3.3-70b-instruct:free",
-  "openai/gpt-oss-20b:free",
-  "openai/gpt-oss-120b:free",
+  "google/gemma-4-31b-it:free",
+  "qwen/qwen3-coder:free",
+  "nousresearch/hermes-3-llama-3.1-405b:free",
 ];
 
 function streamText(text: string): ReadableStream {
@@ -64,11 +65,15 @@ async function bufferFromOpenRouterPlatform(
   preferredModel?: string
 ): Promise<string> {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
-  if (!apiKey) return "";
+  if (!apiKey) {
+    console.error("[buffer] OPENROUTER_API_KEY ausente");
+    return "";
+  }
   const modelsToTry = preferredModel
     ? [preferredModel, ...PLATFORM_FREE_MODELS.filter(m => m !== preferredModel)]
     : PLATFORM_FREE_MODELS;
   for (const model of modelsToTry) {
+    const t0 = Date.now();
     try {
       const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -81,13 +86,25 @@ async function bufferFromOpenRouterPlatform(
         },
         body: JSON.stringify({ model, messages, stream: false, max_tokens: 2048 }),
       });
-      if ([400, 402, 404, 429, 500, 502, 503].includes(resp.status)) continue;
-      if (!resp.ok) continue;
+      const dt = Date.now() - t0;
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        console.error(`[buffer] ${model} → HTTP ${resp.status} em ${dt}ms: ${errText.slice(0, 200)}`);
+        continue;
+      }
       const data = await resp.json();
-      const content = data?.choices?.[0]?.message?.content || "";
+      const msg = data?.choices?.[0]?.message;
+      // Reasoning models may put output in `reasoning` instead of `content`
+      const content = msg?.content || msg?.reasoning || "";
+      console.log(`[buffer] ${model} → OK em ${dt}ms (${content.length} chars)`);
       if (content) return content;
-    } catch { continue; }
+    } catch (e) {
+      const dt = Date.now() - t0;
+      console.error(`[buffer] ${model} → exception em ${dt}ms: ${(e as Error).message}`);
+      continue;
+    }
   }
+  console.error("[buffer] todos os modelos falharam");
   return "";
 }
 
