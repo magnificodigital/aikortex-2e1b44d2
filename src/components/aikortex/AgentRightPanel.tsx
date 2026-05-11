@@ -13,7 +13,10 @@ import {
   Upload, X, FileText, Image, File, Plus, Globe, Link2, Check, Camera,
   Webhook, KeyRound, Blocks, Eye, EyeOff, ExternalLink, Trash2, Settings, Rocket,
   Youtube, Rss, Map, CloudUpload, Type, ChevronDown, ChevronUp, BookOpen,
+  Brain, Wrench, Database, Workflow, GitBranch, FlaskConical, ScanSearch, FileCode2,
+  ShieldAlert, Sliders, Phone, Sparkles, Share2, Plug, Bot, Lightbulb, Users, Clock, Construction,
 } from "lucide-react";
+import AgentMemoryTab from "./AgentMemoryTab";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
