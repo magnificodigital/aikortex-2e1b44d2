@@ -37,7 +37,7 @@ function colorFor(id: string) {
 export function WorkspaceSwitcher() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { clients, activeClientName, isAllClients, activeClient, setActiveClientId } =
+  const { clients, activeClientName, isAgencyMode, activeClient, setActiveClientId } =
     useActiveClient();
   const { agencyName } = useWorkspace();
 
@@ -49,7 +49,11 @@ export function WorkspaceSwitcher() {
   const handleSelect = (id: string | null, name: string) => {
     setActiveClientId(id);
     setOpen(false);
-    toast.success(`Workspace alterado para ${name}`);
+    if (id === null) {
+      toast.success("Você voltou para Meu Workspace");
+    } else {
+      toast.success(`Você entrou no workspace de ${name}`);
+    }
   };
 
   const handleCreate = () => {
