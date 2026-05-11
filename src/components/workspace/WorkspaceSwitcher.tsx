@@ -58,7 +58,7 @@ export function WorkspaceSwitcher() {
 
   const handleCreate = () => {
     setOpen(false);
-    navigate("/clients");
+    navigate("/clients?new=1");
   };
 
   const hasNoClients = clients.length === 0;
@@ -97,17 +97,26 @@ export function WorkspaceSwitcher() {
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0" align="start">
         {hasNoClients ? (
-          <div className="flex flex-col items-center gap-3 p-6 text-center">
-            <Users className="h-8 w-8 text-muted-foreground" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Sem clientes ainda</p>
-              <p className="text-xs text-muted-foreground">
-                Crie seu primeiro cliente para organizar os workspaces.
-              </p>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 text-primary">
+                <Building2 className="h-3.5 w-3.5" />
+              </div>
+              <span className="flex-1 text-sm font-medium">Meu Workspace</span>
+              <Check className="h-4 w-4 text-primary" />
             </div>
-            <Button size="sm" onClick={handleCreate} className="gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> Criar cliente
-            </Button>
+            <div className="flex flex-col items-center gap-3 px-6 py-6 text-center">
+              <Users className="h-8 w-8 text-muted-foreground" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Você ainda não tem clientes</p>
+                <p className="text-xs text-muted-foreground">
+                  Crie o primeiro para operar agentes e apps.
+                </p>
+              </div>
+              <Button size="sm" onClick={handleCreate} className="gap-1.5 w-full">
+                <Plus className="h-3.5 w-3.5" /> Criar primeiro cliente
+              </Button>
+            </div>
           </div>
         ) : (
           <Command>
