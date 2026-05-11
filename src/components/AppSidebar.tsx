@@ -78,7 +78,6 @@ const partnersItems: NavItem[] = [
 ];
 
 const aikortexItems: NavItem[] = [
-  { label: "Galeria", icon: LayoutGrid, path: "/aikortex/galeria" },
   { label: "Agentes", icon: Bot, path: "/aikortex/agents" },
   { label: "Ligações", icon: PhoneIcon, path: "/calls" },
   { label: "Flows", icon: Workflow, path: "/aikortex/automations" },
