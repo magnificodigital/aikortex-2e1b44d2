@@ -226,6 +226,7 @@ const Apps = () => {
                 />
               </TabsContent>
             </Tabs>
+            )}
 
             <UseTemplateDialog
               template={useTemplate}
