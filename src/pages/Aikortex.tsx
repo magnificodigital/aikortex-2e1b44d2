@@ -102,16 +102,11 @@ const Aikortex = () => {
               {contextLabel} <span className="text-muted-foreground/60">›</span> Agentes
             </p>
           </div>
-          {!isAgencyMode && (
-            <Button onClick={handleNewCustom} className="gap-2 rounded-full">
-              <Plus className="w-4 h-4" /> Novo Agente
-            </Button>
-          )}
+          <Button onClick={handleNewCustom} className="gap-2 rounded-full">
+            <Plus className="w-4 h-4" /> Novo Agente
+          </Button>
         </div>
 
-        {isAgencyMode ? (
-          <AgencyModeClientPicker resource="agentes" />
-        ) : (
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="mine">Meus Agentes ({agents.length})</TabsTrigger>
@@ -127,7 +122,7 @@ const Aikortex = () => {
                   </div>
                   <p className="text-sm font-medium">
                     {isAgencyMode
-                      ? "Sua agência ainda não tem agentes criados."
+                      ? "Sua agência ainda não tem agentes. Crie a partir de um template."
                       : `${activeClientName} ainda não tem agentes. Crie a partir de um template.`}
                   </p>
                   <Button size="sm" onClick={() => setTab("templates")}>
@@ -217,7 +212,6 @@ const Aikortex = () => {
             />
           </TabsContent>
         </Tabs>
-        )}
 
         <UseTemplateDialog
           template={useTemplate}
