@@ -102,19 +102,38 @@ export const TemplatesMarketplaceView = () => {
   };
 
   const savePricing = async () => {
-    if (!pricingTemplate || !agency) return;
+    if (!pricingTemplate || !user) return;
     const price = Number(agencyPrice);
     if (price <= pricingTemplate.platform_price_monthly) {
       toast.error(`O preço mínimo é R$ ${(pricingTemplate.platform_price_monthly + 1).toFixed(2)}/mês (custo da plataforma)`);
       return;
     }
-    const updated = { ...(agency.custom_pricing ?? {}), [pricingTemplate.slug]: price };
+
+    // Ensure an agency_profiles row exists for this user (auto-create on first save)
+    let currentAgency = agency;
+    if (!currentAgency) {
+      const { data: created, error: createErr } = await supabase
+        .from("agency_profiles")
+        .insert({ user_id: user.id, tier: "starter", custom_pricing: {} })
+        .select()
+        .single();
+      if (createErr || !created) {
+        console.error("Failed to create agency_profile:", createErr);
+        toast.error("Erro ao inicializar perfil da agência");
+        return;
+      }
+      currentAgency = created as any;
+      setAgency(currentAgency);
+    }
+
+    const updated = { ...(currentAgency.custom_pricing ?? {}), [pricingTemplate.slug]: price };
     const { error } = await supabase
       .from("agency_profiles")
       .update({ custom_pricing: updated })
-      .eq("id", agency.id);
+      .eq("id", currentAgency.id);
     if (error) {
-      toast.error("Erro ao salvar configuração");
+      console.error("Save pricing error:", error);
+      toast.error(`Erro ao salvar configuração: ${error.message}`);
       return;
     }
     setAgency((prev) => prev ? { ...prev, custom_pricing: updated } : prev);
