@@ -43,7 +43,7 @@ const Apps = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeClientId, isAllClients, activeClientName } = useActiveClient();
+  const { activeClientId, isAgencyMode, activeClientName } = useActiveClient();
 
   const [savedApps, setSavedApps] = useState<SavedApp[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,12 +78,12 @@ const Apps = () => {
       .select("id, name, description, channel, status, client_id, created_at, updated_at")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
-    if (!isAllClients && activeClientId) q = q.eq("client_id", activeClientId);
+    if (!isAgencyMode && activeClientId) q = q.eq("client_id", activeClientId);
     q.then(({ data, error }) => {
       if (!error && data) setSavedApps(data as any);
       setLoading(false);
     });
-  }, [user, activeClientId, isAllClients]);
+  }, [user, activeClientId, isAgencyMode]);
 
   const { data: templates = [], isLoading: templatesLoading } = useGalleryTemplates({
     nicheSlug,
@@ -109,7 +109,7 @@ const Apps = () => {
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 
-  const contextLabel = isAllClients ? "Todos os clientes" : activeClientName;
+  const contextLabel = isAgencyMode ? "Todos os clientes" : activeClientName;
 
   return (
     <ModuleGate moduleKey="aikortex.apps">
@@ -145,7 +145,7 @@ const Apps = () => {
                         <LayoutGrid className="w-5 h-5 text-muted-foreground" />
                       </div>
                       <p className="text-sm font-medium">
-                        {isAllClients
+                        {isAgencyMode
                           ? "Sua agência ainda não tem apps criados."
                           : `${activeClientName} ainda não tem apps. Crie a partir de um template.`}
                       </p>

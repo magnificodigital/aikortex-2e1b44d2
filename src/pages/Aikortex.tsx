@@ -37,9 +37,9 @@ const PROVIDER_BADGE: Record<string, { label: string; className: string }> = {
 const Aikortex = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeClientId, isAllClients, activeClientName } = useActiveClient();
+  const { activeClientId, isAgencyMode, activeClientName } = useActiveClient();
 
-  const { agents, loading, deleteAgent } = useUserAgents({ clientId: activeClientId, isAllClients });
+  const { agents, loading, deleteAgent } = useUserAgents({ clientId: activeClientId, isAgencyMode });
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const tab = searchParams.get("tab") === "templates" ? "templates" : "mine";
@@ -89,7 +89,7 @@ const Aikortex = () => {
 
   const getAvatarSrc = (agent: UserAgent) => agent.avatar_url || avatar1;
 
-  const contextLabel = isAllClients ? "Todos os clientes" : activeClientName;
+  const contextLabel = isAgencyMode ? "Todos os clientes" : activeClientName;
 
   return (
     <DashboardLayout>
@@ -120,7 +120,7 @@ const Aikortex = () => {
                     <LayoutGrid className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <p className="text-sm font-medium">
-                    {isAllClients
+                    {isAgencyMode
                       ? "Sua agência ainda não tem agentes criados."
                       : `${activeClientName} ainda não tem agentes. Crie a partir de um template.`}
                   </p>

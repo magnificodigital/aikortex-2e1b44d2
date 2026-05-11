@@ -27,7 +27,7 @@ type Props = {
 const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
   const navigate = useNavigate();
   const { clients } = useWorkspace();
-  const { activeClientId, isAllClients } = useActiveClient();
+  const { activeClientId, isAgencyMode } = useActiveClient();
 
   const [clientId, setClientId] = useState<string>("");
   const [name, setName] = useState("");
@@ -40,13 +40,13 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
   // Reset form when opens
   useEffect(() => {
     if (!open || !template) return;
-    const defaultClient = !isAllClients && activeClientId ? activeClientId : "";
+    const defaultClient = !isAgencyMode && activeClientId ? activeClientId : "";
     setClientId(defaultClient);
     const dc = clients.find((c) => c.id === defaultClient);
     setName(dc ? `${template.name} - ${dc.client_name}` : template.name);
     const cfg = (isApp ? template.app_config : template.agent_config) || {};
     setExtra1(isApp ? (cfg.description ?? "") : (cfg.tone_of_voice ?? cfg.toneOfVoice ?? ""));
-  }, [open, template, activeClientId, isAllClients, clients, isApp]);
+  }, [open, template, activeClientId, isAgencyMode, clients, isApp]);
 
   // Update name when client changes
   useEffect(() => {

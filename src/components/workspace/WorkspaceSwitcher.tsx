@@ -72,7 +72,7 @@ export function WorkspaceSwitcher() {
           aria-expanded={open}
           className="h-9 max-w-[260px] gap-2 px-2.5"
         >
-          {isAllClients ? (
+          {isAgencyMode ? (
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 text-primary">
               <Building2 className="h-3.5 w-3.5" />
             </div>
@@ -90,7 +90,7 @@ export function WorkspaceSwitcher() {
             </Avatar>
           )}
           <span className="truncate text-sm font-medium">
-            {isAllClients ? "Todos os clientes" : activeClientName}
+            {isAgencyMode ? "Meu Workspace" : activeClientName}
           </span>
           <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -117,7 +117,7 @@ export function WorkspaceSwitcher() {
               <CommandGroup heading={agencyName}>
                 <CommandItem
                   value="__all__"
-                  onSelect={() => handleSelect(null, "Todos os clientes")}
+                  onSelect={() => handleSelect(null, "Meu Workspace")}
                   className="gap-2"
                 >
                   <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 text-primary">
@@ -125,7 +125,7 @@ export function WorkspaceSwitcher() {
                   </div>
                   <span className="flex-1">Todos os clientes</span>
                   <Check
-                    className={cn("h-4 w-4", isAllClients ? "opacity-100" : "opacity-0")}
+                    className={cn("h-4 w-4", isAgencyMode ? "opacity-100" : "opacity-0")}
                   />
                 </CommandItem>
               </CommandGroup>
