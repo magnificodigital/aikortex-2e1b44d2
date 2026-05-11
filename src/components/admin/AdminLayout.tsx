@@ -5,7 +5,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, CreditCard, LayoutTemplate, DollarSign, Key, BookOpen, MessageSquare,
-  ArrowLeft, Sun, Moon, BarChart3, Search, X,
+  ArrowLeft, Sun, Moon, BarChart3, Search, X, Tags,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ const adminNavItems: { label: string; icon: any; path: string; ownerOnly?: boole
   { label: "Gestão", icon: Building2, path: "/admin?tab=gestao" },
   { label: "Planos", icon: CreditCard, path: "/admin?tab=plans" },
   { label: "Templates", icon: LayoutTemplate, path: "/admin?tab=templates" },
+  { label: "Categorização por Nicho", icon: Tags, path: "/admin?tab=niches" },
   { label: "Financeiro", icon: DollarSign, path: "/admin?tab=financeiro" },
   { label: "Chaves de API", icon: Key, path: "/admin?tab=api-keys", ownerOnly: true },
   { label: "Suporte", icon: MessageSquare, path: "/admin?tab=support" },
