@@ -9,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Building2 } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Loader2, Building2, Plus } from "lucide-react";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { supabase } from "@/integrations/supabase/client";
 import type { TemplateRow } from "@/types/templates";
@@ -23,31 +26,54 @@ type Props = {
 
 const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
   const navigate = useNavigate();
-  const { activeClientId, activeClient, activeClientName, isAgencyMode } = useActiveClient();
+  const {
+    activeClientId, activeClient, activeClientName, isAgencyMode, clients,
+  } = useActiveClient();
 
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [extra1, setExtra1] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const isApp = template?.category === "app";
 
+  // Effective target client (implicit in client mode, explicit in agency mode)
+  const targetClient = useMemo(() => {
+    if (!isAgencyMode) return activeClient;
+    if (!selectedClientId) return null;
+    return clients.find((c) => c.id === selectedClientId) ?? null;
+  }, [isAgencyMode, activeClient, selectedClientId, clients]);
+
+  const targetClientId = targetClient?.id ?? null;
+  const targetClientName = targetClient?.client_name ?? "";
+
   useEffect(() => {
     if (!open || !template) return;
-    setName(`${template.name} - ${activeClientName}`);
+    setSelectedClientId(null);
+    const initialName = isAgencyMode
+      ? template.name
+      : `${template.name} - ${activeClientName}`;
+    setName(initialName);
     const cfg = (isApp ? template.app_config : template.agent_config) || {};
     setExtra1(isApp ? (cfg.description ?? "") : (cfg.tone_of_voice ?? cfg.toneOfVoice ?? ""));
-  }, [open, template, activeClientName, isApp]);
+  }, [open, template, activeClientName, isApp, isAgencyMode]);
+
+  // When agency picks a client, refresh name placeholder
+  useEffect(() => {
+    if (!isAgencyMode || !template || !targetClientName) return;
+    setName(`${template.name} - ${targetClientName}`);
+  }, [targetClientName, isAgencyMode, template]);
 
   const valid = useMemo(() => {
-    if (isAgencyMode || !activeClientId) return false;
+    if (!targetClientId) return false;
     if (!name || name.trim().length < 3) return false;
     return true;
-  }, [name, isAgencyMode, activeClientId]);
+  }, [name, targetClientId]);
 
   if (!template) return null;
 
   const handleSubmit = async () => {
-    if (!valid || !template || !activeClientId || !activeClient) return;
+    if (!valid || !template || !targetClientId || !targetClient) return;
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -61,7 +87,7 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
         const cfg = (template.app_config ?? {}) as Record<string, any>;
         const payload = {
           user_id: user.id,
-          client_id: activeClientId,
+          client_id: targetClientId,
           name: name.trim(),
           description: extra1 || cfg.description || template.description || "",
           channel: cfg.channel || "web",
@@ -76,14 +102,14 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
           .select()
           .single();
         if (error) throw error;
-        toast.success(`App "${name.trim()}" criado para ${activeClient.client_name}`);
+        toast.success(`App "${name.trim()}" criado para ${targetClient.client_name}`);
         onOpenChange(false);
         navigate("/app-builder", { state: { appId: (data as any).id, channel: payload.channel } });
       } else {
         const cfg = (template.agent_config ?? {}) as Record<string, any>;
         const payload: Record<string, any> = {
           user_id: user.id,
-          client_id: activeClientId,
+          client_id: targetClientId,
           name: name.trim(),
           agent_type: cfg.agent_type || "Custom",
           description: cfg.description || template.description || "",
@@ -115,7 +141,7 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
             trigger_config: { agent_id: (data as any).id },
           } as any);
         } catch {}
-        toast.success(`Agente "${name.trim()}" criado para ${activeClient.client_name}`);
+        toast.success(`Agente "${name.trim()}" criado para ${targetClient.client_name}`);
         onOpenChange(false);
         navigate(`/aikortex/agents/${(data as any).id}`);
       }
@@ -127,28 +153,70 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
     }
   };
 
+  const hasNoClients = isAgencyMode && clients.length === 0;
+
   return (
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Usar template: {template.name}</DialogTitle>
           <DialogDescription className="flex items-center gap-2 pt-1">
-            <span>Adapte para</span>
-            <Badge variant="secondary" className="gap-1 font-normal">
-              <Building2 className="w-3 h-3" />
-              {activeClientName}
-            </Badge>
+            {isAgencyMode ? (
+              <span>Selecione o cliente que vai receber este {isApp ? "app" : "agente"}.</span>
+            ) : (
+              <>
+                <span>Adapte para</span>
+                <Badge variant="secondary" className="gap-1 font-normal">
+                  <Building2 className="w-3 h-3" />
+                  {activeClientName}
+                </Badge>
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {isAgencyMode && (
+            <div className="space-y-1.5">
+              <Label htmlFor="tpl-client">Cliente de destino *</Label>
+              {hasNoClients ? (
+                <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground flex items-center justify-between gap-2">
+                  <span>Sua agência ainda não tem clientes.</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { onOpenChange(false); navigate("/clients"); }}
+                    className="gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Criar cliente
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={selectedClientId ?? ""}
+                  onValueChange={(v) => setSelectedClientId(v)}
+                  disabled={submitting}
+                >
+                  <SelectTrigger id="tpl-client">
+                    <SelectValue placeholder="Selecione um cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.client_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="tpl-name">Nome {isApp ? "do app" : "do agente"} *</Label>
             <Input
               id="tpl-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={submitting}
+              disabled={submitting || (isAgencyMode && !selectedClientId)}
               placeholder={isApp ? "Nome do app" : "Nome do agente"}
             />
           </div>
