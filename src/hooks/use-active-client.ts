@@ -2,13 +2,15 @@ import { useWorkspace } from "@/contexts/WorkspaceContext";
 
 /**
  * Thin wrapper over WorkspaceContext exposing a client-centric API.
- * "Todos os clientes" === workspace da agência (type: "agency").
+ * Two modes:
+ *   - isAgencyMode === true  → operando "Meu Workspace" (camada de operação)
+ *   - isAgencyMode === false → dentro do workspace de um cliente (camada de produção)
  */
 export function useActiveClient() {
   const { activeWorkspace, clients, switchToAgency, switchToClient, loading } = useWorkspace();
 
-  const isAllClients = activeWorkspace.type === "agency";
-  const activeClient = isAllClients
+  const isAgencyMode = activeWorkspace.type === "agency";
+  const activeClient = isAgencyMode
     ? null
     : clients.find((c) => c.id === activeWorkspace.id) ?? null;
 
@@ -22,10 +24,10 @@ export function useActiveClient() {
   };
 
   return {
-    activeClientId: isAllClients ? null : activeWorkspace.id,
+    activeClientId: isAgencyMode ? null : activeWorkspace.id,
     activeClient,
     activeClientName: activeWorkspace.name,
-    isAllClients,
+    isAgencyMode,
     isLoading: loading,
     clients,
     setActiveClientId,
