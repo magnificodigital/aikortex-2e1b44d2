@@ -38,7 +38,6 @@ import {
   MessageCircle,
   AppWindow,
   LayoutTemplate,
-  LayoutGrid,
   Video,
   X,
   ShieldCheck,

@@ -28,6 +28,7 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
   const navigate = useNavigate();
   const {
     activeClientId, activeClient, activeClientName, isAgencyMode, clients,
+    setActiveClientId,
   } = useActiveClient();
 
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -102,7 +103,12 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
           .select()
           .single();
         if (error) throw error;
-        toast.success(`App "${name.trim()}" criado para ${targetClient.client_name}`);
+        if (isAgencyMode) {
+          setActiveClientId(targetClientId);
+          toast.success(`App "${name.trim()}" criado em ${targetClient.client_name}. Você entrou neste workspace.`);
+        } else {
+          toast.success(`App "${name.trim()}" criado para ${targetClient.client_name}`);
+        }
         onOpenChange(false);
         navigate("/app-builder", { state: { appId: (data as any).id, channel: payload.channel } });
       } else {
@@ -141,7 +147,12 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
             trigger_config: { agent_id: (data as any).id },
           } as any);
         } catch {}
-        toast.success(`Agente "${name.trim()}" criado para ${targetClient.client_name}`);
+        if (isAgencyMode) {
+          setActiveClientId(targetClientId);
+          toast.success(`Agente "${name.trim()}" criado em ${targetClient.client_name}. Você entrou neste workspace.`);
+        } else {
+          toast.success(`Agente "${name.trim()}" criado para ${targetClient.client_name}`);
+        }
         onOpenChange(false);
         navigate(`/aikortex/agents/${(data as any).id}`);
       }
