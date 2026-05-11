@@ -215,8 +215,6 @@ const AgentDetail = () => {
   }, [setSearchParams]);
   const [showVoiceCall, setShowVoiceCall] = useState(false);
   const [mobileTab, setMobileTab] = useState<"chat" | "config">("chat");
-  // Back-compat: kept so callers like onGoToIntegrations still work
-  const [showConfig, setShowConfig] = useState(false);
 
   useEffect(() => {
     if (!shouldPersistTemplateDraft) return;
