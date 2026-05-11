@@ -94,8 +94,7 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
           .select()
           .single();
         if (error) throw error;
-        // best-effort usage tracking (column-level update)
-        await supabase.from("platform_templates").update({ usage_count: ((template as any).usage_count ?? 0) + 1 } as any).eq("id", template.id).then(() => {}, () => {});
+        // usage_count tracking pulado: agências não têm UPDATE em platform_templates (RLS)
         toast.success(`App "${name.trim()}" criado para ${client.client_name}`);
         onOpenChange(false);
         navigate("/app-builder", { state: { appId: (data as any).id, channel: payload.channel } });
