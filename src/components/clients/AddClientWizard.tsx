@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ type Template = {
 const TIER_ORDER: Record<string, number> = { starter: 0, explorer: 1, hack: 2 };
 
 const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTier, onSuccess }: Props) => {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -78,6 +80,17 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
       const res = await supabase.functions.invoke("asaas-create-client", {
         body: { client_name: name, client_email: email, client_phone: phone, client_document: document },
       });
+      // Edge function returns 400 with structured payload — supabase-js puts that in res.error (FunctionsHttpError)
+      // but res.data is still parsed when available. Detect the "configure_asaas" action either way.
+      const payload: any = res.data ?? (res.error as any)?.context ?? null;
+      const errAction = payload?.action;
+      if (errAction === "configure_asaas") {
+        toast.error("Configure sua chave Asaas primeiro", {
+          action: { label: "Configurar", onClick: () => navigate("/settings?tab=financeiro") },
+        });
+        setLoading(false);
+        return;
+      }
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) { toast.error(typeof res.data.error === "string" ? res.data.error : "Erro ao criar cliente"); setLoading(false); return; }
 
