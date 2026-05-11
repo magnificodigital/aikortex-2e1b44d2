@@ -25,7 +25,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import type { TemplateRow } from "@/types/templates";
 import avatar1 from "@/assets/avatars/avatar-1.png";
-import AgencyModeClientPicker from "@/components/workspace/AgencyModeClientPicker";
+
 
 const PROVIDER_BADGE: Record<string, { label: string; className: string }> = {
   anthropic: { label: "Claude", className: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
