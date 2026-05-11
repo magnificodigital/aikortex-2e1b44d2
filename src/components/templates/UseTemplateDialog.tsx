@@ -8,11 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
-import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Building2 } from "lucide-react";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { supabase } from "@/integrations/supabase/client";
 import type { TemplateRow } from "@/types/templates";
@@ -26,45 +23,31 @@ type Props = {
 
 const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
   const navigate = useNavigate();
-  const { clients } = useWorkspace();
-  const { activeClientId, isAgencyMode } = useActiveClient();
+  const { activeClientId, activeClient, activeClientName, isAgencyMode } = useActiveClient();
 
-  const [clientId, setClientId] = useState<string>("");
   const [name, setName] = useState("");
   const [extra1, setExtra1] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const selectedClient = clients.find((c) => c.id === clientId);
   const isApp = template?.category === "app";
 
-  // Reset form when opens
   useEffect(() => {
     if (!open || !template) return;
-    const defaultClient = !isAgencyMode && activeClientId ? activeClientId : "";
-    setClientId(defaultClient);
-    const dc = clients.find((c) => c.id === defaultClient);
-    setName(dc ? `${template.name} - ${dc.client_name}` : template.name);
+    setName(`${template.name} - ${activeClientName}`);
     const cfg = (isApp ? template.app_config : template.agent_config) || {};
     setExtra1(isApp ? (cfg.description ?? "") : (cfg.tone_of_voice ?? cfg.toneOfVoice ?? ""));
-  }, [open, template, activeClientId, isAgencyMode, clients, isApp]);
-
-  // Update name when client changes
-  useEffect(() => {
-    if (!template) return;
-    const c = clients.find((x) => x.id === clientId);
-    if (c) setName(`${template.name} - ${c.client_name}`);
-  }, [clientId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, template, activeClientName, isApp]);
 
   const valid = useMemo(() => {
-    if (!clientId) return false;
+    if (isAgencyMode || !activeClientId) return false;
     if (!name || name.trim().length < 3) return false;
     return true;
-  }, [clientId, name]);
+  }, [name, isAgencyMode, activeClientId]);
 
   if (!template) return null;
 
   const handleSubmit = async () => {
-    if (!valid || !template) return;
+    if (!valid || !template || !activeClientId || !activeClient) return;
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -73,13 +56,12 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
         setSubmitting(false);
         return;
       }
-      const client = clients.find((c) => c.id === clientId)!;
 
       if (template.category === "app") {
         const cfg = (template.app_config ?? {}) as Record<string, any>;
         const payload = {
           user_id: user.id,
-          client_id: clientId,
+          client_id: activeClientId,
           name: name.trim(),
           description: extra1 || cfg.description || template.description || "",
           channel: cfg.channel || "web",
@@ -94,15 +76,14 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
           .select()
           .single();
         if (error) throw error;
-        // usage_count tracking pulado: agências não têm UPDATE em platform_templates (RLS)
-        toast.success(`App "${name.trim()}" criado para ${client.client_name}`);
+        toast.success(`App "${name.trim()}" criado para ${activeClient.client_name}`);
         onOpenChange(false);
         navigate("/app-builder", { state: { appId: (data as any).id, channel: payload.channel } });
       } else {
         const cfg = (template.agent_config ?? {}) as Record<string, any>;
         const payload: Record<string, any> = {
           user_id: user.id,
-          client_id: clientId,
+          client_id: activeClientId,
           name: name.trim(),
           agent_type: cfg.agent_type || "Custom",
           description: cfg.description || template.description || "",
@@ -121,7 +102,6 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
           .select()
           .single();
         if (error) throw error;
-        // best-effort default flow
         try {
           const flow = buildDefaultFlowForAgent(data as any);
           await supabase.from("user_flows" as any).insert({
@@ -135,7 +115,7 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
             trigger_config: { agent_id: (data as any).id },
           } as any);
         } catch {}
-        toast.success(`Agente "${name.trim()}" criado para ${client.client_name}`);
+        toast.success(`Agente "${name.trim()}" criado para ${activeClient.client_name}`);
         onOpenChange(false);
         navigate(`/aikortex/agents/${(data as any).id}`);
       }
@@ -152,30 +132,16 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Usar template: {template.name}</DialogTitle>
-          <DialogDescription>
-            Adapte os campos abaixo para criar {isApp ? "o app" : "o agente"}.
+          <DialogDescription className="flex items-center gap-2 pt-1">
+            <span>Adapte para</span>
+            <Badge variant="secondary" className="gap-1 font-normal">
+              <Building2 className="w-3 h-3" />
+              {activeClientName}
+            </Badge>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="client-select">Cliente de destino *</Label>
-            <Select value={clientId} onValueChange={setClientId} disabled={submitting}>
-              <SelectTrigger id="client-select">
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.length === 0 ? (
-                  <div className="px-2 py-3 text-xs text-muted-foreground">
-                    Nenhum cliente cadastrado.
-                  </div>
-                ) : clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.client_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="space-y-1.5">
             <Label htmlFor="tpl-name">Nome {isApp ? "do app" : "do agente"} *</Label>
             <Input
