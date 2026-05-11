@@ -1075,6 +1075,45 @@ export type Database = {
         }
         Relationships: []
       }
+      niche_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          display_order: number
+          icon: string
+          id: string
+          name_en: string
+          name_pt: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon: string
+          id?: string
+          name_en: string
+          name_pt: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string
+          id?: string
+          name_en?: string
+          name_pt?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           action_url: string | null
@@ -1261,6 +1300,7 @@ export type Database = {
           is_exclusive: boolean | null
           min_tier: string
           name: string
+          niche_id: string | null
           platform_price_monthly: number
           slug: string
           sort_order: number | null
@@ -1278,6 +1318,7 @@ export type Database = {
           is_exclusive?: boolean | null
           min_tier?: string
           name: string
+          niche_id?: string | null
           platform_price_monthly: number
           slug: string
           sort_order?: number | null
@@ -1295,13 +1336,22 @@ export type Database = {
           is_exclusive?: boolean | null
           min_tier?: string
           name?: string
+          niche_id?: string | null
           platform_price_monthly?: number
           slug?: string
           sort_order?: number | null
           thumbnail_url?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_templates_niche_id_fkey"
+            columns: ["niche_id"]
+            isOneToOne: false
+            referencedRelation: "niche_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
