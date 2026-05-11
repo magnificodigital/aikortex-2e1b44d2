@@ -349,8 +349,7 @@ const AgentRightPanel = ({
     loadKeys();
   }, []);
 
-  const handleTabChange = (tab: string) => { setRightTab(tab); onTabChange?.(tab); };
-  useEffect(() => { if (activeTab && activeTab !== rightTab) setRightTab(activeTab); }, [activeTab]);
+  const handleTabChange = (tab: string) => { goSection(tab); };
 
   const handleConnectIntegration = (integration: typeof INTEGRATIONS[0]) => {
     const existing = connectorKeys[integration.label];
