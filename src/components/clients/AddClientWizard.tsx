@@ -78,6 +78,17 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
       const res = await supabase.functions.invoke("asaas-create-client", {
         body: { client_name: name, client_email: email, client_phone: phone, client_document: document },
       });
+      // Edge function returns 400 with structured payload — supabase-js puts that in res.error (FunctionsHttpError)
+      // but res.data is still parsed when available. Detect the "configure_asaas" action either way.
+      const payload: any = res.data ?? (res.error as any)?.context ?? null;
+      const errAction = payload?.action;
+      if (errAction === "configure_asaas") {
+        toast.error("Configure sua chave Asaas primeiro", {
+          action: { label: "Configurar", onClick: () => navigate("/settings?tab=financeiro") },
+        });
+        setLoading(false);
+        return;
+      }
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) { toast.error(typeof res.data.error === "string" ? res.data.error : "Erro ao criar cliente"); setLoading(false); return; }
 
