@@ -708,7 +708,7 @@ const AgentRightPanel = ({
 
 
                 {/* Identidade */}
-                {settingsNav === "general" && (
+                {activeSection === "config.agent" && (
                   <>
                     <div>
                       <h2 className="text-lg font-bold text-foreground">Identidade</h2>
@@ -764,7 +764,7 @@ const AgentRightPanel = ({
                 )}
 
                 {/* Instruções (objetivo + comportamento unificados, estruturados em tópicos) */}
-                {settingsNav === "instructions" && (
+                {activeSection === "config.agent" && (
                   <div className="space-y-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -801,7 +801,7 @@ const AgentRightPanel = ({
                 )}
 
                 {/* Arquivos */}
-                {settingsNav === "files_nav" && (
+                {activeSection === "resources.kb" && (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1018,7 +1018,7 @@ const AgentRightPanel = ({
                 )}
 
                 {/* Voz */}
-                {settingsNav === "voice_nav" && (
+                {activeSection === "config.voice" && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-lg font-bold text-foreground">Configurações de Voz</h2>
