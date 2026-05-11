@@ -50,7 +50,7 @@ import { Progress } from "@/components/ui/progress";
 
 type NavItem = {
   label: string;
-  icon: typeof Home;
+  icon: typeof Zap;
   path: string;
   children?: NavItem[];
 };
