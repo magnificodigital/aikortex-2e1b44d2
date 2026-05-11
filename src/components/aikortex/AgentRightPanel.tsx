@@ -94,14 +94,70 @@ const CHANNELS = [
   { value: "website",   label: "WebSite",   logo: "" },
 ];
 
-const SETTINGS_NAV = [
-  { section: "AGENTE", items: [
-    { key: "general",      icon: User,      label: "Identidade" },
-    { key: "instructions", icon: Settings2, label: "Instruções" },
-    { key: "files_nav",    icon: FileText,  label: "Conhecimento" },
-    { key: "voice_nav",    icon: Mic,       label: "Voz" },
+/* ── Hierarchical sidenav for the right panel (Aikortex Master v7.4 §13.5) ── */
+type NavItem = {
+  key: string;             // unique section id, e.g. "config.agent"
+  label: string;
+  icon: any;
+  comingSoon?: boolean;
+  sprint?: string;         // sprint target shown on placeholder
+  masterRef?: string;      // master section ref shown on placeholder
+};
+type NavGroup = { group: string; items: NavItem[] };
+
+const RIGHT_NAV: NavGroup[] = [
+  { group: "Configuração", items: [
+    { key: "config.agent",       label: "Agente",   icon: Bot },
+    { key: "config.voice",       label: "Voz",      icon: Mic },
+    { key: "config.channels",    label: "Canais",   icon: Share2 },
+  ]},
+  { group: "Capacidades", items: [
+    { key: "caps.planning",      label: "Planning",        icon: Lightbulb,   comingSoon: true, sprint: "2.3", masterRef: "13.5.4" },
+    { key: "caps.reasoning",     label: "Reasoning",       icon: Brain,       comingSoon: true, sprint: "2.3", masterRef: "13.5.5" },
+    { key: "caps.memory",        label: "Memória",         icon: Brain },
+    { key: "caps.runtime",       label: "Code Runtime",    icon: FileCode2,   comingSoon: true, sprint: "2.3", masterRef: "13.5.7" },
+    { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "2.3", masterRef: "13.5.8" },
+  ]},
+  { group: "Recursos", items: [
+    { key: "resources.tools",        label: "Tools",          icon: Wrench,    comingSoon: true, sprint: "2.4", masterRef: "13.5.9" },
+    { key: "resources.kb",           label: "Knowledge Base", icon: BookOpen },
+    { key: "resources.tables",       label: "Tabelas",        icon: Database,  comingSoon: true, sprint: "2.6", masterRef: "13.5.11" },
+    { key: "resources.integrations", label: "Integrações",    icon: Plug },
+  ]},
+  { group: "Comportamento", items: [
+    { key: "behavior.cadences",  label: "Cadências", icon: Clock,  comingSoon: true, sprint: "2.7",  masterRef: "13.5.13" },
+    { key: "behavior.squad",     label: "Squad",     icon: Users,  comingSoon: true, sprint: "Fase E", masterRef: "13.5.14" },
+  ]},
+  { group: "Operação", items: [
+    { key: "ops.versions",   label: "Versões",  icon: GitBranch,    comingSoon: true, sprint: "2.2",            masterRef: "13.5.15" },
+    { key: "ops.test",       label: "Testar",   icon: FlaskConical },
+    { key: "ops.inspector",  label: "Inspetor", icon: ScanSearch,   comingSoon: true, sprint: "Movimento 1.5",  masterRef: "13.5.16" },
+    { key: "ops.spec",       label: "Spec",     icon: FileText,     comingSoon: true, sprint: "Fase E",         masterRef: "13.5.17" },
+  ]},
+  { group: "Sistema", items: [
+    { key: "system.advanced",  label: "Avançado",   icon: Sliders },
+    { key: "system.danger",    label: "Danger Zone", icon: ShieldAlert },
   ]},
 ];
+
+const DEFAULT_SECTION = "config.agent";
+
+const PlaceholderSection = ({ title, masterRef, sprint, icon: Icon }: { title: string; masterRef?: string; sprint?: string; icon: any }) => (
+  <div className="flex flex-col items-center justify-center p-12 text-center">
+    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+      <Icon className="w-7 h-7 text-muted-foreground" />
+    </div>
+    <h3 className="font-semibold text-foreground">{title}</h3>
+    <p className="mt-2 text-sm text-muted-foreground max-w-xs">
+      Em construção — disponível no Sprint {sprint}.
+    </p>
+    {masterRef && (
+      <p className="mt-1 text-xs text-muted-foreground">
+        Referência: Aikortex Master v7.4 §{masterRef}
+      </p>
+    )}
+  </div>
+);
 
 const DEFAULT_INSTRUCTIONS_TEMPLATE = `# 1. Identidade
 Você é um assistente de IA profissional. Apresente-se sempre pelo nome configurado e mantenha consistência de personalidade em todas as interações.
