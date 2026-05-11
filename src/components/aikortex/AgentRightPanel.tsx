@@ -559,37 +559,153 @@ const AgentRightPanel = ({
     model: agentModel, agentType,
   });
 
+  const activeNavItem = useMemo(
+    () => RIGHT_NAV.flatMap(g => g.items).find(i => i.key === activeSection),
+    [activeSection]
+  );
+
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+    <div className="flex h-full min-w-0 overflow-hidden">
 
-      <Tabs value={rightTab} onValueChange={handleTabChange} className="flex flex-col flex-1 min-h-0">
+      {/* ── Hierarchical sidenav (6 grupos · 16 itens) ── */}
+      <aside className="w-56 border-r border-border bg-card/30 shrink-0 overflow-y-auto py-3 hidden md:block">
+        {RIGHT_NAV.map((g) => (
+          <div key={g.group} className="px-3 mb-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-2">{g.group}</p>
+            <div className="space-y-0.5">
+              {g.items.map((item) => {
+                const Icon = item.icon;
+                const active = activeSection === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => { if (!item.comingSoon) goSection(item.key); }}
+                    disabled={item.comingSoon}
+                    className={`w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
+                      active
+                        ? "bg-primary/10 text-primary font-medium"
+                        : item.comingSoon
+                          ? "text-muted-foreground/60 cursor-not-allowed"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </span>
+                    {item.comingSoon && (
+                      <span className="text-[9px] uppercase tracking-wider bg-muted text-muted-foreground/80 rounded px-1 py-0.5">em breve</span>
+                    )}
+                  </button>
+                );
+              })}
+          </div>
+          </div>
+        ))}
+      </aside>
 
-        {/* ── Aba Agente ── */}
-        <TabsContent value="agent" className="flex-1 mt-0 min-h-0 overflow-hidden">
-          <div className="flex h-full">
-            <div className="w-48 border-r border-border p-4 space-y-4 shrink-0">
-              {SETTINGS_NAV.map((section) => (
-                <div key={section.section}>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{section.section}</p>
-                  <div className="space-y-0.5">
-                    {section.items.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <button key={item.key} onClick={() => setSettingsNav(item.key)}
-                          className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                            settingsNav === item.key ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                          }`}>
-                          <Icon className="w-4 h-4" />{item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+      {/* ── Content area ── */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+
+        {/* Mobile section selector */}
+        <div className="md:hidden border-b border-border px-3 py-2">
+          <Select value={activeSection} onValueChange={(v) => goSection(v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {RIGHT_NAV.flatMap(g => g.items).filter(i => !i.comingSoon).map(i => (
+                <SelectItem key={i.key} value={i.key} className="text-xs">{i.label}</SelectItem>
               ))}
-            </div>
+            </SelectContent>
+          </Select>
+        </div>
 
-            <ScrollArea className="flex-1">
-              <div className="p-6 max-w-lg space-y-8">
+        <ScrollArea className="flex-1">
+          <div className="p-6 max-w-2xl space-y-8">
+
+            {/* ── Coming-soon placeholders ── */}
+            {activeNavItem?.comingSoon && (
+              <PlaceholderSection
+                title={activeNavItem.label}
+                masterRef={activeNavItem.masterRef}
+                sprint={activeNavItem.sprint}
+                icon={activeNavItem.icon}
+              />
+            )}
+
+            {/* ── Capacidades → Memória ── */}
+            {activeSection === "caps.memory" && (
+              hasAnthropicKey
+                ? <AgentMemoryTab agentId={agentId} />
+                : (
+                  <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4 flex items-start gap-3">
+                    <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium text-foreground">Memória persistente requer Anthropic</p>
+                      <p className="text-xs text-muted-foreground">Configure sua chave Anthropic em Recursos → Integrações para ativar a memória do agente.</p>
+                      <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>Ir para Integrações</Button>
+                    </div>
+                  </div>
+                )
+            )}
+
+            {/* ── Operação → Testar (atalho para chat em modo teste) ── */}
+            {activeSection === "ops.test" && (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Testar agente</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Converse com o agente como se fosse um usuário real para validar comportamento, tom e respostas.</p>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-semibold">Modo de teste (chat)</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Abre o painel de chat à esquerda no modo teste, usando o modelo configurado.</p>
+                  <Button size="sm" onClick={() => onSwitchToTestChat?.()} className="gap-1.5"><FlaskConical className="w-3.5 h-3.5" /> Abrir chat em modo teste</Button>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-semibold">Testar ligação por voz</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Inicia uma ligação de teste com o agente usando ElevenLabs.</p>
+                  <Button size="sm" variant="outline" onClick={() => onTestCall?.()} className="gap-1.5" disabled={!hasElevenLabsKey}>
+                    <Phone className="w-3.5 h-3.5" /> {hasElevenLabsKey ? "Iniciar ligação de teste" : "Configure ElevenLabs primeiro"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Sistema → Avançado ── */}
+            {activeSection === "system.advanced" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Avançado</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Parâmetros do modelo e ajustes técnicos.</p>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground">Temperatura ({apiConfig.temperature.toFixed(2)})</h3>
+                  <p className="text-[11px] text-muted-foreground">Controla a criatividade. Valores baixos = mais determinístico.</p>
+                  <input type="range" min={0} max={2} step={0.05} value={apiConfig.temperature}
+                    onChange={(e) => setApiConfig({ ...apiConfig, temperature: parseFloat(e.target.value) })}
+                    className="w-full" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground">Max tokens</h3>
+                  <Input type="number" min={256} max={32000} value={apiConfig.maxTokens}
+                    onChange={(e) => setApiConfig({ ...apiConfig, maxTokens: parseInt(e.target.value) || 2048 })}
+                    className="text-sm" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground">Top-p ({apiConfig.topP.toFixed(2)})</h3>
+                  <input type="range" min={0} max={1} step={0.05} value={apiConfig.topP}
+                    onChange={(e) => setApiConfig({ ...apiConfig, topP: parseFloat(e.target.value) })}
+                    className="w-full" />
+                </div>
+              </div>
+            )}
+
 
                 {/* Identidade */}
                 {settingsNav === "general" && (
