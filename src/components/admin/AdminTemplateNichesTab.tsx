@@ -36,12 +36,9 @@ import {
   MoreVertical,
   ChevronLeft,
   ChevronRight,
-  Stethoscope,
-  ShieldCheck,
-  Building2,
-  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getNicheIcon } from "@/lib/niches";
 
 interface NicheRow {
   id: string;
