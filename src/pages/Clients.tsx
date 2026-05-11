@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,8 @@ const TIER_LABELS: Record<string, string> = { starter: "Starter", explorer: "Exp
 const Clients = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { refreshClients } = useWorkspace();
   const [clients, setClients] = useState<AgencyClient[]>([]);
   const [subs, setSubs] = useState<TemplateSub[]>([]);
   const [agency, setAgency] = useState<any>(null);
@@ -80,6 +83,14 @@ const Clients = () => {
   };
 
   useEffect(() => { loadData(); }, [user]);
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setShowWizard(true);
+      searchParams.delete("new");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const filtered = clients.filter((c) => {
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
@@ -257,7 +268,7 @@ const Clients = () => {
         agencyId={agency?.id}
         customPricing={agency?.custom_pricing}
         agencyTier={agency?.tier ?? "starter"}
-        onSuccess={loadData}
+        onSuccess={async () => { await loadData(); await refreshClients(); }}
       />
     </DashboardLayout>
   );
