@@ -64,7 +64,7 @@ export function useUserAgents(opts?: { clientId?: string | null; isAllClients?: 
       if (typeof vc.maxCallDuration === "number") voiceColumns.max_call_duration_seconds = vc.maxCallDuration * 60;
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       user_id: user.id,
       name: agent.name,
       agent_type: agent.agent_type || "Custom",
@@ -76,6 +76,7 @@ export function useUserAgents(opts?: { clientId?: string | null; isAllClients?: 
       config: agent.config || {},
       ...voiceColumns,
     };
+    if (agent.client_id !== undefined) payload.client_id = agent.client_id;
 
     if (agent.id) {
       const { data, error } = await supabase
