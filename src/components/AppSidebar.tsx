@@ -318,9 +318,12 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
             </Link>
           </div>
 
-          {renderGroup("Aikortex", aikortexItems, aikortexOpen, setAikortexOpen)}
-          {renderGroup("Gestão", gestaoItems, gestaoOpen, setGestaoOpen)}
-          {renderGroup("Partners", partnersItems, partnersOpen, setPartnersOpen)}
+          {/* Adaptive sections by workspace mode (fade transition) */}
+          <div key={isAgencyMode ? "agency" : "client"} className="animate-in fade-in duration-150">
+            {!isAgencyMode && renderGroup("Aikortex", aikortexItems, aikortexOpen, setAikortexOpen)}
+            {isAgencyMode && renderGroup("Gestão", gestaoItems, gestaoOpen, setGestaoOpen)}
+            {isAgencyMode && renderGroup("Partners", partnersItems, partnersOpen, setPartnersOpen)}
+          </div>
 
           {/* Seção Conta & Suporte */}
           <div>
