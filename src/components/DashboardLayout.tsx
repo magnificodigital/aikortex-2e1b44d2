@@ -3,6 +3,7 @@ import { Menu, X, AlertTriangle, Key, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
 import { RightPanelProvider } from "./RightPanel";
+import WorkspaceHeader from "./workspace/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMonthlyUsage } from "@/hooks/use-monthly-usage";
@@ -53,18 +54,19 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
               </button>
             </div>
           )}
-          {isMobile && (
-            <div className="sticky top-0 z-30 flex items-center justify-between bg-background/80 backdrop-blur-lg px-3 py-2">
-              <button
-                onClick={() => setMobileSidebarOpen(true)}
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-                aria-label="Abrir menu"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-              <div />
-            </div>
-          )}
+          <WorkspaceHeader
+            mobileMenuButton={
+              isMobile ? (
+                <button
+                  onClick={() => setMobileSidebarOpen(true)}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                  aria-label="Abrir menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              ) : null
+            }
+          />
 
           <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
             <div className="absolute -top-[10%] -right-[5%] h-[500px] w-[500px] animate-[mesh-move_20s_ease-in-out_infinite] rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/0.4),transparent_70%)] opacity-[0.08] blur-[120px] dark:opacity-[0.15]" />
