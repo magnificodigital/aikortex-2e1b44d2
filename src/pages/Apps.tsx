@@ -18,6 +18,7 @@ import NicheFilterBar from "@/components/templates/NicheFilterBar";
 import TemplateGrid from "@/components/templates/TemplateGrid";
 import TemplateSearchInput from "@/components/templates/TemplateSearchInput";
 import UseTemplateDialog from "@/components/templates/UseTemplateDialog";
+import AgencyModeClientPicker from "@/components/workspace/AgencyModeClientPicker";
 import type { TemplateRow } from "@/types/templates";
 import { toast } from "sonner";
 import {
