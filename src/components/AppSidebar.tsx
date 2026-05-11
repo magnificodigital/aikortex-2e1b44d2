@@ -83,7 +83,6 @@ const aikortexItems: NavItem[] = [
   { label: "Flows", icon: Workflow, path: "/aikortex/automations" },
   { label: "Apps", icon: AppWindow, path: "/apps" },
   { label: "Mensagens", icon: MessageSquare, path: "/aikortex/messages" },
-  { label: "Disparos", icon: Send, path: "/aikortex/broadcasts" },
 ];
 
 const MODULE_KEY_MAP: Record<string, string> = {
