@@ -18,7 +18,7 @@ import NicheFilterBar from "@/components/templates/NicheFilterBar";
 import TemplateGrid from "@/components/templates/TemplateGrid";
 import TemplateSearchInput from "@/components/templates/TemplateSearchInput";
 import UseTemplateDialog from "@/components/templates/UseTemplateDialog";
-import AgencyModeClientPicker from "@/components/workspace/AgencyModeClientPicker";
+
 import type { TemplateRow } from "@/types/templates";
 import { toast } from "sonner";
 import {
@@ -124,19 +124,14 @@ const Apps = () => {
                   {contextLabel} <span className="text-muted-foreground/60">›</span> Apps
                 </p>
               </div>
-              {!isAgencyMode && (
-                <Button
-                  onClick={() => navigate("/app-builder", { state: {} })}
-                  className="gap-2 rounded-full"
-                >
-                  <Plus className="w-4 h-4" /> Novo App
-                </Button>
-              )}
+              <Button
+                onClick={() => navigate("/app-builder", { state: {} })}
+                className="gap-2 rounded-full"
+              >
+                <Plus className="w-4 h-4" /> Novo App
+              </Button>
             </div>
 
-            {isAgencyMode ? (
-              <AgencyModeClientPicker resource="apps" />
-            ) : (
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList>
                 <TabsTrigger value="mine">Meus Apps ({savedApps.length})</TabsTrigger>
@@ -152,7 +147,7 @@ const Apps = () => {
                       </div>
                       <p className="text-sm font-medium">
                         {isAgencyMode
-                          ? "Sua agência ainda não tem apps criados."
+                          ? "Sua agência ainda não tem apps. Crie a partir de um template."
                           : `${activeClientName} ainda não tem apps. Crie a partir de um template.`}
                       </p>
                       <Button size="sm" onClick={() => setTab("templates")}>
@@ -227,7 +222,6 @@ const Apps = () => {
                 />
               </TabsContent>
             </Tabs>
-            )}
 
             <UseTemplateDialog
               template={useTemplate}

@@ -25,7 +25,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import type { TemplateRow } from "@/types/templates";
 import avatar1 from "@/assets/avatars/avatar-1.png";
-import AgencyModeClientPicker from "@/components/workspace/AgencyModeClientPicker";
+
 
 const PROVIDER_BADGE: Record<string, { label: string; className: string }> = {
   anthropic: { label: "Claude", className: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
@@ -102,16 +102,11 @@ const Aikortex = () => {
               {contextLabel} <span className="text-muted-foreground/60">›</span> Agentes
             </p>
           </div>
-          {!isAgencyMode && (
-            <Button onClick={handleNewCustom} className="gap-2 rounded-full">
-              <Plus className="w-4 h-4" /> Novo Agente
-            </Button>
-          )}
+          <Button onClick={handleNewCustom} className="gap-2 rounded-full">
+            <Plus className="w-4 h-4" /> Novo Agente
+          </Button>
         </div>
 
-        {isAgencyMode ? (
-          <AgencyModeClientPicker resource="agentes" />
-        ) : (
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="mine">Meus Agentes ({agents.length})</TabsTrigger>
@@ -127,7 +122,7 @@ const Aikortex = () => {
                   </div>
                   <p className="text-sm font-medium">
                     {isAgencyMode
-                      ? "Sua agência ainda não tem agentes criados."
+                      ? "Sua agência ainda não tem agentes. Crie a partir de um template."
                       : `${activeClientName} ainda não tem agentes. Crie a partir de um template.`}
                   </p>
                   <Button size="sm" onClick={() => setTab("templates")}>
@@ -217,7 +212,6 @@ const Aikortex = () => {
             />
           </TabsContent>
         </Tabs>
-        )}
 
         <UseTemplateDialog
           template={useTemplate}

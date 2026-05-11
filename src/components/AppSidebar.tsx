@@ -83,7 +83,6 @@ const aikortexItems: NavItem[] = [
   { label: "Flows", icon: Workflow, path: "/aikortex/automations" },
   { label: "Apps", icon: AppWindow, path: "/apps" },
   { label: "Mensagens", icon: MessageSquare, path: "/aikortex/messages" },
-  { label: "Disparos", icon: Send, path: "/aikortex/broadcasts" },
 ];
 
 const MODULE_KEY_MAP: Record<string, string> = {
@@ -139,7 +138,6 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
   const { theme, toggle } = useTheme();
   const { signOut, isPlatform } = useAuth();
   const { agencyName, clients, activeWorkspace, switchToAgency, switchToClient } = useWorkspace();
-  const isAgencyMode = activeWorkspace.type === "agency";
   const { canAccess } = useModuleAccess();
   const { messageCount, monthlyLimit, hasByok, isNearLimit, isUnlimited } = useMonthlyUsage();
   const navigate = useNavigate();
@@ -318,12 +316,10 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
             </Link>
           </div>
 
-          {/* Adaptive sections by workspace mode (fade transition) */}
-          <div key={isAgencyMode ? "agency" : "client"} className="animate-in fade-in duration-150">
-            {!isAgencyMode && renderGroup("Aikortex", aikortexItems, aikortexOpen, setAikortexOpen)}
-            {isAgencyMode && renderGroup("Gestão", gestaoItems, gestaoOpen, setGestaoOpen)}
-            {isAgencyMode && renderGroup("Partners", partnersItems, partnersOpen, setPartnersOpen)}
-          </div>
+          {/* Always render all sections — switcher filters data, not menu items */}
+          {renderGroup("Aikortex", aikortexItems, aikortexOpen, setAikortexOpen)}
+          {renderGroup("Gestão", gestaoItems, gestaoOpen, setGestaoOpen)}
+          {renderGroup("Partners", partnersItems, partnersOpen, setPartnersOpen)}
 
           {/* Seção Conta & Suporte */}
           <div>
