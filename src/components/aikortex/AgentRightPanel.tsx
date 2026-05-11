@@ -1055,94 +1055,87 @@ const AgentRightPanel = ({
                   </div>
                 )}
 
+            {/* ── Recursos → Integrações ── */}
+            {activeSection === "resources.integrations" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Integrações</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Conecte integrações para expandir as capacidades do agente.</p>
+                </div>
+
+                <IntegrationsGrid
+                  providers={LLM_PROVIDERS}
+                  title="Modelos de IA (LLMs)"
+                  subtitle="Conecte suas chaves de API para utilizar modelos de IA."
+                  onConnectedProvidersChange={setSavedIntegrations}
+                  onProviderConfigsChange={setIntegrationConfigs}
+                  initialProviderConfigs={integrationConfigs}
+                  storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
+                />
+
+                <IntegrationsGrid
+                  providers={SERVICE_PROVIDERS}
+                  title="Serviços & Ferramentas"
+                  subtitle="Conecte serviços externos para expandir as capacidades."
+                  onConnectedProvidersChange={(providers) => setSavedIntegrations(prev => Array.from(new Set([...prev.filter((provider) => !SERVICE_PROVIDERS.some((service) => service.provider === provider)), ...providers])))}
+                  onProviderConfigsChange={(configs) => setIntegrationConfigs(prev => ({ ...prev, ...configs }))}
+                  initialProviderConfigs={integrationConfigs}
+                  storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
+                />
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2"><Blocks className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold">MCPs</h3></div>
+                  <p className="text-xs text-muted-foreground">Conecte servidores MCP para estender o contexto.</p>
+                  <Button variant="outline" size="sm" className="text-xs gap-1.5"><Plus className="w-3 h-3" /> Adicionar MCP</Button>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2"><Webhook className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold">Webhooks</h3></div>
+                  <Button variant="outline" size="sm" className="text-xs gap-1.5"><Plus className="w-3 h-3" /> Adicionar Webhook</Button>
+                </div>
               </div>
-            </ScrollArea>
+            )}
+
+            {/* ── Configuração → Canais ── */}
+            {activeSection === "config.channels" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Canais</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Onde seu agente será publicado.</p>
+                </div>
+                {filteredChannels.map((ch) => {
+                  const isSelected = connectedChannels.includes(ch.value);
+                  return (
+                    <div key={ch.value} className={`flex items-center gap-4 rounded-xl border-2 p-4 transition-all ${isSelected ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
+                      {ch.logo ? (
+                        <img src={ch.logo} alt={ch.label} className="w-8 h-8 rounded-lg object-contain shrink-0"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      ) : <Globe className="w-8 h-8 text-primary shrink-0" />}
+                      <span className="text-sm font-semibold text-foreground flex-1">{ch.label}</span>
+                      <Button size="sm" variant={isSelected ? "default" : "outline"} onClick={() => toggleChannel(ch.value)} className="text-xs h-8 gap-1.5">
+                        {isSelected ? <><Check className="w-3 h-3" /> Conectado</> : "Conectar"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── Sistema → Danger Zone ── */}
+            {activeSection === "system.danger" && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-bold text-destructive">Danger Zone</h2>
+                <p className="text-sm text-muted-foreground">Ações irreversíveis para este agente.</p>
+                <div className="rounded-xl border-2 border-destructive/30 p-4 space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground">Excluir agente</h3>
+                  <p className="text-xs text-muted-foreground">Esta ação não pode ser desfeita.</p>
+                  <Button variant="destructive" size="sm" onClick={() => onDeleteAgent?.()}>Excluir Agente</Button>
+                </div>
+              </div>
+            )}
+
           </div>
-        </TabsContent>
-
-        {/* ── Aba Integrações ── */}
-        <TabsContent value="connectors" className="flex-1 mt-0 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-6 space-y-6">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">Integrações</h2>
-                <p className="text-sm text-muted-foreground mt-1">Conecte integrações para expandir as capacidades do agente.</p>
-              </div>
-
-              <IntegrationsGrid
-                providers={LLM_PROVIDERS}
-                title="Modelos de IA (LLMs)"
-                subtitle="Conecte suas chaves de API para utilizar modelos de IA."
-                onConnectedProvidersChange={setSavedIntegrations}
-                onProviderConfigsChange={setIntegrationConfigs}
-                initialProviderConfigs={integrationConfigs}
-                storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
-              />
-
-              <IntegrationsGrid
-                providers={SERVICE_PROVIDERS}
-                title="Serviços & Ferramentas"
-                subtitle="Conecte serviços externos para expandir as capacidades."
-                onConnectedProvidersChange={(providers) => setSavedIntegrations(prev => Array.from(new Set([...prev.filter((provider) => !SERVICE_PROVIDERS.some((service) => service.provider === provider)), ...providers]))) }
-                onProviderConfigsChange={(configs) => setIntegrationConfigs(prev => ({ ...prev, ...configs }))}
-                initialProviderConfigs={integrationConfigs}
-                storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
-              />
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2"><Blocks className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold">MCPs</h3></div>
-                <p className="text-xs text-muted-foreground">Conecte servidores MCP para estender o contexto.</p>
-                <Button variant="outline" size="sm" className="text-xs gap-1.5"><Plus className="w-3 h-3" /> Adicionar MCP</Button>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2"><Webhook className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold">Webhooks</h3></div>
-                <Button variant="outline" size="sm" className="text-xs gap-1.5"><Plus className="w-3 h-3" /> Adicionar Webhook</Button>
-              </div>
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        {/* ── Aba Canais ── */}
-        <TabsContent value="channels" className="flex-1 mt-0 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-6 max-w-lg space-y-6">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">Canais</h2>
-                <p className="text-sm text-muted-foreground mt-1">Onde seu agente será publicado.</p>
-              </div>
-              {filteredChannels.map((ch) => {
-                const isSelected = connectedChannels.includes(ch.value);
-                return (
-                  <div key={ch.value} className={`flex items-center gap-4 rounded-xl border-2 p-4 transition-all ${isSelected ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
-                    {ch.logo ? (
-                      <img src={ch.logo} alt={ch.label} className="w-8 h-8 rounded-lg object-contain shrink-0"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                    ) : <Globe className="w-8 h-8 text-primary shrink-0" />}
-                    <span className="text-sm font-semibold text-foreground flex-1">{ch.label}</span>
-                    <Button size="sm" variant={isSelected ? "default" : "outline"} onClick={() => toggleChannel(ch.value)} className="text-xs h-8 gap-1.5">
-                      {isSelected ? <><Check className="w-3 h-3" /> Conectado</> : "Conectar"}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="danger" className="flex-1 mt-0 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-6 max-w-lg space-y-4">
-              <h2 className="text-lg font-bold text-destructive">Danger Zone</h2>
-              <p className="text-sm text-muted-foreground">Ações irreversíveis para este agente.</p>
-              <div className="rounded-xl border-2 border-destructive/30 p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">Excluir agente</h3>
-                <p className="text-xs text-muted-foreground">Esta ação não pode ser desfeita.</p>
-                <Button variant="destructive" size="sm" onClick={() => onDeleteAgent?.()}>Excluir Agente</Button>
-              </div>
-            </div>
-          </ScrollArea>
-        </TabsContent>
-      </Tabs>
+        </ScrollArea>
+      </div>
 
       {/* Dialog de integração agora é gerido pelo IntegrationsGrid */}
     </div>
