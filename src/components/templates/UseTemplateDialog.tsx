@@ -94,7 +94,8 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
           .select()
           .single();
         if (error) throw error;
-        await supabase.rpc("increment_template_usage", { p_template_id: template.id }).then(() => {}, () => {});
+        // best-effort usage tracking (column-level update)
+        await supabase.from("platform_templates").update({ usage_count: ((template as any).usage_count ?? 0) + 1 } as any).eq("id", template.id).then(() => {}, () => {});
         toast.success(`App "${name.trim()}" criado para ${client.client_name}`);
         onOpenChange(false);
         navigate("/app-builder", { state: { appId: (data as any).id, channel: payload.channel } });
