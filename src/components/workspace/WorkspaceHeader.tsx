@@ -33,11 +33,12 @@ function useSectionLabel() {
   return SECTION_LABELS.find((s) => s.match.test(pathname))?.label ?? null;
 }
 
-export function WorkspaceHeader() {
+export function WorkspaceHeader({ mobileMenuButton }: { mobileMenuButton?: React.ReactNode }) {
   const section = useSectionLabel();
 
   return (
-    <div className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-border/40 bg-background/70 px-4 backdrop-blur-lg">
+    <div className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-border/40 bg-background/70 px-3 backdrop-blur-lg">
+      {mobileMenuButton}
       <WorkspaceSwitcher />
       {section && (
         <>
