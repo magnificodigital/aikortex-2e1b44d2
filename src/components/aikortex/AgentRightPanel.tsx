@@ -241,8 +241,13 @@ interface PresetData {
 interface Props {
   agent: { name: string; avatar: string };
   agentType: AgentType;
+  agentId?: string;
   agentModel: string;
   onModelChange: (model: string) => void;
+  /** Hierarchical section key, e.g. "config.agent". */
+  section?: string;
+  onSectionChange?: (section: string) => void;
+  /** @deprecated use section/onSectionChange */
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   onApiKeysChanged?: () => void | Promise<void>;
@@ -251,6 +256,12 @@ interface Props {
   onPublish?: () => void | Promise<void>;
   canPublish?: boolean;
   isSaving?: boolean;
+  hasAnthropicKey?: boolean;
+  hasElevenLabsKey?: boolean;
+  /** Opens VoiceCallPanel overlay */
+  onTestCall?: () => void;
+  /** Switches the left chat to test mode (used by Operação → Testar) */
+  onSwitchToTestChat?: () => void;
   storagePrefix?: string;
   savedConfig?: Record<string, any> | null;
   // FIX: presetData — preenche campos quando IA estrutura o agente no wizard
@@ -272,13 +283,17 @@ const PROVIDER_MAP: Record<string, string> = {
 };
 
 const AgentRightPanel = ({
-  agent, agentType, agentModel, onModelChange,
+  agent, agentType, agentId, agentModel, onModelChange,
+  section, onSectionChange,
   activeTab, onTabChange, onApiKeysChanged,
   onConfigChange, onSaveAgent, onPublish, canPublish,
-  isSaving, storagePrefix, savedConfig, presetData,
+  isSaving, hasAnthropicKey, hasElevenLabsKey,
+  onTestCall, onSwitchToTestChat,
+  storagePrefix, savedConfig, presetData,
   fieldUpdates, onDeleteAgent,
 }: Props) => {
-  const [rightTab, setRightTab] = useState(activeTab || "agent");
+  const activeSection = section || activeTab || DEFAULT_SECTION;
+  const goSection = (s: string) => { onSectionChange?.(s); onTabChange?.(s); };
 
   const relevantToolKeys    = TOOLS_BY_AGENT_TYPE[agentType]    || TOOLS_BY_AGENT_TYPE["Custom"];
   const relevantChannelKeys = CHANNELS_BY_AGENT_TYPE[agentType] || CHANNELS_BY_AGENT_TYPE["Custom"];
