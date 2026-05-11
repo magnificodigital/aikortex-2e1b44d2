@@ -120,17 +120,22 @@ const Apps = () => {
               <div>
                 <h1 className="text-2xl font-bold text-foreground mb-1">Apps</h1>
                 <p className="text-sm text-muted-foreground">
-                  Contexto: <span className="font-medium text-foreground">{contextLabel}</span>
+                  {contextLabel} <span className="text-muted-foreground/60">›</span> Apps
                 </p>
               </div>
-              <Button
-                onClick={() => navigate("/app-builder", { state: {} })}
-                className="gap-2 rounded-full"
-              >
-                <Plus className="w-4 h-4" /> Novo App
-              </Button>
+              {!isAgencyMode && (
+                <Button
+                  onClick={() => navigate("/app-builder", { state: {} })}
+                  className="gap-2 rounded-full"
+                >
+                  <Plus className="w-4 h-4" /> Novo App
+                </Button>
+              )}
             </div>
 
+            {isAgencyMode ? (
+              <AgencyModeClientPicker resource="apps" />
+            ) : (
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList>
                 <TabsTrigger value="mine">Meus Apps ({savedApps.length})</TabsTrigger>
