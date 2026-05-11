@@ -98,14 +98,19 @@ const Aikortex = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground mb-1">Agentes IA</h1>
             <p className="text-sm text-muted-foreground">
-              Contexto: <span className="font-medium text-foreground">{contextLabel}</span>
+              {contextLabel} <span className="text-muted-foreground/60">›</span> Agentes
             </p>
           </div>
-          <Button onClick={handleNewCustom} className="gap-2 rounded-full">
-            <Plus className="w-4 h-4" /> Novo Agente
-          </Button>
+          {!isAgencyMode && (
+            <Button onClick={handleNewCustom} className="gap-2 rounded-full">
+              <Plus className="w-4 h-4" /> Novo Agente
+            </Button>
+          )}
         </div>
 
+        {isAgencyMode ? (
+          <AgencyModeClientPicker resource="agentes" />
+        ) : (
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="mine">Meus Agentes ({agents.length})</TabsTrigger>
