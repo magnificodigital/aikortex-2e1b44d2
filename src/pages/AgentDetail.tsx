@@ -207,6 +207,15 @@ const AgentDetail = () => {
     try { return (localStorage.getItem(`${storagePrefix}-chatMode`) as "setup" | "test") || "setup"; } catch { return "setup"; }
   });
 
+  // Split-screen layout state
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rightSection = searchParams.get("section") || "config.agent";
+  const setRightSection = useCallback((s: string) => {
+    setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("section", s); return next; }, { replace: true });
+  }, [setSearchParams]);
+  const [showVoiceCall, setShowVoiceCall] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"chat" | "config">("chat");
+  // Back-compat: kept so callers like onGoToIntegrations still work
   const [showConfig, setShowConfig] = useState(false);
 
   useEffect(() => {
