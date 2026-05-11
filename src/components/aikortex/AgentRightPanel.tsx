@@ -13,7 +13,10 @@ import {
   Upload, X, FileText, Image, File, Plus, Globe, Link2, Check, Camera,
   Webhook, KeyRound, Blocks, Eye, EyeOff, ExternalLink, Trash2, Settings, Rocket,
   Youtube, Rss, Map, CloudUpload, Type, ChevronDown, ChevronUp, BookOpen,
+  Brain, Wrench, Database, Workflow, GitBranch, FlaskConical, ScanSearch, FileCode2,
+  ShieldAlert, Sliders, Phone, Sparkles, Share2, Plug, Bot, Lightbulb, Users, Clock, Construction,
 } from "lucide-react";
+import AgentMemoryTab from "./AgentMemoryTab";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -91,14 +94,70 @@ const CHANNELS = [
   { value: "website",   label: "WebSite",   logo: "" },
 ];
 
-const SETTINGS_NAV = [
-  { section: "AGENTE", items: [
-    { key: "general",      icon: User,      label: "Identidade" },
-    { key: "instructions", icon: Settings2, label: "Instruções" },
-    { key: "files_nav",    icon: FileText,  label: "Conhecimento" },
-    { key: "voice_nav",    icon: Mic,       label: "Voz" },
+/* ── Hierarchical sidenav for the right panel (Aikortex Master v7.4 §13.5) ── */
+type NavItem = {
+  key: string;             // unique section id, e.g. "config.agent"
+  label: string;
+  icon: any;
+  comingSoon?: boolean;
+  sprint?: string;         // sprint target shown on placeholder
+  masterRef?: string;      // master section ref shown on placeholder
+};
+type NavGroup = { group: string; items: NavItem[] };
+
+const RIGHT_NAV: NavGroup[] = [
+  { group: "Configuração", items: [
+    { key: "config.agent",       label: "Agente",   icon: Bot },
+    { key: "config.voice",       label: "Voz",      icon: Mic },
+    { key: "config.channels",    label: "Canais",   icon: Share2 },
+  ]},
+  { group: "Capacidades", items: [
+    { key: "caps.planning",      label: "Planning",        icon: Lightbulb,   comingSoon: true, sprint: "2.3", masterRef: "13.5.4" },
+    { key: "caps.reasoning",     label: "Reasoning",       icon: Brain,       comingSoon: true, sprint: "2.3", masterRef: "13.5.5" },
+    { key: "caps.memory",        label: "Memória",         icon: Brain },
+    { key: "caps.runtime",       label: "Code Runtime",    icon: FileCode2,   comingSoon: true, sprint: "2.3", masterRef: "13.5.7" },
+    { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "2.3", masterRef: "13.5.8" },
+  ]},
+  { group: "Recursos", items: [
+    { key: "resources.tools",        label: "Tools",          icon: Wrench,    comingSoon: true, sprint: "2.4", masterRef: "13.5.9" },
+    { key: "resources.kb",           label: "Knowledge Base", icon: BookOpen },
+    { key: "resources.tables",       label: "Tabelas",        icon: Database,  comingSoon: true, sprint: "2.6", masterRef: "13.5.11" },
+    { key: "resources.integrations", label: "Integrações",    icon: Plug },
+  ]},
+  { group: "Comportamento", items: [
+    { key: "behavior.cadences",  label: "Cadências", icon: Clock,  comingSoon: true, sprint: "2.7",  masterRef: "13.5.13" },
+    { key: "behavior.squad",     label: "Squad",     icon: Users,  comingSoon: true, sprint: "Fase E", masterRef: "13.5.14" },
+  ]},
+  { group: "Operação", items: [
+    { key: "ops.versions",   label: "Versões",  icon: GitBranch,    comingSoon: true, sprint: "2.2",            masterRef: "13.5.15" },
+    { key: "ops.test",       label: "Testar",   icon: FlaskConical },
+    { key: "ops.inspector",  label: "Inspetor", icon: ScanSearch,   comingSoon: true, sprint: "Movimento 1.5",  masterRef: "13.5.16" },
+    { key: "ops.spec",       label: "Spec",     icon: FileText,     comingSoon: true, sprint: "Fase E",         masterRef: "13.5.17" },
+  ]},
+  { group: "Sistema", items: [
+    { key: "system.advanced",  label: "Avançado",   icon: Sliders },
+    { key: "system.danger",    label: "Danger Zone", icon: ShieldAlert },
   ]},
 ];
+
+const DEFAULT_SECTION = "config.agent";
+
+const PlaceholderSection = ({ title, masterRef, sprint, icon: Icon }: { title: string; masterRef?: string; sprint?: string; icon: any }) => (
+  <div className="flex flex-col items-center justify-center p-12 text-center">
+    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+      <Icon className="w-7 h-7 text-muted-foreground" />
+    </div>
+    <h3 className="font-semibold text-foreground">{title}</h3>
+    <p className="mt-2 text-sm text-muted-foreground max-w-xs">
+      Em construção — disponível no Sprint {sprint}.
+    </p>
+    {masterRef && (
+      <p className="mt-1 text-xs text-muted-foreground">
+        Referência: Aikortex Master v7.4 §{masterRef}
+      </p>
+    )}
+  </div>
+);
 
 const DEFAULT_INSTRUCTIONS_TEMPLATE = `# 1. Identidade
 Você é um assistente de IA profissional. Apresente-se sempre pelo nome configurado e mantenha consistência de personalidade em todas as interações.
@@ -182,8 +241,13 @@ interface PresetData {
 interface Props {
   agent: { name: string; avatar: string };
   agentType: AgentType;
+  agentId?: string;
   agentModel: string;
   onModelChange: (model: string) => void;
+  /** Hierarchical section key, e.g. "config.agent". */
+  section?: string;
+  onSectionChange?: (section: string) => void;
+  /** @deprecated use section/onSectionChange */
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   onApiKeysChanged?: () => void | Promise<void>;
@@ -192,6 +256,12 @@ interface Props {
   onPublish?: () => void | Promise<void>;
   canPublish?: boolean;
   isSaving?: boolean;
+  hasAnthropicKey?: boolean;
+  hasElevenLabsKey?: boolean;
+  /** Opens VoiceCallPanel overlay */
+  onTestCall?: () => void;
+  /** Switches the left chat to test mode (used by Operação → Testar) */
+  onSwitchToTestChat?: () => void;
   storagePrefix?: string;
   savedConfig?: Record<string, any> | null;
   // FIX: presetData — preenche campos quando IA estrutura o agente no wizard
@@ -213,13 +283,17 @@ const PROVIDER_MAP: Record<string, string> = {
 };
 
 const AgentRightPanel = ({
-  agent, agentType, agentModel, onModelChange,
+  agent, agentType, agentId, agentModel, onModelChange,
+  section, onSectionChange,
   activeTab, onTabChange, onApiKeysChanged,
   onConfigChange, onSaveAgent, onPublish, canPublish,
-  isSaving, storagePrefix, savedConfig, presetData,
+  isSaving, hasAnthropicKey, hasElevenLabsKey,
+  onTestCall, onSwitchToTestChat,
+  storagePrefix, savedConfig, presetData,
   fieldUpdates, onDeleteAgent,
 }: Props) => {
-  const [rightTab, setRightTab] = useState(activeTab || "agent");
+  const activeSection = section || activeTab || DEFAULT_SECTION;
+  const goSection = (s: string) => { onSectionChange?.(s); onTabChange?.(s); };
 
   const relevantToolKeys    = TOOLS_BY_AGENT_TYPE[agentType]    || TOOLS_BY_AGENT_TYPE["Custom"];
   const relevantChannelKeys = CHANNELS_BY_AGENT_TYPE[agentType] || CHANNELS_BY_AGENT_TYPE["Custom"];
@@ -275,8 +349,7 @@ const AgentRightPanel = ({
     loadKeys();
   }, []);
 
-  const handleTabChange = (tab: string) => { setRightTab(tab); onTabChange?.(tab); };
-  useEffect(() => { if (activeTab && activeTab !== rightTab) setRightTab(activeTab); }, [activeTab]);
+  const handleTabChange = (tab: string) => { goSection(tab); };
 
   const handleConnectIntegration = (integration: typeof INTEGRATIONS[0]) => {
     const existing = connectorKeys[integration.label];
@@ -486,40 +559,156 @@ const AgentRightPanel = ({
     model: agentModel, agentType,
   });
 
+  const activeNavItem = useMemo(
+    () => RIGHT_NAV.flatMap(g => g.items).find(i => i.key === activeSection),
+    [activeSection]
+  );
+
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+    <div className="flex h-full min-w-0 overflow-hidden">
 
-      <Tabs value={rightTab} onValueChange={handleTabChange} className="flex flex-col flex-1 min-h-0">
+      {/* ── Hierarchical sidenav (6 grupos · 16 itens) ── */}
+      <aside className="w-56 border-r border-border bg-card/30 shrink-0 overflow-y-auto py-3 hidden md:block">
+        {RIGHT_NAV.map((g) => (
+          <div key={g.group} className="px-3 mb-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-2">{g.group}</p>
+            <div className="space-y-0.5">
+              {g.items.map((item) => {
+                const Icon = item.icon;
+                const active = activeSection === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => { if (!item.comingSoon) goSection(item.key); }}
+                    disabled={item.comingSoon}
+                    className={`w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
+                      active
+                        ? "bg-primary/10 text-primary font-medium"
+                        : item.comingSoon
+                          ? "text-muted-foreground/60 cursor-not-allowed"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </span>
+                    {item.comingSoon && (
+                      <span className="text-[9px] uppercase tracking-wider bg-muted text-muted-foreground/80 rounded px-1 py-0.5">em breve</span>
+                    )}
+                  </button>
+                );
+              })}
+          </div>
+          </div>
+        ))}
+      </aside>
 
-        {/* ── Aba Agente ── */}
-        <TabsContent value="agent" className="flex-1 mt-0 min-h-0 overflow-hidden">
-          <div className="flex h-full">
-            <div className="w-48 border-r border-border p-4 space-y-4 shrink-0">
-              {SETTINGS_NAV.map((section) => (
-                <div key={section.section}>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{section.section}</p>
-                  <div className="space-y-0.5">
-                    {section.items.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <button key={item.key} onClick={() => setSettingsNav(item.key)}
-                          className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                            settingsNav === item.key ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                          }`}>
-                          <Icon className="w-4 h-4" />{item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+      {/* ── Content area ── */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+
+        {/* Mobile section selector */}
+        <div className="md:hidden border-b border-border px-3 py-2">
+          <Select value={activeSection} onValueChange={(v) => goSection(v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {RIGHT_NAV.flatMap(g => g.items).filter(i => !i.comingSoon).map(i => (
+                <SelectItem key={i.key} value={i.key} className="text-xs">{i.label}</SelectItem>
               ))}
-            </div>
+            </SelectContent>
+          </Select>
+        </div>
 
-            <ScrollArea className="flex-1">
-              <div className="p-6 max-w-lg space-y-8">
+        <ScrollArea className="flex-1">
+          <div className="p-6 max-w-2xl space-y-8">
+
+            {/* ── Coming-soon placeholders ── */}
+            {activeNavItem?.comingSoon && (
+              <PlaceholderSection
+                title={activeNavItem.label}
+                masterRef={activeNavItem.masterRef}
+                sprint={activeNavItem.sprint}
+                icon={activeNavItem.icon}
+              />
+            )}
+
+            {/* ── Capacidades → Memória ── */}
+            {activeSection === "caps.memory" && (
+              hasAnthropicKey
+                ? <AgentMemoryTab agentId={agentId} />
+                : (
+                  <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4 flex items-start gap-3">
+                    <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium text-foreground">Memória persistente requer Anthropic</p>
+                      <p className="text-xs text-muted-foreground">Configure sua chave Anthropic em Recursos → Integrações para ativar a memória do agente.</p>
+                      <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>Ir para Integrações</Button>
+                    </div>
+                  </div>
+                )
+            )}
+
+            {/* ── Operação → Testar (atalho para chat em modo teste) ── */}
+            {activeSection === "ops.test" && (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Testar agente</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Converse com o agente como se fosse um usuário real para validar comportamento, tom e respostas.</p>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-semibold">Modo de teste (chat)</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Abre o painel de chat à esquerda no modo teste, usando o modelo configurado.</p>
+                  <Button size="sm" onClick={() => onSwitchToTestChat?.()} className="gap-1.5"><FlaskConical className="w-3.5 h-3.5" /> Abrir chat em modo teste</Button>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-semibold">Testar ligação por voz</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Inicia uma ligação de teste com o agente usando ElevenLabs.</p>
+                  <Button size="sm" variant="outline" onClick={() => onTestCall?.()} className="gap-1.5" disabled={!hasElevenLabsKey}>
+                    <Phone className="w-3.5 h-3.5" /> {hasElevenLabsKey ? "Iniciar ligação de teste" : "Configure ElevenLabs primeiro"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Sistema → Avançado ── */}
+            {activeSection === "system.advanced" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Avançado</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Parâmetros do modelo e ajustes técnicos.</p>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground">Temperatura ({apiConfig.temperature.toFixed(2)})</h3>
+                  <p className="text-[11px] text-muted-foreground">Controla a criatividade. Valores baixos = mais determinístico.</p>
+                  <input type="range" min={0} max={2} step={0.05} value={apiConfig.temperature}
+                    onChange={(e) => setApiConfig({ ...apiConfig, temperature: parseFloat(e.target.value) })}
+                    className="w-full" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground">Max tokens</h3>
+                  <Input type="number" min={256} max={32000} value={apiConfig.maxTokens}
+                    onChange={(e) => setApiConfig({ ...apiConfig, maxTokens: parseInt(e.target.value) || 2048 })}
+                    className="text-sm" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground">Top-p ({apiConfig.topP.toFixed(2)})</h3>
+                  <input type="range" min={0} max={1} step={0.05} value={apiConfig.topP}
+                    onChange={(e) => setApiConfig({ ...apiConfig, topP: parseFloat(e.target.value) })}
+                    className="w-full" />
+                </div>
+              </div>
+            )}
+
 
                 {/* Identidade */}
-                {settingsNav === "general" && (
+                {activeSection === "config.agent" && (
                   <>
                     <div>
                       <h2 className="text-lg font-bold text-foreground">Identidade</h2>
@@ -575,7 +764,7 @@ const AgentRightPanel = ({
                 )}
 
                 {/* Instruções (objetivo + comportamento unificados, estruturados em tópicos) */}
-                {settingsNav === "instructions" && (
+                {activeSection === "config.agent" && (
                   <div className="space-y-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -612,7 +801,7 @@ const AgentRightPanel = ({
                 )}
 
                 {/* Arquivos */}
-                {settingsNav === "files_nav" && (
+                {activeSection === "resources.kb" && (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -829,7 +1018,7 @@ const AgentRightPanel = ({
                 )}
 
                 {/* Voz */}
-                {settingsNav === "voice_nav" && (
+                {activeSection === "config.voice" && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-lg font-bold text-foreground">Configurações de Voz</h2>
@@ -842,7 +1031,7 @@ const AgentRightPanel = ({
                         <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-xs font-medium text-foreground">Configure sua chave da ElevenLabs em Integrações para ativar ligações com voz.</p>
-                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => handleTabChange("connectors")}>
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>
                             Ir para Integrações
                           </Button>
                         </div>
@@ -855,7 +1044,7 @@ const AgentRightPanel = ({
                         <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-xs font-medium text-foreground">Configure sua chave da Telnyx em Integrações para ativar ligações por telefone.</p>
-                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => handleTabChange("connectors")}>
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>
                             Ir para Integrações
                           </Button>
                         </div>
@@ -866,94 +1055,87 @@ const AgentRightPanel = ({
                   </div>
                 )}
 
+            {/* ── Recursos → Integrações ── */}
+            {activeSection === "resources.integrations" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Integrações</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Conecte integrações para expandir as capacidades do agente.</p>
+                </div>
+
+                <IntegrationsGrid
+                  providers={LLM_PROVIDERS}
+                  title="Modelos de IA (LLMs)"
+                  subtitle="Conecte suas chaves de API para utilizar modelos de IA."
+                  onConnectedProvidersChange={setSavedIntegrations}
+                  onProviderConfigsChange={setIntegrationConfigs}
+                  initialProviderConfigs={integrationConfigs}
+                  storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
+                />
+
+                <IntegrationsGrid
+                  providers={SERVICE_PROVIDERS}
+                  title="Serviços & Ferramentas"
+                  subtitle="Conecte serviços externos para expandir as capacidades."
+                  onConnectedProvidersChange={(providers) => setSavedIntegrations(prev => Array.from(new Set([...prev.filter((provider) => !SERVICE_PROVIDERS.some((service) => service.provider === provider)), ...providers])))}
+                  onProviderConfigsChange={(configs) => setIntegrationConfigs(prev => ({ ...prev, ...configs }))}
+                  initialProviderConfigs={integrationConfigs}
+                  storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
+                />
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2"><Blocks className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold">MCPs</h3></div>
+                  <p className="text-xs text-muted-foreground">Conecte servidores MCP para estender o contexto.</p>
+                  <Button variant="outline" size="sm" className="text-xs gap-1.5"><Plus className="w-3 h-3" /> Adicionar MCP</Button>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2"><Webhook className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold">Webhooks</h3></div>
+                  <Button variant="outline" size="sm" className="text-xs gap-1.5"><Plus className="w-3 h-3" /> Adicionar Webhook</Button>
+                </div>
               </div>
-            </ScrollArea>
+            )}
+
+            {/* ── Configuração → Canais ── */}
+            {activeSection === "config.channels" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Canais</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Onde seu agente será publicado.</p>
+                </div>
+                {filteredChannels.map((ch) => {
+                  const isSelected = connectedChannels.includes(ch.value);
+                  return (
+                    <div key={ch.value} className={`flex items-center gap-4 rounded-xl border-2 p-4 transition-all ${isSelected ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
+                      {ch.logo ? (
+                        <img src={ch.logo} alt={ch.label} className="w-8 h-8 rounded-lg object-contain shrink-0"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      ) : <Globe className="w-8 h-8 text-primary shrink-0" />}
+                      <span className="text-sm font-semibold text-foreground flex-1">{ch.label}</span>
+                      <Button size="sm" variant={isSelected ? "default" : "outline"} onClick={() => toggleChannel(ch.value)} className="text-xs h-8 gap-1.5">
+                        {isSelected ? <><Check className="w-3 h-3" /> Conectado</> : "Conectar"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── Sistema → Danger Zone ── */}
+            {activeSection === "system.danger" && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-bold text-destructive">Danger Zone</h2>
+                <p className="text-sm text-muted-foreground">Ações irreversíveis para este agente.</p>
+                <div className="rounded-xl border-2 border-destructive/30 p-4 space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground">Excluir agente</h3>
+                  <p className="text-xs text-muted-foreground">Esta ação não pode ser desfeita.</p>
+                  <Button variant="destructive" size="sm" onClick={() => onDeleteAgent?.()}>Excluir Agente</Button>
+                </div>
+              </div>
+            )}
+
           </div>
-        </TabsContent>
-
-        {/* ── Aba Integrações ── */}
-        <TabsContent value="connectors" className="flex-1 mt-0 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-6 space-y-6">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">Integrações</h2>
-                <p className="text-sm text-muted-foreground mt-1">Conecte integrações para expandir as capacidades do agente.</p>
-              </div>
-
-              <IntegrationsGrid
-                providers={LLM_PROVIDERS}
-                title="Modelos de IA (LLMs)"
-                subtitle="Conecte suas chaves de API para utilizar modelos de IA."
-                onConnectedProvidersChange={setSavedIntegrations}
-                onProviderConfigsChange={setIntegrationConfigs}
-                initialProviderConfigs={integrationConfigs}
-                storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
-              />
-
-              <IntegrationsGrid
-                providers={SERVICE_PROVIDERS}
-                title="Serviços & Ferramentas"
-                subtitle="Conecte serviços externos para expandir as capacidades."
-                onConnectedProvidersChange={(providers) => setSavedIntegrations(prev => Array.from(new Set([...prev.filter((provider) => !SERVICE_PROVIDERS.some((service) => service.provider === provider)), ...providers]))) }
-                onProviderConfigsChange={(configs) => setIntegrationConfigs(prev => ({ ...prev, ...configs }))}
-                initialProviderConfigs={integrationConfigs}
-                storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
-              />
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2"><Blocks className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold">MCPs</h3></div>
-                <p className="text-xs text-muted-foreground">Conecte servidores MCP para estender o contexto.</p>
-                <Button variant="outline" size="sm" className="text-xs gap-1.5"><Plus className="w-3 h-3" /> Adicionar MCP</Button>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2"><Webhook className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold">Webhooks</h3></div>
-                <Button variant="outline" size="sm" className="text-xs gap-1.5"><Plus className="w-3 h-3" /> Adicionar Webhook</Button>
-              </div>
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        {/* ── Aba Canais ── */}
-        <TabsContent value="channels" className="flex-1 mt-0 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-6 max-w-lg space-y-6">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">Canais</h2>
-                <p className="text-sm text-muted-foreground mt-1">Onde seu agente será publicado.</p>
-              </div>
-              {filteredChannels.map((ch) => {
-                const isSelected = connectedChannels.includes(ch.value);
-                return (
-                  <div key={ch.value} className={`flex items-center gap-4 rounded-xl border-2 p-4 transition-all ${isSelected ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
-                    {ch.logo ? (
-                      <img src={ch.logo} alt={ch.label} className="w-8 h-8 rounded-lg object-contain shrink-0"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                    ) : <Globe className="w-8 h-8 text-primary shrink-0" />}
-                    <span className="text-sm font-semibold text-foreground flex-1">{ch.label}</span>
-                    <Button size="sm" variant={isSelected ? "default" : "outline"} onClick={() => toggleChannel(ch.value)} className="text-xs h-8 gap-1.5">
-                      {isSelected ? <><Check className="w-3 h-3" /> Conectado</> : "Conectar"}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="danger" className="flex-1 mt-0 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-6 max-w-lg space-y-4">
-              <h2 className="text-lg font-bold text-destructive">Danger Zone</h2>
-              <p className="text-sm text-muted-foreground">Ações irreversíveis para este agente.</p>
-              <div className="rounded-xl border-2 border-destructive/30 p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">Excluir agente</h3>
-                <p className="text-xs text-muted-foreground">Esta ação não pode ser desfeita.</p>
-                <Button variant="destructive" size="sm" onClick={() => onDeleteAgent?.()}>Excluir Agente</Button>
-              </div>
-            </div>
-          </ScrollArea>
-        </TabsContent>
-      </Tabs>
+        </ScrollArea>
+      </div>
 
       {/* Dialog de integração agora é gerido pelo IntegrationsGrid */}
     </div>
