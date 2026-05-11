@@ -216,6 +216,7 @@ const Aikortex = () => {
             />
           </TabsContent>
         </Tabs>
+        )}
 
         <UseTemplateDialog
           template={useTemplate}
