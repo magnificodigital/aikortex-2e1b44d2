@@ -89,7 +89,7 @@ const Aikortex = () => {
 
   const getAvatarSrc = (agent: UserAgent) => agent.avatar_url || avatar1;
 
-  const contextLabel = isAgencyMode ? "Todos os clientes" : activeClientName;
+  const contextLabel = isAgencyMode ? "Meu Workspace" : activeClientName;
 
   return (
     <DashboardLayout>

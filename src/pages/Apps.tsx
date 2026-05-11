@@ -109,7 +109,7 @@ const Apps = () => {
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 
-  const contextLabel = isAgencyMode ? "Todos os clientes" : activeClientName;
+  const contextLabel = isAgencyMode ? "Meu Workspace" : activeClientName;
 
   return (
     <ModuleGate moduleKey="aikortex.apps">

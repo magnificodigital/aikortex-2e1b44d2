@@ -123,7 +123,7 @@ export function WorkspaceSwitcher() {
                   <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 text-primary">
                     <Building2 className="h-3.5 w-3.5" />
                   </div>
-                  <span className="flex-1">Todos os clientes</span>
+                  <span className="flex-1">Meu Workspace</span>
                   <Check
                     className={cn("h-4 w-4", isAgencyMode ? "opacity-100" : "opacity-0")}
                   />
