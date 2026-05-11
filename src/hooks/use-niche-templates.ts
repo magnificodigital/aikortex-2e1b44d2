@@ -53,7 +53,7 @@ export function useGalleryTemplates(filters: {
       let query = supabase
         .from("platform_templates")
         .select(
-          "id, name, description, category, niche_id, niche_categories!inner(slug, name_pt, icon)"
+          "id, name, description, category, niche_id, agent_config, app_config, niche_categories!inner(slug, name_pt, icon)"
         )
         .eq("is_active", true)
         .not("niche_id", "is", null);

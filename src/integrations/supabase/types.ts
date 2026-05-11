@@ -1290,6 +1290,8 @@ export type Database = {
       }
       platform_templates: {
         Row: {
+          agent_config: Json
+          app_config: Json
           category: string
           created_at: string | null
           demo_url: string | null
@@ -1306,8 +1308,11 @@ export type Database = {
           sort_order: number | null
           thumbnail_url: string | null
           updated_at: string | null
+          usage_count: number
         }
         Insert: {
+          agent_config?: Json
+          app_config?: Json
           category: string
           created_at?: string | null
           demo_url?: string | null
@@ -1324,8 +1329,11 @@ export type Database = {
           sort_order?: number | null
           thumbnail_url?: string | null
           updated_at?: string | null
+          usage_count?: number
         }
         Update: {
+          agent_config?: Json
+          app_config?: Json
           category?: string
           created_at?: string | null
           demo_url?: string | null
@@ -1342,6 +1350,7 @@ export type Database = {
           sort_order?: number | null
           thumbnail_url?: string | null
           updated_at?: string | null
+          usage_count?: number
         }
         Relationships: [
           {
@@ -1524,6 +1533,7 @@ export type Database = {
           anthropic_agent_version: number | null
           avatar_url: string | null
           call_webhook_url: string | null
+          client_id: string | null
           config: Json
           created_at: string
           description: string | null
@@ -1549,6 +1559,7 @@ export type Database = {
           anthropic_agent_version?: number | null
           avatar_url?: string | null
           call_webhook_url?: string | null
+          client_id?: string | null
           config?: Json
           created_at?: string
           description?: string | null
@@ -1574,6 +1585,7 @@ export type Database = {
           anthropic_agent_version?: number | null
           avatar_url?: string | null
           call_webhook_url?: string | null
+          client_id?: string | null
           config?: Json
           created_at?: string
           description?: string | null
@@ -1593,7 +1605,15 @@ export type Database = {
           voice_similarity?: number | null
           voice_stability?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_agents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "agency_clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_api_keys: {
         Row: {
@@ -1625,6 +1645,7 @@ export type Database = {
       user_apps: {
         Row: {
           channel: string
+          client_id: string | null
           config: Json
           created_at: string
           description: string | null
@@ -1638,6 +1659,7 @@ export type Database = {
         }
         Insert: {
           channel?: string
+          client_id?: string | null
           config?: Json
           created_at?: string
           description?: string | null
@@ -1651,6 +1673,7 @@ export type Database = {
         }
         Update: {
           channel?: string
+          client_id?: string | null
           config?: Json
           created_at?: string
           description?: string | null
@@ -1662,7 +1685,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_apps_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "agency_clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_flows: {
         Row: {

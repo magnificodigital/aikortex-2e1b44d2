@@ -6,6 +6,7 @@ import { buildDefaultFlowForAgent } from "@/lib/agent-flow-builder";
 export interface UserAgent {
   id: string;
   user_id: string;
+  client_id: string | null;
   agent_type: string;
   name: string;
   description: string;
@@ -18,27 +19,32 @@ export interface UserAgent {
   updated_at: string;
 }
 
-export function useUserAgents() {
+export function useUserAgents(opts?: { clientId?: string | null; isAllClients?: boolean }) {
   const [agents, setAgents] = useState<UserAgent[]>([]);
   const [loading, setLoading] = useState(true);
+  const clientId = opts?.clientId ?? null;
+  const isAllClients = opts?.isAllClients ?? true;
 
   const fetchAgents = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const { data, error } = await supabase
+    let q = supabase
       .from("user_agents")
       .select("*")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
 
+    if (!isAllClients && clientId) q = q.eq("client_id", clientId);
+
+    const { data, error } = await q;
     if (error) {
       console.error("Error fetching agents:", error);
     } else {
       setAgents((data as any[]) || []);
     }
     setLoading(false);
-  }, []);
+  }, [clientId, isAllClients]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
 
@@ -58,7 +64,7 @@ export function useUserAgents() {
       if (typeof vc.maxCallDuration === "number") voiceColumns.max_call_duration_seconds = vc.maxCallDuration * 60;
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       user_id: user.id,
       name: agent.name,
       agent_type: agent.agent_type || "Custom",
@@ -70,11 +76,12 @@ export function useUserAgents() {
       config: agent.config || {},
       ...voiceColumns,
     };
+    if (agent.client_id !== undefined) payload.client_id = agent.client_id;
 
     if (agent.id) {
       const { data, error } = await supabase
         .from("user_agents")
-        .update(payload)
+        .update(payload as any)
         .eq("id", agent.id)
         .eq("user_id", user.id)
         .select()
@@ -86,7 +93,7 @@ export function useUserAgents() {
     } else {
       const { data, error } = await supabase
         .from("user_agents")
-        .insert(payload)
+        .insert(payload as any)
         .select()
         .single();
 

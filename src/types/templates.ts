@@ -6,6 +6,8 @@ export type TemplateRow = {
   description: string | null;
   category: TemplateCategory;
   niche_id: string | null;
+  agent_config?: Record<string, any> | null;
+  app_config?: Record<string, any> | null;
   niche_categories: {
     slug: string;
     name_pt: string;
