@@ -54,19 +54,15 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
               </button>
             </div>
           )}
-          <WorkspaceHeader
-            mobileMenuButton={
-              isMobile ? (
-                <button
-                  onClick={() => setMobileSidebarOpen(true)}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-                  aria-label="Abrir menu"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-              ) : null
-            }
-          />
+          {isMobile && (
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className="fixed top-3 left-3 z-30 p-2 rounded-lg bg-background/80 backdrop-blur border border-border text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shadow-sm"
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
 
           <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
             <div className="absolute -top-[10%] -right-[5%] h-[500px] w-[500px] animate-[mesh-move_20s_ease-in-out_infinite] rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/0.4),transparent_70%)] opacity-[0.08] blur-[120px] dark:opacity-[0.15]" />
