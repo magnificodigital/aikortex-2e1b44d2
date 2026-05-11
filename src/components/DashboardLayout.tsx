@@ -3,7 +3,7 @@ import { Menu, X, AlertTriangle, Key, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
 import { RightPanelProvider } from "./RightPanel";
-import WorkspaceHeader from "./workspace/WorkspaceHeader";
+
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMonthlyUsage } from "@/hooks/use-monthly-usage";
