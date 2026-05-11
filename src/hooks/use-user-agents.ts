@@ -81,7 +81,7 @@ export function useUserAgents(opts?: { clientId?: string | null; isAllClients?: 
     if (agent.id) {
       const { data, error } = await supabase
         .from("user_agents")
-        .update(payload)
+        .update(payload as any)
         .eq("id", agent.id)
         .eq("user_id", user.id)
         .select()
