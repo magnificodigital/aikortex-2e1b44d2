@@ -280,7 +280,7 @@ const AgentDetail = () => {
 
   const { saveAgent } = useUserAgents();
   const [isSaving, setIsSaving] = useState(false);
-  const [rightPanelTab, setRightPanelTab] = useState("agent");
+  
   const [showOutboundCall, setShowOutboundCall] = useState(false);
   const [showBrowserCall, setShowBrowserCall] = useState(false);
 
