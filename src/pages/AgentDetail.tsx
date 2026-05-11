@@ -801,106 +801,164 @@ Regras obrigatórias:
     );
   }
 
+  const resolvedAgentIdForPanel = agentId && !TEMPLATE_MAP[agentId] && agentId !== "new" && !agentId.startsWith("new-") ? agentId : undefined;
+
+  const handleOpenVoiceCall = useCallback(() => setShowVoiceCall(true), []);
+  const handleCloseVoiceCall = useCallback(() => setShowVoiceCall(false), []);
+  const handleSwitchToTestChat = useCallback(() => {
+    setChatMode("test");
+    setMobileTab("chat");
+  }, []);
+
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
 
-      {/* ── LEFT: Studio (Chat Panel) ── */}
-      <AgentChatPanel
-        onBack={() => navigate("/aikortex/agents")}
-        agentType={loadedAgent.agentType}
-        agentName={loadedAgent.name}
-        agentAvatar={loadedAgent.avatar}
-        wizardStep={wizardStep}
-        setWizardStep={setWizardStep}
-        structuredConfig={structuredConfig}
-        setStructuredConfig={setStructuredConfig}
-        chatMode={chatMode}
-        setChatMode={setChatMode as any}
-        hasApiKey={hasApiKey}
-        hasAnyLLMKey={hasAnyLLMKey}
-        keysLoading={keysLoading}
-        currentProvider={currentProvider}
-        agentModel={agentModel}
-        availableModels={availableModels as any}
-        setupModel={setupModel}
-        setSetupModel={setSetupModel}
-        setAgentModel={setAgentModel}
-        gatewayModels={GATEWAY_MODELS}
-        onGoToIntegrations={() => { setShowConfig(true); setRightPanelTab("connectors"); }}
-        onConfigStructured={handleConfigStructured}
-        onAgentCreated={handleBuildAgent}
-        messages={activeChat.messages}
-        sendMessage={activeChat.sendMessage}
-        isStreaming={activeChat.isStreaming}
-        onStructureRequest={handleStructureRequest}
-        onBuildAgent={handleBuildAgent}
-        isStructuring={isStructuring}
-        isBuilding={isBuilding}
-        onOpenConfig={() => setShowConfig(true)}
-        initialPrompt={isNewCustomFromHome ? navState?.initialPrompt : undefined}
-        initialWizardMessages={wizardMessages}
-        onWizardMessagesChange={setWizardMessages}
-        hasMemoryActive={hasMemoryActive}
-        wizardMessages={wizardChat.messages}
-        wizardSendMessage={wizardChat.sendMessage}
-        wizardIsStreaming={wizardChat.isStreaming}
-      />
+      {/* ── Mobile-only tabs (Chat ↔ Configuração) ── */}
+      <div className="lg:hidden flex items-stretch border-b border-border shrink-0">
+        <button
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
+            mobileTab === "chat" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
+          }`}
+          onClick={() => setMobileTab("chat")}
+        >
+          <MessageSquare className="w-3.5 h-3.5" /> Chat
+        </button>
+        <button
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
+            mobileTab === "config" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
+          }`}
+          onClick={() => setMobileTab("config")}
+        >
+          <Settings2 className="w-3.5 h-3.5" /> Configuração
+        </button>
+      </div>
 
-      {/* ── RIGHT: Voice Agent ── */}
-      <div className="flex-1 flex flex-col overflow-hidden border-l border-border">
-        {/* Top bar */}
-        <div className="h-12 border-b border-border flex items-center justify-between px-4 shrink-0 bg-card/30">
-          <div className="flex items-center gap-2">
-            <Phone className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold">Agente de Ligação</span>
-          </div>
-          <div className="flex items-center gap-1">
-            {[
-              { label: "Agente",       icon: Bot,               tab: "agent" },
-              ...(keys["anthropic"]?.configured ? [{ label: "Memória", icon: Brain, tab: "memory" }] : []),
-              { label: "Integrações",  icon: Plug,              tab: "connectors" },
-              { label: "Canais",       icon: Share2,            tab: "channels" },
-              
-            ].map((btn) => (
-              <Button
-                key={btn.tab}
-                variant={showConfig && rightPanelTab === btn.tab ? "secondary" : "ghost"}
-                size="sm"
-                className="h-7 text-xs gap-1 px-2"
-                onClick={() => { setRightPanelTab(btn.tab); setShowConfig(true); }}
-              >
-                <btn.icon className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">{btn.label}</span>
-              </Button>
-            ))}
-            <div className="w-px h-5 bg-border mx-1" />
-            {isSaving && (
-              <span className="text-[10px] text-muted-foreground animate-pulse">Salvando...</span>
-            )}
-            <Button
-              size="sm"
-              className="h-7 text-xs gap-1 px-2"
-              disabled={!agentConfig?.name?.trim() || isSaving}
-              onClick={() => toast.info("Publicação em breve!")}
-            >
-              <Rocket className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Publicar</span>
-            </Button>
-          </div>
-        </div>
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* Voice call interface */}
-        <ConversationProvider>
-          <VoiceCallPanel
+        {/* ── LEFT: Chat Panel (40% on desktop) ── */}
+        <div className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex lg:w-[40%] flex-col min-w-0 overflow-hidden`}>
+          <AgentChatPanel
+            onBack={() => navigate("/aikortex/agents")}
+            agentType={loadedAgent.agentType}
             agentName={loadedAgent.name}
             agentAvatar={loadedAgent.avatar}
-            agentPrompt={agentConfig?.instructions || agentConfig?.objective || ""}
-            agentGreeting={agentConfig?.greetingMessage || ""}
-            hasElevenLabsKey={!!keys["elevenlabs"]?.configured}
-            onGoToIntegrations={() => { setShowConfig(true); setRightPanelTab("connectors"); }}
+            wizardStep={wizardStep}
+            setWizardStep={setWizardStep}
+            structuredConfig={structuredConfig}
+            setStructuredConfig={setStructuredConfig}
+            chatMode={chatMode}
+            setChatMode={setChatMode as any}
+            hasApiKey={hasApiKey}
+            hasAnyLLMKey={hasAnyLLMKey}
+            keysLoading={keysLoading}
+            currentProvider={currentProvider}
+            agentModel={agentModel}
+            availableModels={availableModels as any}
+            setupModel={setupModel}
+            setSetupModel={setSetupModel}
+            setAgentModel={setAgentModel}
+            gatewayModels={GATEWAY_MODELS}
+            onGoToIntegrations={() => { setRightSection("resources.integrations"); setMobileTab("config"); }}
+            onConfigStructured={handleConfigStructured}
+            onAgentCreated={handleBuildAgent}
+            messages={activeChat.messages}
+            sendMessage={activeChat.sendMessage}
+            isStreaming={activeChat.isStreaming}
+            onStructureRequest={handleStructureRequest}
+            onBuildAgent={handleBuildAgent}
+            isStructuring={isStructuring}
+            isBuilding={isBuilding}
+            onOpenConfig={() => setMobileTab("config")}
+            initialPrompt={isNewCustomFromHome ? navState?.initialPrompt : undefined}
+            initialWizardMessages={wizardMessages}
+            onWizardMessagesChange={setWizardMessages}
+            hasMemoryActive={hasMemoryActive}
+            wizardMessages={wizardChat.messages}
+            wizardSendMessage={wizardChat.sendMessage}
+            wizardIsStreaming={wizardChat.isStreaming}
           />
-        </ConversationProvider>
+        </div>
+
+        {/* ── RIGHT: Persistent configuration (60% on desktop) ── */}
+        <div className={`${mobileTab === "config" ? "flex" : "hidden"} lg:flex lg:flex-1 flex-col min-w-0 overflow-hidden border-l border-border`}>
+          {/* Top bar — model selector · Testar ligação · Publicar */}
+          <div className="h-12 border-b border-border flex items-center justify-between px-4 shrink-0 bg-card/30">
+            <div className="flex items-center gap-2 min-w-0">
+              <Bot className="w-4 h-4 text-primary shrink-0" />
+              <span className="text-sm font-semibold truncate">{loadedAgent.name}</span>
+              {isSaving && (
+                <span className="text-[10px] text-muted-foreground animate-pulse ml-2">Salvando...</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1 px-2"
+                disabled={!keys["elevenlabs"]?.configured}
+                onClick={handleOpenVoiceCall}
+                title={keys["elevenlabs"]?.configured ? "Testar ligação" : "Configure ElevenLabs em Integrações"}
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Testar ligação</span>
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-xs gap-1 px-2"
+                disabled={!agentConfig?.name?.trim() || isSaving}
+                onClick={() => toast.info("Publicação em breve!")}
+              >
+                <Rocket className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Publicar</span>
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <AgentRightPanel
+              agent={loadedAgent}
+              agentType={loadedAgent.agentType}
+              agentId={resolvedAgentIdForPanel}
+              agentModel={agentModel}
+              onModelChange={setAgentModel}
+              section={rightSection}
+              onSectionChange={setRightSection}
+              onApiKeysChanged={refetchKeys}
+              onConfigChange={handleConfigChange}
+              onSaveAgent={handleSaveAgent}
+              isSaving={isSaving}
+              hasAnthropicKey={!!keys["anthropic"]?.configured}
+              hasElevenLabsKey={!!keys["elevenlabs"]?.configured}
+              onTestCall={handleOpenVoiceCall}
+              onSwitchToTestChat={handleSwitchToTestChat}
+              storagePrefix={storagePrefix}
+              presetData={presetData}
+              savedConfig={loadedAgent.savedConfig}
+            />
+          </div>
+        </div>
       </div>
+
+      {/* ── Voice Call Overlay (on-demand) ── */}
+      <Sheet open={showVoiceCall} onOpenChange={setShowVoiceCall}>
+        <SheetContent side="right" className="w-full sm:w-[480px] sm:max-w-[480px] p-0 border-l border-border flex flex-col">
+          <SheetHeader className="px-4 py-3 border-b border-border">
+            <SheetTitle className="flex items-center gap-2 text-sm">
+              <Phone className="w-4 h-4 text-primary" /> Testar ligação com {loadedAgent.name}
+            </SheetTitle>
+          </SheetHeader>
+          <ConversationProvider>
+            <VoiceCallPanel
+              agentName={loadedAgent.name}
+              agentAvatar={loadedAgent.avatar}
+              agentPrompt={agentConfig?.instructions || agentConfig?.objective || ""}
+              agentGreeting={agentConfig?.greetingMessage || ""}
+              hasElevenLabsKey={!!keys["elevenlabs"]?.configured}
+              onGoToIntegrations={() => { handleCloseVoiceCall(); setRightSection("resources.integrations"); setMobileTab("config"); }}
+            />
+          </ConversationProvider>
+        </SheetContent>
+      </Sheet>
 
       {/* Outbound Call Dialog */}
       <OutboundCallDialog
@@ -922,34 +980,6 @@ Regras obrigatórias:
         agentGreeting={agentConfig?.greetingMessage || ""}
         voiceId={agentConfig?.voiceConfig?.voiceId}
       />
-
-      {/* ── Config Panel (Sheet overlay like AppBuilder) ── */}
-      <Sheet open={showConfig} onOpenChange={setShowConfig}>
-        <SheetContent side="right" className="w-full sm:w-[50vw] sm:max-w-[50vw] p-0 border-l border-border">
-          <SheetHeader className="sr-only">
-            <SheetTitle>Configurações do Agente</SheetTitle>
-          </SheetHeader>
-          {rightPanelTab === "memory" && keys["anthropic"]?.configured ? (
-            <AgentMemoryTab agentId={agentId && !TEMPLATE_MAP[agentId] ? agentId : undefined} />
-          ) : (
-            <AgentRightPanel
-              agent={loadedAgent}
-              agentType={loadedAgent.agentType}
-              agentModel={agentModel}
-              onModelChange={setAgentModel}
-              activeTab={rightPanelTab}
-              onTabChange={setRightPanelTab}
-              onApiKeysChanged={refetchKeys}
-              onConfigChange={handleConfigChange}
-              onSaveAgent={handleSaveAgent}
-              isSaving={isSaving}
-              storagePrefix={storagePrefix}
-              presetData={presetData}
-              savedConfig={loadedAgent.savedConfig}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 };
