@@ -40,6 +40,7 @@ const Workspace = lazy(() => import("./pages/Workspace"));
 
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Templates = lazy(() => import("./pages/Templates"));
+const Galeria = lazy(() => import("./pages/Galeria"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Meetings = lazy(() => import("./pages/Meetings"));
 const MeetingRoom = lazy(() => import("./pages/MeetingRoom"));
@@ -83,6 +84,7 @@ const App = () => (
               <Route path="/apps" element={<AgencyRoute><Apps /></AgencyRoute>} />
               <Route path="/app-builder" element={<AgencyRoute><AppBuilder /></AgencyRoute>} />
               <Route path="/templates" element={<AgencyRoute><Templates /></AgencyRoute>} />
+              <Route path="/aikortex/galeria" element={<AgencyRoute><Galeria /></AgencyRoute>} />
               <Route path="/dashboard" element={<AgencyRoute><Index /></AgencyRoute>} />
               <Route path="/cadastro-cliente/:token" element={<ClientRegistration />} />
               <Route path="/clients" element={<AgencyRoute><Clients /></AgencyRoute>} />

@@ -36,12 +36,9 @@ import {
   MoreVertical,
   ChevronLeft,
   ChevronRight,
-  Stethoscope,
-  ShieldCheck,
-  Building2,
-  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getNicheIcon } from "@/lib/niches";
 
 interface NicheRow {
   id: string;
@@ -71,14 +68,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   app: "bg-emerald-500/10 text-emerald-600",
 };
 
-// Static map of icons used by seeded niches. Fallback = Tag.
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  Stethoscope,
-  ShieldCheck,
-  Building2,
-};
-
-const getNicheIcon = (iconName: string) => ICON_MAP[iconName] ?? Tag;
 
 type CategoryFilter = "all" | "agent" | "automation" | "app";
 
