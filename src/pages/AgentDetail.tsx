@@ -19,7 +19,7 @@ import { AGENT_PRESETS } from "@/types/agent-presets";
 import { getOperationalInstructions } from "@/lib/agent-operational-prompts";
 import { DEFAULT_FREE_SETUP_MODEL, GATEWAY_MODELS, normalizeFreeSetupModel } from "@/lib/free-setup-models";
 import { LLM_MODELS as ALL_LLM_MODELS, getGroupedModels, getProviderForModel, DEFAULT_FREE_MODEL } from "@/lib/llm-models";
-import AgentMemoryTab from "@/components/aikortex/AgentMemoryTab";
+
 import { useAgentMemory } from "@/hooks/use-agent-memory";
 
 import avatar1 from "@/assets/avatars/avatar-1.png";
