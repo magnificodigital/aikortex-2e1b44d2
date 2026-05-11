@@ -25,6 +25,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import type { TemplateRow } from "@/types/templates";
 import avatar1 from "@/assets/avatars/avatar-1.png";
+import AgencyModeClientPicker from "@/components/workspace/AgencyModeClientPicker";
 
 const PROVIDER_BADGE: Record<string, { label: string; className: string }> = {
   anthropic: { label: "Claude", className: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
@@ -37,9 +38,9 @@ const PROVIDER_BADGE: Record<string, { label: string; className: string }> = {
 const Aikortex = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeClientId, isAllClients, activeClientName } = useActiveClient();
+  const { activeClientId, isAgencyMode, activeClientName } = useActiveClient();
 
-  const { agents, loading, deleteAgent } = useUserAgents({ clientId: activeClientId, isAllClients });
+  const { agents, loading, deleteAgent } = useUserAgents({ clientId: activeClientId, isAgencyMode });
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const tab = searchParams.get("tab") === "templates" ? "templates" : "mine";
@@ -89,7 +90,7 @@ const Aikortex = () => {
 
   const getAvatarSrc = (agent: UserAgent) => agent.avatar_url || avatar1;
 
-  const contextLabel = isAllClients ? "Todos os clientes" : activeClientName;
+  const contextLabel = isAgencyMode ? "Meu Workspace" : activeClientName;
 
   return (
     <DashboardLayout>
@@ -98,14 +99,19 @@ const Aikortex = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground mb-1">Agentes IA</h1>
             <p className="text-sm text-muted-foreground">
-              Contexto: <span className="font-medium text-foreground">{contextLabel}</span>
+              {contextLabel} <span className="text-muted-foreground/60">›</span> Agentes
             </p>
           </div>
-          <Button onClick={handleNewCustom} className="gap-2 rounded-full">
-            <Plus className="w-4 h-4" /> Novo Agente
-          </Button>
+          {!isAgencyMode && (
+            <Button onClick={handleNewCustom} className="gap-2 rounded-full">
+              <Plus className="w-4 h-4" /> Novo Agente
+            </Button>
+          )}
         </div>
 
+        {isAgencyMode ? (
+          <AgencyModeClientPicker resource="agentes" />
+        ) : (
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="mine">Meus Agentes ({agents.length})</TabsTrigger>
@@ -120,7 +126,7 @@ const Aikortex = () => {
                     <LayoutGrid className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <p className="text-sm font-medium">
-                    {isAllClients
+                    {isAgencyMode
                       ? "Sua agência ainda não tem agentes criados."
                       : `${activeClientName} ainda não tem agentes. Crie a partir de um template.`}
                   </p>
@@ -211,6 +217,7 @@ const Aikortex = () => {
             />
           </TabsContent>
         </Tabs>
+        )}
 
         <UseTemplateDialog
           template={useTemplate}

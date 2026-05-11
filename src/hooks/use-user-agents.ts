@@ -19,11 +19,11 @@ export interface UserAgent {
   updated_at: string;
 }
 
-export function useUserAgents(opts?: { clientId?: string | null; isAllClients?: boolean }) {
+export function useUserAgents(opts?: { clientId?: string | null; isAgencyMode?: boolean }) {
   const [agents, setAgents] = useState<UserAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const clientId = opts?.clientId ?? null;
-  const isAllClients = opts?.isAllClients ?? true;
+  const isAgencyMode = opts?.isAgencyMode ?? true;
 
   const fetchAgents = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -35,7 +35,7 @@ export function useUserAgents(opts?: { clientId?: string | null; isAllClients?: 
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
 
-    if (!isAllClients && clientId) q = q.eq("client_id", clientId);
+    if (!isAgencyMode && clientId) q = q.eq("client_id", clientId);
 
     const { data, error } = await q;
     if (error) {
@@ -44,7 +44,7 @@ export function useUserAgents(opts?: { clientId?: string | null; isAllClients?: 
       setAgents((data as any[]) || []);
     }
     setLoading(false);
-  }, [clientId, isAllClients]);
+  }, [clientId, isAgencyMode]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
 

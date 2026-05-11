@@ -18,6 +18,7 @@ import NicheFilterBar from "@/components/templates/NicheFilterBar";
 import TemplateGrid from "@/components/templates/TemplateGrid";
 import TemplateSearchInput from "@/components/templates/TemplateSearchInput";
 import UseTemplateDialog from "@/components/templates/UseTemplateDialog";
+import AgencyModeClientPicker from "@/components/workspace/AgencyModeClientPicker";
 import type { TemplateRow } from "@/types/templates";
 import { toast } from "sonner";
 import {
@@ -43,7 +44,7 @@ const Apps = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeClientId, isAllClients, activeClientName } = useActiveClient();
+  const { activeClientId, isAgencyMode, activeClientName } = useActiveClient();
 
   const [savedApps, setSavedApps] = useState<SavedApp[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,12 +79,12 @@ const Apps = () => {
       .select("id, name, description, channel, status, client_id, created_at, updated_at")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
-    if (!isAllClients && activeClientId) q = q.eq("client_id", activeClientId);
+    if (!isAgencyMode && activeClientId) q = q.eq("client_id", activeClientId);
     q.then(({ data, error }) => {
       if (!error && data) setSavedApps(data as any);
       setLoading(false);
     });
-  }, [user, activeClientId, isAllClients]);
+  }, [user, activeClientId, isAgencyMode]);
 
   const { data: templates = [], isLoading: templatesLoading } = useGalleryTemplates({
     nicheSlug,
@@ -109,7 +110,7 @@ const Apps = () => {
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 
-  const contextLabel = isAllClients ? "Todos os clientes" : activeClientName;
+  const contextLabel = isAgencyMode ? "Meu Workspace" : activeClientName;
 
   return (
     <ModuleGate moduleKey="aikortex.apps">
@@ -120,17 +121,22 @@ const Apps = () => {
               <div>
                 <h1 className="text-2xl font-bold text-foreground mb-1">Apps</h1>
                 <p className="text-sm text-muted-foreground">
-                  Contexto: <span className="font-medium text-foreground">{contextLabel}</span>
+                  {contextLabel} <span className="text-muted-foreground/60">›</span> Apps
                 </p>
               </div>
-              <Button
-                onClick={() => navigate("/app-builder", { state: {} })}
-                className="gap-2 rounded-full"
-              >
-                <Plus className="w-4 h-4" /> Novo App
-              </Button>
+              {!isAgencyMode && (
+                <Button
+                  onClick={() => navigate("/app-builder", { state: {} })}
+                  className="gap-2 rounded-full"
+                >
+                  <Plus className="w-4 h-4" /> Novo App
+                </Button>
+              )}
             </div>
 
+            {isAgencyMode ? (
+              <AgencyModeClientPicker resource="apps" />
+            ) : (
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList>
                 <TabsTrigger value="mine">Meus Apps ({savedApps.length})</TabsTrigger>
@@ -145,7 +151,7 @@ const Apps = () => {
                         <LayoutGrid className="w-5 h-5 text-muted-foreground" />
                       </div>
                       <p className="text-sm font-medium">
-                        {isAllClients
+                        {isAgencyMode
                           ? "Sua agência ainda não tem apps criados."
                           : `${activeClientName} ainda não tem apps. Crie a partir de um template.`}
                       </p>
@@ -221,6 +227,7 @@ const Apps = () => {
                 />
               </TabsContent>
             </Tabs>
+            )}
 
             <UseTemplateDialog
               template={useTemplate}
