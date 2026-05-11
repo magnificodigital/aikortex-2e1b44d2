@@ -93,7 +93,7 @@ export function useUserAgents(opts?: { clientId?: string | null; isAllClients?: 
     } else {
       const { data, error } = await supabase
         .from("user_agents")
-        .insert(payload)
+        .insert(payload as any)
         .select()
         .single();
 
