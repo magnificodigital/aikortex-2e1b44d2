@@ -1031,7 +1031,7 @@ const AgentRightPanel = ({
                         <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-xs font-medium text-foreground">Configure sua chave da ElevenLabs em Integrações para ativar ligações com voz.</p>
-                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => handleTabChange("connectors")}>
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>
                             Ir para Integrações
                           </Button>
                         </div>
@@ -1044,7 +1044,7 @@ const AgentRightPanel = ({
                         <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-xs font-medium text-foreground">Configure sua chave da Telnyx em Integrações para ativar ligações por telefone.</p>
-                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => handleTabChange("connectors")}>
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>
                             Ir para Integrações
                           </Button>
                         </div>
