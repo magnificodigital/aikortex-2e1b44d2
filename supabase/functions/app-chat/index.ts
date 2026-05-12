@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getAuthContext as getSharedAuthContext, handleCors, corsHeaders } from "../_shared/auth.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
+import { runAgentLLM } from "../_shared/agent-tools.ts";
 
 // ── OpenRouter platform helpers ───────────────────────────────────────────
 // Order matters: most reliable instruct (non-reasoning) models first.
