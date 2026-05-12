@@ -87,12 +87,13 @@ serve(async (req) => {
     }
 
     // Fetch agent
-    const { data: agent, error: agentErr } = await supabase
+    const { data: agentRaw, error: agentErr } = await supabase
       .from("user_agents")
       .select("*")
       .eq("id", agent_id)
       .eq("user_id", user.id)
       .single();
+    const agent = await overlayPublishedConfig(supabase, agentRaw);
 
     if (agentErr || !agent) {
       return new Response(
