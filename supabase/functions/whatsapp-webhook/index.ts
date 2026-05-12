@@ -221,17 +221,18 @@ function handleAgentReply(
       // Load agent config from user_agents table
       const { data: agent } = await supabase
         .from("user_agents")
-        .select("name, role, objective, instructions, tone_of_voice, company_name")
+        .select("name, role, objective, instructions, tone_of_voice, company_name, config")
         .eq("id", agentConfig.api_key)
         .maybeSingle();
 
       if (!agent) return;
 
-      const system = `Você é ${agent.name || "Assistente"}${agent.company_name ? ` da ${agent.company_name}` : ""}.
+      const baseSystem = `Você é ${agent.name || "Assistente"}${agent.company_name ? ` da ${agent.company_name}` : ""}.
 Objetivo: ${agent.objective || "Atender e qualificar leads via WhatsApp."}
 Tom: ${agent.tone_of_voice || "Profissional e Amigável"}
 Instruções: ${agent.instructions || ""}
 Responda sempre em português do Brasil. Seja natural e conversacional.`;
+      const system = applyCapabilityAddons(baseSystem, (agent.config as any)?.capabilities);
 
       const replyText = await callOpenRouterDirect(
         [{ role: "user", content: messageContent }],
