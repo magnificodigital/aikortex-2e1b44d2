@@ -244,6 +244,7 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
       const { result } = await executeToolCall(tc.function?.name || "", args, {
         supabase: opts.supabase,
         agencyId: opts.agencyId,
+        tier,
         yearMonth,
         supabaseUrl,
         serviceKey,
