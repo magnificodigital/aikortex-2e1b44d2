@@ -302,6 +302,47 @@ export type Database = {
           },
         ]
       }
+      agent_versions: {
+        Row: {
+          agent_id: string
+          config_snapshot: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string | null
+          notes: string | null
+          version_number: number
+        }
+        Insert: {
+          agent_id: string
+          config_snapshot: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          notes?: string | null
+          version_number: number
+        }
+        Update: {
+          agent_id?: string
+          config_snapshot?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          notes?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_versions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_events: {
         Row: {
           agency_amount: number | null
@@ -1537,11 +1578,13 @@ export type Database = {
           config: Json
           created_at: string
           description: string | null
+          draft_updated_at: string | null
           id: string
           max_call_duration_seconds: number | null
           model: string | null
           name: string
           provider: string
+          published_version_id: string | null
           status: string
           telnyx_phone_number: string | null
           updated_at: string
@@ -1563,11 +1606,13 @@ export type Database = {
           config?: Json
           created_at?: string
           description?: string | null
+          draft_updated_at?: string | null
           id?: string
           max_call_duration_seconds?: number | null
           model?: string | null
           name: string
           provider?: string
+          published_version_id?: string | null
           status?: string
           telnyx_phone_number?: string | null
           updated_at?: string
@@ -1589,11 +1634,13 @@ export type Database = {
           config?: Json
           created_at?: string
           description?: string | null
+          draft_updated_at?: string | null
           id?: string
           max_call_duration_seconds?: number | null
           model?: string | null
           name?: string
           provider?: string
+          published_version_id?: string | null
           status?: string
           telnyx_phone_number?: string | null
           updated_at?: string
@@ -1611,6 +1658,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "agency_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_agents_published_version_id_fkey"
+            columns: ["published_version_id"]
+            isOneToOne: false
+            referencedRelation: "agent_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -1857,6 +1911,10 @@ export type Database = {
         Returns: undefined
       }
       is_platform_user: { Args: { check_user_id: string }; Returns: boolean }
+      publish_agent_version: {
+        Args: { p_agent_id: string; p_label?: string; p_notes?: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
