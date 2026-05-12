@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { overlayPublishedConfig } from "../_shared/agent-runtime.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,12 +87,13 @@ serve(async (req) => {
     }
 
     // Fetch agent
-    const { data: agent, error: agentErr } = await supabase
+    const { data: agentRaw, error: agentErr } = await supabase
       .from("user_agents")
       .select("*")
       .eq("id", agent_id)
       .eq("user_id", user.id)
       .single();
+    const agent = await overlayPublishedConfig(supabase, agentRaw);
 
     if (agentErr || !agent) {
       return new Response(

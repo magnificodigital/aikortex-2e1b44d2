@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { overlayPublishedConfig } from "../_shared/agent-runtime.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -60,11 +61,12 @@ Deno.serve(async (req) => {
         } else {
           // Inbound call — find agent by phone number
           const toNumber = payload?.to;
-          const { data: agent } = await supabase
+          const { data: agentRaw } = await supabase
             .from("user_agents")
             .select("*")
             .eq("telnyx_phone_number", toNumber)
             .single();
+          const agent = await overlayPublishedConfig(supabase, agentRaw);
 
           if (!agent) {
             await telnyxAction(callControlId, "hangup", {}, null);
@@ -100,11 +102,12 @@ Deno.serve(async (req) => {
         const userId = clientState?.user_id;
         if (!agentId) break;
 
-        const { data: agent } = await supabase
+        const { data: agentRaw } = await supabase
           .from("user_agents")
           .select("*")
           .eq("id", agentId)
           .single();
+        const agent = await overlayPublishedConfig(supabase, agentRaw);
 
         if (!agent) break;
 
@@ -165,11 +168,12 @@ Deno.serve(async (req) => {
 
         if (!session) break;
 
-        const { data: agent } = await supabase
+        const { data: agentRaw } = await supabase
           .from("user_agents")
           .select("*")
           .eq("id", session.agent_id)
           .single();
+        const agent = await overlayPublishedConfig(supabase, agentRaw);
 
         if (!agent) break;
 
@@ -255,12 +259,12 @@ Deno.serve(async (req) => {
 
         // Post-call actions
         if (session?.agent_id) {
-          const { data: agent } = await supabase
+          const { data: agentRaw } = await supabase
             .from("user_agents")
-            .select("config, telnyx_phone_number")
+            .select("config, telnyx_phone_number, published_version_id")
             .eq("id", session.agent_id)
             .single();
-
+          const agent = await overlayPublishedConfig(supabase, agentRaw);
           const agentConfig = (agent?.config ?? {}) as Record<string, any>;
 
           // Send post-call SMS

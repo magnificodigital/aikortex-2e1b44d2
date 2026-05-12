@@ -17,6 +17,7 @@ import {
   ShieldAlert, Sliders, Phone, Sparkles, Share2, Plug, Bot, Lightbulb, Users, Clock, Construction,
 } from "lucide-react";
 import AgentMemoryTab from "./AgentMemoryTab";
+import AgentVersionsSection from "./AgentVersionsSection";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -129,7 +130,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "behavior.squad",     label: "Squad",     icon: Users,  comingSoon: true, sprint: "Fase E", masterRef: "13.5.14" },
   ]},
   { group: "Operação", items: [
-    { key: "ops.versions",   label: "Versões",  icon: GitBranch,    comingSoon: true, sprint: "2.2",            masterRef: "13.5.15" },
+    { key: "ops.versions",   label: "Versões",  icon: GitBranch },
     { key: "ops.test",       label: "Testar",   icon: FlaskConical },
     { key: "ops.inspector",  label: "Inspetor", icon: ScanSearch,   comingSoon: true, sprint: "Movimento 1.5",  masterRef: "13.5.16" },
     { key: "ops.spec",       label: "Spec",     icon: FileText,     comingSoon: true, sprint: "Fase E",         masterRef: "13.5.17" },
@@ -647,6 +648,11 @@ const AgentRightPanel = ({
                     </div>
                   </div>
                 )
+            )}
+
+            {/* ── Operação → Versões ── */}
+            {activeSection === "ops.versions" && (
+              <AgentVersionsSection agentId={agentId} />
             )}
 
             {/* ── Operação → Testar (atalho para chat em modo teste) ── */}

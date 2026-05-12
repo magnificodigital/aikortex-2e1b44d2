@@ -21,6 +21,12 @@ import { DEFAULT_FREE_SETUP_MODEL, GATEWAY_MODELS, normalizeFreeSetupModel } fro
 import { LLM_MODELS as ALL_LLM_MODELS, getGroupedModels, getProviderForModel, DEFAULT_FREE_MODEL } from "@/lib/llm-models";
 
 import { useAgentMemory } from "@/hooks/use-agent-memory";
+import { useAgentPublishState } from "@/hooks/use-agent-versions";
+import { computeAgentDiff } from "@/lib/agent-diff";
+import PublishAgentDialog from "@/components/aikortex/PublishAgentDialog";
+import { Badge } from "@/components/ui/badge";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 import avatar1 from "@/assets/avatars/avatar-1.png";
 import avatar2 from "@/assets/avatars/avatar-2.png";
@@ -134,6 +140,58 @@ const mergeAgentInstructions = (agentType: AgentType, ...parts: Array<string | u
 
   return merged.join("\n\n");
 };
+
+/* ── Inline helpers: publish badge + button ── */
+
+function PublishStateBadge({ state, hasDraftChanges }: { state: any; hasDraftChanges: boolean }) {
+  if (!state) return null;
+  if (!state.publishedVersionId) {
+    return <Badge variant="secondary" className="text-[10px] ml-1">Rascunho</Badge>;
+  }
+  if (!hasDraftChanges) {
+    return <Badge variant="outline" className="text-[10px] ml-1 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">Publicado · v{state.publishedNumber}</Badge>;
+  }
+  const since = state.draftUpdatedAt ? formatDistanceToNow(new Date(state.draftUpdatedAt), { addSuffix: true, locale: ptBR }) : "agora";
+  return <Badge className="text-[10px] ml-1 bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20">Rascunho · {since}</Badge>;
+}
+
+function PublishButton({
+  agentId, disabled, hasDraftChanges, publishedNumber, publishedSnapshot, currentConfig,
+}: {
+  agentId?: string; disabled: boolean; hasDraftChanges: boolean;
+  publishedNumber: number | null; publishedSnapshot: Record<string, any> | null; currentConfig: Record<string, any> | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const nothingToPublish = publishedNumber !== null && !hasDraftChanges;
+  const nextNumber = (publishedNumber ?? 0) + 1;
+  const label = publishedNumber === null ? "Publicar" : (nothingToPublish ? `Publicado · v${publishedNumber}` : "Publicar alterações");
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant={nothingToPublish ? "outline" : "default"}
+        className="h-7 text-xs gap-1 px-2"
+        disabled={disabled || nothingToPublish || !agentId}
+        onClick={() => setOpen(true)}
+        title={nothingToPublish ? "Sem alterações para publicar" : undefined}
+      >
+        <Rocket className="w-3.5 h-3.5" />
+        <span className="hidden lg:inline">{label}</span>
+      </Button>
+      {agentId && (
+        <PublishAgentDialog
+          open={open}
+          onOpenChange={setOpen}
+          agentId={agentId}
+          nextVersionNumber={nextNumber}
+          publishedSnapshot={publishedSnapshot}
+          currentConfig={currentConfig}
+        />
+      )}
+    </>
+  );
+}
 
 /* ── Component ── */
 
@@ -801,6 +859,13 @@ Regras obrigatórias:
 
   const resolvedAgentIdForPanel = agentId && !TEMPLATE_MAP[agentId] && agentId !== "new" && !agentId.startsWith("new-") ? agentId : undefined;
 
+  const { data: publishState } = useAgentPublishState(resolvedAgentIdForPanel);
+  const hasDraftChanges = useMemo(() => {
+    if (!publishState) return false;
+    if (!publishState.publishedVersionId) return true; // never published → all draft
+    return computeAgentDiff(publishState.publishedSnapshot, publishState.currentConfig).length > 0;
+  }, [publishState]);
+
   const handleOpenVoiceCall = useCallback(() => setShowVoiceCall(true), []);
   const handleCloseVoiceCall = useCallback(() => setShowVoiceCall(false), []);
   const handleSwitchToTestChat = useCallback(() => {
@@ -884,6 +949,7 @@ Regras obrigatórias:
             <div className="flex items-center gap-2 min-w-0">
               <Bot className="w-4 h-4 text-primary shrink-0" />
               <span className="text-sm font-semibold truncate">{loadedAgent.name}</span>
+              <PublishStateBadge state={publishState} hasDraftChanges={hasDraftChanges} />
               {isSaving && (
                 <span className="text-[10px] text-muted-foreground animate-pulse ml-2">Salvando...</span>
               )}
@@ -900,15 +966,14 @@ Regras obrigatórias:
                 <Phone className="w-3.5 h-3.5" />
                 <span className="hidden lg:inline">Testar ligação</span>
               </Button>
-              <Button
-                size="sm"
-                className="h-7 text-xs gap-1 px-2"
+              <PublishButton
+                agentId={resolvedAgentIdForPanel}
                 disabled={!agentConfig?.name?.trim() || isSaving}
-                onClick={() => toast.info("Publicação em breve!")}
-              >
-                <Rocket className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Publicar</span>
-              </Button>
+                hasDraftChanges={hasDraftChanges}
+                publishedNumber={publishState?.publishedNumber ?? null}
+                publishedSnapshot={publishState?.publishedSnapshot ?? null}
+                currentConfig={publishState?.currentConfig ?? null}
+              />
             </div>
           </div>
 
