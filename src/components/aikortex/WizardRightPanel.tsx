@@ -204,12 +204,12 @@ const WizardRightPanel = ({
     "HubSpot": "hubspot", "RD Station": "rdstation",
   };
   const [connectorDialog, setConnectorDialog] = useState<null | typeof INTEGRATIONS[0]>(null);
-  const [connectorKeys, setConnectorKeys] = useState<Record<string, { key: string; configured: boolean }>>({});
+  const [connectorKeys, setConnectorKeys] = useState<Record<string, boolean>>({});
   const [keyInput, setKeyInput] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
   const [selectedDialogModel, setSelectedDialogModel] = useState("");
-  const currentIntegrationConfigured = connectorDialog ? !!connectorKeys[connectorDialog.label]?.configured : false;
+  const currentIntegrationConfigured = connectorDialog ? !!connectorKeys[connectorDialog.label] : false;
   const shouldShowDialogModels = !!connectorDialog && !!LLM_PROVIDER_MODELS[connectorDialog.label] && (!MODEL_GATED_PROVIDERS.has(connectorDialog.label) || currentIntegrationConfigured);
 
   useEffect(() => {
@@ -219,10 +219,10 @@ const WizardRightPanel = ({
       if (!user) return;
       const { data } = await supabase.from("user_api_keys").select("provider, api_key").eq("user_id", user.id);
       if (data) {
-        const map: Record<string, { key: string; configured: boolean }> = {};
+        const map: Record<string, boolean> = {};
         data.forEach((row: any) => {
           const label = Object.entries(PROVIDER_MAP).find(([, v]) => v === row.provider)?.[0] || row.provider;
-          map[label] = { key: row.api_key, configured: true };
+          map[label] = true;
         });
         setConnectorKeys(map);
       }
@@ -231,8 +231,7 @@ const WizardRightPanel = ({
   }, []);
 
   const handleConnectIntegration = (integration: typeof INTEGRATIONS[0]) => {
-    const existing = connectorKeys[integration.label];
-    setKeyInput(existing?.configured ? existing.key : "");
+    setKeyInput("");
     setShowKey(false);
     const providerModels = LLM_PROVIDER_MODELS[integration.label];
     setSelectedDialogModel(providerModels?.models[0]?.value || "");
@@ -252,7 +251,7 @@ const WizardRightPanel = ({
         { onConflict: "user_id,provider" }
       );
       if (error) { toast.error("Erro ao salvar chave."); console.error(error); return; }
-      setConnectorKeys(prev => ({ ...prev, [connectorDialog.label]: { key: keyInput.trim(), configured: true } }));
+      setConnectorKeys(prev => ({ ...prev, [connectorDialog.label]: true }));
       await onApiKeysChanged?.();
       setConnectorDialog(null);
       setKeyInput("");

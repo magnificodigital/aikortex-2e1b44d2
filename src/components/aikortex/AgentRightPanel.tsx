@@ -333,12 +333,12 @@ const AgentRightPanel = ({
 
   // ── Connector keys ──
   const [connectorDialog,     setConnectorDialog]     = useState<null | typeof INTEGRATIONS[0]>(null);
-  const [connectorKeys,       setConnectorKeys]       = useState<Record<string, { key: string; configured: boolean }>>({});
+  const [connectorKeys,       setConnectorKeys]       = useState<Record<string, boolean>>({});
   const [keyInput,            setKeyInput]            = useState("");
   const [showKey,             setShowKey]             = useState(false);
   const [savingKey,           setSavingKey]           = useState(false);
   const [selectedDialogModel, setSelectedDialogModel] = useState("");
-  const currentIntegrationConfigured = connectorDialog ? !!connectorKeys[connectorDialog.label]?.configured : false;
+  const currentIntegrationConfigured = connectorDialog ? !!connectorKeys[connectorDialog.label] : false;
   const shouldShowDialogModels = !!connectorDialog && !!LLM_PROVIDER_MODELS[connectorDialog.label] && currentIntegrationConfigured;
 
   useEffect(() => {
@@ -348,10 +348,10 @@ const AgentRightPanel = ({
       if (!user) return;
       const { data } = await supabase.from("user_api_keys").select("provider, api_key").eq("user_id", user.id);
       if (data) {
-        const map: Record<string, { key: string; configured: boolean }> = {};
+        const map: Record<string, boolean> = {};
         data.forEach((row: any) => {
           const label = Object.entries(PROVIDER_MAP).find(([, v]) => v === row.provider)?.[0] || row.provider;
-          map[label] = { key: row.api_key, configured: true };
+          map[label] = true;
         });
         setConnectorKeys(map);
       }
@@ -363,7 +363,11 @@ const AgentRightPanel = ({
 
   const handleConnectIntegration = (integration: typeof INTEGRATIONS[0]) => {
     const existing = connectorKeys[integration.label];
-    setKeyInput(existing?.configured ? existing.key : "");
+    if (existing) {
+      setKeyInput("");
+    } else {
+      setKeyInput("");
+    }
     setShowKey(false);
     setSelectedDialogModel(LLM_PROVIDER_MODELS[integration.label]?.models[0]?.value || "");
     setConnectorDialog(integration);
@@ -380,7 +384,7 @@ const AgentRightPanel = ({
       const { error } = await supabase.from("user_api_keys")
         .upsert({ user_id: user.id, provider, api_key: keyInput.trim() }, { onConflict: "user_id,provider" });
       if (error) { toast.error("Erro ao salvar chave."); return; }
-      setConnectorKeys(prev => ({ ...prev, [connectorDialog.label]: { key: keyInput.trim(), configured: true } }));
+      setConnectorKeys(prev => ({ ...prev, [connectorDialog.label]: true }));
       await onApiKeysChanged?.();
       if (selectedDialogModel && LLM_PROVIDER_MODELS[connectorDialog.label]) onModelChange(selectedDialogModel);
       setConnectorDialog(null);
@@ -1207,7 +1211,7 @@ const AgentRightPanel = ({
                     </div>
 
                     {/* Warning: ElevenLabs not configured */}
-                    {!connectorKeys["ElevenLabs"]?.configured && (
+                    {!connectorKeys["ElevenLabs"] && (
                       <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
@@ -1220,7 +1224,7 @@ const AgentRightPanel = ({
                     )}
 
                     {/* Warning: Telnyx not configured */}
-                    {!connectorKeys["Telnyx"]?.configured && (
+                    {!connectorKeys["Telnyx"] && (
                       <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
