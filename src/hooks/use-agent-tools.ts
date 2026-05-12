@@ -24,7 +24,7 @@ export function useAgentTools(agentId: string | undefined) {
       .from("agent_tools" as any)
       .select("tool_key, enabled, config")
       .eq("agent_id", agentId);
-    setTools((data || []) as AgentToolRow[]);
+    setTools(((data as unknown) as AgentToolRow[]) || []);
     setLoading(false);
   }, [agentId]);
 
