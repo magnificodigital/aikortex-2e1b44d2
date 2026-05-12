@@ -229,7 +229,10 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (!session?.access_token) {
+        throw new Error("Sessão expirada. Faça login novamente.");
+      }
+      const accessToken = session.access_token;
 
       let resp: Response | null = null;
       const maxRetries = 2;

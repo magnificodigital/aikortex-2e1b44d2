@@ -12,6 +12,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -88,7 +89,10 @@ const SalesMentorPanel = ({ meetingTitle, liveTranscript }: Props) => {
 
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        if (!session?.access_token) {
+          throw new Error("Sessão expirada. Faça login novamente.");
+        }
+        const accessToken = session.access_token;
 
         const resp = await fetch(APP_CHAT_URL, {
           method: "POST",
@@ -252,7 +256,7 @@ const SalesMentorPanel = ({ meetingTitle, liveTranscript }: Props) => {
                         <span className="text-[10px] font-semibold text-violet-400">Sugestão</span>
                       </div>
                       <div className="prose prose-sm prose-invert max-w-none text-xs [&_p]:mb-1 [&_ul]:mb-1 [&_li]:mb-0.5">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{msg.content}</ReactMarkdown>
                       </div>
                     </div>
                   ) : (

@@ -8,10 +8,11 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import FlowCanvas from "./FlowCanvas";
 import type { SavedFlow } from "@/types/flow-builder";
 
-const DEERFLOW_URL = "https://aikortex-flow-production.up.railway.app/api/chat/completions";
+const DEERFLOW_URL = import.meta.env.VITE_DEERFLOW_URL || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deerflow-proxy`;
 
 const SYSTEM_PROMPT = `You are a flow builder assistant for Aikortex, a marketing automation platform. Your job is to help users create automation flows. Ask clarifying questions to understand their goal, then generate a flow as a JSON structure with nodes and edges compatible with React Flow. Each node should have: id, type (one of: trigger_chat, trigger_webhook, agent, extractor, decision, send_message, update_crm, api_webhook, condition, delay), position (x,y), and data (label, config, category, icon, description, color, nodeType matching the type). Edges have: id, source, target. Respond in Portuguese (Brazil). When you output a flow, wrap it in a \`\`\`json code block.`;
 
@@ -228,7 +229,7 @@ export default function FlowCreationSplit({ onBack, onSaveFlow, flows, onOpenFlo
                     )}>
                       {msg.role === "assistant" ? (
                         <div className="prose prose-xs prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                          <ReactMarkdown>{cleanContent(msg.content) || (msg.content ? "✅ Fluxo gerado! Confira no canvas ao lado." : "")}</ReactMarkdown>
+                          <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{cleanContent(msg.content) || (msg.content ? "✅ Fluxo gerado! Confira no canvas ao lado." : "")}</ReactMarkdown>
                         </div>
                       ) : msg.content}
                     </div>

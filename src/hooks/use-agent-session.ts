@@ -66,7 +66,10 @@ export function useAgentSession(options: UseAgentSessionOptions) {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (!session?.access_token) {
+        throw new Error("Sessão expirada. Faça login novamente.");
+      }
+      const accessToken = session.access_token;
 
       const apiMessages: Array<{ role: string; content: string }> = nextMessages.map((m) => ({
         role: m.role === "agent" ? "assistant" : m.role,

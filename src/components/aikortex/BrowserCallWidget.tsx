@@ -72,7 +72,11 @@ const BrowserCallWidget = ({
 
       try {
         const session = (await supabase.auth.getSession()).data.session;
-        const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        if (!session?.access_token) {
+          setTranscript(prev => [...prev, { role: "system", text: "Erro: sessão expirada." }]);
+          return;
+        }
+        const accessToken = session.access_token;
 
         const resp = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`,
@@ -141,7 +145,7 @@ const BrowserCallWidget = ({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session?.access_token || ""}`,
           },
           body: JSON.stringify({ text, voiceId: vid }),
         },

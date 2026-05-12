@@ -4,7 +4,10 @@ const TOKEN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/livekit-tok
 
 export async function getLiveKitToken(roomName: string, identity: string, name: string, isHost: boolean) {
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!session?.access_token) {
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
+  const token = session.access_token;
 
   const resp = await fetch(TOKEN_URL, {
     method: "POST",

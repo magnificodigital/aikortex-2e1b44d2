@@ -116,7 +116,6 @@ async function callWithFallback(
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  // ── Auth: require valid JWT (user) or service role key ──────────────────
   const authHeader = req.headers.get('Authorization') ?? ''
   const token = authHeader.replace('Bearer ', '').trim()
   if (!token) {
@@ -125,15 +124,13 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
-  // Allow internal service-role calls
-  if (token !== SERVICE_KEY) {
-    const { data: { user }, error } = await adminClient.auth.getUser(token)
-    if (error || !user) {
-      return new Response(JSON.stringify({ error: 'Token inválido' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
+
+  const { data: { user }, error } = await adminClient.auth.getUser(token)
+  if (error || !user) {
+    return new Response(JSON.stringify({ error: 'Token inválido' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   try {

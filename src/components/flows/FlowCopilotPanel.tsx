@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ArrowUp, Mic, RefreshCw, Sparkles, ArrowRight, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import { NODE_TEMPLATES } from "@/types/flow-builder";
 
 interface Message {
@@ -213,7 +214,7 @@ export default function FlowCopilotPanel({ onClose, onAddNode, onBuildFlow, init
                         [&_p]:mb-2 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:mb-0.5
                         [&_strong]:text-foreground
                         [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{msg.content}</ReactMarkdown>
                       </div>
                       {msg.isFlowGenerated && (
                         <button

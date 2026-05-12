@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import { toast } from "sonner";
 import { useAppBuilder, type ChatMessage, type StructuredAppConfig, type AppState } from "@/contexts/AppBuilderContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +18,10 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 async function getAuthToken() {
   const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!session?.access_token) {
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
+  return session.access_token;
 }
 
 interface ToolLog {
@@ -608,7 +612,7 @@ ${structuredConfig.constraints ? `Restrições: ${structuredConfig.constraints}`
                       [&_p]:mb-2 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:mb-0.5
                       [&_strong]:text-foreground
                       [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm">
-                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                      <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{m.content}</ReactMarkdown>
                     </div>
                   </div>
                 </div>

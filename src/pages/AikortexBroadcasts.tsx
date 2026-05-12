@@ -82,7 +82,11 @@ const AikortexBroadcasts = () => {
     try {
       const exampleContact = parsedContacts[0];
       const session = (await supabase.auth.getSession()).data.session;
-      const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (!session?.access_token) {
+        setPreviewMsg("Erro: sessão expirada.");
+        return;
+      }
+      const accessToken = session.access_token;
       const interpolated = template.replace(/\{\{(\w+)\}\}/g, (_, key) => String((exampleContact as Record<string, unknown>)[key] ?? ""));
 
       const resp = await fetch(
