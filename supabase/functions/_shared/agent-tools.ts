@@ -152,6 +152,7 @@ export interface RunWithToolsOptions {
   enabled: EnabledTool[];
   supabase: any;
   agencyId: string | null;
+  tier?: "starter" | "explorer" | "hack";
   maxTokens?: number;
   /** Hard cap on tool-loop iterations to avoid runaway calls. */
   maxIterations?: number;
