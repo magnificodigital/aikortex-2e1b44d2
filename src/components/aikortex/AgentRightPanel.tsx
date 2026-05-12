@@ -576,6 +576,7 @@ const AgentRightPanel = ({
     integrations: savedIntegrations,
     integrationConfigs,
     knowledgeFiles: knowledgeFiles.map(f => f.name), urls, apiConfig, voiceConfig,
+    capabilities,
     model: agentModel, agentType,
   });
 
