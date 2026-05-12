@@ -853,6 +853,13 @@ Regras obrigatórias:
     return computeAgentDiff(publishState.publishedSnapshot, publishState.currentConfig).length > 0;
   }, [publishState]);
 
+  const handleOpenVoiceCall = useCallback(() => setShowVoiceCall(true), []);
+  const handleCloseVoiceCall = useCallback(() => setShowVoiceCall(false), []);
+  const handleSwitchToTestChat = useCallback(() => {
+    setChatMode("test");
+    setMobileTab("chat");
+  }, []);
+
   /* ── Loading screen ── */
 
   if (agentLoading) {
@@ -865,13 +872,6 @@ Regras obrigatórias:
       </div>
     );
   }
-
-  const handleOpenVoiceCall = useCallback(() => setShowVoiceCall(true), []);
-  const handleCloseVoiceCall = useCallback(() => setShowVoiceCall(false), []);
-  const handleSwitchToTestChat = useCallback(() => {
-    setChatMode("test");
-    setMobileTab("chat");
-  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
