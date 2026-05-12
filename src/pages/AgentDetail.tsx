@@ -21,6 +21,12 @@ import { DEFAULT_FREE_SETUP_MODEL, GATEWAY_MODELS, normalizeFreeSetupModel } fro
 import { LLM_MODELS as ALL_LLM_MODELS, getGroupedModels, getProviderForModel, DEFAULT_FREE_MODEL } from "@/lib/llm-models";
 
 import { useAgentMemory } from "@/hooks/use-agent-memory";
+import { useAgentPublishState } from "@/hooks/use-agent-versions";
+import { computeAgentDiff } from "@/lib/agent-diff";
+import PublishAgentDialog from "@/components/aikortex/PublishAgentDialog";
+import { Badge } from "@/components/ui/badge";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 import avatar1 from "@/assets/avatars/avatar-1.png";
 import avatar2 from "@/assets/avatars/avatar-2.png";
