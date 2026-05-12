@@ -20,3 +20,44 @@ export async function overlayPublishedConfig<T extends { published_version_id?: 
   }
   return agent;
 }
+
+/* ── Capabilities runtime addons (Aikortex Master v7.4 §13.6 — Sprint 2.3) ── */
+
+type Capabilities = {
+  planning?: { enabled?: boolean; max_steps?: number };
+  reasoning?: { enabled?: boolean; depth?: "low" | "medium" | "high" };
+  // memory / code_runtime / auto_integration não injetam prompt addons
+};
+
+const REASONING_INSTRUCTION: Record<string, string> = {
+  low: "Use raciocínio breve antes de responder, focado nos pontos críticos.",
+  medium:
+    "Use raciocínio passo-a-passo (chain-of-thought) antes de responder, considerando alternativas e validando suposições.",
+  high:
+    "Use raciocínio aprofundado antes de responder: enumere alternativas, considere edge cases, valide suposições explicitamente, e só então formule a resposta final.",
+};
+
+/**
+ * Appends Planning/Reasoning addon sections to a base system prompt
+ * according to the agent's `config.capabilities`. Returns the prompt
+ * unchanged when capabilities are absent or all disabled.
+ */
+export function applyCapabilityAddons(basePrompt: string, capabilities: Capabilities | undefined | null): string {
+  if (!capabilities) return basePrompt;
+  const addons: string[] = [];
+
+  if (capabilities.planning?.enabled) {
+    const maxSteps = capabilities.planning.max_steps ?? 10;
+    addons.push(
+      `\n## Planejamento\nAntes de responder, decomponha a solicitação em até ${maxSteps} passos e os execute em ordem. Apresente brevemente o plano antes da resposta final quando a tarefa for complexa.`,
+    );
+  }
+
+  if (capabilities.reasoning?.enabled) {
+    const depth = capabilities.reasoning.depth ?? "medium";
+    addons.push(`\n## Raciocínio\n${REASONING_INSTRUCTION[depth] ?? REASONING_INSTRUCTION.medium}`);
+  }
+
+  if (addons.length === 0) return basePrompt;
+  return basePrompt + "\n" + addons.join("\n");
+}
