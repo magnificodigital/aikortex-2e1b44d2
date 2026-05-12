@@ -141,6 +141,58 @@ const mergeAgentInstructions = (agentType: AgentType, ...parts: Array<string | u
   return merged.join("\n\n");
 };
 
+/* ── Inline helpers: publish badge + button ── */
+
+function PublishStateBadge({ state, hasDraftChanges }: { state: any; hasDraftChanges: boolean }) {
+  if (!state) return null;
+  if (!state.publishedVersionId) {
+    return <Badge variant="secondary" className="text-[10px] ml-1">Rascunho</Badge>;
+  }
+  if (!hasDraftChanges) {
+    return <Badge variant="outline" className="text-[10px] ml-1 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">Publicado · v{state.publishedNumber}</Badge>;
+  }
+  const since = state.draftUpdatedAt ? formatDistanceToNow(new Date(state.draftUpdatedAt), { addSuffix: true, locale: ptBR }) : "agora";
+  return <Badge className="text-[10px] ml-1 bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20">Rascunho · {since}</Badge>;
+}
+
+function PublishButton({
+  agentId, disabled, hasDraftChanges, publishedNumber, publishedSnapshot, currentConfig,
+}: {
+  agentId?: string; disabled: boolean; hasDraftChanges: boolean;
+  publishedNumber: number | null; publishedSnapshot: Record<string, any> | null; currentConfig: Record<string, any> | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const nothingToPublish = publishedNumber !== null && !hasDraftChanges;
+  const nextNumber = (publishedNumber ?? 0) + 1;
+  const label = publishedNumber === null ? "Publicar" : (nothingToPublish ? `Publicado · v${publishedNumber}` : "Publicar alterações");
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant={nothingToPublish ? "outline" : "default"}
+        className="h-7 text-xs gap-1 px-2"
+        disabled={disabled || nothingToPublish || !agentId}
+        onClick={() => setOpen(true)}
+        title={nothingToPublish ? "Sem alterações para publicar" : undefined}
+      >
+        <Rocket className="w-3.5 h-3.5" />
+        <span className="hidden lg:inline">{label}</span>
+      </Button>
+      {agentId && (
+        <PublishAgentDialog
+          open={open}
+          onOpenChange={setOpen}
+          agentId={agentId}
+          nextVersionNumber={nextNumber}
+          publishedSnapshot={publishedSnapshot}
+          currentConfig={currentConfig}
+        />
+      )}
+    </>
+  );
+}
+
 /* ── Component ── */
 
 const AgentDetail = () => {
