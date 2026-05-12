@@ -75,7 +75,15 @@ Responda APENAS com a mensagem personalizada, sem explicações adicionais.`;
     const interpolated = interpolateTemplate(template, contact);
     const prompt = `Personalize esta mensagem para ${contact.name || contact.phone}: "${interpolated}"`;
 
-    return await callOpenRouterDirect([{ role: "user", content: prompt }], system);
+    return await runAgentLLM({
+      supabase,
+      agentId: agentDbId,
+      agencyId: null,
+      system,
+      messages: [{ role: "user", content: prompt }],
+      models: ["qwen/qwen3-30b-a3b:free", "google/gemini-2.5-flash-preview-04-17:free", "google/gemma-3-27b-it:free"],
+      maxTokens: 512,
+    });
   } catch (err) {
     console.error(`AI personalization failed for ${contact.phone}:`, err);
     return null;
