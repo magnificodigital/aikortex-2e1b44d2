@@ -87,6 +87,7 @@ export function buildToolDefinitions(enabled: EnabledTool[]) {
 interface ExecuteOptions {
   supabase: any;
   agencyId: string | null;
+  tier: "starter" | "explorer" | "hack";
   yearMonth: string;
   supabaseUrl: string;
   serviceKey: string;
@@ -101,17 +102,32 @@ async function executeToolCall(
   const fn = name === "web_search" ? "tool-web-search" : name === "image_gen" ? "tool-image-gen" : null;
   if (!fn) return { ok: false, result: JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }) };
 
+  const def = TOOL_CATALOG[name as ToolKey];
+  const limit = def?.quotas?.[opts.tier] ?? 0;
+
   try {
-    // Quota increment is best-effort; failures don't block the tool.
-    if (opts.agencyId) {
-      opts.supabase
-        .rpc("increment_agency_tool_usage", {
-          p_agency_id: opts.agencyId,
-          p_year_month: opts.yearMonth,
-          p_tool_key: name,
-        })
-        .then(() => {})
-        .catch(console.error);
+    // Quota check (blocking) + atomic increment.
+    if (opts.agencyId && limit > 0) {
+      const { data: newCount, error: incErr } = await opts.supabase.rpc("increment_agency_tool_usage", {
+        p_agency_id: opts.agencyId,
+        p_year_month: opts.yearMonth,
+        p_tool_key: name,
+      });
+      if (incErr) {
+        console.error("quota increment failed", incErr);
+      } else if (typeof newCount === "number" && newCount > limit) {
+        return {
+          ok: false,
+          result: JSON.stringify({
+            error: `Quota mensal da tool "${name}" excedida no tier ${opts.tier} (${limit}/mês).`,
+            code: "QUOTA_EXCEEDED",
+            tool: name,
+            tier: opts.tier,
+            limit,
+            used: newCount,
+          }),
+        };
+      }
     }
 
     const resp = await fetch(`${opts.supabaseUrl}/functions/v1/${fn}`, {
