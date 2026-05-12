@@ -449,6 +449,16 @@ const AgentRightPanel = ({
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>(() =>
     savedConfig?.voiceConfig ? { ...DEFAULT_VOICE_CONFIG, ...savedConfig.voiceConfig } : { ...DEFAULT_VOICE_CONFIG, agentName: agent.name }
   );
+  const [capabilities, setCapabilities] = useState<AgentCapabilities>(() =>
+    mergeCapabilities(savedConfig?.capabilities)
+  );
+  const updateCapability = useCallback(
+    <K extends keyof AgentCapabilities>(key: K, patch: Partial<AgentCapabilities[K]>) => {
+      setCapabilities(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+    },
+    []
+  );
+  const activeCapsCount = useMemo(() => countActiveCapabilities(capabilities), [capabilities]);
 
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
