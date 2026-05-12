@@ -459,11 +459,12 @@ async function getAgentLLMResponse(
 ): Promise<string | null> {
   try {
     const config = (agent.config ?? {}) as Record<string, unknown>;
-    const system = `Você é ${String(agent.name || "Assistente")}.
+    const baseSystem = `Você é ${String(agent.name || "Assistente")}.
 Objetivo: ${String(config.objective || agent.description || "Atender chamadas de voz.")}
 Tom: ${String(config.tone_of_voice || "Profissional e Amigável")}
 Instruções: ${String(config.instructions || "")}
 Responda em português do Brasil. Respostas curtas e naturais para voz.`;
+    const system = applyCapabilityAddons(baseSystem, (config as any).capabilities);
 
     return await callOpenRouterDirect(messages, system);
   } catch {
