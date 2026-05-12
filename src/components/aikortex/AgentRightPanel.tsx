@@ -592,11 +592,22 @@ const AgentRightPanel = ({
       <aside className="w-56 border-r border-border bg-card/30 shrink-0 overflow-y-auto py-3 hidden md:block">
         {RIGHT_NAV.map((g) => (
           <div key={g.group} className="px-3 mb-4">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-2">{g.group}</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-2 flex items-center gap-1.5">
+              <span>{g.group}</span>
+              {g.group === "Capacidades" && activeCapsCount > 0 && (
+                <span className="text-[9px] bg-primary/15 text-primary rounded-full px-1.5 py-0 normal-case tracking-normal font-semibold">
+                  {activeCapsCount}
+                </span>
+              )}
+            </p>
             <div className="space-y-0.5">
               {g.items.map((item) => {
                 const Icon = item.icon;
                 const active = activeSection === item.key;
+                const capActive =
+                  (item.key === "caps.planning"  && capabilities.planning.enabled) ||
+                  (item.key === "caps.reasoning" && capabilities.reasoning.enabled) ||
+                  (item.key === "caps.memory"    && capabilities.memory.enabled);
                 return (
                   <button
                     key={item.key}
@@ -615,9 +626,11 @@ const AgentRightPanel = ({
                       <Icon className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">{item.label}</span>
                     </span>
-                    {item.comingSoon && (
+                    {item.comingSoon ? (
                       <span className="text-[9px] uppercase tracking-wider bg-muted text-muted-foreground/80 rounded px-1 py-0.5">em breve</span>
-                    )}
+                    ) : capActive ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-label="ativo" />
+                    ) : null}
                   </button>
                 );
               })}
