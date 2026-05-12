@@ -801,6 +801,13 @@ Regras obrigatórias:
 
   const resolvedAgentIdForPanel = agentId && !TEMPLATE_MAP[agentId] && agentId !== "new" && !agentId.startsWith("new-") ? agentId : undefined;
 
+  const { data: publishState } = useAgentPublishState(resolvedAgentIdForPanel);
+  const hasDraftChanges = useMemo(() => {
+    if (!publishState) return false;
+    if (!publishState.publishedVersionId) return true; // never published → all draft
+    return computeAgentDiff(publishState.publishedSnapshot, publishState.currentConfig).length > 0;
+  }, [publishState]);
+
   const handleOpenVoiceCall = useCallback(() => setShowVoiceCall(true), []);
   const handleCloseVoiceCall = useCallback(() => setShowVoiceCall(false), []);
   const handleSwitchToTestChat = useCallback(() => {
