@@ -467,7 +467,15 @@ Instruções: ${String(config.instructions || "")}
 Responda em português do Brasil. Respostas curtas e naturais para voz.`;
     const system = applyCapabilityAddons(baseSystem, (config as any).capabilities);
 
-    return await callOpenRouterDirect(messages, system);
+    return await runAgentLLM({
+      supabase,
+      agentId: (agent.id as string) || null,
+      agencyId: null,
+      system,
+      messages,
+      models: ["qwen/qwen3-30b-a3b:free", "google/gemini-2.5-flash-preview-04-17:free", "google/gemma-3-27b-it:free"],
+      maxTokens: 1024,
+    });
   } catch {
     return null;
   }
