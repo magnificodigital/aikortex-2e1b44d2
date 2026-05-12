@@ -688,18 +688,41 @@ serve(async (req) => {
           ]
         : ((messages || []) as Array<{ role: string; content: string }>);
 
-      // Non-streaming
+      // Tool-aware path: when we have an agentId, use runAgentLLM (function-calling).
+      // Otherwise fall back to plain buffered completion.
+      const adminClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        { auth: { persistSession: false } },
+      );
+      const platformModels = PLATFORM_FREE_MODELS;
+      const preferred = (body as any).model as string | undefined;
+      const modelsToUse = preferred ? [preferred, ...platformModels.filter((m) => m !== preferred)] : platformModels;
+
+      let content = "";
+      if (agentId) {
+        // Split system + rest so runAgentLLM can prepend system itself
+        const sysMsg = chatMessages.find((m) => m.role === "system");
+        const rest = chatMessages.filter((m) => m.role !== "system");
+        content = (await runAgentLLM({
+          supabase: adminClient,
+          agentId,
+          agencyId: authResult.agencyId,
+          system: sysMsg?.content || "",
+          messages: rest,
+          models: modelsToUse,
+          maxTokens: 2048,
+        })) || "";
+      } else {
+        content = await bufferFromOpenRouterPlatform(chatMessages, preferred);
+      }
+
       if (streamMode === false) {
-        const content = await bufferFromOpenRouterPlatform(chatMessages, (body as any).model);
         return new Response(
           JSON.stringify({ response: content || "Não foi possível gerar resposta." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
-      // Buffer first (tries all models, verifies non-empty), then restream as SSE.
-      // This avoids empty-stream issues caused by OpenRouter returning 200 with no content tokens.
-      const content = await bufferFromOpenRouterPlatform(chatMessages, (body as any).model);
       return new Response(
         streamText(content || "⚠️ Serviço de IA temporariamente indisponível. Tente novamente."),
         { headers: sseHeaders }
