@@ -884,6 +884,7 @@ Regras obrigatórias:
             <div className="flex items-center gap-2 min-w-0">
               <Bot className="w-4 h-4 text-primary shrink-0" />
               <span className="text-sm font-semibold truncate">{loadedAgent.name}</span>
+              <PublishStateBadge state={publishState} hasDraftChanges={hasDraftChanges} />
               {isSaving && (
                 <span className="text-[10px] text-muted-foreground animate-pulse ml-2">Salvando...</span>
               )}
@@ -900,15 +901,14 @@ Regras obrigatórias:
                 <Phone className="w-3.5 h-3.5" />
                 <span className="hidden lg:inline">Testar ligação</span>
               </Button>
-              <Button
-                size="sm"
-                className="h-7 text-xs gap-1 px-2"
+              <PublishButton
+                agentId={resolvedAgentIdForPanel}
                 disabled={!agentConfig?.name?.trim() || isSaving}
-                onClick={() => toast.info("Publicação em breve!")}
-              >
-                <Rocket className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Publicar</span>
-              </Button>
+                hasDraftChanges={hasDraftChanges}
+                publishedNumber={publishState?.publishedNumber ?? null}
+                publishedSnapshot={publishState?.publishedSnapshot ?? null}
+                currentConfig={publishState?.currentConfig ?? null}
+              />
             </div>
           </div>
 
