@@ -511,10 +511,11 @@ const AgentRightPanel = ({
       integrationConfigs,
       knowledgeFiles: knowledgeFiles.map(f => f.name), urls, apiConfig,
       voiceConfig,
+      capabilities,
     };
     onConfigChangeRef.current?.(config);
   }, [agentName, agentDesc, agentObjective, agentInstructions, agentToneOfVoice, agentGreetingMessage,
-      avatarPreview, connectedChannels, savedIntegrations, integrationConfigs, knowledgeFiles, urls, apiConfig, voiceConfig, agent.avatar]);
+      avatarPreview, connectedChannels, savedIntegrations, integrationConfigs, knowledgeFiles, urls, apiConfig, voiceConfig, capabilities, agent.avatar]);
 
   // ── Helpers ──
   const handleFiles = (files: FileList) => {
