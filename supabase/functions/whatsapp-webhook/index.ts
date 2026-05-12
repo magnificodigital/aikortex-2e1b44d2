@@ -235,10 +235,15 @@ Instruções: ${agent.instructions || ""}
 Responda sempre em português do Brasil. Seja natural e conversacional.`;
       const system = applyCapabilityAddons(baseSystem, (agent.config as any)?.capabilities);
 
-      const replyText = await callOpenRouterDirect(
-        [{ role: "user", content: messageContent }],
+      const replyText = await runAgentLLM({
+        supabase,
+        agentId: agentConfig.api_key,
+        agencyId: null,
         system,
-      );
+        messages: [{ role: "user", content: messageContent }],
+        models: ["qwen/qwen3-30b-a3b:free", "google/gemini-2.5-flash-preview-04-17:free", "google/gemma-3-27b-it:free"],
+        maxTokens: 1024,
+      });
 
       if (replyText && usedPhoneId) {
         // Send reply via WhatsApp Graph API directly (no auth needed, we have token)
