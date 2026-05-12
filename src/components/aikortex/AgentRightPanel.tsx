@@ -120,11 +120,11 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "config.channels",    label: "Canais",   icon: Share2 },
   ]},
   { group: "Capacidades", items: [
-    { key: "caps.planning",      label: "Planning",        icon: Lightbulb,   comingSoon: true, sprint: "2.3", masterRef: "13.5.4" },
-    { key: "caps.reasoning",     label: "Reasoning",       icon: Brain,       comingSoon: true, sprint: "2.3", masterRef: "13.5.5" },
+    { key: "caps.planning",      label: "Planning",        icon: Lightbulb },
+    { key: "caps.reasoning",     label: "Reasoning",       icon: Brain },
     { key: "caps.memory",        label: "Memória",         icon: Brain },
-    { key: "caps.runtime",       label: "Code Runtime",    icon: FileCode2,   comingSoon: true, sprint: "2.3", masterRef: "13.5.7" },
-    { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "2.3", masterRef: "13.5.8" },
+    { key: "caps.runtime",       label: "Code Runtime",    icon: FileCode2,   comingSoon: true, sprint: "futuro", masterRef: "13.5.7" },
+    { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
   ]},
   { group: "Recursos", items: [
     { key: "resources.tools",        label: "Tools",          icon: Wrench,    comingSoon: true, sprint: "2.4", masterRef: "13.5.9" },
