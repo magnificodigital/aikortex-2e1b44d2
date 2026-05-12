@@ -25,6 +25,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import VoiceConfigPanel, { type VoiceConfig, DEFAULT_VOICE_CONFIG } from "./VoiceConfigPanel";
+import {
+  type AgentCapabilities,
+  DEFAULT_CAPABILITIES,
+  mergeCapabilities,
+  countActiveCapabilities,
+} from "@/types/agent-capabilities";
+import { Slider } from "@/components/ui/slider";
 
 // LLM model data is defined inline in LLM_PROVIDER_MODELS above
 
