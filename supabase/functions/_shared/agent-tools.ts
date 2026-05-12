@@ -169,6 +169,19 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
   const yearMonth = new Date().toISOString().slice(0, 7);
   const maxIterations = opts.maxIterations ?? 3;
   const maxTokens = opts.maxTokens ?? 2048;
+  let tier: "starter" | "explorer" | "hack" = opts.tier ?? "starter";
+  if (!opts.tier && opts.agencyId) {
+    try {
+      const { data } = await opts.supabase
+        .from("agency_profiles")
+        .select("tier")
+        .eq("id", opts.agencyId)
+        .maybeSingle();
+      if (data?.tier === "starter" || data?.tier === "explorer" || data?.tier === "hack") {
+        tier = data.tier;
+      }
+    } catch { /* keep default */ }
+  }
 
   const messages = [...opts.messages];
   const toolDefs = buildToolDefinitions(opts.enabled);
