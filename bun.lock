@@ -46,6 +46,7 @@
         "clsx": "^2.1.1",
         "cmdk": "^1.1.1",
         "date-fns": "^3.6.0",
+        "deep-object-diff": "^1.1.9",
         "embla-carousel-react": "^8.6.0",
         "input-otp": "^1.4.2",
         "livekit-client": "^2.18.0",
@@ -684,6 +685,8 @@
     "deep-eql": ["deep-eql@5.0.2", "", {}, "sha512-h5k/5U50IJJFpzfL6nO9jaaumfjO/f2NjK/oYB2Djzm4p9L+3T9qWpZqZ2hAbLPuuYq9wrU08WQyBTL5GbPk5Q=="],
 
     "deep-is": ["deep-is@0.1.4", "", {}, "sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ=="],
+
+    "deep-object-diff": ["deep-object-diff@1.1.9", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/deep-object-diff/-/deep-object-diff-1.1.9.tgz", {}, "sha512-Rn+RuwkmkDwCi2/oXOFS9Gsr5lJZu/yTGpK7wAaAIE75CC+LCGEZHpY6VQJa/RoJcrmaA/docWJZvYohlNkWPA=="],
 
     "delayed-stream": ["delayed-stream@1.0.0", "", {}, "sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ=="],
 
