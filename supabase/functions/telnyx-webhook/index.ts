@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { overlayPublishedConfig, applyCapabilityAddons } from "../_shared/agent-runtime.ts";
+import { runAgentLLM } from "../_shared/agent-tools.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
