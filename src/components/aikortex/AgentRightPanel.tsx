@@ -127,7 +127,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
   ]},
   { group: "Recursos", items: [
-    { key: "resources.tools",        label: "Tools",          icon: Wrench,    comingSoon: true, sprint: "2.4", masterRef: "13.5.9" },
+    { key: "resources.tools",        label: "Tools",          icon: Wrench },
     { key: "resources.kb",           label: "Knowledge Base", icon: BookOpen },
     { key: "resources.tables",       label: "Tabelas",        icon: Database,  comingSoon: true, sprint: "2.6", masterRef: "13.5.11" },
     { key: "resources.integrations", label: "Integrações",    icon: Plug },
