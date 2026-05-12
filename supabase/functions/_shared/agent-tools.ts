@@ -229,3 +229,33 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
 
   return "⚠️ Limite de iterações de tools atingido.";
 }
+
+/**
+ * Drop-in replacement for inline `callOpenRouterDirect` helpers — loads enabled
+ * tools for the agent (when agentId is provided) and runs the LLM with function
+ * calling. Falls back to plain completion when no tools are enabled.
+ */
+export async function runAgentLLM(opts: {
+  supabase: any;
+  agentId?: string | null;
+  agencyId?: string | null;
+  system: string;
+  messages: Array<{ role: string; content: string }>;
+  models: string[];
+  maxTokens?: number;
+}): Promise<string | null> {
+  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  if (!apiKey) return null;
+  const enabled = opts.agentId ? await loadEnabledTools(opts.supabase, opts.agentId) : [];
+  const fullMessages = [{ role: "system", content: opts.system }, ...opts.messages];
+  const text = await runWithTools({
+    apiKey,
+    models: opts.models,
+    messages: fullMessages,
+    enabled,
+    supabase: opts.supabase,
+    agencyId: opts.agencyId ?? null,
+    maxTokens: opts.maxTokens,
+  });
+  return text || null;
+}
