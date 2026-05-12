@@ -25,6 +25,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import VoiceConfigPanel, { type VoiceConfig, DEFAULT_VOICE_CONFIG } from "./VoiceConfigPanel";
+import {
+  type AgentCapabilities,
+  DEFAULT_CAPABILITIES,
+  mergeCapabilities,
+  countActiveCapabilities,
+} from "@/types/agent-capabilities";
+import { Slider } from "@/components/ui/slider";
 
 // LLM model data is defined inline in LLM_PROVIDER_MODELS above
 
@@ -113,11 +120,11 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "config.channels",    label: "Canais",   icon: Share2 },
   ]},
   { group: "Capacidades", items: [
-    { key: "caps.planning",      label: "Planning",        icon: Lightbulb,   comingSoon: true, sprint: "2.3", masterRef: "13.5.4" },
-    { key: "caps.reasoning",     label: "Reasoning",       icon: Brain,       comingSoon: true, sprint: "2.3", masterRef: "13.5.5" },
+    { key: "caps.planning",      label: "Planning",        icon: Lightbulb },
+    { key: "caps.reasoning",     label: "Reasoning",       icon: Brain },
     { key: "caps.memory",        label: "Memória",         icon: Brain },
-    { key: "caps.runtime",       label: "Code Runtime",    icon: FileCode2,   comingSoon: true, sprint: "2.3", masterRef: "13.5.7" },
-    { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "2.3", masterRef: "13.5.8" },
+    { key: "caps.runtime",       label: "Code Runtime",    icon: FileCode2,   comingSoon: true, sprint: "futuro", masterRef: "13.5.7" },
+    { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
   ]},
   { group: "Recursos", items: [
     { key: "resources.tools",        label: "Tools",          icon: Wrench,    comingSoon: true, sprint: "2.4", masterRef: "13.5.9" },
@@ -227,6 +234,7 @@ export interface AgentConfig {
   urls: string[];
   apiConfig: ApiConfig;
   voiceConfig?: VoiceConfig;
+  capabilities?: AgentCapabilities;
 }
 
 // FIX: presetData adicionada para receber dados do wizard
@@ -441,6 +449,16 @@ const AgentRightPanel = ({
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>(() =>
     savedConfig?.voiceConfig ? { ...DEFAULT_VOICE_CONFIG, ...savedConfig.voiceConfig } : { ...DEFAULT_VOICE_CONFIG, agentName: agent.name }
   );
+  const [capabilities, setCapabilities] = useState<AgentCapabilities>(() =>
+    mergeCapabilities(savedConfig?.capabilities)
+  );
+  const updateCapability = useCallback(
+    <K extends keyof AgentCapabilities>(key: K, patch: Partial<AgentCapabilities[K]>) => {
+      setCapabilities(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+    },
+    []
+  );
+  const activeCapsCount = useMemo(() => countActiveCapabilities(capabilities), [capabilities]);
 
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -493,10 +511,11 @@ const AgentRightPanel = ({
       integrationConfigs,
       knowledgeFiles: knowledgeFiles.map(f => f.name), urls, apiConfig,
       voiceConfig,
+      capabilities,
     };
     onConfigChangeRef.current?.(config);
   }, [agentName, agentDesc, agentObjective, agentInstructions, agentToneOfVoice, agentGreetingMessage,
-      avatarPreview, connectedChannels, savedIntegrations, integrationConfigs, knowledgeFiles, urls, apiConfig, voiceConfig, agent.avatar]);
+      avatarPreview, connectedChannels, savedIntegrations, integrationConfigs, knowledgeFiles, urls, apiConfig, voiceConfig, capabilities, agent.avatar]);
 
   // ── Helpers ──
   const handleFiles = (files: FileList) => {
@@ -557,6 +576,7 @@ const AgentRightPanel = ({
     integrations: savedIntegrations,
     integrationConfigs,
     knowledgeFiles: knowledgeFiles.map(f => f.name), urls, apiConfig, voiceConfig,
+    capabilities,
     model: agentModel, agentType,
   });
 
@@ -572,11 +592,22 @@ const AgentRightPanel = ({
       <aside className="w-56 border-r border-border bg-card/30 shrink-0 overflow-y-auto py-3 hidden md:block">
         {RIGHT_NAV.map((g) => (
           <div key={g.group} className="px-3 mb-4">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-2">{g.group}</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-2 flex items-center gap-1.5">
+              <span>{g.group}</span>
+              {g.group === "Capacidades" && activeCapsCount > 0 && (
+                <span className="text-[9px] bg-primary/15 text-primary rounded-full px-1.5 py-0 normal-case tracking-normal font-semibold">
+                  {activeCapsCount}
+                </span>
+              )}
+            </p>
             <div className="space-y-0.5">
               {g.items.map((item) => {
                 const Icon = item.icon;
                 const active = activeSection === item.key;
+                const capActive =
+                  (item.key === "caps.planning"  && capabilities.planning.enabled) ||
+                  (item.key === "caps.reasoning" && capabilities.reasoning.enabled) ||
+                  (item.key === "caps.memory"    && capabilities.memory.enabled);
                 return (
                   <button
                     key={item.key}
@@ -595,9 +626,11 @@ const AgentRightPanel = ({
                       <Icon className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">{item.label}</span>
                     </span>
-                    {item.comingSoon && (
+                    {item.comingSoon ? (
                       <span className="text-[9px] uppercase tracking-wider bg-muted text-muted-foreground/80 rounded px-1 py-0.5">em breve</span>
-                    )}
+                    ) : capActive ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-label="ativo" />
+                    ) : null}
                   </button>
                 );
               })}
@@ -634,20 +667,161 @@ const AgentRightPanel = ({
               />
             )}
 
+            {/* ── Capacidades → Planning ── */}
+            {activeSection === "caps.planning" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Lightbulb className="w-5 h-5 text-primary" /> Planning
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Antes de responder, o agente decompõe a solicitação em passos e os executa em sequência. Útil para tarefas complexas que exigem múltiplas ações.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Ativar Planning</p>
+                    <p className="text-xs text-muted-foreground">Reduz alucinações em fluxos complexos.</p>
+                  </div>
+                  <Switch
+                    checked={capabilities.planning.enabled}
+                    onCheckedChange={(v) => updateCapability("planning", { enabled: v })}
+                  />
+                </div>
+                {capabilities.planning.enabled && (
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-foreground">Número máximo de passos</p>
+                      <span className="text-sm font-semibold text-primary">{capabilities.planning.max_steps}</span>
+                    </div>
+                    <Slider
+                      min={3}
+                      max={30}
+                      step={1}
+                      value={[capabilities.planning.max_steps]}
+                      onValueChange={([v]) => updateCapability("planning", { max_steps: v })}
+                    />
+                    <p className="text-[11px] text-muted-foreground">Slider de 3 a 30 passos. Recomendado: 10.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Capacidades → Reasoning ── */}
+            {activeSection === "caps.reasoning" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-primary" /> Reasoning
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Antes de responder, o agente "pensa" usando chain-of-thought. Melhora respostas em perguntas que exigem dedução ou interpretação ambígua.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Ativar Reasoning</p>
+                    <p className="text-xs text-muted-foreground">Mais qualidade em respostas com nuance.</p>
+                  </div>
+                  <Switch
+                    checked={capabilities.reasoning.enabled}
+                    onCheckedChange={(v) => updateCapability("reasoning", { enabled: v })}
+                  />
+                </div>
+                {capabilities.reasoning.enabled && (
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <p className="text-sm font-medium text-foreground">Profundidade do raciocínio</p>
+                    <RadioGroup
+                      value={capabilities.reasoning.depth}
+                      onValueChange={(v) => updateCapability("reasoning", { depth: v as "low" | "medium" | "high" })}
+                      className="gap-2"
+                    >
+                      {[
+                        { v: "low",    label: "Baixa",  desc: "Raciocínio breve, foco no essencial." },
+                        { v: "medium", label: "Média",  desc: "Chain-of-thought equilibrado. Recomendado." },
+                        { v: "high",   label: "Alta",   desc: "Raciocínio aprofundado. Maior latência e custo." },
+                      ].map((opt) => (
+                        <label key={opt.v} htmlFor={`reasoning-${opt.v}`} className="flex items-start gap-2 cursor-pointer rounded-md hover:bg-muted/40 p-2 -mx-2">
+                          <RadioGroupItem value={opt.v} id={`reasoning-${opt.v}`} className="mt-0.5" />
+                          <div>
+                            <p className="text-sm text-foreground">{opt.label}</p>
+                            <p className="text-[11px] text-muted-foreground">{opt.desc}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Capacidades → Memória ── */}
             {activeSection === "caps.memory" && (
-              hasAnthropicKey
-                ? <AgentMemoryTab agentId={agentId} />
-                : (
-                  <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4 flex items-start gap-3">
-                    <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium text-foreground">Memória persistente requer Anthropic</p>
-                      <p className="text-xs text-muted-foreground">Configure sua chave Anthropic em Recursos → Integrações para ativar a memória do agente.</p>
-                      <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>Ir para Integrações</Button>
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-primary" /> Memória persistente
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    O agente lembra contexto de conversas anteriores e acessa informações relevantes via busca semântica.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Ativar Memória</p>
+                    <p className="text-xs text-muted-foreground">Lembra preferências e histórico entre sessões.</p>
+                  </div>
+                  <Switch
+                    checked={capabilities.memory.enabled}
+                    onCheckedChange={(v) => updateCapability("memory", { enabled: v })}
+                  />
+                </div>
+
+                {capabilities.memory.enabled && (
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <p className="text-sm font-medium text-foreground">Escopo da memória</p>
+                    <RadioGroup
+                      value={capabilities.memory.scope}
+                      onValueChange={(v) => updateCapability("memory", { scope: v as "agent" | "client" | "shared" })}
+                      className="gap-2"
+                    >
+                      {[
+                        { v: "agent",  label: "Por agente",            desc: "Cada agente tem sua própria memória." },
+                        { v: "client", label: "Por cliente",           desc: "Compartilhada entre todos agentes do cliente." },
+                        { v: "shared", label: "Compartilhada (avançado)", desc: "Agentes selecionados compartilham memória. Disponível quando pgvector chegar (Sprint 2.5)." },
+                      ].map((opt) => (
+                        <label key={opt.v} htmlFor={`mem-${opt.v}`} className="flex items-start gap-2 cursor-pointer rounded-md hover:bg-muted/40 p-2 -mx-2">
+                          <RadioGroupItem value={opt.v} id={`mem-${opt.v}`} className="mt-0.5" />
+                          <div>
+                            <p className="text-sm text-foreground">{opt.label}</p>
+                            <p className="text-[11px] text-muted-foreground">{opt.desc}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </RadioGroup>
+                    <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2 text-[11px] text-amber-600">
+                      ⚠️ Stub Anthropic atual — backend pgvector chega no Sprint 2.5.
                     </div>
                   </div>
-                )
+                )}
+
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Configurações do provedor atual</h3>
+                  {hasAnthropicKey ? (
+                    <AgentMemoryTab agentId={agentId} />
+                  ) : (
+                    <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4 flex items-start gap-3">
+                      <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium text-foreground">Memória persistente requer Anthropic</p>
+                        <p className="text-xs text-muted-foreground">Configure sua chave Anthropic em Recursos → Integrações para ativar a memória do agente.</p>
+                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>Ir para Integrações</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
 
             {/* ── Operação → Versões ── */}

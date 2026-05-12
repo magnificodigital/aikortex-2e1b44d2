@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getAuthContext as getSharedAuthContext, handleCors, corsHeaders } from "../_shared/auth.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
+import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 
 // ── OpenRouter platform helpers ───────────────────────────────────────────
 // Order matters: most reliable instruct (non-reasoning) models first.
@@ -117,18 +118,18 @@ function buildAgentSystemPrompt(agentConfig: Record<string, unknown>): string {
   const company = String(agentConfig?.companyName || "");
   const isSdr = role.includes("sdr") || role.includes("vendas") || role.includes("sales") ||
     objective.toLowerCase().includes("qualific") || instructions.toLowerCase().includes("bant");
-  if (isSdr) {
-    return `Você é ${name}, agente SDR${company ? ` da ${company}` : ""}.
+  const base = isSdr
+    ? `Você é ${name}, agente SDR${company ? ` da ${company}` : ""}.
 Objetivo: ${objective || "Qualificar leads e agendar reuniões."}
 Tom: ${tone}
 Instruções: ${instructions}
-Regras: faça UMA pergunta por vez. Colete nome, email, telefone, empresa, cargo. Qualifique com BANT. Responda em português do Brasil.`;
-  }
-  return `Você é ${name}${company ? ` da ${company}` : ""}.
+Regras: faça UMA pergunta por vez. Colete nome, email, telefone, empresa, cargo. Qualifique com BANT. Responda em português do Brasil.`
+    : `Você é ${name}${company ? ` da ${company}` : ""}.
 Objetivo: ${objective}
 Tom: ${tone}
 Instruções: ${instructions}
 Responda em português do Brasil.`;
+  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities);
 }
 
 function buildWizardSystemPrompt(agentType: string): string {
