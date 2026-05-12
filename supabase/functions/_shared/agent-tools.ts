@@ -87,6 +87,7 @@ export function buildToolDefinitions(enabled: EnabledTool[]) {
 interface ExecuteOptions {
   supabase: any;
   agencyId: string | null;
+  tier: "starter" | "explorer" | "hack";
   yearMonth: string;
   supabaseUrl: string;
   serviceKey: string;
@@ -101,17 +102,32 @@ async function executeToolCall(
   const fn = name === "web_search" ? "tool-web-search" : name === "image_gen" ? "tool-image-gen" : null;
   if (!fn) return { ok: false, result: JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }) };
 
+  const def = TOOL_CATALOG[name as ToolKey];
+  const limit = def?.quotas?.[opts.tier] ?? 0;
+
   try {
-    // Quota increment is best-effort; failures don't block the tool.
-    if (opts.agencyId) {
-      opts.supabase
-        .rpc("increment_agency_tool_usage", {
-          p_agency_id: opts.agencyId,
-          p_year_month: opts.yearMonth,
-          p_tool_key: name,
-        })
-        .then(() => {})
-        .catch(console.error);
+    // Quota check (blocking) + atomic increment.
+    if (opts.agencyId && limit > 0) {
+      const { data: newCount, error: incErr } = await opts.supabase.rpc("increment_agency_tool_usage", {
+        p_agency_id: opts.agencyId,
+        p_year_month: opts.yearMonth,
+        p_tool_key: name,
+      });
+      if (incErr) {
+        console.error("quota increment failed", incErr);
+      } else if (typeof newCount === "number" && newCount > limit) {
+        return {
+          ok: false,
+          result: JSON.stringify({
+            error: `Quota mensal da tool "${name}" excedida no tier ${opts.tier} (${limit}/mês).`,
+            code: "QUOTA_EXCEEDED",
+            tool: name,
+            tier: opts.tier,
+            limit,
+            used: newCount,
+          }),
+        };
+      }
     }
 
     const resp = await fetch(`${opts.supabaseUrl}/functions/v1/${fn}`, {
@@ -136,6 +152,7 @@ export interface RunWithToolsOptions {
   enabled: EnabledTool[];
   supabase: any;
   agencyId: string | null;
+  tier?: "starter" | "explorer" | "hack";
   maxTokens?: number;
   /** Hard cap on tool-loop iterations to avoid runaway calls. */
   maxIterations?: number;
@@ -152,6 +169,19 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
   const yearMonth = new Date().toISOString().slice(0, 7);
   const maxIterations = opts.maxIterations ?? 3;
   const maxTokens = opts.maxTokens ?? 2048;
+  let tier: "starter" | "explorer" | "hack" = opts.tier ?? "starter";
+  if (!opts.tier && opts.agencyId) {
+    try {
+      const { data } = await opts.supabase
+        .from("agency_profiles")
+        .select("tier")
+        .eq("id", opts.agencyId)
+        .maybeSingle();
+      if (data?.tier === "starter" || data?.tier === "explorer" || data?.tier === "hack") {
+        tier = data.tier;
+      }
+    } catch { /* keep default */ }
+  }
 
   const messages = [...opts.messages];
   const toolDefs = buildToolDefinitions(opts.enabled);
@@ -214,6 +244,7 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
       const { result } = await executeToolCall(tc.function?.name || "", args, {
         supabase: opts.supabase,
         agencyId: opts.agencyId,
+        tier,
         yearMonth,
         supabaseUrl,
         serviceKey,
