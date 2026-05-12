@@ -17,6 +17,7 @@ import {
   ShieldAlert, Sliders, Phone, Sparkles, Share2, Plug, Bot, Lightbulb, Users, Clock, Construction,
 } from "lucide-react";
 import AgentMemoryTab from "./AgentMemoryTab";
+import AgentToolsSection from "./AgentToolsSection";
 import AgentVersionsSection from "./AgentVersionsSection";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
