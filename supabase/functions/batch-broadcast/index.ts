@@ -60,15 +60,16 @@ async function personalizeWithAgent(
   try {
     const { data: agent } = await supabase
       .from("user_agents")
-      .select("name, objective, instructions, tone_of_voice")
+      .select("name, objective, instructions, tone_of_voice, config")
       .eq("id", agentDbId)
       .maybeSingle();
 
-    const system = `Você é ${agent?.name || "Assistente"} especialista em comunicação.
+    const baseSystem = `Você é ${agent?.name || "Assistente"} especialista em comunicação.
 Objetivo: ${agent?.objective || "Personalizar mensagens de marketing de forma natural e persuasiva."}
 Tom: ${agent?.tone_of_voice || "Profissional e Amigável"}
 Instruções: ${agent?.instructions || ""}
 Responda APENAS com a mensagem personalizada, sem explicações adicionais.`;
+    const system = applyCapabilityAddons(baseSystem, (agent?.config as any)?.capabilities);
 
     const interpolated = interpolateTemplate(template, contact);
     const prompt = `Personalize esta mensagem para ${contact.name || contact.phone}: "${interpolated}"`;
