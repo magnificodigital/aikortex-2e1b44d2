@@ -118,18 +118,18 @@ function buildAgentSystemPrompt(agentConfig: Record<string, unknown>): string {
   const company = String(agentConfig?.companyName || "");
   const isSdr = role.includes("sdr") || role.includes("vendas") || role.includes("sales") ||
     objective.toLowerCase().includes("qualific") || instructions.toLowerCase().includes("bant");
-  if (isSdr) {
-    return `Você é ${name}, agente SDR${company ? ` da ${company}` : ""}.
+  const base = isSdr
+    ? `Você é ${name}, agente SDR${company ? ` da ${company}` : ""}.
 Objetivo: ${objective || "Qualificar leads e agendar reuniões."}
 Tom: ${tone}
 Instruções: ${instructions}
-Regras: faça UMA pergunta por vez. Colete nome, email, telefone, empresa, cargo. Qualifique com BANT. Responda em português do Brasil.`;
-  }
-  return `Você é ${name}${company ? ` da ${company}` : ""}.
+Regras: faça UMA pergunta por vez. Colete nome, email, telefone, empresa, cargo. Qualifique com BANT. Responda em português do Brasil.`
+    : `Você é ${name}${company ? ` da ${company}` : ""}.
 Objetivo: ${objective}
 Tom: ${tone}
 Instruções: ${instructions}
 Responda em português do Brasil.`;
+  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities);
 }
 
 function buildWizardSystemPrompt(agentType: string): string {
