@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
+import { runAgentLLM } from "../_shared/agent-tools.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -234,10 +235,15 @@ Instruções: ${agent.instructions || ""}
 Responda sempre em português do Brasil. Seja natural e conversacional.`;
       const system = applyCapabilityAddons(baseSystem, (agent.config as any)?.capabilities);
 
-      const replyText = await callOpenRouterDirect(
-        [{ role: "user", content: messageContent }],
+      const replyText = await runAgentLLM({
+        supabase,
+        agentId: agentConfig.api_key,
+        agencyId: null,
         system,
-      );
+        messages: [{ role: "user", content: messageContent }],
+        models: ["qwen/qwen3-30b-a3b:free", "google/gemini-2.5-flash-preview-04-17:free", "google/gemma-3-27b-it:free"],
+        maxTokens: 1024,
+      });
 
       if (replyText && usedPhoneId) {
         // Send reply via WhatsApp Graph API directly (no auth needed, we have token)

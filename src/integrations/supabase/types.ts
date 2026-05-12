@@ -302,6 +302,71 @@ export type Database = {
           },
         ]
       }
+      agent_tool_usage_monthly: {
+        Row: {
+          agency_id: string
+          call_count: number
+          id: string
+          tool_key: string
+          updated_at: string
+          year_month: string
+        }
+        Insert: {
+          agency_id: string
+          call_count?: number
+          id?: string
+          tool_key: string
+          updated_at?: string
+          year_month: string
+        }
+        Update: {
+          agency_id?: string
+          call_count?: number
+          id?: string
+          tool_key?: string
+          updated_at?: string
+          year_month?: string
+        }
+        Relationships: []
+      }
+      agent_tools: {
+        Row: {
+          agent_id: string
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          tool_key: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          tool_key: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          tool_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_tools_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_versions: {
         Row: {
           agent_id: string
@@ -1901,6 +1966,17 @@ export type Database = {
       check_and_increment_rate_limit: {
         Args: { p_agency_id: string; p_limit: number; p_window_start: string }
         Returns: boolean
+      }
+      get_agency_tool_usage: {
+        Args: { p_agency_id: string; p_year_month: string }
+        Returns: {
+          call_count: number
+          tool_key: string
+        }[]
+      }
+      increment_agency_tool_usage: {
+        Args: { p_agency_id: string; p_tool_key: string; p_year_month: string }
+        Returns: number
       }
       increment_agency_usage: {
         Args: { p_agency_id: string; p_year_month: string }

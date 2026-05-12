@@ -17,6 +17,7 @@ import {
   ShieldAlert, Sliders, Phone, Sparkles, Share2, Plug, Bot, Lightbulb, Users, Clock, Construction,
 } from "lucide-react";
 import AgentMemoryTab from "./AgentMemoryTab";
+import AgentToolsSection from "./AgentToolsSection";
 import AgentVersionsSection from "./AgentVersionsSection";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -127,7 +128,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
   ]},
   { group: "Recursos", items: [
-    { key: "resources.tools",        label: "Tools",          icon: Wrench,    comingSoon: true, sprint: "2.4", masterRef: "13.5.9" },
+    { key: "resources.tools",        label: "Tools",          icon: Wrench },
     { key: "resources.kb",           label: "Knowledge Base", icon: BookOpen },
     { key: "resources.tables",       label: "Tabelas",        icon: Database,  comingSoon: true, sprint: "2.6", masterRef: "13.5.11" },
     { key: "resources.integrations", label: "Integrações",    icon: Plug },
@@ -1234,6 +1235,11 @@ const AgentRightPanel = ({
                     <VoiceConfigPanel config={voiceConfig} onChange={setVoiceConfig} />
                   </div>
                 )}
+
+            {/* ── Recursos → Tools (Sprint 2.4-a §13.15) ── */}
+            {activeSection === "resources.tools" && (
+              <AgentToolsSection agentId={agentId} />
+            )}
 
             {/* ── Recursos → Integrações ── */}
             {activeSection === "resources.integrations" && (
