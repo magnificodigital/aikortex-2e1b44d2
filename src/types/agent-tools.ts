@@ -32,10 +32,10 @@ export const AGENT_TOOLS_CATALOG: Record<ToolKey, ToolCatalogEntry> = {
     name: "Geração de Imagem",
     shortLabel: "image_gen",
     description:
-      "Cria imagens a partir de prompts textuais usando Flux 1.1 Pro (Replicate). Ideal para mockups, ilustrações e thumbnails.",
+      "Cria imagens a partir de prompts textuais via OpenRouter (Nano Banana). Ideal para mockups, ilustrações e thumbnails.",
     icon: ImageIcon,
-    requiredSecret: "REPLICATE_API_TOKEN",
-    secretHelpUrl: "https://replicate.com/account/api-tokens",
+    requiredSecret: "OPENROUTER_API_KEY",
+    secretHelpUrl: "https://openrouter.ai/keys",
     quotas: { starter: 50, explorer: 100, hack: 500 },
   },
 };

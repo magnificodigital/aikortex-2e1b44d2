@@ -37,7 +37,7 @@ export const TOOL_CATALOG: Record<ToolKey, ToolDefinition> = {
     key: "image_gen",
     name: "image_gen",
     description:
-      "Gera uma imagem a partir de um prompt textual usando Flux 1.1 Pro (Replicate). Retorna URL pública da imagem gerada.",
+      "Gera uma imagem a partir de um prompt textual via OpenRouter (Nano Banana). Retorna URL pública (ou data URL) da imagem.",
     parameters: {
       type: "object",
       properties: {

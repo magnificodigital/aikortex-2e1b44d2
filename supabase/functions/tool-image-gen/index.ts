@@ -1,4 +1,5 @@
-// Sprint 2.4-a — Tool: image_gen (Replicate Flux 1.1 Pro)
+// Sprint 2.4-a — Tool: image_gen (OpenRouter, Nano Banana)
+// Master §5.3: toda IA generativa passa pelo OpenRouter.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -6,7 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const REPLICATE_MODEL = "black-forest-labs/flux-1.1-pro";
+// Default: Nano Banana (cheap, high-quality). Fallback: Nano Banana 2 Pro.
+const IMAGE_MODELS = [
+  "google/gemini-2.5-flash-image",
+  "google/gemini-3-pro-image-preview",
+];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -20,63 +25,69 @@ serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get("REPLICATE_API_TOKEN");
+    const apiKey = Deno.env.get("OPENROUTER_API_KEY");
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "Tool indisponível: token Replicate não configurado", code: "MISSING_SECRET" }),
+        JSON.stringify({ error: "Tool indisponível: OPENROUTER_API_KEY não configurada", code: "MISSING_SECRET" }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Create prediction (sync mode via Prefer: wait, max ~60s)
-    const resp = await fetch(`https://api.replicate.com/v1/models/${REPLICATE_MODEL}/predictions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        Prefer: "wait=60",
-      },
-      signal: AbortSignal.timeout(75000),
-      body: JSON.stringify({
-        input: {
-          prompt,
-          aspect_ratio,
-          output_format: "webp",
-          output_quality: 90,
-          safety_tolerance: 2,
-        },
-      }),
-    });
+    // OpenRouter image-output via chat/completions with modalities=["image","text"].
+    // Aspect ratio is appended to the prompt — Nano Banana respects natural-language sizing hints.
+    const finalPrompt = aspect_ratio && aspect_ratio !== "1:1"
+      ? `${prompt}\n\nAspect ratio: ${aspect_ratio}.`
+      : prompt;
 
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => "");
-      return new Response(
-        JSON.stringify({ error: `Replicate erro ${resp.status}`, detail: text.slice(0, 300), code: "UPSTREAM_ERROR" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    let lastError = "";
+    for (const model of IMAGE_MODELS) {
+      try {
+        const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          signal: AbortSignal.timeout(60000),
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://aikortex26.lovable.app",
+            "X-Title": "Aikortex",
+          },
+          body: JSON.stringify({
+            model,
+            modalities: ["image", "text"],
+            messages: [{ role: "user", content: finalPrompt }],
+          }),
+        });
+
+        if (!resp.ok) {
+          lastError = `${model} → HTTP ${resp.status}: ${(await resp.text().catch(() => "")).slice(0, 200)}`;
+          continue;
+        }
+
+        const data = await resp.json();
+        const msg = data?.choices?.[0]?.message;
+        // OpenRouter returns generated images in `message.images[].image_url.url` (data URL or https).
+        const images = msg?.images || [];
+        const first = images[0]?.image_url?.url || images[0]?.url || null;
+
+        if (!first) {
+          lastError = `${model} → resposta sem imagem`;
+          continue;
+        }
+
+        return new Response(
+          JSON.stringify({ prompt, aspect_ratio, model, image_url: first }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      } catch (e) {
+        lastError = `${model} → ${(e as Error).message}`;
+        continue;
+      }
     }
 
-    const data = await resp.json();
-    if (data?.status === "failed") {
-      return new Response(
-        JSON.stringify({ error: data?.error || "Falha ao gerar imagem", code: "GENERATION_FAILED" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const output = data?.output;
-    const imageUrl = Array.isArray(output) ? output[0] : (typeof output === "string" ? output : null);
-
-    if (!imageUrl) {
-      return new Response(
-        JSON.stringify({ error: "Geração ainda em andamento — tente novamente", code: "TIMEOUT", prediction_id: data?.id }),
-        { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    return new Response(JSON.stringify({ prompt, aspect_ratio, image_url: imageUrl }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Falha em todos os modelos de imagem", detail: lastError, code: "UPSTREAM_ERROR" }),
+      { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e) {
     return new Response(
       JSON.stringify({ error: (e as Error).message, code: "INTERNAL_ERROR" }),
