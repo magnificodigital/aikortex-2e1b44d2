@@ -1236,6 +1236,11 @@ const AgentRightPanel = ({
                   </div>
                 )}
 
+            {/* ── Recursos → Tools (Sprint 2.4-a §13.15) ── */}
+            {activeSection === "resources.tools" && (
+              <AgentToolsSection agentId={agentId} />
+            )}
+
             {/* ── Recursos → Integrações ── */}
             {activeSection === "resources.integrations" && (
               <div className="space-y-6">
