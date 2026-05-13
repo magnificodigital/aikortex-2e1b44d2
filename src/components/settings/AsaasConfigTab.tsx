@@ -18,8 +18,7 @@ const AsaasConfigTab = () => {
   const [accountName, setAccountName] = useState("");
   const [existingKey, setExistingKey] = useState(false);
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const webhookUrl = `${supabaseUrl}/functions/v1/asaas-webhook`;
+  const webhookUrl = fnUrl("asaas-webhook");
 
   useEffect(() => {
     const load = async () => {
