@@ -255,7 +255,9 @@ async function extractFromFile(
 }
 
 async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<string> {
-  const pdfjs: any = await import("https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs");
+  const pdfjs: any = await import(
+    "https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs?target=denonext&external=canvas"
+  );
   const data = new Uint8Array(arrayBuffer);
   const pdf = await pdfjs.getDocument({
     data,
