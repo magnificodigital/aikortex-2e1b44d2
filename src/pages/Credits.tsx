@@ -246,8 +246,8 @@ const Credits = () => {
           </TabsContent>
         </Tabs>
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 
