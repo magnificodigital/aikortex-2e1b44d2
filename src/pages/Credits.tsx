@@ -115,7 +115,6 @@ const Credits = () => {
                 {providers.map((p) => {
                   const isConfigured = configuredKeys.includes(p.key);
                   return (
-    <ModuleGate moduleKey="aikortex.creditos">
                     <div key={p.key} className="flex items-center justify-between rounded-lg border border-border p-3">
                       <div>
                         <p className="text-sm font-medium">{p.label}</p>
