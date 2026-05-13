@@ -214,7 +214,7 @@ const AgentDetail = () => {
       // Templates start with neutral name — wizard chat will collect details first
       return { name: "Novo Agente", avatar: templateAgent.avatar, model: templateAgent.model, agentType: templateAgent.agentType, savedConfig: null };
     }
-    return { name: "Carregando...", avatar: avatar1, model: "gemini-2.5-flash", agentType: initialType, savedConfig: null };
+    return { name: "Carregando...", avatar: avatar1, model: DEFAULT_FREE_MODEL, agentType: initialType, savedConfig: null };
   });
   const [agentLoading, setAgentLoading] = useState(!isTemplate);
 
