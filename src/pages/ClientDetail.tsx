@@ -151,7 +151,6 @@ const ClientDetail = () => {
                   const subSt = STATUS_MAP[s.status] ?? STATUS_MAP.pending;
                   const trialDays = s.trial_ends_at ? Math.max(0, Math.ceil((new Date(s.trial_ends_at).getTime() - Date.now()) / 86400000)) : 0;
                   return (
-    <ModuleGate moduleKey="gestao.clientes">
                     <Card key={s.id}>
                       <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
                         <div>
