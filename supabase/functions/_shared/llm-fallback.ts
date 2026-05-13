@@ -277,6 +277,8 @@ export async function callLLM(
     }
   }
 
+  // TODO: remove after hotfix 1.1.2 root cause
+  console.error(`[llm-fallback] ALL MODELS FAILED attempts=${attempts} lastStatus=${lastStatus} lastError=${lastError}`);
   return {
     success: false,
     error: lastError,
