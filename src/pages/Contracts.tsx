@@ -12,7 +12,7 @@ import ContractCharts from "@/components/contracts/ContractCharts";
 import NewContractDialog from "@/components/contracts/NewContractDialog";
 import EditContractDialog from "@/components/contracts/EditContractDialog";
 import SignatureDialog from "@/components/contracts/SignatureDialog";
-import { mockContracts, Contract } from "@/types/contract";
+import { supabase } from "@/integrations/supabase/client";
 
 const Contracts = () => {
   const [search, setSearch] = useState("");

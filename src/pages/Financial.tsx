@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -21,17 +21,24 @@ import AccountsView from "@/components/financial/AccountsView";
 import CostCenterView from "@/components/financial/CostCenterView";
 import FinancialReportsView from "@/components/financial/FinancialReportsView";
 import QuickSaleDialog from "@/components/financial/QuickSaleDialog";
-import { mockInvoices, Invoice } from "@/types/financial";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
 
 const Financial = () => {
   const [search, setSearch] = useState("");
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [showNewInvoice, setShowNewInvoice] = useState(false);
-  const [showNewExpense, setShowNewExpense] = useState(false);
-  const [showQuickSale, setShowQuickSale] = useState(false);
+  const [invoices, setInvoices] = useState<any[]>([]);
 
-  const filteredInvoices = mockInvoices.filter(i =>
+  useEffect(() => {
+    supabase
+      .from("invoices")
+      .select("*").order("created_at", { ascending: false })
+      .then(({ data }) => { if (data) setInvoices(data); });
+  }, []);
+
+  const filteredInvoices = invoices.filter((i: any) =>
     i.client.toLowerCase().includes(search.toLowerCase()) ||
     i.id.toLowerCase().includes(search.toLowerCase()) ||
     i.description.toLowerCase().includes(search.toLowerCase())
