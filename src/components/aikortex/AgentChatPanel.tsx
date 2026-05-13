@@ -381,7 +381,7 @@ const AgentChatPanel = ({
 
 
   return (
-    <div className="w-[420px] min-w-[360px] border-r border-border flex flex-col bg-background">
+    <div className="w-full h-full flex flex-col bg-background min-w-0">
       {/* Header */}
       <div className="h-12 border-b border-border flex items-center px-3 gap-2 shrink-0">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}>

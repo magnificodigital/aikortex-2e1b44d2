@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fnUrl } from "@/lib/supabase-url";
 
 export interface TelnyxPhoneNumber {
   id: string;
@@ -134,9 +135,6 @@ export function useTelnyxPhoneNumbers() {
   const configureWebhook = useCallback(async (numberId: string): Promise<boolean> => {
     if (!apiKey) return false;
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    if (!supabaseUrl) return false;
-
     try {
       const res = await fetch(`https://api.telnyx.com/v2/phone_numbers/${numberId}`, {
         method: "PATCH",
@@ -146,7 +144,7 @@ export function useTelnyxPhoneNumbers() {
         },
         body: JSON.stringify({
           connection_id: null,
-          webhook_url: `${supabaseUrl}/functions/v1/telnyx-webhook`,
+          webhook_url: fnUrl("telnyx-webhook"),
           webhook_failover_url: null,
         }),
       });

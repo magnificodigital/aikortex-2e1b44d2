@@ -80,7 +80,7 @@ Seja criativo mas realista nas funcionalidades sugeridas.`;
         tools,
         toolChoice: { type: "function", function: { name: "structure_agent" } },
         maxTokens: 2048,
-        timeoutMs: 30000,
+        timeoutMs: 15000,
       },
       buildAdminClient(),
     );
