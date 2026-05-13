@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useParams, useLocation, useSearchParams } from "react-router-dom";
 import { Loader2, ArrowLeft, Sparkles, Bot, Settings, Plug, Share2, Rocket, Phone, Brain, Monitor, MessageSquare, Settings2 } from "lucide-react";
@@ -102,7 +103,7 @@ const LLM_MODELS = ALL_LLM_MODELS.map(m => ({
   badge: (m.byok ? (m.provider === "anthropic" ? "byok-anthropic" : "byok") : "free") as "free" | "byok" | "byok-anthropic",
 }));
 
-const STRUCTURE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-structure`;
+const STRUCTURE_URL = fnUrl("agent-structure");
 
 /* ── Types ── */
 

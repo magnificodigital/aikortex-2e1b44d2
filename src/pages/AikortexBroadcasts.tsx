@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
@@ -91,7 +92,7 @@ const AikortexBroadcasts = () => {
       const interpolated = template.replace(/\{\{(\w+)\}\}/g, (_, key) => String((exampleContact as Record<string, unknown>)[key] ?? ""));
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`,
+        fnUrl("app-chat"),
         {
           method: "POST",
           headers: {

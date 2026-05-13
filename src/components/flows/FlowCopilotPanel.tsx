@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ArrowUp, Mic, RefreshCw, Sparkles, ArrowRight, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -94,7 +95,7 @@ export default function FlowCopilotPanel({ onClose, onAddNode, onBuildFlow, init
 
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deerflow-proxy`,
+          fnUrl("deerflow-proxy"),
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

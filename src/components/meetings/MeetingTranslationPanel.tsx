@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,7 +20,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-const TRANSLATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meeting-translate`;
+const TRANSLATE_URL = fnUrl("meeting-translate");
 
 const LANGUAGES = [
   { code: "en", label: "Inglês" },

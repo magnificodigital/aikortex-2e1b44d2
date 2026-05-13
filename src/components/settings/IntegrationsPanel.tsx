@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,7 +163,7 @@ export const ChannelsPanel = () => {
     }
   };
 
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+  const webhookUrl = fnUrl("whatsapp-webhook");
 
   return (
     <div className="space-y-4">

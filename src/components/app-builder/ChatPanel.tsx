@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ArrowUp, Bot, ChevronDown, ChevronLeft, Mic, Wrench,
@@ -29,7 +30,7 @@ interface ToolLog {
   status: "success" | "error";
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`;
+const CHAT_URL = fnUrl("app-chat");
 
 const stepLabels = [
   { id: "discover" as const, label: "Descobrir", num: 1 },

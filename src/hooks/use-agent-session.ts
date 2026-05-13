@@ -1,8 +1,9 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { ChatMessage } from "@/hooks/use-agent-chat";
 
-const APP_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`;
+const APP_CHAT_URL = fnUrl("app-chat");
 const FLUSH_INTERVAL_MS = 60;
 
 export interface UseAgentSessionOptions {

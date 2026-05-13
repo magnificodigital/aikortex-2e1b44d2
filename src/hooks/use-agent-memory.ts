@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,7 +50,7 @@ export function useAgentMemory(agentId: string | undefined) {
       }
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-memory-store`,
+        fnUrl("sync-memory-store"),
         {
           method: "POST",
           headers: {
@@ -92,7 +93,7 @@ export function useAgentMemory(agentId: string | undefined) {
       }
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-memory-store`,
+        fnUrl("sync-memory-store"),
         {
           method: "POST",
           headers: {

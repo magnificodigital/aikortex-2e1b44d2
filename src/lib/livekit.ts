@@ -1,6 +1,7 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { supabase } from "@/integrations/supabase/client";
 
-const TOKEN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/livekit-token`;
+const TOKEN_URL = fnUrl("livekit-token");
 
 export async function getLiveKitToken(roomName: string, identity: string, name: string, isHost: boolean) {
   const { data: { session } } = await supabase.auth.getSession();

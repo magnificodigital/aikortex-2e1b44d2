@@ -29,16 +29,12 @@ async function bufferFromPlatform(
   preferredModel?: string,
   supabase?: ReturnType<typeof createClient>,
 ): Promise<string> {
-  // TODO: remove after hotfix 1.1.2 root cause
-  console.log(`[app-chat] bufferFromPlatform start preferred=${preferredModel ?? 'none'} msgCount=${messages.length}`);
   const result = await callLLM(messages, {
     tier: "free",
     preferredModel,
     maxTokens: 2048,
     timeoutMs: 12000,
   }, supabase);
-  // TODO: remove after hotfix 1.1.2 root cause
-  console.log(`[app-chat] bufferFromPlatform done success=${result.success} model=${result.model_used ?? 'none'} contentLen=${result.content?.length ?? 0} err=${result.error ?? 'none'}`);
   if (!result.success) {
     console.error("[app-chat] all models failed:", result.error);
     return "";
@@ -582,8 +578,6 @@ serve(async (req) => {
     const body = await req.json();
     const { messages, appContext, mode, model: requestedModel, provider: requestedProvider } = body;
     const authHeader = req.headers.get("Authorization");
-    // TODO: remove after hotfix 1.1.2 root cause
-    console.log(`[app-chat] REQ mode=${mode} hasAgentId=${!!(body as any).agentId} hasMessages=${!!messages?.length} useGateway=${(body as any).useGateway} requestedModel=${requestedModel ?? 'none'}`);
 
     /* ── Mode: agent-chat / wizard-setup ── */
     if (mode === "agent-chat" || mode === "wizard-setup") {
@@ -632,8 +626,6 @@ serve(async (req) => {
       const preferred = (body as any).model as string | undefined;
 
       let content = "";
-      // TODO: remove after hotfix 1.1.2 root cause
-      console.log(`[app-chat] PRE-LLM mode=${mode} preferred=${preferred ?? 'none'} msgCount=${chatMessages.length} hasAgent=${!!agentId}`);
       if (agentId) {
         // Split system + rest so runAgentLLM can prepend system itself.
         // models omitted → helper loads from available_llms (single source of truth).
@@ -650,8 +642,6 @@ serve(async (req) => {
       } else {
         content = await bufferFromPlatform(chatMessages, preferred, adminClient);
       }
-      // TODO: remove after hotfix 1.1.2 root cause
-      console.log(`[app-chat] POST-LLM contentLen=${content?.length ?? 0} preview=${(content || "").slice(0, 120).replace(/\n/g, " ")}`);
 
       if (streamMode === false) {
         return new Response(
@@ -659,8 +649,6 @@ serve(async (req) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      // TODO: remove after hotfix 1.1.2 root cause
-      console.log(`[app-chat] STREAM-OUT contentLen=${content?.length ?? 0}`);
       return new Response(
         streamText(content || "⚠️ Serviço de IA temporariamente indisponível. Tente novamente."),
         { headers: sseHeaders }
@@ -726,8 +714,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    // TODO: remove after hotfix 1.1.2 root cause
-    console.error(`[app-chat] EXCEPTION: ${(e as Error).message} stack=${(e as Error).stack?.slice(0, 500)}`);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

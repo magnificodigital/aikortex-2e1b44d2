@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Bot, Send, Sparkles, ArrowRight, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { getRehypePlugins } from "@/lib/safe-rehype";
 import FlowCanvas from "./FlowCanvas";
 import type { SavedFlow } from "@/types/flow-builder";
 
-const DEERFLOW_URL = import.meta.env.VITE_DEERFLOW_URL || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deerflow-proxy`;
+const DEERFLOW_URL = import.meta.env.VITE_DEERFLOW_URL || fnUrl("deerflow-proxy");
 
 const SYSTEM_PROMPT = `You are a flow builder assistant for Aikortex, a marketing automation platform. Your job is to help users create automation flows. Ask clarifying questions to understand their goal, then generate a flow as a JSON structure with nodes and edges compatible with React Flow. Each node should have: id, type (one of: trigger_chat, trigger_webhook, agent, extractor, decision, send_message, update_crm, api_webhook, condition, delay), position (x,y), and data (label, config, category, icon, description, color, nodeType matching the type). Edges have: id, source, target. Respond in Portuguese (Brazil). When you output a flow, wrap it in a \`\`\`json code block.`;
 

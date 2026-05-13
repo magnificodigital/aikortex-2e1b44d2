@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Phone, PhoneOff, Mic, MicOff, X, Minimize2, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -84,7 +85,7 @@ const BrowserCallWidget = ({
         const accessToken = session.access_token;
 
         const resp = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`,
+          fnUrl("app-chat"),
           {
             method: "POST",
             headers: {
@@ -145,7 +146,7 @@ const BrowserCallWidget = ({
       const session = (await supabase.auth.getSession()).data.session;
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/browser-tts`,
+        fnUrl("browser-tts"),
         {
           method: "POST",
           headers: {
