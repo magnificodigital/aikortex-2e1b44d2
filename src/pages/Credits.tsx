@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import DashboardLayout
-import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+import ModuleGate from "@/components/shared/ModuleGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMonthlyUsage } from "@/hooks/use-monthly-usage";

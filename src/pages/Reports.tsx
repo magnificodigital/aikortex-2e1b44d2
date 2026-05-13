@@ -1,6 +1,7 @@
 import { useState } from "react";
 import DashboardLayout
-import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+import ModuleGate from "@/components/shared/ModuleGate";
 import { BarChart3, Users, FolderKanban, DollarSign, FileText, UsersRound, Download, Clock, Wand2, Handshake } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";

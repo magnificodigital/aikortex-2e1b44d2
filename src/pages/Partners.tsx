@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import DashboardLayout
-import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+import ModuleGate from "@/components/shared/ModuleGate";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Handshake, User, TrendingUp, BookOpen, Award, LayoutTemplate, Calendar, MessageCircle } from "lucide-react";
 import { type PartnerProfile } from "@/types/partner";

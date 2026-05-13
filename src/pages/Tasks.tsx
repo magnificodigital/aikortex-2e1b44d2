@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import DashboardLayout
-import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+import ModuleGate from "@/components/shared/ModuleGate";
 import { CheckSquare, List, LayoutGrid, Calendar, User, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockTasks, Task, TaskStatus } from "@/types/task";
