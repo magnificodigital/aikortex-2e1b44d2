@@ -2,6 +2,7 @@
 // Function-calling helper shared by all LLM call sites.
 
 import { callLLM } from "./llm-fallback.ts";
+import { applyToolsHints } from "./agent-runtime.ts";
 
 export type ToolKey = "web_search" | "image_gen" | "knowledge_search";
 
