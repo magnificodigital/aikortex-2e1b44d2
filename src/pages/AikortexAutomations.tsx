@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import ModuleGate from "@/components/shared/ModuleGate";
 import { useLocation } from "react-router-dom";
-import DashboardLayout
-import { ErrorBoundary } from "@/components/shared/ErrorBoundary"; from "@/components/DashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Workflow, Plus, ArrowLeft, Trash2, Pencil, Clock, MoreVertical, Power, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
