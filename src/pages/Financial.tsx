@@ -23,12 +23,13 @@ import FinancialReportsView from "@/components/financial/FinancialReportsView";
 import QuickSaleDialog from "@/components/financial/QuickSaleDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
 
 const Financial = () => {
   const [search, setSearch] = useState("");
-const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [showNewInvoice, setShowNewInvoice] = useState(false);
+  const [showNewExpense, setShowNewExpense] = useState(false);
+  const [showQuickSale, setShowQuickSale] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]);
 
   useEffect(() => {
