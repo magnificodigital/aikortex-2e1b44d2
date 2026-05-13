@@ -56,8 +56,7 @@ const Credits = () => {
         .select("provider")
         .eq("user_id", user!.id)
         .in("provider", ["openai", "anthropic", "gemini", "openrouter"]);
-      return (
-    <ModuleGate moduleKey="aikortex.creditos">data || []).map((k) => k.provider);
+      return (data || []).map((k) => k.provider);
     },
   });
 
