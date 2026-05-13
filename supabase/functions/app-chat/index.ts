@@ -29,12 +29,16 @@ async function bufferFromPlatform(
   preferredModel?: string,
   supabase?: ReturnType<typeof createClient>,
 ): Promise<string> {
+  // TODO: remove after hotfix 1.1.2 root cause
+  console.log(`[app-chat] bufferFromPlatform start preferred=${preferredModel ?? 'none'} msgCount=${messages.length}`);
   const result = await callLLM(messages, {
     tier: "free",
     preferredModel,
     maxTokens: 2048,
     timeoutMs: 12000,
   }, supabase);
+  // TODO: remove after hotfix 1.1.2 root cause
+  console.log(`[app-chat] bufferFromPlatform done success=${result.success} model=${result.model_used ?? 'none'} contentLen=${result.content?.length ?? 0} err=${result.error ?? 'none'}`);
   if (!result.success) {
     console.error("[app-chat] all models failed:", result.error);
     return "";
