@@ -617,19 +617,18 @@ serve(async (req) => {
         : ((messages || []) as Array<{ role: string; content: string }>);
 
       // Tool-aware path: when we have an agentId, use runAgentLLM (function-calling).
-      // Otherwise fall back to plain buffered completion.
+      // Otherwise fall back to plain buffered completion via callLLM.
       const adminClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
         { auth: { persistSession: false } },
       );
-      const platformModels = PLATFORM_FREE_MODELS;
       const preferred = (body as any).model as string | undefined;
-      const modelsToUse = preferred ? [preferred, ...platformModels.filter((m) => m !== preferred)] : platformModels;
 
       let content = "";
       if (agentId) {
-        // Split system + rest so runAgentLLM can prepend system itself
+        // Split system + rest so runAgentLLM can prepend system itself.
+        // models omitted → helper loads from available_llms (single source of truth).
         const sysMsg = chatMessages.find((m) => m.role === "system");
         const rest = chatMessages.filter((m) => m.role !== "system");
         content = (await runAgentLLM({
@@ -638,11 +637,10 @@ serve(async (req) => {
           agencyId: authResult.agencyId,
           system: sysMsg?.content || "",
           messages: rest,
-          models: modelsToUse,
           maxTokens: 2048,
         })) || "";
       } else {
-        content = await bufferFromOpenRouterPlatform(chatMessages, preferred);
+        content = await bufferFromPlatform(chatMessages, preferred, adminClient);
       }
 
       if (streamMode === false) {
