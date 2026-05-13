@@ -1,6 +1,8 @@
 // ── Sprint 2.4-a: Agent Tools runtime (Aikortex Master v7.4 §13.15) ──
 // Function-calling helper shared by all LLM call sites.
 
+import { callLLM } from "./llm-fallback.ts";
+
 export type ToolKey = "web_search" | "image_gen";
 
 export interface ToolQuota {
