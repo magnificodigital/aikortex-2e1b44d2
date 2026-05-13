@@ -214,6 +214,53 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_knowledge_bases: {
+        Row: {
+          agent_id: string
+          chunk_overlap: number
+          chunk_size: number
+          created_at: string
+          description: string | null
+          embedding_dim: number
+          embedding_model: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          chunk_overlap?: number
+          chunk_size?: number
+          created_at?: string
+          description?: string | null
+          embedding_dim?: number
+          embedding_model?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          chunk_overlap?: number
+          chunk_size?: number
+          created_at?: string
+          description?: string | null
+          embedding_dim?: number
+          embedding_model?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_knowledge_bases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_memory_stores: {
         Row: {
           agent_id: string
@@ -1129,6 +1176,113 @@ export type Database = {
             columns: ["subscription_id"]
             isOneToOne: false
             referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+          knowledge_base_id: string
+          metadata: Json
+          token_count: number | null
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          knowledge_base_id: string
+          metadata?: Json
+          token_count?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          knowledge_base_id?: string
+          metadata?: Json
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "kb_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kb_chunks_knowledge_base_id_fkey"
+            columns: ["knowledge_base_id"]
+            isOneToOne: false
+            referencedRelation: "agent_knowledge_bases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_documents: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          knowledge_base_id: string
+          metadata: Json
+          processed_at: string | null
+          raw_content: string | null
+          refreshed_at: string | null
+          source_type: string
+          source_uri: string | null
+          status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          knowledge_base_id: string
+          metadata?: Json
+          processed_at?: string | null
+          raw_content?: string | null
+          refreshed_at?: string | null
+          source_type: string
+          source_uri?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          knowledge_base_id?: string
+          metadata?: Json
+          processed_at?: string | null
+          raw_content?: string | null
+          refreshed_at?: string | null
+          source_type?: string
+          source_uri?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_documents_knowledge_base_id_fkey"
+            columns: ["knowledge_base_id"]
+            isOneToOne: false
+            referencedRelation: "agent_knowledge_bases"
             referencedColumns: ["id"]
           },
         ]
@@ -2166,6 +2320,22 @@ export type Database = {
         Returns: undefined
       }
       is_platform_user: { Args: { check_user_id: string }; Returns: boolean }
+      match_kb_chunks: {
+        Args: {
+          p_agent_id: string
+          p_match_count?: number
+          p_min_similarity?: number
+          p_query_embedding: string
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_id: string
+          knowledge_base_id: string
+          metadata: Json
+          similarity: number
+        }[]
+      }
       publish_agent_version: {
         Args: { p_agent_id: string; p_label?: string; p_notes?: string }
         Returns: Json
