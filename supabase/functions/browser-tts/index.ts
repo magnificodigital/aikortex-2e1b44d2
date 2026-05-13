@@ -1,33 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getAuthContext, handleCors, corsHeaders } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
 serve(async (req) => {
-  if (req.method === "OPTIONS")
-    return new Response(null, { headers: corsHeaders });
+  const corsResp = handleCors(req);
+  if (corsResp) return corsResp;
+
+  const authResult = await getAuthContext(req);
+  if (authResult instanceof Response) return authResult;
+
+  const { user, supabase: client } = authResult;
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    // Auth
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user } } = await supabase.auth.getUser(token);
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const { text, voiceId, stability, speed } = await req.json();
     if (!text) {
       return new Response(JSON.stringify({ error: "text é obrigatório" }), {
@@ -36,10 +20,10 @@ serve(async (req) => {
       });
     }
 
-    // Get ElevenLabs key: user > platform_config > env
+    // ElevenLabs key: user > platform_config > env
     let apiKey = "";
 
-    const { data: userKey } = await supabase
+    const { data: userKey } = await client
       .from("user_api_keys")
       .select("api_key")
       .eq("user_id", user.id)
@@ -49,7 +33,11 @@ serve(async (req) => {
     if (userKey?.api_key) {
       apiKey = userKey.api_key;
     } else {
-      const { data: platformKey } = await supabase
+      const adminClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { data: platformKey } = await adminClient
         .from("platform_config")
         .select("value")
         .eq("key", "elevenlabs_api_key")
