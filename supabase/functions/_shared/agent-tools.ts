@@ -307,6 +307,7 @@ export async function runAgentLLM(opts: {
     enabled,
     supabase: opts.supabase,
     agencyId: opts.agencyId ?? null,
+    agentId: opts.agentId ?? null,
     maxTokens: opts.maxTokens,
   });
   return text || null;
