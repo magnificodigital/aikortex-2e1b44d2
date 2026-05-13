@@ -641,6 +641,9 @@ Regras obrigatórias:
       useGateway: true,
       gatewayModel: setupModel,
       systemPrompt: wizardSystemPrompt,
+      mode: "wizard-setup",
+      agentType: wizardAgentTypeKey,
+      disableCrmExtraction: true,
       persistKey: shouldPersistTemplateDraft ? `${storagePrefix}-wizard-messages` : undefined,
     }
   );
