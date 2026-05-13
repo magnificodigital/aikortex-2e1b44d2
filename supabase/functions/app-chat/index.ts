@@ -581,11 +581,18 @@ serve(async (req) => {
 
     /* ── Mode: agent-chat / wizard-setup ── */
     if (mode === "agent-chat" || mode === "wizard-setup") {
-      const { agentId, agentConfig = {}, stream: streamMode = true } = body as {
+      const { agentConfig = {}, stream: streamMode = true } = body as {
         agentId?: string;
         agentConfig?: Record<string, unknown>;
         stream?: boolean;
       };
+      const agentContext = ((body as any).agentContext || {}) as Record<string, unknown>;
+      const agentId = typeof (body as any).agentId === "string"
+        ? (body as any).agentId
+        : typeof agentContext.agentId === "string"
+          ? agentContext.agentId
+          : undefined;
+      const runtimeAgentConfig = Object.keys(agentConfig || {}).length ? agentConfig : agentContext;
       const sseHeaders = { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no" };
 
       // Ownership validation
@@ -595,11 +602,11 @@ serve(async (req) => {
           Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
         );
         const { data: agent } = await supabaseSvc
-          .from("agents")
-          .select("agency_id")
+          .from("user_agents")
+          .select("id, user_id")
           .eq("id", agentId)
           .maybeSingle();
-        if (!agent || agent.agency_id !== authResult.agencyId) {
+        if (!agent || agent.user_id !== authResult.user.id) {
           return new Response(JSON.stringify({ error: "Agente não encontrado ou sem permissão." }), {
             status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
@@ -611,7 +618,7 @@ serve(async (req) => {
         ? [
             { role: "system", content: mode === "wizard-setup"
               ? buildWizardSystemPrompt(String((body as Record<string, unknown>).agentType || "custom"))
-              : buildAgentSystemPrompt((agentConfig || {}) as Record<string, unknown>) },
+              : buildAgentSystemPrompt((runtimeAgentConfig || {}) as Record<string, unknown>) },
             ...((messages || []) as Array<{ role: string; content: string }>),
           ]
         : ((messages || []) as Array<{ role: string; content: string }>);
