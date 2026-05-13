@@ -3,7 +3,7 @@
 
 import { callLLM } from "./llm-fallback.ts";
 
-export type ToolKey = "web_search" | "image_gen";
+export type ToolKey = "web_search" | "image_gen" | "knowledge_search";
 
 export interface ToolQuota {
   starter: number;
