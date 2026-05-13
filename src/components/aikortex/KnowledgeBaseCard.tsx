@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Plus, Loader2, Database } from "lucide-react";
+import { Settings, Loader2, Database, FileText, Globe, Type, HelpCircle } from "lucide-react";
 import { useKnowledgeDocuments, useUpdateKb, type AgentKnowledgeBase } from "@/hooks/use-agent-knowledge-bases";
 import DocumentListItem from "./DocumentListItem";
 import AddDocumentDialog from "./AddDocumentDialog";
@@ -27,10 +27,16 @@ function formatRelative(iso: string): string {
 export default function KnowledgeBaseCard({ kb, agentId }: Props) {
   const { data: docs = [], isLoading } = useKnowledgeDocuments(kb.id);
   const updateKb = useUpdateKb();
-  const [addOpen, setAddOpen] = useState(false);
+  const [addDocOpen, setAddDocOpen] = useState(false);
+  const [initialTab, setInitialTab] = useState<"text" | "faq" | "file" | "url">("text");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const totalChunks = docs.reduce((sum, d) => sum + (d.chunks_count ?? 0), 0);
+
+  function openAdd(tab: typeof initialTab) {
+    setInitialTab(tab);
+    setAddDocOpen(true);
+  }
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -83,18 +89,32 @@ export default function KnowledgeBaseCard({ kb, agentId }: Props) {
           </div>
         )}
 
-        <Button variant="outline" size="sm" className="w-full gap-1.5 mt-2" onClick={() => setAddOpen(true)}>
-          <Plus className="w-3.5 h-3.5" />
-          Adicionar documento
-        </Button>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
+          <Button variant="outline" size="sm" onClick={() => openAdd("file")}>
+            <FileText className="w-3.5 h-3.5 mr-1.5" />
+            Arquivo
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => openAdd("url")}>
+            <Globe className="w-3.5 h-3.5 mr-1.5" />
+            URL
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => openAdd("text")}>
+            <Type className="w-3.5 h-3.5 mr-1.5" />
+            Texto
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => openAdd("faq")}>
+            <HelpCircle className="w-3.5 h-3.5 mr-1.5" />
+            FAQ
+          </Button>
+        </div>
       </div>
 
       <AddDocumentDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
+        open={addDocOpen}
+        onOpenChange={setAddDocOpen}
         agentId={agentId}
-        kbId={kb.id}
-        kbName={kb.name}
+        kb={kb}
+        initialTab={initialTab}
       />
       <KbSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} kb={kb} />
     </div>
