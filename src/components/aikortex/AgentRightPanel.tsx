@@ -594,12 +594,45 @@ const AgentRightPanel = ({
     [activeSection]
   );
 
+  /* ── Vibe Mode toggle (Master v7.4 §13.2) ── */
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(() => {
+    try { return localStorage.getItem(SHOW_ADVANCED_LS_KEY) === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(SHOW_ADVANCED_LS_KEY, showAdvanced ? "1" : "0"); } catch {}
+  }, [showAdvanced]);
+
+  const visibleNav = useMemo(() => {
+    return RIGHT_NAV
+      .map(g => ({
+        ...g,
+        items: g.items.filter(i => !i.comingSoon && (showAdvanced || !ADVANCED_KEYS.has(i.key))),
+      }))
+      .filter(g => g.items.length > 0);
+  }, [showAdvanced]);
+
+  // If active section becomes hidden after toggling off, fall back to default.
+  useEffect(() => {
+    const visible = visibleNav.flatMap(g => g.items).some(i => i.key === activeSection);
+    if (!visible) goSection(DEFAULT_SECTION);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleNav]);
+
   return (
     <div className="flex h-full min-w-0 overflow-hidden">
 
-      {/* ── Hierarchical sidenav (6 grupos · 16 itens) ── */}
+      {/* ── Hierarchical sidenav (Vibe Mode by default) ── */}
       <aside className="w-56 border-r border-border bg-card/30 shrink-0 overflow-y-auto py-3 hidden md:block">
-        {RIGHT_NAV.map((g) => (
+        <div className="px-3 mb-3">
+          <label className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground cursor-pointer">
+            <span className="flex items-center gap-2">
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Opções avançadas</span>
+            </span>
+            <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} />
+          </label>
+        </div>
+        {visibleNav.map((g) => (
           <div key={g.group} className="px-3 mb-4">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-2 flex items-center gap-1.5">
               <span>{g.group}</span>
@@ -621,23 +654,18 @@ const AgentRightPanel = ({
                   <button
                     key={item.key}
                     type="button"
-                    onClick={() => { if (!item.comingSoon) goSection(item.key); }}
-                    disabled={item.comingSoon}
+                    onClick={() => goSection(item.key)}
                     className={`w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
                       active
                         ? "bg-primary/10 text-primary font-medium"
-                        : item.comingSoon
-                          ? "text-muted-foreground/60 cursor-not-allowed"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
                   >
                     <span className="flex items-center gap-2 min-w-0">
                       <Icon className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">{item.label}</span>
                     </span>
-                    {item.comingSoon ? (
-                      <span className="text-[9px] uppercase tracking-wider bg-muted text-muted-foreground/80 rounded px-1 py-0.5">em breve</span>
-                    ) : capActive ? (
+                    {capActive ? (
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-label="ativo" />
                     ) : null}
                   </button>
@@ -652,15 +680,19 @@ const AgentRightPanel = ({
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
         {/* Mobile section selector */}
-        <div className="md:hidden border-b border-border px-3 py-2">
+        <div className="md:hidden border-b border-border px-3 py-2 flex items-center gap-2">
           <Select value={activeSection} onValueChange={(v) => goSection(v)}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {RIGHT_NAV.flatMap(g => g.items).filter(i => !i.comingSoon).map(i => (
+              {visibleNav.flatMap(g => g.items).map(i => (
                 <SelectItem key={i.key} value={i.key} className="text-xs">{i.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
+            <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} />
+            <span>Avançado</span>
+          </label>
         </div>
 
         <ScrollArea className="flex-1">
