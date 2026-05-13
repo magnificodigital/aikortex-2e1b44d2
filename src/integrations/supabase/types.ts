@@ -476,6 +476,7 @@ export type Database = {
           supports_streaming: boolean
           supports_tools: boolean
           tier: string
+          tool_calling_reliable: boolean
           updated_at: string
         }
         Insert: {
@@ -495,6 +496,7 @@ export type Database = {
           supports_streaming?: boolean
           supports_tools?: boolean
           tier?: string
+          tool_calling_reliable?: boolean
           updated_at?: string
         }
         Update: {
@@ -514,6 +516,7 @@ export type Database = {
           supports_streaming?: boolean
           supports_tools?: boolean
           tier?: string
+          tool_calling_reliable?: boolean
           updated_at?: string
         }
         Relationships: []
