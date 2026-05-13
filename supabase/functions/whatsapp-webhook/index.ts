@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
+import { callLLM } from "../_shared/llm-fallback.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -157,32 +158,13 @@ serve(async (req) => {
 });
 
 async function callOpenRouterDirect(
+  supabase: any,
   messages: Array<{ role: string; content: string }>,
   system: string,
 ): Promise<string | null> {
-  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
-  if (!apiKey) return null;
-  const models = ["qwen/qwen3-30b-a3b:free", "google/gemini-2.5-flash-preview-04-17:free", "google/gemma-3-27b-it:free"];
   const fullMessages = [{ role: "system", content: system }, ...messages];
-  for (const model of models) {
-    try {
-      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://aikortex.com",
-          "X-Title": "Aikortex",
-        },
-        body: JSON.stringify({ model, messages: fullMessages, stream: false, max_tokens: 1024 }),
-      });
-      if (!resp.ok) continue;
-      const data = await resp.json();
-      const content = data?.choices?.[0]?.message?.content || "";
-      if (content) return content;
-    } catch { continue; }
-  }
-  return null;
+  const result = await callLLM(fullMessages, { tier: "free", maxTokens: 1024 }, supabase);
+  return result.success ? (result.content ?? null) : null;
 }
 
 /** Fire-and-forget: find agent config and call OpenRouter directly */
@@ -241,7 +223,6 @@ Responda sempre em português do Brasil. Seja natural e conversacional.`;
         agencyId: null,
         system,
         messages: [{ role: "user", content: messageContent }],
-        models: ["qwen/qwen3-30b-a3b:free", "google/gemini-2.5-flash-preview-04-17:free", "google/gemma-3-27b-it:free"],
         maxTokens: 1024,
       });
 
