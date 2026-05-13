@@ -300,7 +300,8 @@ export async function runAgentLLM(opts: {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
   if (!apiKey) return null;
   const enabled = opts.agentId ? await loadEnabledTools(opts.supabase, opts.agentId) : [];
-  const fullMessages = [{ role: "system", content: opts.system }, ...opts.messages];
+  const systemWithHints = applyToolsHints(opts.system, enabled);
+  const fullMessages = [{ role: "system", content: systemWithHints }, ...opts.messages];
   const text = await runWithTools({
     apiKey,
     models: opts.models ?? [],
