@@ -726,7 +726,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("chat error:", e);
+    // TODO: remove after hotfix 1.1.2 root cause
+    console.error(`[app-chat] EXCEPTION: ${(e as Error).message} stack=${(e as Error).stack?.slice(0, 500)}`);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
