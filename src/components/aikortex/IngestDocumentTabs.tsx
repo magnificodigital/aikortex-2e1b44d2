@@ -12,6 +12,7 @@ type Mode = "text" | "faq" | "file" | "url";
 interface Props {
   agentId: string;
   kbId: string;
+  initialTab?: Mode;
   onSuccess?: () => void;
 }
 
@@ -19,9 +20,9 @@ interface Props {
  * Reusable form for ingesting a document in 4 modes.
  * Used by AddDocumentDialog (agency UI) and AdminKbTestTab (debug).
  */
-export default function IngestDocumentTabs({ agentId, kbId, onSuccess }: Props) {
+export default function IngestDocumentTabs({ agentId, kbId, initialTab = "text", onSuccess }: Props) {
   const ingest = useIngestDocument();
-  const [mode, setMode] = useState<Mode>("text");
+  const [mode, setMode] = useState<Mode>(initialTab);
 
   const [text, setText] = useState("");
   const [textTitle, setTextTitle] = useState("");
