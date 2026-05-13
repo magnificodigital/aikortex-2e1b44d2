@@ -204,6 +204,7 @@ const AgentDetail = () => {
 
   const isTemplate    = !!agentId && !!TEMPLATE_MAP[agentId];
   const isNewCustomFromHome = navState?.fromTemplate === false && !!navState?.initialPrompt;
+  const isFreshNew = !isTemplate && (!agentId || agentId === "new" || agentId.startsWith("new-"));
   const templateAgent = isTemplate ? TEMPLATE_MAP[agentId!] : null;
   const initialType: AgentType = (navState?.agentType as AgentType) || templateAgent?.agentType || "Custom";
 
@@ -214,9 +215,11 @@ const AgentDetail = () => {
       // Templates start with neutral name — wizard chat will collect details first
       return { name: "Novo Agente", avatar: templateAgent.avatar, model: templateAgent.model, agentType: templateAgent.agentType, savedConfig: null };
     }
-    return { name: "Carregando...", avatar: avatar1, model: DEFAULT_FREE_MODEL, agentType: initialType, savedConfig: null };
+    // Fresh new agent (no DB record yet) → show "Novo Agente" instead of "Carregando..."
+    const initialName = isFreshNew ? "Novo Agente" : "Carregando...";
+    return { name: initialName, avatar: avatar1, model: DEFAULT_FREE_MODEL, agentType: initialType, savedConfig: null };
   });
-  const [agentLoading, setAgentLoading] = useState(!isTemplate);
+  const [agentLoading, setAgentLoading] = useState(!isTemplate && !isFreshNew);
 
   useEffect(() => {
     if (isTemplate || !agentId || agentId === "new" || agentId.startsWith("new-")) { setAgentLoading(false); return; }
@@ -248,6 +251,7 @@ const AgentDetail = () => {
   const [wizardStep, setWizardStep] = useState<"discover" | "structure" | "build" | "done">(() => {
     if (isTemplate) return "discover";
     if (isNewCustomFromHome) return "discover";
+    if (isFreshNew) return "discover";
     // Existing saved agent
     return "done";
   });
