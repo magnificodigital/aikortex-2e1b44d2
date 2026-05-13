@@ -73,7 +73,50 @@ type IngestFaqPayload = {
   faqs: Array<{ question: string; answer: string }>;
 };
 
-export type IngestPayload = IngestTextPayload | IngestFaqPayload;
+type IngestFilePayload = {
+  kb_id: string;
+  source_type: "file";
+  title: string;
+  storage_path: string;
+};
+
+type IngestUrlPayload = {
+  kb_id: string;
+  source_type: "url";
+  title: string;
+  url: string;
+};
+
+export type IngestPayload =
+  | IngestTextPayload
+  | IngestFaqPayload
+  | IngestFilePayload
+  | IngestUrlPayload;
+
+const KB_ALLOWED_EXTS = ["txt", "md", "pdf", "docx"] as const;
+const KB_MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+export async function uploadKbFile(
+  agentId: string,
+  file: File,
+): Promise<{ storage_path: string }> {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+  if (!KB_ALLOWED_EXTS.includes(ext as any)) {
+    throw new Error(`Tipo de arquivo não suportado: .${ext}. Aceitos: ${KB_ALLOWED_EXTS.join(", ")}`);
+  }
+  if (file.size > KB_MAX_FILE_BYTES) {
+    throw new Error(`Arquivo muito grande: ${(file.size / 1024 / 1024).toFixed(2)}MB (máx 10MB)`);
+  }
+  const uuid = crypto.randomUUID();
+  const safeName = file.name.replace(/[^\w.-]/g, "_");
+  const storagePath = `${agentId}/${uuid}-${safeName}`;
+  const { error } = await supabase.storage.from("kb-files").upload(storagePath, file, {
+    contentType: file.type || "application/octet-stream",
+    upsert: false,
+  });
+  if (error) throw new Error(`Upload falhou: ${error.message}`);
+  return { storage_path: storagePath };
+}
 
 export function useIngestDocument() {
   const queryClient = useQueryClient();
