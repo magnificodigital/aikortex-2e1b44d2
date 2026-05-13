@@ -479,16 +479,27 @@ function FlowCanvasInner({ initialNodes, initialEdges, flowName, flowId, onSave,
     if (rightTab === "logs") loadExecutions();
   }, [rightTab, loadExecutions]);
 
-  const handleDeploy = () => {
+  const handleDeploy = async () => {
     if (nodes.length < 2) {
       toast.error("Adicione pelo menos 2 blocos ao fluxo");
       return;
     }
-    toast.success("Fluxo publicado com sucesso! 🚀");
+    if (!onSave) {
+      toast.error("Não foi possível publicar — função de salvamento indisponível.");
+      return;
+    }
+    try {
+      onSave(flowName || "Fluxo sem nome", nodes, edges);
+      toast.success("Fluxo salvo com sucesso!");
+    } catch (err) {
+      toast.error("Erro ao salvar fluxo.");
+    }
   };
 
   const handleDeleteFlow = () => {
-    toast.success("Fluxo excluído");
+    toast("Para excluir, use a lista de fluxos na página de Automações.", {
+      description: "A exclusão será implementada em breve."
+    });
   };
 
   const handleDuplicate = () => {

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import DashboardLayout
+import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
 import { FolderKanban, LayoutGrid, List, Calendar, GanttChart } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -57,6 +58,7 @@ const Projects = () => {
   const totalTasks = items.filter((i) => i.task_type === "task").length;
 
   return (
+    <ModuleGate moduleKey="gestao.projetos">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
         <div className="flex items-center gap-3">
@@ -112,6 +114,7 @@ const Projects = () => {
         />
         <NewProjectDialog open={showNewProject} onOpenChange={setShowNewProject} onAdd={handleAddItem} />
       </div>
+          </ModuleGate>
     </DashboardLayout>
   );
 };

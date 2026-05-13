@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import DashboardLayout from "@/components/DashboardLayout";
+import DashboardLayout
+import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMonthlyUsage } from "@/hooks/use-monthly-usage";
@@ -55,7 +56,8 @@ const Credits = () => {
         .select("provider")
         .eq("user_id", user!.id)
         .in("provider", ["openai", "anthropic", "gemini", "openrouter"]);
-      return (data || []).map((k) => k.provider);
+      return (
+    <ModuleGate moduleKey="aikortex.creditos">data || []).map((k) => k.provider);
     },
   });
 
@@ -80,6 +82,7 @@ const Credits = () => {
   const usagePercent = isUnlimited || monthlyLimit <= 0 ? 0 : Math.min(100, (messageCount / monthlyLimit) * 100);
 
   return (
+    <ModuleGate moduleKey="aikortex.creditos">
     <DashboardLayout>
       <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
         <div className="flex items-center gap-3">
@@ -113,6 +116,7 @@ const Credits = () => {
                 {providers.map((p) => {
                   const isConfigured = configuredKeys.includes(p.key);
                   return (
+    <ModuleGate moduleKey="aikortex.creditos">
                     <div key={p.key} className="flex items-center justify-between rounded-lg border border-border p-3">
                       <div>
                         <p className="text-sm font-medium">{p.label}</p>
@@ -244,6 +248,7 @@ const Credits = () => {
           </TabsContent>
         </Tabs>
       </div>
+          </ModuleGate>
     </DashboardLayout>
   );
 };

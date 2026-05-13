@@ -13,6 +13,8 @@ const MODULE_LABELS: Record<string, string> = {
   "aikortex.templates": "Templates",
   "aikortex.mensagens": "Mensagens",
   "aikortex.disparos": "Disparos",
+  "aikortex.ligacoes": "Ligações",
+  "aikortex.creditos": "Créditos",
   "gestao.clientes": "Clientes",
   "gestao.contratos": "Contratos",
   "gestao.vendas": "Vendas",
@@ -21,6 +23,9 @@ const MODULE_LABELS: Record<string, string> = {
   "gestao.financeiro": "Financeiro",
   "gestao.equipe": "Equipe",
   "gestao.tarefas": "Tarefas",
+  "gestao.projetos": "Projetos",
+  "gestao.relatorios": "Relatórios",
+  "partners": "Partners",
 };
 
 interface ModuleGateProps {

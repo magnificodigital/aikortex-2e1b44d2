@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import DashboardLayout
+import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -146,6 +147,7 @@ export const TemplatesMarketplaceView = () => {
 
   if (loading) {
     return (
+    <ModuleGate moduleKey="aikortex.templates">
       <div className="flex items-center justify-center h-96">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
@@ -153,6 +155,7 @@ export const TemplatesMarketplaceView = () => {
   }
 
   return (
+    <ModuleGate moduleKey="aikortex.templates">
     <>
       <div className="space-y-6">
         {/* Header */}
@@ -202,6 +205,7 @@ export const TemplatesMarketplaceView = () => {
             const locked = !canAccessTier(t.min_tier);
             const CatIcon = CATEGORY_ICONS[t.category] ?? Bot;
             return (
+    <ModuleGate moduleKey="aikortex.templates">
               <Card key={t.id} className={`transition-shadow hover:shadow-md ${locked ? "opacity-40" : ""} relative`}>
                 {locked && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/40">
@@ -356,7 +360,8 @@ const Templates = () => (
     <div className="p-6 max-w-7xl mx-auto">
       <TemplatesMarketplaceView />
     </div>
-  </DashboardLayout>
+        </ModuleGate>
+    </DashboardLayout>
 );
 
 export default Templates;

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import DashboardLayout from "@/components/DashboardLayout";
+import ModuleGate from "@/components/shared/ModuleGate";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -139,6 +140,7 @@ const Clients = () => {
 
   return (
     <DashboardLayout>
+      <ModuleGate moduleKey="gestao.clientes">
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -270,6 +272,7 @@ const Clients = () => {
         agencyTier={agency?.tier ?? "starter"}
         onSuccess={async () => { await loadData(); await refreshClients(); }}
       />
+      </ModuleGate>
     </DashboardLayout>
   );
 };

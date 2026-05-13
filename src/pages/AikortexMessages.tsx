@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import ModuleGate from "@/components/shared/ModuleGate";
 import ConversationList, { Conversation } from "@/components/messages/ConversationList";
 import ChatArea, { ChatMessage } from "@/components/messages/ChatArea";
 import ContactPanel, { ContactInfo } from "@/components/messages/ContactPanel";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+const WHATSAPP_SEND_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-send`;
 
 const AikortexMessages = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -14,8 +18,9 @@ const AikortexMessages = () => {
   const [activeTab, setActiveTab] = useState("mine");
   const [loading, setLoading] = useState(true);
 
-  // Carrega lista de conversas agrupadas por número
+// Carrega lista de conversas agrupadas por número
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       setLoading(true);
       const { data, error } = await supabase
@@ -23,7 +28,7 @@ const AikortexMessages = () => {
         .select("id, from_number, contact_name, content, direction, status, created_at, phone_number_id")
         .order("created_at", { ascending: false });
 
-      if (error || !data) { setLoading(false); return; }
+      if (cancelled || error || !data) { setLoading(false); return; }
 
       // Agrupar por número de contato (from_number quando inbound)
       const grouped = new Map<string, any[]>();
@@ -52,16 +57,20 @@ const AikortexMessages = () => {
         };
       });
 
-      setConversations(convList);
-      if (convList.length > 0 && !selectedConv) setSelectedConv(convList[0].id);
-      setLoading(false);
+      if (!cancelled) {
+        setConversations(convList);
+        if (convList.length > 0 && !selectedConv) setSelectedConv(convList[0].id);
+        setLoading(false);
+      }
     };
     load();
+    return () => { cancelled = true; };
   }, []);
 
   // Carrega mensagens da conversa selecionada
   useEffect(() => {
     if (!selectedConv) return;
+    let cancelled = false;
     const load = async () => {
       const { data } = await supabase
         .from("whatsapp_messages")
@@ -69,7 +78,7 @@ const AikortexMessages = () => {
         .eq("from_number", selectedConv)
         .order("created_at", { ascending: true });
 
-      if (!data) return;
+      if (!data || cancelled) return;
 
       const conv = conversations.find(c => c.id === selectedConv);
       setContact(conv ? {
@@ -91,16 +100,64 @@ const AikortexMessages = () => {
       })));
     };
     load();
+    return () => { cancelled = true; };
   }, [selectedConv, conversations]);
 
   const handleSend = async (text: string) => {
-    console.log("Send (não implementado ainda):", text);
+    if (!text.trim() || !selectedConv) return;
+
+    const optimisticId = `send-${Date.now()}`;
+    const now = new Date();
+
+    setMessages(prev => [...prev, {
+      id: optimisticId,
+      sender: "user",
+      senderName: "Agente",
+      text: text.trim(),
+      time: now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      status: "sent",
+    }]);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, status: "failed" } : m));
+        return;
+      }
+
+      const resp = await fetch(WHATSAPP_SEND_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          to: selectedConv,
+          type: "text",
+          message: text.trim(),
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Erro ao enviar" }));
+        toast.error(err.error || "Erro ao enviar mensagem");
+        setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, status: "failed" } : m));
+        return;
+      }
+
+      setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, status: "delivered" } : m));
+    } catch (err) {
+      toast.error("Sem conexão com o servidor.");
+      setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, status: "failed" } : m));
+    }
   };
 
   const conversation = conversations.find(c => c.id === selectedConv) || null;
 
   return (
     <DashboardLayout>
+      <ModuleGate moduleKey="aikortex.mensagens">
       <div className="h-[calc(100vh-0px)] flex overflow-hidden -m-0">
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
@@ -123,9 +180,7 @@ const AikortexMessages = () => {
             />
             <ChatArea conversation={conversation} messages={messages} onSend={handleSend} />
             <ContactPanel contact={contact} />
-          </>
-        )}
-      </div>
+      </ModuleGate>
     </DashboardLayout>
   );
 };

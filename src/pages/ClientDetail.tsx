@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import DashboardLayout from "@/components/DashboardLayout";
+import DashboardLayout
+import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ const ClientDetail = () => {
 
   if (loading) {
     return (
+    <ModuleGate moduleKey="gestao.clientes">
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -64,6 +66,7 @@ const ClientDetail = () => {
 
   if (!client) {
     return (
+    <ModuleGate moduleKey="gestao.clientes">
       <DashboardLayout>
         <div className="p-6 text-center text-muted-foreground">Cliente não encontrado.</div>
       </DashboardLayout>
@@ -88,6 +91,7 @@ const ClientDetail = () => {
   };
 
   return (
+    <ModuleGate moduleKey="gestao.clientes">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-5xl space-y-6">
         {/* Header */}
@@ -126,10 +130,10 @@ const ClientDetail = () => {
               <Card>
                 <CardHeader><CardTitle className="text-base">Resumo Financeiro</CardTitle></CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Plataforma</span><span>R$ 97/mês</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Plataforma</span><span>R$ {platformCost.toFixed(0)}/mês</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Templates</span><span>R$ {totalTemplates.toFixed(0)}/mês</span></div>
-                  <div className="flex justify-between font-bold border-t pt-2"><span>Total mensal</span><span>R$ {(97 + totalTemplates).toFixed(0)}/mês</span></div>
-                  <div className="flex justify-between text-green-600 font-medium"><span>Sua receita</span><span>R$ {(50 + totalTemplates - platformCost).toFixed(0)}/mês</span></div>
+                  <div className="flex justify-between font-bold border-t pt-2"><span>Total mensal</span><span>R$ {(platformCost + totalTemplates).toFixed(0)}/mês</span></div>
+                  <div className="flex justify-between text-green-600 font-medium"><span>Sua receita</span><span>R$ {(totalTemplates).toFixed(0)}/mês</span></div>
                 </CardContent>
               </Card>
             </div>
@@ -145,6 +149,7 @@ const ClientDetail = () => {
                   const subSt = STATUS_MAP[s.status] ?? STATUS_MAP.pending;
                   const trialDays = s.trial_ends_at ? Math.max(0, Math.ceil((new Date(s.trial_ends_at).getTime() - Date.now()) / 86400000)) : 0;
                   return (
+    <ModuleGate moduleKey="gestao.clientes">
                     <Card key={s.id}>
                       <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
                         <div>
@@ -223,6 +228,7 @@ const ClientDetail = () => {
           </TabsContent>
         </Tabs>
       </div>
+          </ModuleGate>
     </DashboardLayout>
   );
 };

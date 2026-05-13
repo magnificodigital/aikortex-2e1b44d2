@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import DashboardLayout
+import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
 import { CheckSquare, List, LayoutGrid, Calendar, User, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockTasks, Task, TaskStatus } from "@/types/task";
@@ -44,6 +45,7 @@ const Tasks = () => {
   }, [search, statusFilter, priorityFilter, assigneeFilter, projectFilter, tasks]);
 
   return (
+    <ModuleGate moduleKey="gestao.tarefas">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-[1400px] space-y-5">
         {/* Header */}
@@ -112,6 +114,7 @@ const Tasks = () => {
         <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)} />
         <NewTaskDialog open={showNewTask} onOpenChange={setShowNewTask} />
       </div>
+          </ModuleGate>
     </DashboardLayout>
   );
 };

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import DashboardLayout
+import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
 import { UsersRound } from "lucide-react";
 import { mockTeamMembers, TeamMember } from "@/types/team";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,6 +36,7 @@ const Team = () => {
   }, [search, roleFilter, statusFilter, departmentFilter]);
 
   return (
+    <ModuleGate moduleKey="gestao.equipe">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
         <div className="flex items-center gap-3">
@@ -98,6 +100,7 @@ const Team = () => {
       />
       <EditMemberDialog member={editingMember} open={!!editingMember} onOpenChange={(o) => !o && setEditingMember(null)} />
       <MemberDetailDialog member={viewingMember} open={!!viewingMember} onOpenChange={(o) => !o && setViewingMember(null)} />
+          </ModuleGate>
     </DashboardLayout>
   );
 };

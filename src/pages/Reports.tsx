@@ -1,5 +1,6 @@
 import { useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import DashboardLayout
+import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
 import { BarChart3, Users, FolderKanban, DollarSign, FileText, UsersRound, Download, Clock, Wand2, Handshake } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ const Reports = () => {
   const [scheduleOpen, setScheduleOpen] = useState(false);
 
   return (
+    <ModuleGate moduleKey="gestao.relatorios">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-[1400px]">
         {/* Header */}
@@ -120,6 +122,7 @@ const Reports = () => {
 
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
       <ScheduleDialog open={scheduleOpen} onOpenChange={setScheduleOpen} />
+          </ModuleGate>
     </DashboardLayout>
   );
 };

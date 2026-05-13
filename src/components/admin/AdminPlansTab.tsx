@@ -137,7 +137,11 @@ const AdminPlansTab = () => {
                         </div>
                         <CardDescription>{plan.description}</CardDescription>
                         <div className="pt-2">
-                          <span className="text-2xl font-bold">Gratuito</span>
+                          <span className="text-2xl font-bold">
+                            {plan.price_monthly > 0
+                              ? `R$ ${plan.price_monthly}/mês`
+                              : "Gratuito"}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1.5 pt-1">
                           <Zap className="w-3.5 h-3.5 text-amber-500" />

@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import DashboardLayout from "@/components/DashboardLayout";
+import DashboardLayout
+import ModuleGate from "@/components/shared/ModuleGate"; from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -117,6 +118,7 @@ const CallLogs = () => {
   ];
 
   return (
+    <ModuleGate moduleKey="aikortex.ligacoes">
     <DashboardLayout>
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
         <div>
@@ -196,6 +198,7 @@ const CallLogs = () => {
                     const st = STATUS_MAP[log.status] || STATUS_MAP.initiated;
                     const StatusIcon = st.icon;
                     return (
+    <ModuleGate moduleKey="aikortex.ligacoes">
                       <tr key={log.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                         <td className="px-4 py-3">
                           {log.direction === "inbound"
@@ -288,6 +291,7 @@ const CallLogs = () => {
           </ScrollArea>
         </SheetContent>
       </Sheet>
+          </ModuleGate>
     </DashboardLayout>
   );
 };
