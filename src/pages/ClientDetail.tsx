@@ -230,8 +230,8 @@ const ClientDetail = () => {
           </TabsContent>
         </Tabs>
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 
