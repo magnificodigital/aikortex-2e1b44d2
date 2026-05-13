@@ -16,6 +16,7 @@ import AdminConfigTab from "@/components/admin/AdminConfigTab";
 import AdminSupportTab from "@/components/admin/AdminSupportTab";
 import AdminTutorialsTab from "@/components/admin/AdminTutorialsTab";
 import AdminLLMsTab from "@/components/admin/AdminLLMsTab";
+import AdminKbTestTab from "@/components/admin/AdminKbTestTab";
 
 const TAB_LABELS: Record<string, string> = {
   overview: "Visão Geral",
@@ -28,6 +29,7 @@ const TAB_LABELS: Record<string, string> = {
   support: "Suporte",
   tutorials: "Tutoriais",
   llms: "LLMs",
+  "kb-test": "KB Test (temp)",
 };
 
 const AdminPanel = () => {
@@ -101,6 +103,9 @@ const AdminPanel = () => {
           <TabsContent value="tutorials"><AdminTutorialsTab /></TabsContent>
           {isPlatformOwner && (
             <TabsContent value="llms"><AdminLLMsTab /></TabsContent>
+          )}
+          {isPlatformOwner && (
+            <TabsContent value="kb-test"><AdminKbTestTab /></TabsContent>
           )}
         </Tabs>
       </div>
