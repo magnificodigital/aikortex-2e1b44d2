@@ -582,6 +582,8 @@ serve(async (req) => {
     const body = await req.json();
     const { messages, appContext, mode, model: requestedModel, provider: requestedProvider } = body;
     const authHeader = req.headers.get("Authorization");
+    // TODO: remove after hotfix 1.1.2 root cause
+    console.log(`[app-chat] REQ mode=${mode} hasAgentId=${!!(body as any).agentId} hasMessages=${!!messages?.length} useGateway=${(body as any).useGateway} requestedModel=${requestedModel ?? 'none'}`);
 
     /* ── Mode: agent-chat / wizard-setup ── */
     if (mode === "agent-chat" || mode === "wizard-setup") {
