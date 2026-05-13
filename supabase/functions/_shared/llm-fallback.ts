@@ -142,6 +142,8 @@ export async function callLLM(
   supabase?: SupabaseClient,
 ): Promise<LLMResult> {
   const apiKey = options.apiKey || Deno.env.get("OPENROUTER_API_KEY") || "";
+  // TODO: remove after hotfix 1.1.2 root cause
+  console.log(`[llm-fallback] callLLM start tier=${options.tier ?? 'free'} preferredModel=${options.preferredModel ?? 'none'} hasKey=${!!apiKey} hasSupabase=${!!supabase}`);
   if (!apiKey) {
     return { success: false, error: "OPENROUTER_API_KEY ausente" };
   }
@@ -159,6 +161,8 @@ export async function callLLM(
   if (options.preferredModel) {
     models = [options.preferredModel, ...models.filter((m) => m !== options.preferredModel)];
   }
+  // TODO: remove after hotfix 1.1.2 root cause
+  console.log(`[llm-fallback] models loaded count=${models.length} first=${models[0] ?? 'none'}`);
   if (models.length === 0) {
     return {
       success: false,
