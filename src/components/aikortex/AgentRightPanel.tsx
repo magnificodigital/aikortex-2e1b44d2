@@ -929,16 +929,23 @@ const AgentRightPanel = ({
                     </div>
                     <div className="space-y-2">
                       <h3 className="text-sm font-semibold text-foreground">Tom de voz</h3>
-                      <Select value={agentToneOfVoice} onValueChange={setAgentToneOfVoice}>
-                        <SelectTrigger className="text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Profissional e Amigável">Profissional e Amigável</SelectItem>
-                          <SelectItem value="Formal">Formal</SelectItem>
-                          <SelectItem value="Casual e Descontraído">Casual e Descontraído</SelectItem>
-                          <SelectItem value="Empático e Acolhedor">Empático e Acolhedor</SelectItem>
-                          <SelectItem value="Direto e Objetivo">Direto e Objetivo</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        list="tone-of-voice-options"
+                        value={agentToneOfVoice}
+                        onChange={(e) => setAgentToneOfVoice(e.target.value)}
+                        placeholder="Ex: Profissional e Amigável"
+                        className="text-sm"
+                      />
+                      <datalist id="tone-of-voice-options">
+                        <option value="Profissional e Amigável" />
+                        <option value="Formal" />
+                        <option value="Casual e Descontraído" />
+                        <option value="Empático e Acolhedor" />
+                        <option value="Direto e Objetivo" />
+                        <option value="Técnico" />
+                        <option value="Consultivo" />
+                      </datalist>
+                      <p className="text-[11px] text-muted-foreground">Escolha uma opção sugerida ou descreva o tom em texto livre.</p>
                     </div>
                     <div className="space-y-2">
                       <h3 className="text-sm font-semibold text-foreground">Mensagem de saudação</h3>
