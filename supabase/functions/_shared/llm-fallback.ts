@@ -77,6 +77,8 @@ export async function loadActiveModels(
   }
   let rows = data ?? [];
   if (options.toolsRequired) rows = rows.filter((m: any) => m.supports_tools === true);
+  // TODO: temporary debug — remove after diagnosis.
+  console.log(`[llm-fallback] loadActiveModels result count=${rows.length} sample=[${rows.slice(0, 8).map((m: any) => `${m.model_id}(${m.status})`).join(", ")}]`);
   return rows.map((m: any) => m.model_id);
 }
 
@@ -121,6 +123,8 @@ async function markFailure(
       : failures >= 2
       ? "degraded"
       : "healthy";
+    // TODO: temporary debug — remove after diagnosis.
+    console.log(`[llm-fallback] mark failure ${model_id} status=${status} newStatus=${newStatus} consecutiveFailures=${failures}`);
     await supabase
       .from("available_llms")
       .update({
@@ -272,6 +276,8 @@ export async function callLLM(
     } catch (e) {
       const errMsg = (e as Error).message;
       const latency = Date.now() - t0;
+      // TODO: temporary debug — remove after diagnosis.
+      console.log(`[llm-fallback] ${model} → exception latency=${latency}ms msg=${errMsg}`);
       console.warn(`[llm-fallback] ${model} EXCEPTION latency=${latency}ms ${errMsg}`);
       markFailure(supabase, model, 0, errMsg);
       lastError = errMsg;
