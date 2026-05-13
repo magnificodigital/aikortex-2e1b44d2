@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import CRMKanban from "@/components/crm/CRMKanban";
 import LeadDetailDialog from "@/components/crm/LeadDetailDialog";
 import NewLeadDialog from "@/components/crm/NewLeadDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { Lead, PipelineStage, PIPELINE_STAGES, LEAD_SOURCES, TEMPERATURE_CONFIG } from "@/types/crm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,10 +23,10 @@ const AikortexCRM = () => {
     supabase
       .from("flow_executions")
       .select("*").order("created_at", { ascending: false }).limit(50)
-      .then(({ data }) => { if (data) setLeads(data.map(e => ({
-        id: e.id, name: e.name || "Lead", email: "", phone: "", source: "flow",
+      .then(({ data }) => { if (data) setLeads(data.map((e: any) => ({
+        id: e.id, name: e.flow_name || "Lead", company: "", email: "", phone: "", source: "flow",
         stage: e.status === "completed" ? "qualified" : "contacted", temperature: "morno",
-        value: 0, createdAt: e.created_at, notes: e.result?.content?.slice(0, 100) || "" })));
+        value: 0, assignee: "", activities: [], createdAt: e.created_at, updatedAt: e.created_at, notes: "" })));
         setLoading(false);
       });
   }, []);

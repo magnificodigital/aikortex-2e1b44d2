@@ -69,7 +69,7 @@ const Team = () => {
               departmentFilter={departmentFilter} onDepartmentChange={setDepartmentFilter}
               onInvite={() => setShowCreate(true)}
             />
-            <TeamTable members={filtered} />
+            <TeamTable members={filtered} onView={() => {}} onEdit={() => {}} />
           </TabsContent>
         </Tabs>
       </div>
@@ -77,6 +77,7 @@ const Team = () => {
       <CreateUserDialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
+        onSuccess={() => setShowCreate(false)}
         context="agency"
       />
     </DashboardLayout>

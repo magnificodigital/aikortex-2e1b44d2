@@ -454,7 +454,7 @@ const AgentDetail = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token || ""}`,
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ""}`,
         },
         body: JSON.stringify({
           description,

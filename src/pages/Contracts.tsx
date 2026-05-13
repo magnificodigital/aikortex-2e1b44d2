@@ -18,12 +18,13 @@ const Contracts = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
-  const [editingContract, setEditingContract] = useState<Contract | null>(null);
-  const [signingContract, setSigningContract] = useState<Contract | null>(null);
+  const [selectedContract, setSelectedContract] = useState<any>(null);
+  const [editingContract, setEditingContract] = useState<any>(null);
+  const [signingContract, setSigningContract] = useState<any>(null);
   const [showNew, setShowNew] = useState(false);
+  const [contracts] = useState<any[]>([]);
 
-  const filtered = mockContracts.filter(c => {
+  const filtered = contracts.filter((c: any) => {
     const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || c.client.toLowerCase().includes(search.toLowerCase()) || c.id.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
     const matchesType = typeFilter === "all" || c.type === typeFilter;

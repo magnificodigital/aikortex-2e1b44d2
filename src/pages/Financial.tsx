@@ -39,9 +39,9 @@ const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   }, []);
 
   const filteredInvoices = invoices.filter((i: any) =>
-    i.client.toLowerCase().includes(search.toLowerCase()) ||
-    i.id.toLowerCase().includes(search.toLowerCase()) ||
-    i.description.toLowerCase().includes(search.toLowerCase())
+    (i.client || "").toLowerCase().includes(search.toLowerCase()) ||
+    (i.id || "").toLowerCase().includes(search.toLowerCase()) ||
+    (i.description || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
