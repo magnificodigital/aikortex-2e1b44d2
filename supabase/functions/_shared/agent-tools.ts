@@ -148,8 +148,10 @@ async function executeToolCall(
 }
 
 export interface RunWithToolsOptions {
-  apiKey: string;
-  models: string[];
+  /** @deprecated apiKey is now read from env by the shared helper. */
+  apiKey?: string;
+  /** Optional explicit model list; helper falls back to available_llms when omitted. */
+  models?: string[];
   messages: Array<{ role: string; content: string | null; tool_calls?: any; tool_call_id?: string; name?: string }>;
   enabled: EnabledTool[];
   supabase: any;
