@@ -5,9 +5,15 @@ import { getAuthContext, corsHeaders } from "../_shared/auth.ts";
 type FaqItem = { question: string; answer: string };
 type IngestPayload =
   | { kb_id: string; source_type: "text"; title: string; raw_content: string }
-  | { kb_id: string; source_type: "faq"; title: string; faqs: FaqItem[] };
+  | { kb_id: string; source_type: "faq"; title: string; faqs: FaqItem[] }
+  | { kb_id: string; source_type: "file"; title: string; storage_path: string }
+  | { kb_id: string; source_type: "url"; title: string; url: string };
 
 const OPENAI_BASE = "https://api.openai.com/v1";
+const ALLOWED_TYPES = ["text", "faq", "file", "url"];
+const MAX_TEXT_CHARS = 1_000_000;
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_HTML_BYTES = 5 * 1024 * 1024; // 5MB
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -28,11 +34,11 @@ serve(async (req) => {
 
   const { kb_id, source_type, title } = body as any;
   if (!kb_id || !source_type || !title) return jsonError(400, "Missing required fields");
-  if (source_type !== "text" && source_type !== "faq") {
+  if (!ALLOWED_TYPES.includes(source_type)) {
     return jsonError(400, `Unsupported source_type: ${source_type}`);
   }
 
-  // 1. Validate ownership: KB belongs to an agent owned by the authenticated user
+  // 1. Validate ownership
   const { data: kb, error: kbErr } = await adminClient
     .from("agent_knowledge_bases")
     .select(`
@@ -47,22 +53,22 @@ serve(async (req) => {
     return jsonError(403, "No permission to ingest in this KB");
   }
 
-  // 2. Create document with status 'processing'
-  const rawContent = source_type === "text" ? (body as any).raw_content ?? "" : null;
-  const docMetadata =
-    source_type === "faq"
-      ? { faqs_count: (body as any).faqs?.length ?? 0 }
-      : { raw_chars: rawContent?.length ?? 0 };
+  // 2. Compute source_uri
+  let sourceUri: string | null = null;
+  if (source_type === "file") sourceUri = (body as any).storage_path;
+  else if (source_type === "url") sourceUri = (body as any).url;
 
+  // 3. Create document row (status=processing). Metadata enriched after extraction.
   const { data: doc, error: docErr } = await adminClient
     .from("kb_documents")
     .insert({
       knowledge_base_id: kb_id,
       source_type,
       title,
-      raw_content: rawContent,
+      source_uri: sourceUri,
+      raw_content: source_type === "text" ? (body as any).raw_content ?? "" : null,
       status: "processing",
-      metadata: docMetadata,
+      metadata: {},
     })
     .select()
     .single();
@@ -72,16 +78,33 @@ serve(async (req) => {
   const startedAt = Date.now();
 
   try {
-    // 3a. Build chunks
-    const chunks: string[] =
-      source_type === "text"
-        ? chunkText(rawContent ?? "", kb.chunk_size, kb.chunk_overlap)
-        : (body as any).faqs.map((f: FaqItem) => `P: ${f.question}\nR: ${f.answer}`);
+    // 4. Build chunks per source type
+    let chunks: string[] = [];
+    let extraMetadata: Record<string, any> = {};
+
+    if (source_type === "text") {
+      const raw = (body as any).raw_content ?? "";
+      chunks = chunkText(raw, kb.chunk_size, kb.chunk_overlap);
+      extraMetadata = { raw_chars: raw.length };
+    } else if (source_type === "faq") {
+      const faqs: FaqItem[] = (body as any).faqs ?? [];
+      if (!Array.isArray(faqs) || faqs.length === 0) throw new Error("faqs must be non-empty array");
+      chunks = faqs.map((f) => `P: ${f.question}\nR: ${f.answer}`);
+      extraMetadata = { faqs_count: faqs.length };
+    } else if (source_type === "file") {
+      const extracted = await extractFromFile((body as any).storage_path, adminClient);
+      chunks = chunkText(extracted.text, kb.chunk_size, kb.chunk_overlap);
+      extraMetadata = extracted.metadata;
+    } else if (source_type === "url") {
+      const extracted = await extractFromUrl((body as any).url);
+      chunks = chunkText(extracted.text, kb.chunk_size, kb.chunk_overlap);
+      extraMetadata = extracted.metadata;
+    }
 
     if (chunks.length === 0) throw new Error("No chunks produced (empty content?)");
     if (chunks.length > 500) throw new Error(`Too many chunks (${chunks.length}). Max 500 per document.`);
 
-    // 3b. Generate embeddings via OpenAI
+    // 5. Embeddings
     const modelId = kb.embedding_model.replace(/^openai\//, "");
     const embeddings = await generateEmbeddings(chunks, modelId);
 
@@ -92,7 +115,7 @@ serve(async (req) => {
       throw new Error(`Embedding dim mismatch: got ${embeddings[0].length}, expected ${kb.embedding_dim}`);
     }
 
-    // 3c. Insert chunks. pgvector accepts string format "[v1,v2,...]".
+    // 6. Insert chunks
     const rows = chunks.map((content, idx) => ({
       document_id: doc.id,
       knowledge_base_id: kb_id,
@@ -108,7 +131,11 @@ serve(async (req) => {
 
     await adminClient
       .from("kb_documents")
-      .update({ status: "ready", processed_at: new Date().toISOString() })
+      .update({
+        status: "ready",
+        processed_at: new Date().toISOString(),
+        metadata: extraMetadata,
+      })
       .eq("id", doc.id);
 
     const totalTokens = rows.reduce((s, r) => s + (r.token_count || 0), 0);
@@ -119,6 +146,7 @@ serve(async (req) => {
         chunks_count: chunks.length,
         total_tokens: totalTokens,
         elapsed_ms: Date.now() - startedAt,
+        metadata: extraMetadata,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
@@ -163,6 +191,190 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+function sanitizeText(text: string): string {
+  return text
+    .replace(/\u0000/g, "")
+    .replace(/[\u0001-\u0008\u000B-\u001F\u007F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// ───── File extraction ──────────────────────────────────────────────────────
+async function extractFromFile(
+  storagePath: string,
+  adminClient: any,
+): Promise<{ text: string; metadata: Record<string, any> }> {
+  if (!storagePath || !storagePath.includes("/")) {
+    throw new Error("Invalid storage_path format (expected <agent_id>/<filename>)");
+  }
+
+  const { data: fileBlob, error } = await adminClient.storage.from("kb-files").download(storagePath);
+  if (error || !fileBlob) throw new Error(`Failed to download file: ${error?.message ?? "unknown"}`);
+
+  const filename = storagePath.split("/").pop()!;
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+
+  const sizeBytes = fileBlob.size;
+  if (sizeBytes > MAX_FILE_BYTES) {
+    throw new Error(`File too large: ${(sizeBytes / 1024 / 1024).toFixed(2)}MB (max 10MB)`);
+  }
+
+  const arrayBuffer = await fileBlob.arrayBuffer();
+  let text: string;
+
+  switch (ext) {
+    case "txt":
+    case "md":
+      text = new TextDecoder("utf-8").decode(arrayBuffer);
+      break;
+    case "pdf":
+      text = await extractPdfText(arrayBuffer);
+      break;
+    case "docx":
+      text = await extractDocxText(arrayBuffer);
+      break;
+    default:
+      throw new Error(`Unsupported file extension: .${ext}. Accepted: txt, md, pdf, docx`);
+  }
+
+  text = sanitizeText(text);
+  if (!text) throw new Error("No text extracted from file");
+  if (text.length > MAX_TEXT_CHARS) {
+    throw new Error(`Extracted text too large: ${text.length} chars (max 1M)`);
+  }
+
+  return {
+    text,
+    metadata: {
+      filename,
+      extension: ext,
+      size_bytes: sizeBytes,
+      extracted_chars: text.length,
+    },
+  };
+}
+
+async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<string> {
+  const pdfjs: any = await import("https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs");
+  const data = new Uint8Array(arrayBuffer);
+  const pdf = await pdfjs.getDocument({
+    data,
+    disableWorker: true,
+    isEvalSupported: false,
+    useSystemFonts: false,
+  }).promise;
+
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items
+      .map((item: any) => ("str" in item ? item.str : ""))
+      .join(" ");
+    fullText += pageText + "\n";
+  }
+  return fullText;
+}
+
+async function extractDocxText(arrayBuffer: ArrayBuffer): Promise<string> {
+  const mammoth: any = await import("https://esm.sh/mammoth@1.6.0");
+  const lib = mammoth.default ?? mammoth;
+  const result = await lib.extractRawText({ arrayBuffer });
+  return result.value ?? "";
+}
+
+// ───── URL extraction ───────────────────────────────────────────────────────
+async function extractFromUrl(url: string): Promise<{ text: string; metadata: Record<string, any> }> {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new Error("Invalid URL");
+  }
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    throw new Error("Only http/https URLs allowed");
+  }
+
+  const hostname = parsedUrl.hostname.toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname === "0.0.0.0" ||
+    hostname.startsWith("127.") ||
+    hostname.startsWith("10.") ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("169.254.") ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname) ||
+    hostname.endsWith(".internal") ||
+    hostname.endsWith(".local") ||
+    hostname === "::1"
+  ) {
+    throw new Error("URL points to internal address");
+  }
+
+  const resp = await fetch(url, {
+    method: "GET",
+    signal: AbortSignal.timeout(30000),
+    headers: {
+      "User-Agent": "Aikortex-KB-Scraper/1.0 (+https://aikortex26.lovable.app)",
+      Accept: "text/html,text/plain,application/xhtml+xml;q=0.9,*/*;q=0.8",
+    },
+    redirect: "follow",
+  });
+
+  if (!resp.ok) throw new Error(`URL fetch failed: HTTP ${resp.status}`);
+
+  const contentType = resp.headers.get("content-type") ?? "";
+  const contentLength = parseInt(resp.headers.get("content-length") ?? "0", 10);
+  if (contentLength && contentLength > MAX_HTML_BYTES) {
+    throw new Error(`Page too large: ${(contentLength / 1024 / 1024).toFixed(2)}MB (max 5MB)`);
+  }
+
+  const raw = await resp.text();
+  if (raw.length > MAX_HTML_BYTES) {
+    throw new Error(`Page too large: ${(raw.length / 1024 / 1024).toFixed(2)}MB (max 5MB)`);
+  }
+
+  let text: string;
+  if (contentType.includes("html") || contentType.includes("xhtml")) {
+    text = await extractTextFromHtml(raw);
+  } else if (contentType.includes("text/plain") || contentType.includes("text/markdown") || contentType === "") {
+    text = raw;
+  } else {
+    throw new Error(`Unsupported content-type: ${contentType}`);
+  }
+
+  text = sanitizeText(text);
+  if (!text) throw new Error("No text extracted from URL");
+  if (text.length > MAX_TEXT_CHARS) {
+    throw new Error(`Extracted text too large: ${text.length} chars (max 1M)`);
+  }
+
+  return {
+    text,
+    metadata: {
+      url: parsedUrl.toString(),
+      hostname: parsedUrl.hostname,
+      content_type: contentType,
+      raw_size_bytes: raw.length,
+      extracted_chars: text.length,
+    },
+  };
+}
+
+async function extractTextFromHtml(html: string): Promise<string> {
+  const { DOMParser } = await import("https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts");
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  if (!doc) return "";
+
+  ["script", "style", "noscript", "iframe", "svg", "nav", "footer", "header", "aside"].forEach((tag) => {
+    doc.querySelectorAll(tag).forEach((el: any) => el.remove?.());
+  });
+
+  const root = (doc as any).body || doc.documentElement;
+  return root?.textContent ?? "";
+}
+
+// ───── Embeddings ───────────────────────────────────────────────────────────
 async function generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
