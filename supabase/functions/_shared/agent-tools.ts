@@ -3,7 +3,7 @@
 
 import { callLLM } from "./llm-fallback.ts";
 
-export type ToolKey = "web_search" | "image_gen";
+export type ToolKey = "web_search" | "image_gen" | "knowledge_search";
 
 export interface ToolQuota {
   starter: number;
@@ -55,6 +55,28 @@ export const TOOL_CATALOG: Record<ToolKey, ToolDefinition> = {
     },
     quotas: { starter: 50, explorer: 100, hack: 500 },
   },
+  knowledge_search: {
+    key: "knowledge_search",
+    name: "knowledge_search",
+    description:
+      "Search the agent knowledge base for relevant information. Use this tool whenever the user asks about products, services, prices, procedures, policies, FAQs, or any factual information that may be in the documents provided to this agent. The KB contains documents specifically curated for this agent and is more reliable than general knowledge for context-specific questions.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "The search query in natural language, ideally including key terms from the user question.",
+        },
+        top_k: {
+          type: "number",
+          description: "Number of relevant chunks to retrieve. Default 5, max 10.",
+          default: 5,
+        },
+      },
+      required: ["query"],
+    },
+    quotas: { starter: -1, explorer: -1, hack: -1 },
+  },
 };
 
 export interface EnabledTool {
@@ -89,6 +111,7 @@ export function buildToolDefinitions(enabled: EnabledTool[]) {
 interface ExecuteOptions {
   supabase: any;
   agencyId: string | null;
+  agentId: string | null;
   tier: "starter" | "explorer" | "hack";
   yearMonth: string;
   supabaseUrl: string;
@@ -101,14 +124,18 @@ async function executeToolCall(
   args: Record<string, unknown>,
   opts: ExecuteOptions,
 ): Promise<{ ok: boolean; result: string }> {
-  const fn = name === "web_search" ? "tool-web-search" : name === "image_gen" ? "tool-image-gen" : null;
+  const fn =
+    name === "web_search" ? "tool-web-search" :
+    name === "image_gen" ? "tool-image-gen" :
+    name === "knowledge_search" ? "tool-knowledge-search" :
+    null;
   if (!fn) return { ok: false, result: JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }) };
 
   const def = TOOL_CATALOG[name as ToolKey];
   const limit = def?.quotas?.[opts.tier] ?? 0;
 
   try {
-    // Quota check (blocking) + atomic increment.
+    // Quota check (blocking) + atomic increment. Skipped when limit < 0 (unlimited).
     if (opts.agencyId && limit > 0) {
       const { data: newCount, error: incErr } = await opts.supabase.rpc("increment_agency_tool_usage", {
         p_agency_id: opts.agencyId,
@@ -132,13 +159,18 @@ async function executeToolCall(
       }
     }
 
+    // knowledge_search needs the agent_id injected — LLM doesn't know it.
+    const body = name === "knowledge_search"
+      ? { ...args, agent_id: opts.agentId }
+      : args;
+
     const resp = await fetch(`${opts.supabaseUrl}/functions/v1/${fn}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${opts.serviceKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(args),
+      body: JSON.stringify(body),
     });
     const text = await resp.text();
     return { ok: resp.ok, result: text };
@@ -156,6 +188,8 @@ export interface RunWithToolsOptions {
   enabled: EnabledTool[];
   supabase: any;
   agencyId: string | null;
+  /** Required for knowledge_search and any tool that scopes data per-agent. */
+  agentId?: string | null;
   tier?: "starter" | "explorer" | "hack";
   maxTokens?: number;
   /** Hard cap on tool-loop iterations to avoid runaway calls. */
@@ -230,6 +264,7 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
       const { result: toolResult } = await executeToolCall(tc.function?.name || "", args, {
         supabase: opts.supabase,
         agencyId: opts.agencyId,
+        agentId: opts.agentId ?? null,
         tier,
         yearMonth,
         supabaseUrl,
@@ -272,6 +307,7 @@ export async function runAgentLLM(opts: {
     enabled,
     supabase: opts.supabase,
     agencyId: opts.agencyId ?? null,
+    agentId: opts.agentId ?? null,
     maxTokens: opts.maxTokens,
   });
   return text || null;

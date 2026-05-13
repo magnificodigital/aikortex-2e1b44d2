@@ -1,6 +1,6 @@
-import { Globe, Image as ImageIcon, type LucideIcon } from "lucide-react";
+import { BookOpen, Globe, Image as ImageIcon, type LucideIcon } from "lucide-react";
 
-export type ToolKey = "web_search" | "image_gen";
+export type ToolKey = "web_search" | "image_gen" | "knowledge_search";
 
 export type Tier = "starter" | "explorer" | "hack";
 
@@ -37,6 +37,17 @@ export const AGENT_TOOLS_CATALOG: Record<ToolKey, ToolCatalogEntry> = {
     requiredSecret: "OPENROUTER_API_KEY",
     secretHelpUrl: "https://openrouter.ai/keys",
     quotas: { starter: 50, explorer: 100, hack: 500 },
+  },
+  knowledge_search: {
+    key: "knowledge_search",
+    name: "Base de Conhecimento",
+    shortLabel: "knowledge_search",
+    description:
+      "Permite o agente buscar informações nas bases de conhecimento que você cadastrou (PDFs, FAQs, URLs, textos). O LLM consulta automaticamente quando precisa de fatos específicos.",
+    icon: BookOpen,
+    requiredSecret: "OPENAI_API_KEY",
+    secretHelpUrl: "https://platform.openai.com/api-keys",
+    quotas: { starter: -1, explorer: -1, hack: -1 },
   },
 };
 

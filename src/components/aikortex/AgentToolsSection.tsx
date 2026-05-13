@@ -83,7 +83,9 @@ const AgentToolsSection = ({ agentId, tier = "starter" }: Props) => {
 
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">
-                  Cota {TIER_LABEL[tier]}: {used} / {quota}
+                  {quota < 0
+                    ? `Cota ${TIER_LABEL[tier]}: ilimitado`
+                    : `Cota ${TIER_LABEL[tier]}: ${used} / ${quota}`}
                 </span>
                 <Button
                   variant="link"
@@ -96,8 +98,8 @@ const AgentToolsSection = ({ agentId, tier = "starter" }: Props) => {
                   </a>
                 </Button>
               </div>
-              <Progress value={pct} className="h-1.5" />
-              {used >= quota && quota > 0 && (
+              {quota >= 0 && <Progress value={pct} className="h-1.5" />}
+              {quota > 0 && used >= quota && (
                 <p className="text-[11px] text-destructive">
                   Cota mensal atingida — chamadas serão bloqueadas até o próximo mês.
                 </p>
