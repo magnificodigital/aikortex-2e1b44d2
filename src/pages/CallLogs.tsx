@@ -290,8 +290,8 @@ const CallLogs = () => {
           </ScrollArea>
         </SheetContent>
       </Sheet>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 
