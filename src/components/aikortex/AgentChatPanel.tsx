@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
+import { getRehypePlugins } from "@/lib/safe-rehype";
 import { toast } from "sonner";
 import type { ChatMessage } from "@/hooks/use-agent-chat";
 import type { AgentType } from "@/types/agent-builder";
@@ -499,7 +499,7 @@ const AgentChatPanel = ({
                   </div>
                   <div className="text-sm leading-relaxed text-foreground flex-1 min-w-0">
                     <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-2 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:mb-0.5 [&_strong]:text-foreground">
-                      <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{text}</ReactMarkdown>
+                      <ReactMarkdown rehypePlugins={getRehypePlugins()}>{text}</ReactMarkdown>
                     </div>
                   </div>
                 </div>

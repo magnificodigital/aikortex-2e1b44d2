@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
+import { getRehypePlugins } from "@/lib/safe-rehype";
 import { toast } from "sonner";
 import { useAppBuilder, type ChatMessage, type StructuredAppConfig, type AppState } from "@/contexts/AppBuilderContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -612,7 +612,7 @@ ${structuredConfig.constraints ? `Restrições: ${structuredConfig.constraints}`
                       [&_p]:mb-2 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:mb-0.5
                       [&_strong]:text-foreground
                       [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm">
-                      <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{m.content}</ReactMarkdown>
+                      <ReactMarkdown rehypePlugins={getRehypePlugins()}>{m.content}</ReactMarkdown>
                     </div>
                   </div>
                 </div>

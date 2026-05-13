@@ -12,7 +12,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
+import { getRehypePlugins } from "@/lib/safe-rehype";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -256,7 +256,7 @@ const SalesMentorPanel = ({ meetingTitle, liveTranscript }: Props) => {
                         <span className="text-[10px] font-semibold text-violet-400">Sugestão</span>
                       </div>
                       <div className="prose prose-sm prose-invert max-w-none text-xs [&_p]:mb-1 [&_ul]:mb-1 [&_li]:mb-0.5">
-                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{msg.content}</ReactMarkdown>
+                        <ReactMarkdown rehypePlugins={getRehypePlugins()}>{msg.content}</ReactMarkdown>
                       </div>
                     </div>
                   ) : (

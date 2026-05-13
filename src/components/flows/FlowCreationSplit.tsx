@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
+import { getRehypePlugins } from "@/lib/safe-rehype";
 import FlowCanvas from "./FlowCanvas";
 import type { SavedFlow } from "@/types/flow-builder";
 
@@ -229,7 +229,7 @@ export default function FlowCreationSplit({ onBack, onSaveFlow, flows, onOpenFlo
                     )}>
                       {msg.role === "assistant" ? (
                         <div className="prose prose-xs prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                          <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{cleanContent(msg.content) || (msg.content ? "✅ Fluxo gerado! Confira no canvas ao lado." : "")}</ReactMarkdown>
+                          <ReactMarkdown rehypePlugins={getRehypePlugins()}>{cleanContent(msg.content) || (msg.content ? "✅ Fluxo gerado! Confira no canvas ao lado." : "")}</ReactMarkdown>
                         </div>
                       ) : msg.content}
                     </div>
