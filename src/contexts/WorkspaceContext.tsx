@@ -67,16 +67,18 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
           setClients(loadedClients);
         }
 
-        // Restore saved workspace
+        // Restore saved workspace — apenas se pertence ao user logado
         try {
           const saved = localStorage.getItem(WS_ACTIVE_KEY);
           if (saved) {
             const parsed = JSON.parse(saved);
-            if (parsed.type === "client") {
-              const exists = loadedClients.find(c => c.id === parsed.id);
-              if (exists) {
-                setActiveWorkspace({ type: "client", id: parsed.id, name: parsed.name });
-                return;
+            if (parsed.userId === user.id) {
+              if (parsed.type === "client") {
+                const exists = loadedClients.find(c => c.id === parsed.id);
+                if (exists) {
+                  setActiveWorkspace({ type: "client", id: parsed.id, name: parsed.name });
+                  return;
+                }
               }
             }
           }
@@ -94,16 +96,16 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   const switchToAgency = useCallback(() => {
-    const ws: ActiveWorkspace = { type: "agency", id: agencyProfileId ?? "", name: agencyName };
+    const ws: ActiveWorkspace & { userId: string } = { type: "agency", id: agencyProfileId ?? "", name: agencyName, userId: user?.id ?? "" };
     setActiveWorkspace(ws);
     localStorage.setItem(WS_ACTIVE_KEY, JSON.stringify(ws));
-  }, [agencyProfileId, agencyName]);
+  }, [agencyProfileId, agencyName, user]);
 
   const switchToClient = useCallback((client: AgencyClient) => {
-    const ws: ActiveWorkspace = { type: "client", id: client.id, name: client.client_name };
+    const ws: ActiveWorkspace & { userId: string } = { type: "client", id: client.id, name: client.client_name, userId: user?.id ?? "" };
     setActiveWorkspace(ws);
     localStorage.setItem(WS_ACTIVE_KEY, JSON.stringify(ws));
-  }, []);
+  }, [user]);
 
   const refreshClients = useCallback(async () => {
     if (!agencyProfileId) return;

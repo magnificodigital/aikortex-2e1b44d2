@@ -47,10 +47,13 @@ export function useNotifications() {
 
   const markAllAsRead = useMutation({
     mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
       const { error } = await supabase
         .from("notifications")
         .update({ is_read: true })
-        .eq("is_read", false);
+        .eq("is_read", false)
+        .eq("user_id", user.id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),

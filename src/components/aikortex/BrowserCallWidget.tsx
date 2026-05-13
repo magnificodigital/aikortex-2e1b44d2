@@ -40,6 +40,11 @@ const BrowserCallWidget = ({
 
   useEffect(() => () => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
     stopRecognition();
   }, []);
 

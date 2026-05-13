@@ -167,8 +167,6 @@ const defaultStartNode: Node = {
   } satisfies FlowNodeData,
 };
 
-let nodeIdCounter = 1;
-
 type RightTab = "editor" | "database" | "tasks" | "logs";
 
 const RIGHT_TABS: { id: RightTab; label: string; icon: React.ElementType }[] = [
@@ -193,6 +191,8 @@ interface FlowCanvasProps {
 
 function FlowCanvasInner({ initialNodes, initialEdges, flowName, flowId, onSave, flows = [], onOpenFlow, onNewFlow, initialPrompt, headerLeft }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const nodeIdCounter = useRef(1);
+  const nodeIdCounter = useRef(1);
   const startNodes = initialNodes && (initialNodes as Node[]).length > 0
     ? (initialNodes as Node[])
     : [defaultStartNode];
@@ -253,9 +253,9 @@ function FlowCanvasInner({ initialNodes, initialEdges, flowName, flowId, onSave,
             })
           : { x: 400, y: 250 };
 
-      nodeIdCounter++;
+      nodeIdCounter.current++;
       const newNode: Node = {
-        id: `node-${nodeIdCounter}-${Date.now()}`,
+        id: `node-${nodeIdCounter.current}-${Date.now()}`,
         type: "flowNode",
         position: pos,
         data: {
@@ -283,8 +283,8 @@ function FlowCanvasInner({ initialNodes, initialEdges, flowName, flowId, onSave,
         const template = NODE_TEMPLATES.find((t) => t.type === n.type);
         if (!template) return;
 
-        nodeIdCounter++;
-        const realId = `node-${nodeIdCounter}-${Date.now()}-${i}`;
+        nodeIdCounter.current++;
+        const realId = `node-${nodeIdCounter.current}-${Date.now()}-${i}`;
         idMap.set(n.id, realId);
 
         newNodes.push({
@@ -524,9 +524,9 @@ function FlowCanvasInner({ initialNodes, initialEdges, flowName, flowId, onSave,
       const template = NODE_TEMPLATES.find((t) => t.type === nodeType);
       if (!template) return;
 
-      nodeIdCounter++;
+      nodeIdCounter.current++;
       const newNode: Node = {
-        id: `node-${nodeIdCounter}-${Date.now()}`,
+        id: `node-${nodeIdCounter.current}-${Date.now()}`,
         type: "flowNode",
         position,
         data: {

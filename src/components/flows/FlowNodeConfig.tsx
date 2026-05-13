@@ -20,17 +20,21 @@ function AgentAIConfig({ config, updateConfig }: { config: Record<string, unknow
   const [loadingAgents, setLoadingAgents] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoadingAgents(false); return; }
+      if (!user || cancelled) { setLoadingAgents(false); return; }
       const { data } = await supabase
         .from("user_agents")
         .select("*")
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
-      setUserAgents((data as any[]) || []);
-      setLoadingAgents(false);
+      if (!cancelled) {
+        setUserAgents((data as any[]) || []);
+        setLoadingAgents(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, []);
 
   return (
