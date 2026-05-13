@@ -483,29 +483,25 @@ async function buildStructuredResponse({
     return { response, parser: "openai" as const, provider: selectedProvider };
   }
 
-  // Fallback: OpenRouter com chave da plataforma (sem BYOK do usuário)
-  const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-  if (!OPENROUTER_API_KEY) {
-    return new Response(JSON.stringify({ error: "Serviço de IA não configurado." }), {
-      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://aikortex26.lovable.app",
-      "X-Title": "Aikortex",
-    },
-    body: JSON.stringify({
-      model: requestedModel || "qwen/qwen3-30b-a3b:free",
-      messages: finalMessages,
-      stream: false,
-      response_format: { type: "json_object" },
-    }),
+  // Fallback: plataforma via callLLM (single source of truth — available_llms)
+  const adminClient = buildAdminClient();
+  const result = await callLLM(finalMessages, {
+    tier: "free",
+    preferredModel: requestedModel,
+    maxTokens: 4096,
+    responseFormat: { type: "json_object" },
+    timeoutMs: 20000,
+  }, adminClient);
+
+  const status = result.success ? 200 : (result.status_code || 503);
+  const body = result.success
+    ? { choices: [{ message: { content: result.content } }] }
+    : { error: result.error };
+  const synthetic = new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
   });
-  return { response, parser: "openai" as const, provider: "openrouter" as const };
+  return { response: synthetic, parser: "openai" as const, provider: "openrouter" as const };
 }
 
 serve(async (req) => {
