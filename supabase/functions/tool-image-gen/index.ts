@@ -17,14 +17,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!authHeader || !serviceKey || authHeader !== `Bearer ${serviceKey}`) {
-      return new Response(
-        JSON.stringify({ error: "Acesso não autorizado", code: "UNAUTHORIZED" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
     const { prompt, aspect_ratio = "1:1" } = await req.json();
     if (!prompt || typeof prompt !== "string") {
       return new Response(

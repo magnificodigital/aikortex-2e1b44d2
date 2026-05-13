@@ -1,6 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { getAuthContext, handleCors, corsHeaders } from "../_shared/auth.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 const BodySchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -23,20 +27,47 @@ const mapAuthError = (message: string) => {
 };
 
 Deno.serve(async (req) => {
-  const corsResp = handleCors(req);
-  if (corsResp) return corsResp;
-
-  const authResult = await getAuthContext(req);
-  if (authResult instanceof Response) return authResult;
-
-  const callerProfile = authResult.profile;
-  const caller = authResult.user;
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
   try {
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // Verify caller auth
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !caller) {
+      return new Response(JSON.stringify({ error: "Token inválido" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get caller profile
+    const { data: callerProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("role, tenant_type")
+      .eq("user_id", caller.id)
+      .single();
+
+    if (!callerProfile) {
+      return new Response(JSON.stringify({ error: "Perfil do chamador não encontrado" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Parse body
     const parsed = BodySchema.safeParse(await req.json());
