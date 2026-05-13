@@ -257,7 +257,8 @@ export async function callLLM(
         continue;
       }
 
-      console.log(`[llm-fallback] ${model} ok latency=${latency}ms attempts=${attempts}`);
+      // TODO: temporary debug — remove after diagnosis.
+      console.log(`[llm-fallback] ${model} → status=${resp.status} latency=${latency}ms contentLen=${content?.length ?? 0} toolCalls=${hasToolCalls ? toolCalls.length : 0}`);
       markHealthy(supabase, model);
       return {
         success: true,
@@ -278,6 +279,8 @@ export async function callLLM(
     }
   }
 
+  // TODO: temporary debug — remove after diagnosis.
+  console.error(`[llm-fallback] ALL MODELS FAILED. tried=${attempts}/${models.length} lastStatus=${lastStatus} lastError=${lastError}`);
   return {
     success: false,
     error: lastError,
