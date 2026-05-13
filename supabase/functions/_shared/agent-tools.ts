@@ -188,6 +188,8 @@ export interface RunWithToolsOptions {
   enabled: EnabledTool[];
   supabase: any;
   agencyId: string | null;
+  /** Required for knowledge_search and any tool that scopes data per-agent. */
+  agentId?: string | null;
   tier?: "starter" | "explorer" | "hack";
   maxTokens?: number;
   /** Hard cap on tool-loop iterations to avoid runaway calls. */
