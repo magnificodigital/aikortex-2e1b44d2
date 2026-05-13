@@ -61,3 +61,38 @@ export function applyCapabilityAddons(basePrompt: string, capabilities: Capabili
   if (addons.length === 0) return basePrompt;
   return basePrompt + "\n" + addons.join("\n");
 }
+
+/**
+ * Sprint 2.5-e.2 — Injects tool-usage hints into the system prompt so weaker
+ * LLMs are explicitly nudged to invoke `knowledge_search` (and other tools)
+ * instead of answering from parametric memory.
+ */
+export function applyToolsHints(
+  systemPrompt: string,
+  enabledTools: Array<{ function?: { name?: string } } | { tool_key?: string }> | undefined | null,
+): string {
+  if (!enabledTools || enabledTools.length === 0) return systemPrompt;
+  const toolNames = enabledTools
+    .map((t: any) => t?.function?.name ?? t?.tool_key)
+    .filter(Boolean) as string[];
+  if (toolNames.length === 0) return systemPrompt;
+
+  const hints: string[] = [];
+  if (toolNames.includes("knowledge_search")) {
+    hints.push(
+      "IMPORTANTE: Você tem acesso a uma Base de Conhecimento com documentos específicos deste contexto. " +
+        "SEMPRE use a ferramenta `knowledge_search` PRIMEIRO quando o usuário perguntar sobre preços, " +
+        "planos, horários, procedimentos, políticas, produtos ou qualquer informação factual. " +
+        "Só responda com base no que estiver lá. Se a busca retornar vazio, diga que não tem essa informação " +
+        "e ofereça encaminhar para um humano.",
+    );
+  }
+  if (toolNames.includes("web_search")) {
+    hints.push("Você pode usar `web_search` para fatos atuais (notícias, preços de mercado, eventos recentes).");
+  }
+  if (toolNames.includes("image_gen")) {
+    hints.push("Você pode usar `image_gen` para gerar imagens quando o usuário pedir.");
+  }
+  if (hints.length === 0) return systemPrompt;
+  return systemPrompt + "\n\n## Ferramentas disponíveis\n" + hints.join("\n\n");
+}
