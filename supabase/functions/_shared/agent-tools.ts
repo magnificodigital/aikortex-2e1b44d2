@@ -188,60 +188,42 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
   const hasTools = toolDefs.length > 0;
 
   for (let iter = 0; iter < maxIterations + 1; iter++) {
-    let assistantMessage: any = null;
+    const result = await callLLM(
+      messages,
+      {
+        preferredModel: opts.models?.[0],
+        fallbackModels: opts.models, // honor caller-supplied list when given
+        tier: "free",
+        toolsRequired: hasTools && iter < maxIterations,
+        tools: hasTools && iter < maxIterations ? toolDefs : undefined,
+        toolChoice: hasTools && iter < maxIterations ? "auto" : undefined,
+        maxTokens,
+        timeoutMs: 20000,
+      },
+      opts.supabase,
+    );
 
-    for (const model of opts.models) {
-      try {
-        const body: Record<string, unknown> = {
-          model,
-          messages,
-          stream: false,
-          max_tokens: maxTokens,
-        };
-        if (hasTools && iter < maxIterations) {
-          body.tools = toolDefs;
-          body.tool_choice = "auto";
-        }
-
-        const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          signal: AbortSignal.timeout(20000),
-          headers: {
-            Authorization: `Bearer ${opts.apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://aikortex26.lovable.app",
-            "X-Title": "Aikortex",
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (!resp.ok) continue;
-        const data = await resp.json();
-        assistantMessage = data?.choices?.[0]?.message;
-        if (assistantMessage) break;
-      } catch {
-        continue;
-      }
+    if (!result.success) {
+      console.warn(`[runWithTools] iter=${iter} failed: ${result.error}`);
+      return "";
     }
 
-    if (!assistantMessage) return "";
-
-    const toolCalls = assistantMessage.tool_calls;
+    const toolCalls = result.toolCalls as any[] | undefined;
     if (!toolCalls || toolCalls.length === 0) {
-      return assistantMessage.content || assistantMessage.reasoning || "";
+      return result.content || "";
     }
 
     // Append the assistant turn with tool_calls, then run each tool.
     messages.push({
       role: "assistant",
-      content: assistantMessage.content ?? null,
+      content: result.content ?? null,
       tool_calls: toolCalls,
-    });
+    } as any);
 
     for (const tc of toolCalls) {
       let args: Record<string, unknown> = {};
       try { args = JSON.parse(tc.function?.arguments || "{}"); } catch { /* ignore */ }
-      const { result } = await executeToolCall(tc.function?.name || "", args, {
+      const { result: toolResult } = await executeToolCall(tc.function?.name || "", args, {
         supabase: opts.supabase,
         agencyId: opts.agencyId,
         tier,
@@ -253,8 +235,8 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
         role: "tool",
         tool_call_id: tc.id,
         name: tc.function?.name,
-        content: result,
-      });
+        content: toolResult,
+      } as any);
     }
   }
 
@@ -272,7 +254,7 @@ export async function runAgentLLM(opts: {
   agencyId?: string | null;
   system: string;
   messages: Array<{ role: string; content: string }>;
-  models: string[];
+  models?: string[]; // optional — when omitted, helper loads from available_llms
   maxTokens?: number;
 }): Promise<string | null> {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
@@ -281,7 +263,7 @@ export async function runAgentLLM(opts: {
   const fullMessages = [{ role: "system", content: opts.system }, ...opts.messages];
   const text = await runWithTools({
     apiKey,
-    models: opts.models,
+    models: opts.models ?? [],
     messages: fullMessages,
     enabled,
     supabase: opts.supabase,
@@ -291,16 +273,10 @@ export async function runAgentLLM(opts: {
   return text || null;
 }
 
-/** Shared free model list for OpenRouter fallback calls */
-export const PLATFORM_FREE_MODELS = [
-  "google/gemini-2.5-flash-preview-04-17:free",
-  "qwen/qwen3-30b-a3b:free",
-  "google/gemma-3-27b-it:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "deepseek/deepseek-r1:free",
-];
-
-/** Unified OpenRouter call with model fallback. Returns response or null if all fail. */
+/**
+ * @deprecated Use `callLLM` from `../_shared/llm-fallback.ts` instead.
+ * Kept as thin wrapper for backward compatibility during migration.
+ */
 export async function callOpenRouter(
   messages: Array<{ role: string; content: string }>,
   opts: {
@@ -313,43 +289,21 @@ export async function callOpenRouter(
     stop?: string[];
   } = {},
 ): Promise<Response | null> {
-  const apiKey = opts.apiKey || Deno.env.get("OPENROUTER_API_KEY") ?? "";
-  if (!apiKey) return null;
-
-  const fallbackModels = opts.fallbackModels ?? PLATFORM_FREE_MODELS;
-  const modelsToTry = opts.preferredModel
-    ? [opts.preferredModel, ...fallbackModels.filter(m => m !== opts.preferredModel)]
-    : fallbackModels;
-  const timeout = opts.timeout ?? 15000;
-
-  for (const model of modelsToTry) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
-      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://aikortex.com",
-          "X-Title": "Aikortex",
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          stream: opts.stream ?? false,
-          max_tokens: opts.maxTokens ?? 2048,
-          ...(opts.stop?.length ? { stop: opts.stop } : {}),
-        }),
-      });
-      clearTimeout(timer);
-      if ([400, 402, 404, 429, 500, 502, 503].includes(resp.status)) continue;
-      if (!resp.ok) continue;
-      return resp;
-    } catch {
-      continue;
-    }
-  }
-  return null;
+  const result = await callLLM(messages, {
+    apiKey: opts.apiKey,
+    preferredModel: opts.preferredModel,
+    fallbackModels: opts.fallbackModels,
+    maxTokens: opts.maxTokens,
+    stream: opts.stream,
+    timeoutMs: opts.timeout,
+    extraBody: opts.stop?.length ? { stop: opts.stop } : undefined,
+  });
+  if (!result.success) return null;
+  if (opts.stream && result.response) return result.response;
+  // Reconstruct a synthetic Response for non-stream legacy callers
+  return new Response(JSON.stringify(result.raw ?? { choices: [{ message: { content: result.content } }] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 }
+
