@@ -2,14 +2,11 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://jcahtniqqiaefszhgpqx.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjYWh0bmlxcWlhZWZzemhncHF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDU0NzMsImV4cCI6MjA5Mjk4MTQ3M30.PI5aN2FW0mIuO5mJSTlo3VlTG0geZ6cCk4n2l8DR1_4";
 
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  throw new Error(
-    "Variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY são obrigatórias. " +
-    "Verifique o arquivo .env.local ou as variáveis de ambiente do deploy."
-  );
+if (!import.meta.env.VITE_SUPABASE_URL && !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
+  console.warn("[Aikortex] Variáveis VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY não configuradas. Usando fallbacks de desenvolvimento.");
 }
 
 // Import the supabase client like this:
