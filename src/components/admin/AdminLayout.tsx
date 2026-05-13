@@ -20,6 +20,7 @@ const adminNavItems: { label: string; icon: any; path: string; ownerOnly?: boole
   { label: "Categorização por Nicho", icon: Tags, path: "/admin?tab=niches" },
   { label: "Financeiro", icon: DollarSign, path: "/admin?tab=financeiro" },
   { label: "Chaves de API", icon: Key, path: "/admin?tab=api-keys", ownerOnly: true },
+  { label: "LLMs", icon: Cpu, path: "/admin?tab=llms", ownerOnly: true },
   { label: "Suporte", icon: MessageSquare, path: "/admin?tab=support" },
   { label: "Tutoriais", icon: BookOpen, path: "/admin?tab=tutorials" },
 ];
