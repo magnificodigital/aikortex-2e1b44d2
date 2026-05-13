@@ -165,11 +165,15 @@ const Financeiro = () => {
 
   // CSV export
   const exportCSV = () => {
-    const headers = ["Data,Cliente,Descrição,Valor cobrado,Custo plataforma,Lucro,Status"];
+    const escape = (v: string) => {
+      const escaped = `"${String(v).replace(/"/g, '""')}"`;
+      return /^[=+\-@]/.test(String(v)) ? `'${escaped}` : escaped;
+    };
+    const headers = `${escape("Data")},${escape("Cliente")},${escape("Descrição")},${escape("Valor cobrado")},${escape("Custo plataforma")},${escape("Lucro")},${escape("Status")}`;
     const rows = billingEvents.map((e: any) => {
       const clientName = (e as any).agency_clients?.client_name || "-";
       const date = e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "-";
-      return `${date},"${clientName}","${e.description || ""}",${e.amount || 0},${e.platform_amount || 0},${e.agency_amount || 0},${e.event_type}`;
+      return `${escape(date)},${escape(clientName)},${escape(e.description || "")},${escape(e.amount ?? 0)},${escape(e.platform_amount ?? 0)},${escape(e.agency_amount ?? 0)},${escape(e.event_type)}`;
     });
     const csv = [...headers, ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });

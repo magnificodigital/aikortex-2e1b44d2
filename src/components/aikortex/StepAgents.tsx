@@ -32,8 +32,11 @@ const TEMPLATE_CARDS = [
 ];
 
 const AVATAR_MAP: Record<string, string> = {
-  "sdr-1": avatar1,
-  "sac-1": avatar3,
+  "SDR": avatar1,
+  "BDR": avatar2,
+  "SAC": avatar3,
+  "CS": avatar8,
+  "Custom": avatar1,
 };
 
 const StepAgents = ({ selected, onSelect }: Props) => {
@@ -85,7 +88,7 @@ const StepAgents = ({ selected, onSelect }: Props) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {agents.map((agent) => {
               const active = selected?.id === agent.id;
-              const avatarSrc = agent.avatar_url || AVATAR_MAP[agent.agent_type?.toLowerCase() === "sdr" ? "sdr-1" : agent.agent_type?.toLowerCase() === "bdr" ? "bdr-1" : agent.agent_type?.toLowerCase() === "sac" ? "sac-1" : "custom-1"] || avatar1;
+              const avatarSrc = agent.avatar_url || AVATAR_MAP[agent.agent_type || ""] || avatar1;
               return (
                 <div
                   role="button"

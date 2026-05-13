@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,11 @@ export default function AgentVersionsSection({ agentId }: { agentId?: string }) 
   const draftChanges = state ? computeAgentDiff(state.publishedSnapshot, state.currentConfig) : [];
   const draftHasChanges = draftChanges.length > 0;
 
-  const findPrev = (v: AgentVersion) => versions.find(x => x.version_number === v.version_number - 1) ?? null;
+  const sortedVersions = useMemo(() => [...versions].sort((a, b) => b.version_number - a.version_number), [versions]);
+  const findPrev = (v: AgentVersion) => {
+    const idx = sortedVersions.findIndex(x => x.id === v.id);
+    return idx >= 0 && idx + 1 < sortedVersions.length ? sortedVersions[idx + 1] : null;
+  };
 
   return (
     <div className="space-y-4">
