@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import DashboardLayout
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import { Card, CardContent } from "@/components/ui/card";

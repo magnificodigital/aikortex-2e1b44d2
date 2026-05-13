@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import DashboardLayout
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import { CheckSquare, List, LayoutGrid, Calendar, User, Users } from "lucide-react";
