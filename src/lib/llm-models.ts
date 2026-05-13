@@ -95,10 +95,18 @@ export function getGroupedModels() {
 
 export const DEFAULT_FREE_MODEL = "google/gemini-2.5-flash-preview-04-17";
 
+// Providers aceitos pela trigger validate_user_agent_provider no DB.
+const DB_ALLOWED_PROVIDERS = new Set(["auto", "anthropic", "openai", "gemini", "openrouter"]);
+
 export function getProviderForModel(modelId: string): string {
-  if (!modelId) return "google";
+  if (!modelId) return "openrouter";
   if (modelId.includes("/")) return "openrouter";
-  return LLM_MODELS.find(m => m.id === modelId)?.provider || "google";
+  const raw = LLM_MODELS.find(m => m.id === modelId)?.provider;
+  if (!raw) return "openrouter";
+  // Mapeia "google" do catálogo (gemini sem slash) para o enum aceito "gemini".
+  if (raw === "google") return "gemini";
+  // Demais labels do catálogo (meta, deepseek, mistral, qwen, microsoft) são roteados via OpenRouter.
+  return DB_ALLOWED_PROVIDERS.has(raw) ? raw : "openrouter";
 }
 
 /** Check if a model is an OpenRouter model (has slash in ID) */
