@@ -51,3 +51,67 @@ export function useAgentKnowledgeBases(agentId: string | null | undefined) {
 
   return { knowledgeBases, loading, error, refetch: fetchKnowledgeBases };
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// Sprint 2.5-b — Ingestion
+// ──────────────────────────────────────────────────────────────────────────
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { fnUrl } from "@/lib/supabase-url";
+import { toast } from "sonner";
+
+type IngestTextPayload = {
+  kb_id: string;
+  source_type: "text";
+  title: string;
+  raw_content: string;
+};
+
+type IngestFaqPayload = {
+  kb_id: string;
+  source_type: "faq";
+  title: string;
+  faqs: Array<{ question: string; answer: string }>;
+};
+
+export type IngestPayload = IngestTextPayload | IngestFaqPayload;
+
+export function useIngestDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: IngestPayload) => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Sessão expirada");
+
+      const resp = await fetch(fnUrl("ingest-document"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Erro desconhecido" }));
+        throw new Error(err.error || `HTTP ${resp.status}`);
+      }
+      return resp.json() as Promise<{
+        success: true;
+        document_id: string;
+        chunks_count: number;
+        total_tokens: number;
+        elapsed_ms: number;
+      }>;
+    },
+    onSuccess: (data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["kb-documents", vars.kb_id] });
+      queryClient.invalidateQueries({ queryKey: ["agent-kbs"] });
+      toast.success(`Documento processado: ${data.chunks_count} chunks gerados`);
+    },
+    onError: (err) => {
+      toast.error(`Falha na ingestão: ${(err as Error).message}`);
+    },
+  });
+}
