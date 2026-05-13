@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import DashboardLayout
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import { CheckSquare, List, LayoutGrid, Calendar, User, Users } from "lucide-react";
@@ -115,8 +114,8 @@ const Tasks = () => {
         <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)} />
         <NewTaskDialog open={showNewTask} onOpenChange={setShowNewTask} />
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import DashboardLayout
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -56,21 +55,23 @@ const ClientDetail = () => {
 
   if (loading) {
     return (
-    <ModuleGate moduleKey="gestao.clientes">
+      <ModuleGate moduleKey="gestao.clientes">
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
       </DashboardLayout>
+      </ModuleGate>
     );
   }
 
   if (!client) {
     return (
-    <ModuleGate moduleKey="gestao.clientes">
+      <ModuleGate moduleKey="gestao.clientes">
       <DashboardLayout>
         <div className="p-6 text-center text-muted-foreground">Cliente não encontrado.</div>
       </DashboardLayout>
+      </ModuleGate>
     );
   }
 
@@ -150,7 +151,6 @@ const ClientDetail = () => {
                   const subSt = STATUS_MAP[s.status] ?? STATUS_MAP.pending;
                   const trialDays = s.trial_ends_at ? Math.max(0, Math.ceil((new Date(s.trial_ends_at).getTime() - Date.now()) / 86400000)) : 0;
                   return (
-    <ModuleGate moduleKey="gestao.clientes">
                     <Card key={s.id}>
                       <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
                         <div>
@@ -229,8 +229,8 @@ const ClientDetail = () => {
           </TabsContent>
         </Tabs>
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 

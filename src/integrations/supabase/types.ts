@@ -706,6 +706,81 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          agency_id: string
+          assigned_to: string | null
+          channel: string
+          client_id: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          direction: string
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          metadata: Json | null
+          status: string
+          tags: string[] | null
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          assigned_to?: string | null
+          channel?: string
+          client_id?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          metadata?: Json | null
+          status?: string
+          tags?: string[] | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          assigned_to?: string | null
+          channel?: string
+          client_id?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          metadata?: Json | null
+          status?: string
+          tags?: string[] | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agency_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "agency_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_packages: {
         Row: {
           created_at: string | null
@@ -1153,6 +1228,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          content_type: string | null
+          conversation_id: string
+          created_at: string
+          external_id: string | null
+          id: string
+          media_metadata: Json | null
+          media_url: string | null
+          role: string
+        }
+        Insert: {
+          content: string
+          content_type?: string | null
+          conversation_id: string
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          media_metadata?: Json | null
+          media_url?: string | null
+          role: string
+        }
+        Update: {
+          content?: string
+          content_type?: string | null
+          conversation_id?: string
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          media_metadata?: Json | null
+          media_url?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       monthly_usage: {
         Row: {

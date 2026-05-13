@@ -1,4 +1,3 @@
-import DashboardLayout
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -138,8 +137,8 @@ const Sales = () => {
           </CardContent>
         </Card>
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 

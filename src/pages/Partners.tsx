@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import DashboardLayout
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -115,8 +114,8 @@ const Partners = () => {
           <TabsContent value="community"><CommunityTab /></TabsContent>
         </Tabs>
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 

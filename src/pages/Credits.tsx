@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import DashboardLayout
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,8 +56,7 @@ const Credits = () => {
         .select("provider")
         .eq("user_id", user!.id)
         .in("provider", ["openai", "anthropic", "gemini", "openrouter"]);
-      return (
-    <ModuleGate moduleKey="aikortex.creditos">data || []).map((k) => k.provider);
+      return (data || []).map((k) => k.provider);
     },
   });
 
@@ -117,7 +115,6 @@ const Credits = () => {
                 {providers.map((p) => {
                   const isConfigured = configuredKeys.includes(p.key);
                   return (
-    <ModuleGate moduleKey="aikortex.creditos">
                     <div key={p.key} className="flex items-center justify-between rounded-lg border border-border p-3">
                       <div>
                         <p className="text-sm font-medium">{p.label}</p>
@@ -249,8 +246,8 @@ const Credits = () => {
           </TabsContent>
         </Tabs>
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 
