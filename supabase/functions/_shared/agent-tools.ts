@@ -55,6 +55,28 @@ export const TOOL_CATALOG: Record<ToolKey, ToolDefinition> = {
     },
     quotas: { starter: 50, explorer: 100, hack: 500 },
   },
+  knowledge_search: {
+    key: "knowledge_search",
+    name: "knowledge_search",
+    description:
+      "Search the agent knowledge base for relevant information. Use this tool whenever the user asks about products, services, prices, procedures, policies, FAQs, or any factual information that may be in the documents provided to this agent. The KB contains documents specifically curated for this agent and is more reliable than general knowledge for context-specific questions.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "The search query in natural language, ideally including key terms from the user question.",
+        },
+        top_k: {
+          type: "number",
+          description: "Number of relevant chunks to retrieve. Default 5, max 10.",
+          default: 5,
+        },
+      },
+      required: ["query"],
+    },
+    quotas: { starter: -1, explorer: -1, hack: -1 },
+  },
 };
 
 export interface EnabledTool {
