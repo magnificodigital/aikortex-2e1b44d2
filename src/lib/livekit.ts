@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { supabase } from "@/integrations/supabase/client";
 
 const TOKEN_URL = fnUrl("livekit-token");

@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Phone, PhoneOff, Mic, MicOff, X, Minimize2, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";

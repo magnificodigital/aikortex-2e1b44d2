@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ArrowUp, Bot, ChevronDown, ChevronLeft, Mic, Wrench,

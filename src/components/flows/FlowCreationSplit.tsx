@@ -1,3 +1,4 @@
+import { fnUrl } from "@/lib/supabase-url";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Bot, Send, Sparkles, ArrowRight, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
