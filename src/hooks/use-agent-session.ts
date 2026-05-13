@@ -91,6 +91,8 @@ export function useAgentSession(options: UseAgentSessionOptions) {
           mode: "agent-chat",
           messages: apiMessages,
           agentContext: options.agentContext,
+          agentId: typeof options.agentContext?.agentId === "string" ? options.agentContext.agentId : undefined,
+          agentConfig: options.agentContext,
         }),
       });
 
