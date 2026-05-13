@@ -50,7 +50,7 @@ const EditClientDialog = ({ client, open, onOpenChange }: EditClientDialogProps)
   }, [client, open, reset]);
 
   const onSubmit = (data: FormData) => {
-    console.log("Updated client:", data);
+    // console.log("Updated client:", data);
     toast.success(`Cliente "${data.companyName}" atualizado com sucesso!`);
     onOpenChange(false);
   };

@@ -312,7 +312,7 @@ export function IntegrationsGrid({
           { user_id: user.id, provider: dialogProvider.provider, api_key: keyInput.trim() },
           { onConflict: "user_id,provider" }
         );
-        if (error) { toast.error("Erro ao salvar chave."); console.error(error); return; }
+        if (error) { toast.error("Erro ao salvar chave."); return; }
         setConnectorKeys(prev => ({ ...prev, [dialogProvider.provider]: { configured: true } }));
       }
       // Save public key for Telnyx
@@ -321,7 +321,7 @@ export function IntegrationsGrid({
           { user_id: user.id, provider: "telnyx_public", api_key: publicKeyInput.trim() },
           { onConflict: "user_id,provider" }
         );
-        if (error) { toast.error("Erro ao salvar chave pública."); console.error(error); return; }
+        if (error) { toast.error("Erro ao salvar chave pública."); return; }
       }
       const newConfigs = { ...providerConfigs, [dialogProvider.provider]: dialogConfig };
       setProviderConfigs(newConfigs);

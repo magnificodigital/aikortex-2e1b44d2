@@ -250,7 +250,7 @@ const WizardRightPanel = ({
         { user_id: user.id, provider, api_key: keyInput.trim() },
         { onConflict: "user_id,provider" }
       );
-      if (error) { toast.error("Erro ao salvar chave."); console.error(error); return; }
+      if (error) { toast.error("Erro ao salvar chave."); return; }
       setConnectorKeys(prev => ({ ...prev, [connectorDialog.label]: true }));
       await onApiKeysChanged?.();
       setConnectorDialog(null);
@@ -319,7 +319,7 @@ const WizardRightPanel = ({
       const ext = file.name.split(".").pop() || "png";
       const path = `${user.id}/agent-avatar-${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("agent-avatars").upload(path, file, { upsert: true });
-      if (error) { toast.error("Erro ao enviar imagem."); console.error(error); return; }
+      if (error) { toast.error("Erro ao enviar imagem."); return; }
       const { data: urlData } = supabase.storage.from("agent-avatars").getPublicUrl(path);
       if (urlData?.publicUrl) {
         setAvatarPreview(urlData.publicUrl);
