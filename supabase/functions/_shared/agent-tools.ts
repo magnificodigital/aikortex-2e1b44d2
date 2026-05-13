@@ -300,6 +300,8 @@ export async function runAgentLLM(opts: {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
   if (!apiKey) return null;
   const enabled = opts.agentId ? await loadEnabledTools(opts.supabase, opts.agentId) : [];
+  // TODO: temp diag — remove after confirming KB tool invocation in production logs.
+  console.log(`[agent-tools] runAgentLLM agentId=${opts.agentId ?? "none"} enabledTools=${enabled.length} toolNames=[${enabled.map((t) => t.tool_key).join(",")}]`);
   const systemWithHints = applyToolsHints(opts.system, enabled);
   const fullMessages = [{ role: "system", content: systemWithHints }, ...opts.messages];
   const text = await runWithTools({
