@@ -99,6 +99,9 @@ const AdminPanel = () => {
           )}
           <TabsContent value="support"><AdminSupportTab /></TabsContent>
           <TabsContent value="tutorials"><AdminTutorialsTab /></TabsContent>
+          {isPlatformOwner && (
+            <TabsContent value="llms"><AdminLLMsTab /></TabsContent>
+          )}
         </Tabs>
       </div>
     </AdminLayout>
