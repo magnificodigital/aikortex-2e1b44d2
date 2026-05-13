@@ -808,9 +808,12 @@ Regras obrigatórias:
     return parts.filter(Boolean).join("");
   }, [agentConfig, loadedAgent.name, loadedAgent.agentType]);
 
+  const resolvedAgentIdForPanel = agentId && !TEMPLATE_MAP[agentId] && agentId !== "new" && !agentId.startsWith("new-") ? agentId : undefined;
+
   const testAgentContext = useMemo(() => {
     if (!agentConfig) return undefined;
     return {
+      agentId: resolvedAgentIdForPanel,
       name: agentConfig.name || loadedAgent.name,
       role: loadedAgent.agentType,
       description: agentConfig.description,
@@ -823,7 +826,7 @@ Regras obrigatórias:
       knowledgeFiles: agentConfig.knowledgeFiles,
       urls: agentConfig.urls,
     };
-  }, [agentConfig, loadedAgent.name, loadedAgent.agentType]);
+  }, [agentConfig, loadedAgent.name, loadedAgent.agentType, resolvedAgentIdForPanel]);
 
   const testChat = useAgentChat(
     [{ role: "agent", text: agentConfig?.greetingMessage || `🧪 Modo de Teste ativado! Respondendo como **${loadedAgent.name}**. Envie uma mensagem.` }],
@@ -866,8 +869,6 @@ Regras obrigatórias:
       );
     } catch {}
   }, [isTemplate, agentId]);
-
-  const resolvedAgentIdForPanel = agentId && !TEMPLATE_MAP[agentId] && agentId !== "new" && !agentId.startsWith("new-") ? agentId : undefined;
 
   const { data: publishState } = useAgentPublishState(resolvedAgentIdForPanel);
   const hasDraftChanges = useMemo(() => {
