@@ -114,8 +114,8 @@ const Projects = () => {
         />
         <NewProjectDialog open={showNewProject} onOpenChange={setShowNewProject} onAdd={handleAddItem} />
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 

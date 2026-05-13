@@ -114,8 +114,8 @@ const Tasks = () => {
         <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)} />
         <NewTaskDialog open={showNewTask} onOpenChange={setShowNewTask} />
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 

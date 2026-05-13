@@ -137,8 +137,8 @@ const Sales = () => {
           </CardContent>
         </Card>
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 

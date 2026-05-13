@@ -114,8 +114,8 @@ const Partners = () => {
           <TabsContent value="community"><CommunityTab /></TabsContent>
         </Tabs>
       </div>
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 

@@ -122,8 +122,8 @@ const Reports = () => {
 
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
       <ScheduleDialog open={scheduleOpen} onOpenChange={setScheduleOpen} />
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 
