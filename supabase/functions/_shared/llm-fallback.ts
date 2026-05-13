@@ -182,6 +182,8 @@ export async function callLLM(
   for (const model of models) {
     attempts++;
     const t0 = Date.now();
+    // TODO: remove after hotfix 1.1.2 root cause
+    console.log(`[llm-fallback] trying ${model}`);
     const body: Record<string, unknown> = {
       model,
       messages,
