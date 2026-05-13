@@ -151,6 +151,10 @@ const RIGHT_NAV: NavGroup[] = [
 
 const DEFAULT_SECTION = "config.agent";
 
+/* Vibe Mode (Master v7.4 §13.2): items shown only when "Mostrar opções avançadas" is ON. */
+const ADVANCED_KEYS = new Set<string>(["caps.planning", "caps.reasoning", "system.advanced"]);
+const SHOW_ADVANCED_LS_KEY = "aikortex_show_advanced";
+
 const PlaceholderSection = ({ title, masterRef, sprint, icon: Icon }: { title: string; masterRef?: string; sprint?: string; icon: any }) => (
   <div className="flex flex-col items-center justify-center p-12 text-center">
     <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
