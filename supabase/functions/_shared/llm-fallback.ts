@@ -141,8 +141,11 @@ export async function callLLM(
   options: LLMOptions = {},
   supabase?: SupabaseClient,
 ): Promise<LLMResult> {
+  // TODO: temporary debug — remove after diagnosis.
+  console.log(`[llm-fallback] callLLM start tier=${options.tier ?? "free"} preferredModel=${options.preferredModel ?? "none"} stream=${options.stream ?? false} toolsRequired=${options.toolsRequired ?? false}`);
   const apiKey = options.apiKey || Deno.env.get("OPENROUTER_API_KEY") || "";
   if (!apiKey) {
+    console.error("[llm-fallback] OPENROUTER_API_KEY ausente");
     return { success: false, error: "OPENROUTER_API_KEY ausente" };
   }
 
@@ -159,6 +162,8 @@ export async function callLLM(
   if (options.preferredModel) {
     models = [options.preferredModel, ...models.filter((m) => m !== options.preferredModel)];
   }
+  // TODO: temporary debug — remove after diagnosis.
+  console.log(`[llm-fallback] models loaded count=${models.length} list=${models.slice(0, 5).join(",")}`);
   if (models.length === 0) {
     return {
       success: false,
@@ -178,6 +183,8 @@ export async function callLLM(
   for (const model of models) {
     attempts++;
     const t0 = Date.now();
+    // TODO: temporary debug — remove after diagnosis.
+    console.log(`[llm-fallback] trying ${model} (attempt ${attempts}/${models.length})`);
     const body: Record<string, unknown> = {
       model,
       messages,
