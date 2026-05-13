@@ -111,6 +111,7 @@ export function buildToolDefinitions(enabled: EnabledTool[]) {
 interface ExecuteOptions {
   supabase: any;
   agencyId: string | null;
+  agentId: string | null;
   tier: "starter" | "explorer" | "hack";
   yearMonth: string;
   supabaseUrl: string;
@@ -123,14 +124,18 @@ async function executeToolCall(
   args: Record<string, unknown>,
   opts: ExecuteOptions,
 ): Promise<{ ok: boolean; result: string }> {
-  const fn = name === "web_search" ? "tool-web-search" : name === "image_gen" ? "tool-image-gen" : null;
+  const fn =
+    name === "web_search" ? "tool-web-search" :
+    name === "image_gen" ? "tool-image-gen" :
+    name === "knowledge_search" ? "tool-knowledge-search" :
+    null;
   if (!fn) return { ok: false, result: JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }) };
 
   const def = TOOL_CATALOG[name as ToolKey];
   const limit = def?.quotas?.[opts.tier] ?? 0;
 
   try {
-    // Quota check (blocking) + atomic increment.
+    // Quota check (blocking) + atomic increment. Skipped when limit < 0 (unlimited).
     if (opts.agencyId && limit > 0) {
       const { data: newCount, error: incErr } = await opts.supabase.rpc("increment_agency_tool_usage", {
         p_agency_id: opts.agencyId,
@@ -154,13 +159,18 @@ async function executeToolCall(
       }
     }
 
+    // knowledge_search needs the agent_id injected — LLM doesn't know it.
+    const body = name === "knowledge_search"
+      ? { ...args, agent_id: opts.agentId }
+      : args;
+
     const resp = await fetch(`${opts.supabaseUrl}/functions/v1/${fn}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${opts.serviceKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(args),
+      body: JSON.stringify(body),
     });
     const text = await resp.text();
     return { ok: resp.ok, result: text };
