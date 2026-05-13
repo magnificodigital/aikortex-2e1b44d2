@@ -66,7 +66,7 @@ export async function loadActiveModels(
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("available_llms")
-    .select("model_id, supports_tools, status, priority")
+    .select("model_id, supports_tools, tool_calling_reliable, status, priority")
     .eq("active", true)
     .eq("tier", options.tier ?? "free")
     .neq("status", "dead")
@@ -76,7 +76,24 @@ export async function loadActiveModels(
     return [];
   }
   let rows = data ?? [];
-  if (options.toolsRequired) rows = rows.filter((m: any) => m.supports_tools === true);
+  if (options.toolsRequired) {
+    // Use tool_calling_reliable (not just supports_tools) — many free models accept
+    // tools in payload but never emit tool_calls. See Sprint 2.5-e.2.
+    rows = rows.filter((m: any) => m.tool_calling_reliable === true);
+    // Fall back to paid tier if no reliable free model is available.
+    if (rows.length === 0 && (options.tier ?? "free") !== "paid") {
+      const { data: paidData } = await supabase
+        .from("available_llms")
+        .select("model_id, tool_calling_reliable, status, priority")
+        .eq("active", true)
+        .eq("tier", "paid")
+        .eq("tool_calling_reliable", true)
+        .neq("status", "dead")
+        .order("priority", { ascending: true });
+      rows = paidData ?? [];
+      console.log(`[llm-fallback] no reliable free model — falling back to paid (count=${rows.length})`);
+    }
+  }
   // TODO: temporary debug — remove after diagnosis.
   console.log(`[llm-fallback] loadActiveModels result count=${rows.length} sample=[${rows.slice(0, 8).map((m: any) => `${m.model_id}(${m.status})`).join(", ")}]`);
   return rows.map((m: any) => m.model_id);
@@ -200,6 +217,12 @@ export async function callLLM(
     if (options.toolChoice !== undefined) body.tool_choice = options.toolChoice;
     if (options.responseFormat) body.response_format = options.responseFormat;
     if (options.extraBody) Object.assign(body, options.extraBody);
+
+    // TODO: temp diag — remove after 2.5-e validation.
+    if (Array.isArray(options.tools) && options.tools.length > 0) {
+      const names = (options.tools as any[]).map((t) => t?.function?.name).filter(Boolean).join(", ");
+      console.log(`[llm-fallback] sending ${options.tools.length} tools to ${model}: [${names}]`);
+    }
 
     try {
       const resp = await fetch(OPENROUTER_URL, {
