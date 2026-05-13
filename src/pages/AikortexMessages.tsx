@@ -180,6 +180,9 @@ const AikortexMessages = () => {
             />
             <ChatArea conversation={conversation} messages={messages} onSend={handleSend} />
             <ContactPanel contact={contact} />
+          </>
+        )}
+      </div>
       </ModuleGate>
     </DashboardLayout>
   );
