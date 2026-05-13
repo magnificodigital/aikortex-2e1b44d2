@@ -255,27 +255,10 @@ async function extractFromFile(
 }
 
 async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<string> {
-  const pdfjs: any = await import(
-    "https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs?target=denonext&external=canvas"
-  );
-  const data = new Uint8Array(arrayBuffer);
-  const pdf = await pdfjs.getDocument({
-    data,
-    disableWorker: true,
-    isEvalSupported: false,
-    useSystemFonts: false,
-  }).promise;
-
-  let fullText = "";
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item: any) => ("str" in item ? item.str : ""))
-      .join(" ");
-    fullText += pageText + "\n";
-  }
-  return fullText;
+  // Use `unpdf` — purpose-built for serverless/Deno, no worker dependency.
+  const { extractText } = await import("https://esm.sh/unpdf@0.12.1");
+  const { text } = await extractText(new Uint8Array(arrayBuffer), { mergePages: true });
+  return Array.isArray(text) ? text.join("\n") : text;
 }
 
 async function extractDocxText(arrayBuffer: ArrayBuffer): Promise<string> {
