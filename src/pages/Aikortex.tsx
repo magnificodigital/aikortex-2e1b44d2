@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import DashboardLayout from "@/components/DashboardLayout";
+import DashboardLayout
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary"; from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
