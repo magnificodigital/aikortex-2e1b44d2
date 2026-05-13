@@ -77,6 +77,7 @@ export interface ApiConfigParams {
 }
 
 export interface AgentChatContext {
+  agentId?: string;
   name: string;
   role?: string;
   companyName?: string;
@@ -253,6 +254,8 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
           payload.provider = options.provider || inferredProvider;
           payload.model = options.model;
           payload.agentContext = options.agentContext;
+          payload.agentId = options.agentContext?.agentId;
+          payload.agentConfig = options.agentContext;
           if (options.apiConfig) {
             payload.temperature = options.apiConfig.temperature;
             payload.max_tokens = options.apiConfig.maxTokens;
