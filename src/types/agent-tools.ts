@@ -1,6 +1,6 @@
-import { Globe, Image as ImageIcon, type LucideIcon } from "lucide-react";
+import { BookOpen, Globe, Image as ImageIcon, type LucideIcon } from "lucide-react";
 
-export type ToolKey = "web_search" | "image_gen";
+export type ToolKey = "web_search" | "image_gen" | "knowledge_search";
 
 export type Tier = "starter" | "explorer" | "hack";
 
