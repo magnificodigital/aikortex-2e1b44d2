@@ -408,6 +408,66 @@ export type Database = {
           },
         ]
       }
+      available_llms: {
+        Row: {
+          active: boolean
+          consecutive_failures: number
+          context_window: number | null
+          created_at: string
+          display_name: string
+          id: string
+          last_health_check_at: string | null
+          last_health_check_error: string | null
+          model_id: string
+          notes: string | null
+          priority: number
+          provider: string
+          status: string
+          supports_streaming: boolean
+          supports_tools: boolean
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          consecutive_failures?: number
+          context_window?: number | null
+          created_at?: string
+          display_name: string
+          id?: string
+          last_health_check_at?: string | null
+          last_health_check_error?: string | null
+          model_id: string
+          notes?: string | null
+          priority?: number
+          provider: string
+          status?: string
+          supports_streaming?: boolean
+          supports_tools?: boolean
+          tier?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          consecutive_failures?: number
+          context_window?: number | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          last_health_check_at?: string | null
+          last_health_check_error?: string | null
+          model_id?: string
+          notes?: string | null
+          priority?: number
+          provider?: string
+          status?: string
+          supports_streaming?: boolean
+          supports_tools?: boolean
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       billing_events: {
         Row: {
           agency_amount: number | null
