@@ -632,6 +632,8 @@ serve(async (req) => {
       const preferred = (body as any).model as string | undefined;
 
       let content = "";
+      // TODO: remove after hotfix 1.1.2 root cause
+      console.log(`[app-chat] PRE-LLM mode=${mode} preferred=${preferred ?? 'none'} msgCount=${chatMessages.length} hasAgent=${!!agentId}`);
       if (agentId) {
         // Split system + rest so runAgentLLM can prepend system itself.
         // models omitted → helper loads from available_llms (single source of truth).
@@ -648,6 +650,8 @@ serve(async (req) => {
       } else {
         content = await bufferFromPlatform(chatMessages, preferred, adminClient);
       }
+      // TODO: remove after hotfix 1.1.2 root cause
+      console.log(`[app-chat] POST-LLM contentLen=${content?.length ?? 0} preview=${(content || "").slice(0, 120).replace(/\n/g, " ")}`);
 
       if (streamMode === false) {
         return new Response(
@@ -655,6 +659,8 @@ serve(async (req) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      // TODO: remove after hotfix 1.1.2 root cause
+      console.log(`[app-chat] STREAM-OUT contentLen=${content?.length ?? 0}`);
       return new Response(
         streamText(content || "⚠️ Serviço de IA temporariamente indisponível. Tente novamente."),
         { headers: sseHeaders }
