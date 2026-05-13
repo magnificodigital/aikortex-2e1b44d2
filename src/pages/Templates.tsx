@@ -353,12 +353,13 @@ export const TemplatesMarketplaceView = () => {
 };
 
 const Templates = () => (
-  <DashboardLayout>
-    <div className="p-6 max-w-7xl mx-auto">
-      <TemplatesMarketplaceView />
-    </div>
-        </ModuleGate>
+  <ModuleGate moduleKey="aikortex.templates">
+    <DashboardLayout>
+      <div className="p-6 max-w-7xl mx-auto">
+        <TemplatesMarketplaceView />
+      </div>
     </DashboardLayout>
+  </ModuleGate>
 );
 
 export default Templates;
