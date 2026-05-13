@@ -1,0 +1,1 @@
+ALTER TABLE public.agent_knowledge_bases ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT true;

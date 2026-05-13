@@ -223,6 +223,7 @@ export type Database = {
           description: string | null
           embedding_dim: number
           embedding_model: string
+          enabled: boolean
           id: string
           name: string
           updated_at: string
@@ -235,6 +236,7 @@ export type Database = {
           description?: string | null
           embedding_dim?: number
           embedding_model?: string
+          enabled?: boolean
           id?: string
           name: string
           updated_at?: string
@@ -247,6 +249,7 @@ export type Database = {
           description?: string | null
           embedding_dim?: number
           embedding_model?: string
+          enabled?: boolean
           id?: string
           name?: string
           updated_at?: string
