@@ -192,7 +192,6 @@ interface FlowCanvasProps {
 function FlowCanvasInner({ initialNodes, initialEdges, flowName, flowId, onSave, flows = [], onOpenFlow, onNewFlow, initialPrompt, headerLeft }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const nodeIdCounter = useRef(1);
-  const nodeIdCounter = useRef(1);
   const startNodes = initialNodes && (initialNodes as Node[]).length > 0
     ? (initialNodes as Node[])
     : [defaultStartNode];

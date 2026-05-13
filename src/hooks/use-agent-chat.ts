@@ -264,7 +264,7 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
           }
         }
 
-        resp = await fetch(getAgentRuntimeUrl(options.mode), {
+        resp = await fetch(getAgentRuntimeUrl(), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
