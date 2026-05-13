@@ -16,7 +16,7 @@ import { getRehypePlugins } from "@/lib/safe-rehype";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-const APP_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`;
+const APP_CHAT_URL = fnUrl("app-chat");
 
 interface Message {
   role: "user" | "assistant";

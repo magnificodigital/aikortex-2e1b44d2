@@ -7,7 +7,7 @@ import ContactPanel, { ContactInfo } from "@/components/messages/ContactPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const WHATSAPP_SEND_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-send`;
+const WHATSAPP_SEND_URL = fnUrl("whatsapp-send");
 
 const AikortexMessages = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);

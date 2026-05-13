@@ -49,7 +49,7 @@ export function useAgentMemory(agentId: string | undefined) {
       }
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-memory-store`,
+        fnUrl("sync-memory-store"),
         {
           method: "POST",
           headers: {
@@ -92,7 +92,7 @@ export function useAgentMemory(agentId: string | undefined) {
       }
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-memory-store`,
+        fnUrl("sync-memory-store"),
         {
           method: "POST",
           headers: {

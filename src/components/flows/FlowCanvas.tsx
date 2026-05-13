@@ -418,7 +418,7 @@ function FlowCanvasInner({ initialNodes, initialEdges, flowName, flowId, onSave,
       if (!session?.access_token) { toast.error("Faça login."); return; }
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/execute-flow`,
+        fnUrl("execute-flow"),
         {
           method: "POST",
           headers: {

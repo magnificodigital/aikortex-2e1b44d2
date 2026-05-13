@@ -162,7 +162,7 @@ export const ChannelsPanel = () => {
     }
   };
 
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+  const webhookUrl = fnUrl("whatsapp-webhook");
 
   return (
     <div className="space-y-4">

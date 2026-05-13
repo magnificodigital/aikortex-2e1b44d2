@@ -102,7 +102,7 @@ const LLM_MODELS = ALL_LLM_MODELS.map(m => ({
   badge: (m.byok ? (m.provider === "anthropic" ? "byok-anthropic" : "byok") : "free") as "free" | "byok" | "byok-anthropic",
 }));
 
-const STRUCTURE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-structure`;
+const STRUCTURE_URL = fnUrl("agent-structure");
 
 /* ── Types ── */
 

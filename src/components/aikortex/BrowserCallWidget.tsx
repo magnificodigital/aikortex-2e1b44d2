@@ -84,7 +84,7 @@ const BrowserCallWidget = ({
         const accessToken = session.access_token;
 
         const resp = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`,
+          fnUrl("app-chat"),
           {
             method: "POST",
             headers: {
@@ -145,7 +145,7 @@ const BrowserCallWidget = ({
       const session = (await supabase.auth.getSession()).data.session;
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/browser-tts`,
+        fnUrl("browser-tts"),
         {
           method: "POST",
           headers: {

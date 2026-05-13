@@ -91,7 +91,7 @@ const AikortexBroadcasts = () => {
       const interpolated = template.replace(/\{\{(\w+)\}\}/g, (_, key) => String((exampleContact as Record<string, unknown>)[key] ?? ""));
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/app-chat`,
+        fnUrl("app-chat"),
         {
           method: "POST",
           headers: {
