@@ -4,15 +4,7 @@ import { getAuthContext as getSharedAuthContext, handleCors, corsHeaders } from 
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
-
-// ── OpenRouter platform helpers ───────────────────────────────────────────
-// Order matters: most reliable instruct (non-reasoning) models first.
-const PLATFORM_FREE_MODELS = [
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "google/gemma-4-31b-it:free",
-  "qwen/qwen3-coder:free",
-  "nousresearch/hermes-3-llama-3.1-405b:free",
-];
+import { callLLM, buildAdminClient } from "../_shared/llm-fallback.ts";
 
 function streamText(text: string): ReadableStream {
   const encoder = new TextEncoder();
@@ -29,85 +21,25 @@ function streamText(text: string): ReadableStream {
   });
 }
 
-async function streamFromOpenRouterPlatform(
+// Buffered LLM call — replaces both bufferFromOpenRouterPlatform and the
+// stream variant. Streaming has been replaced by buffer+restream pattern
+// (already standardized) to eliminate empty stream bugs.
+async function bufferFromPlatform(
   messages: Array<{ role: string; content: string }>,
-  preferredModel?: string
-): Promise<Response | null> {
-  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
-  if (!apiKey) { console.error("OPENROUTER_API_KEY not set"); return null; }
-  const modelsToTry = preferredModel
-    ? [preferredModel, ...PLATFORM_FREE_MODELS.filter(m => m !== preferredModel)]
-    : PLATFORM_FREE_MODELS;
-  for (const model of modelsToTry) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
-      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://aikortex26.lovable.app",
-          "X-Title": "Aikortex",
-        },
-        body: JSON.stringify({ model, messages, stream: true, max_tokens: 2048 }),
-      });
-      clearTimeout(timeout);
-      if ([400, 402, 404, 429, 500, 502, 503].includes(resp.status)) continue;
-      if (!resp.ok) continue;
-      return resp;
-    } catch { continue; }
-  }
-  return null;
-}
-
-async function bufferFromOpenRouterPlatform(
-  messages: Array<{ role: string; content: string }>,
-  preferredModel?: string
+  preferredModel?: string,
+  supabase?: ReturnType<typeof createClient>,
 ): Promise<string> {
-  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
-  if (!apiKey) {
-    console.error("[buffer] OPENROUTER_API_KEY ausente");
+  const result = await callLLM(messages, {
+    tier: "free",
+    preferredModel,
+    maxTokens: 2048,
+    timeoutMs: 12000,
+  }, supabase);
+  if (!result.success) {
+    console.error("[app-chat] all models failed:", result.error);
     return "";
   }
-  const modelsToTry = preferredModel
-    ? [preferredModel, ...PLATFORM_FREE_MODELS.filter(m => m !== preferredModel)]
-    : PLATFORM_FREE_MODELS;
-  for (const model of modelsToTry) {
-    const t0 = Date.now();
-    try {
-      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        signal: AbortSignal.timeout(12000),
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://aikortex26.lovable.app",
-          "X-Title": "Aikortex",
-        },
-        body: JSON.stringify({ model, messages, stream: false, max_tokens: 2048 }),
-      });
-      const dt = Date.now() - t0;
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => "");
-        console.error(`[buffer] ${model} → HTTP ${resp.status} em ${dt}ms: ${errText.slice(0, 200)}`);
-        continue;
-      }
-      const data = await resp.json();
-      const msg = data?.choices?.[0]?.message;
-      // Reasoning models may put output in `reasoning` instead of `content`
-      const content = msg?.content || msg?.reasoning || "";
-      console.log(`[buffer] ${model} → OK em ${dt}ms (${content.length} chars)`);
-      if (content) return content;
-    } catch (e) {
-      const dt = Date.now() - t0;
-      console.error(`[buffer] ${model} → exception em ${dt}ms: ${(e as Error).message}`);
-      continue;
-    }
-  }
-  console.error("[buffer] todos os modelos falharam");
-  return "";
+  return result.content || "";
 }
 
 function buildAgentSystemPrompt(agentConfig: Record<string, unknown>): string {
