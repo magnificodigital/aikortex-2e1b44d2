@@ -22,33 +22,18 @@ function interpolateTemplate(template: string, contact: Contact): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(contact[key] ?? ""));
 }
 
-async function callOpenRouterDirect(
+async function callOpenRouter(
   messages: Array<{ role: string; content: string }>,
   system: string,
 ): Promise<string | null> {
-  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
-  if (!apiKey) return null;
-  const models = ["qwen/qwen3-30b-a3b:free", "google/gemini-2.5-flash-preview-04-17:free", "google/gemma-3-27b-it:free"];
-  const fullMessages = [{ role: "system", content: system }, ...messages];
-  for (const model of models) {
-    try {
-      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://aikortex.com",
-          "X-Title": "Aikortex",
-        },
-        body: JSON.stringify({ model, messages: fullMessages, stream: false, max_tokens: 512 }),
-      });
-      if (!resp.ok) continue;
-      const data = await resp.json();
-      const content = data?.choices?.[0]?.message?.content || "";
-      if (content) return content;
-    } catch { continue; }
-  }
-  return null;
+  const { callOpenRouter } = await import("../_shared/agent-tools.ts");
+  const resp = await callOpenRouter(
+    [{ role: "system", content: system }, ...messages],
+    { maxTokens: 512, timeout: 15000 },
+  );
+  if (!resp) return null;
+  const data = await resp.json();
+  return data?.choices?.[0]?.message?.content || null;
 }
 
 async function personalizeWithAgent(

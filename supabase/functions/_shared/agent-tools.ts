@@ -290,3 +290,66 @@ export async function runAgentLLM(opts: {
   });
   return text || null;
 }
+
+/** Shared free model list for OpenRouter fallback calls */
+export const PLATFORM_FREE_MODELS = [
+  "google/gemini-2.5-flash-preview-04-17:free",
+  "qwen/qwen3-30b-a3b:free",
+  "google/gemma-3-27b-it:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "deepseek/deepseek-r1:free",
+];
+
+/** Unified OpenRouter call with model fallback. Returns response or null if all fail. */
+export async function callOpenRouter(
+  messages: Array<{ role: string; content: string }>,
+  opts: {
+    apiKey?: string;
+    preferredModel?: string;
+    fallbackModels?: string[];
+    maxTokens?: number;
+    stream?: boolean;
+    timeout?: number;
+    stop?: string[];
+  } = {},
+): Promise<Response | null> {
+  const apiKey = opts.apiKey || Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  if (!apiKey) return null;
+
+  const fallbackModels = opts.fallbackModels ?? PLATFORM_FREE_MODELS;
+  const modelsToTry = opts.preferredModel
+    ? [opts.preferredModel, ...fallbackModels.filter(m => m !== opts.preferredModel)]
+    : fallbackModels;
+  const timeout = opts.timeout ?? 15000;
+
+  for (const model of modelsToTry) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeout);
+      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://aikortex.com",
+          "X-Title": "Aikortex",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: opts.stream ?? false,
+          max_tokens: opts.maxTokens ?? 2048,
+          ...(opts.stop?.length ? { stop: opts.stop } : {}),
+        }),
+      });
+      clearTimeout(timer);
+      if ([400, 402, 404, 429, 500, 502, 503].includes(resp.status)) continue;
+      if (!resp.ok) continue;
+      return resp;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
