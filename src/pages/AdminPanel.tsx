@@ -27,6 +27,7 @@ const TAB_LABELS: Record<string, string> = {
   "api-keys": "Chaves de API",
   support: "Suporte",
   tutorials: "Tutoriais",
+  llms: "LLMs",
 };
 
 const AdminPanel = () => {
