@@ -1,4 +1,5 @@
 import { handleCors, getAuthContext, corsHeaders } from "../_shared/auth.ts";
+import { callLLM, buildAdminClient } from "../_shared/llm-fallback.ts";
 
 Deno.serve(async (req) => {
   const corsResp = handleCors(req);
@@ -8,15 +9,7 @@ Deno.serve(async (req) => {
   if (authResult instanceof Response) return authResult;
 
   try {
-    const { messages } = await req.json()
-    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY')
-
-    if (!OPENROUTER_API_KEY) {
-      return new Response(JSON.stringify({ error: 'OPENROUTER_API_KEY not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
+    const { messages } = await req.json();
 
     const systemPrompt = `Você é um assistente de criação de fluxos de automação para a plataforma Aikortex, usada por agências de marketing no Brasil. Ajude o usuário a criar fluxos de automação fazendo perguntas para entender o objetivo. Quando tiver informações suficientes, gere o fluxo como JSON dentro de um bloco de código assim:
 \`\`\`json
@@ -32,43 +25,44 @@ Deno.serve(async (req) => {
   ]
 }
 \`\`\`
-Sempre responda em português do Brasil. Seja conversacional e útil.`
+Sempre responda em português do Brasil. Seja conversacional e útil.`;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'HTTP-Referer': 'https://aikortex.com',
-        'X-Title': 'Aikortex Flow Copilot',
+    // DeerFlow é orquestração — usa tier paid com gpt-4o-mini preferido.
+    // Helper faz fallback para outros paid em caso de falha; NÃO degrada para free.
+    const result = await callLLM(
+      [
+        { role: "system", content: systemPrompt },
+        ...messages,
+      ],
+      {
+        tier: "paid",
+        preferredModel: "openai/gpt-4o-mini",
+        maxTokens: 2048,
+        timeoutMs: 20000,
       },
-      body: JSON.stringify({
-        model: 'openai/gpt-4o-mini',
-        stream: false,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ]
-      })
-    })
+      buildAdminClient(),
+    );
 
-    if (!response.ok) {
-      const errText = await response.text()
-      return new Response(JSON.stringify({ error: errText }), {
-        status: response.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+    if (!result.success) {
+      const status = result.status_code === 429 ? 429 : result.status_code === 402 ? 402 : 500;
+      return new Response(
+        JSON.stringify({ error: result.error || "Serviço de IA indisponível." }),
+        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const data = await response.json()
-
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+    // Preserve previous response shape (callers expect OpenRouter raw format)
+    return new Response(
+      JSON.stringify(result.raw ?? {
+        choices: [{ message: { content: result.content } }],
+        model: result.model_used,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
-})
+});
