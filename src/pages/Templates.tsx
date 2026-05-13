@@ -154,7 +154,6 @@ export const TemplatesMarketplaceView = () => {
   }
 
   return (
-    <ModuleGate moduleKey="aikortex.templates">
     <>
       <div className="space-y-6">
         {/* Header */}
