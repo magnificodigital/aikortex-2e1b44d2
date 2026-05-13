@@ -79,7 +79,6 @@ const partnersItems: NavItem[] = [
 const aikortexItems: NavItem[] = [
   { label: "Agentes", icon: Bot, path: "/aikortex/agents" },
   { label: "Ligações", icon: PhoneIcon, path: "/calls" },
-  { label: "Flows", icon: Workflow, path: "/aikortex/automations" },
   { label: "Apps", icon: AppWindow, path: "/apps" },
   { label: "Mensagens", icon: MessageSquare, path: "/aikortex/messages" },
 ];
@@ -87,12 +86,10 @@ const aikortexItems: NavItem[] = [
 const MODULE_KEY_MAP: Record<string, string> = {
   "/aikortex/agents": "aikortex.agentes",
   "/calls": "aikortex.agentes",
-  "/aikortex/automations": "aikortex.flows",
   "/apps": "aikortex.apps",
   "/app-builder": "aikortex.apps",
   "/templates": "aikortex.templates",
   "/aikortex/messages": "aikortex.mensagens",
-  "/aikortex/broadcasts": "aikortex.disparos",
   "/clients": "gestao.clientes",
   "/contracts": "gestao.contratos",
   "/sales": "gestao.vendas",

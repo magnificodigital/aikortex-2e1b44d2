@@ -388,7 +388,22 @@ const AgentDetail = () => {
           savedConfig: buildSavedConfig(config, config.agentType),
         });
         setAgentConfig(config);
-        if (agentId && TEMPLATE_MAP[agentId] && result.id !== agentId) {
+        // Promote placeholder route (new-* / template) to real UUID after first INSERT.
+        // Migrate localStorage keys so wizard chat history etc. survive the URL change.
+        const isPlaceholder = !agentId || agentId === "new" || agentId.startsWith("new-") || !!TEMPLATE_MAP[agentId];
+        if (isPlaceholder && result.id && result.id !== agentId) {
+          try {
+            const oldPrefix = `agent-detail-${agentId || "new"}`;
+            const newPrefix = `agent-detail-${result.id}`;
+            const suffixes = ["-setup-messages", "-wizard-messages", "-test-messages", "-chatMode", "-model", "-setupModel"];
+            for (const s of suffixes) {
+              const v = localStorage.getItem(oldPrefix + s);
+              if (v != null) {
+                localStorage.setItem(newPrefix + s, v);
+                localStorage.removeItem(oldPrefix + s);
+              }
+            }
+          } catch {}
           navigate(`/aikortex/agents/${result.id}`, { replace: true });
         }
       }
