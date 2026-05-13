@@ -203,7 +203,6 @@ export const TemplatesMarketplaceView = () => {
             const locked = !canAccessTier(t.min_tier);
             const CatIcon = CATEGORY_ICONS[t.category] ?? Bot;
             return (
-    <ModuleGate moduleKey="aikortex.templates">
               <Card key={t.id} className={`transition-shadow hover:shadow-md ${locked ? "opacity-40" : ""} relative`}>
                 {locked && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/40">
