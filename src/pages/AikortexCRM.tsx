@@ -4,7 +4,7 @@ import ModuleGate from "@/components/shared/ModuleGate";
 import CRMKanban from "@/components/crm/CRMKanban";
 import LeadDetailDialog from "@/components/crm/LeadDetailDialog";
 import NewLeadDialog from "@/components/crm/NewLeadDialog";
-import { Lead, MOCK_LEADS, PipelineStage, PIPELINE_STAGES, LEAD_SOURCES, TEMPERATURE_CONFIG } from "@/types/crm";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,7 +15,20 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const AikortexCRM = () => {
-  const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("flow_executions")
+      .select("*").order("created_at", { ascending: false }).limit(50)
+      .then(({ data }) => { if (data) setLeads(data.map(e => ({
+        id: e.id, name: e.name || "Lead", email: "", phone: "", source: "flow",
+        stage: e.status === "completed" ? "qualified" : "contacted", temperature: "morno",
+        value: 0, createdAt: e.created_at, notes: e.result?.content?.slice(0, 100) || "" })));
+        setLoading(false);
+      });
+  }, []);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
