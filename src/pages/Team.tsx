@@ -79,8 +79,8 @@ const Team = () => {
         onClose={() => setShowCreate(false)}
         context="agency"
       />
-          </ModuleGate>
     </DashboardLayout>
+    </ModuleGate>
   );
 };
 
