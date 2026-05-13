@@ -15,6 +15,7 @@ import AdminFinanceiroTab from "@/components/admin/AdminFinanceiroTab";
 import AdminConfigTab from "@/components/admin/AdminConfigTab";
 import AdminSupportTab from "@/components/admin/AdminSupportTab";
 import AdminTutorialsTab from "@/components/admin/AdminTutorialsTab";
+import AdminLLMsTab from "@/components/admin/AdminLLMsTab";
 
 const TAB_LABELS: Record<string, string> = {
   overview: "Visão Geral",
@@ -26,6 +27,7 @@ const TAB_LABELS: Record<string, string> = {
   "api-keys": "Chaves de API",
   support: "Suporte",
   tutorials: "Tutoriais",
+  llms: "LLMs",
 };
 
 const AdminPanel = () => {
@@ -97,6 +99,9 @@ const AdminPanel = () => {
           )}
           <TabsContent value="support"><AdminSupportTab /></TabsContent>
           <TabsContent value="tutorials"><AdminTutorialsTab /></TabsContent>
+          {isPlatformOwner && (
+            <TabsContent value="llms"><AdminLLMsTab /></TabsContent>
+          )}
         </Tabs>
       </div>
     </AdminLayout>
