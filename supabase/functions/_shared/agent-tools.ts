@@ -170,6 +170,12 @@ async function executeToolCall(
       ? { ...args, agent_id: opts.agentId }
       : args;
 
+    if (name === "knowledge_search") {
+      // TODO: temp diag
+      const q = (args as any)?.query;
+      console.log(`[agent-tools] invoking tool-knowledge-search agentId=${opts.agentId} query="${typeof q === "string" ? q.slice(0, 50) : "(none)"}..."`);
+    }
+
     const resp = await fetch(`${opts.supabaseUrl}/functions/v1/${fn}`, {
       method: "POST",
       headers: {
@@ -179,8 +185,11 @@ async function executeToolCall(
       body: JSON.stringify(body),
     });
     const text = await resp.text();
+    // TODO: temp diag
+    console.log(`[agent-tools] ${fn} response status=${resp.status} bodyLen=${text.length} bodyPreview=${text.slice(0, 200)}`);
     return { ok: resp.ok, result: text };
   } catch (e) {
+    console.warn(`[agent-tools] ${fn} EXCEPTION ${(e as Error).message}`);
     return { ok: false, result: JSON.stringify({ error: (e as Error).message, code: "TOOL_EXEC_ERROR" }) };
   }
 }
