@@ -126,7 +126,14 @@ async function executeToolCall(
   opts: ExecuteOptions,
 ): Promise<{ ok: boolean; result: string }> {
   // TODO: temp diag — remove after confirming KB tool invocation in production logs.
-  console.log(`[agent-tools] executeToolCall name=${name} arguments=${JSON.stringify(args).slice(0, 200)}`);
+  console.log(`[agent-tools] dispatch tool name="${name}" args=${JSON.stringify(args).slice(0, 200)}`);
+
+  const finish = (ok: boolean, result: string, error: string | null = null) => {
+    // TODO: temp diag — remove after confirming KB tool invocation in production logs.
+    console.log(`[agent-tools] toolCall ${name} resulted in: success=${ok} error=${error ?? "none"}`);
+    return { ok, result };
+  };
+
   const fn =
     name === "web_search" ? "tool-web-search" :
     name === "image_gen" ? "tool-image-gen" :
@@ -134,7 +141,7 @@ async function executeToolCall(
     null;
   if (!fn) {
     console.warn(`[agent-tools] UNKNOWN_TOOL name=${name}`);
-    return { ok: false, result: JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }) };
+    return finish(false, JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }), "UNKNOWN_TOOL");
   }
 
   const def = TOOL_CATALOG[name as ToolKey];
@@ -151,9 +158,9 @@ async function executeToolCall(
       if (incErr) {
         console.error("quota increment failed", incErr);
       } else if (typeof newCount === "number" && newCount > limit) {
-        return {
-          ok: false,
-          result: JSON.stringify({
+        return finish(
+          false,
+          JSON.stringify({
             error: `Quota mensal da tool "${name}" excedida no tier ${opts.tier} (${limit}/mês).`,
             code: "QUOTA_EXCEEDED",
             tool: name,
@@ -161,7 +168,8 @@ async function executeToolCall(
             limit,
             used: newCount,
           }),
-        };
+          "QUOTA_EXCEEDED",
+        );
       }
     }
 
@@ -170,27 +178,45 @@ async function executeToolCall(
       ? { ...args, agent_id: opts.agentId }
       : args;
 
+    const url = `${opts.supabaseUrl}/functions/v1/${fn}`;
     if (name === "knowledge_search") {
-      // TODO: temp diag
-      const q = (args as any)?.query;
-      console.log(`[agent-tools] invoking tool-knowledge-search agentId=${opts.agentId} query="${typeof q === "string" ? q.slice(0, 50) : "(none)"}..."`);
+      // TODO: temp diag — remove after confirming KB tool invocation in production logs.
+      console.log(`[agent-tools] invoking tool-knowledge-search url=${url} agentId=${opts.agentId}`);
+      if (!opts.supabaseUrl || !opts.serviceKey) {
+        console.error(`[agent-tools] tool-knowledge-search missing env supabaseUrl=${!!opts.supabaseUrl} serviceKey=${!!opts.serviceKey}`);
+      }
     }
 
-    const resp = await fetch(`${opts.supabaseUrl}/functions/v1/${fn}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${opts.serviceKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-    const text = await resp.text();
-    // TODO: temp diag
-    console.log(`[agent-tools] ${fn} response status=${resp.status} bodyLen=${text.length} bodyPreview=${text.slice(0, 200)}`);
-    return { ok: resp.ok, result: text };
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${opts.serviceKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const text = await resp.text();
+      // TODO: temp diag — remove after confirming KB tool invocation in production logs.
+      console.log(`[agent-tools] ${fn} response status=${resp.status} ok=${resp.ok} bodyLen=${text.length} bodyPreview=${text.slice(0, 200)}`);
+      if (name === "knowledge_search") {
+        console.log(`[agent-tools] tool-knowledge-search response status=${resp.status} ok=${resp.ok}`);
+        if (!resp.ok) {
+          console.error(`[agent-tools] tool-knowledge-search HTTP ${resp.status}: ${text.slice(0, 300)}`);
+        }
+      }
+      return finish(resp.ok, text, resp.ok ? null : `HTTP_${resp.status}`);
+    } catch (e) {
+      const message = (e as Error).message;
+      if (name === "knowledge_search") {
+        console.error(`[agent-tools] tool-knowledge-search EXCEPTION: ${message} stack=${(e as Error).stack?.slice(0, 500)}`);
+      }
+      throw e;
+    }
   } catch (e) {
-    console.warn(`[agent-tools] ${fn} EXCEPTION ${(e as Error).message}`);
-    return { ok: false, result: JSON.stringify({ error: (e as Error).message, code: "TOOL_EXEC_ERROR" }) };
+    const message = (e as Error).message;
+    console.warn(`[agent-tools] ${fn} EXCEPTION ${message}`);
+    return finish(false, JSON.stringify({ error: message, code: "TOOL_EXEC_ERROR" }), "TOOL_EXEC_ERROR");
   }
 }
 
