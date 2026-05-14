@@ -125,12 +125,17 @@ async function executeToolCall(
   args: Record<string, unknown>,
   opts: ExecuteOptions,
 ): Promise<{ ok: boolean; result: string }> {
+  // TODO: temp diag — remove after confirming KB tool invocation in production logs.
+  console.log(`[agent-tools] executeToolCall name=${name} arguments=${JSON.stringify(args).slice(0, 200)}`);
   const fn =
     name === "web_search" ? "tool-web-search" :
     name === "image_gen" ? "tool-image-gen" :
     name === "knowledge_search" ? "tool-knowledge-search" :
     null;
-  if (!fn) return { ok: false, result: JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }) };
+  if (!fn) {
+    console.warn(`[agent-tools] UNKNOWN_TOOL name=${name}`);
+    return { ok: false, result: JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }) };
+  }
 
   const def = TOOL_CATALOG[name as ToolKey];
   const limit = def?.quotas?.[opts.tier] ?? 0;
