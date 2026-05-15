@@ -248,11 +248,22 @@ const Clients = () => {
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/clients/${c.id}`); }}>
                             <Eye className="w-4 h-4 mr-2" /> Ver detalhes
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingClient({
+                              id: c.id,
+                              client_name: c.client_name,
+                              client_email: c.client_email,
+                              client_phone: c.client_phone ?? null,
+                            });
+                          }}>
+                            <Pencil className="w-4 h-4 mr-2" /> Editar
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSuspend(c.id); }}>
                             <Ban className="w-4 h-4 mr-2" /> Suspender
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); handleRemove(c.id); }}>
-                            <Trash2 className="w-4 h-4 mr-2" /> Remover
+                            <Trash2 className="w-4 h-4 mr-2" /> Desativar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
