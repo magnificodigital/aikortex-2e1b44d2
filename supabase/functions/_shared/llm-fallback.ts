@@ -294,7 +294,6 @@ export async function callLLM(
     }
   }
 
-  // TODO: temporary debug — remove after diagnosis.
   console.error(`[llm-fallback] ALL MODELS FAILED. tried=${attempts}/${models.length} lastStatus=${lastStatus} lastError=${lastError}`);
   return {
     success: false,
