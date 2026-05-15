@@ -210,43 +210,7 @@ async function executeToolCall(
     const body = needsAgentId
       ? { ...args, agent_id: opts.agentId }
       : args;
-  if (!fn) {
-    console.warn(`[agent-tools] UNKNOWN_TOOL name=${name}`);
-    return finish(false, JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }), "UNKNOWN_TOOL");
-  }
 
-  const def = TOOL_CATALOG[name as ToolKey];
-  const limit = def?.quotas?.[opts.tier] ?? 0;
-
-  try {
-    if (opts.agencyId && limit > 0) {
-      const { data: newCount, error: incErr } = await opts.supabase.rpc("increment_agency_tool_usage", {
-        p_agency_id: opts.agencyId,
-        p_year_month: opts.yearMonth,
-        p_tool_key: name,
-      });
-      if (incErr) {
-        console.error("quota increment failed", incErr);
-      } else if (typeof newCount === "number" && newCount > limit) {
-        return finish(
-          false,
-          JSON.stringify({
-            error: `Quota mensal da tool "${name}" excedida no tier ${opts.tier} (${limit}/mês).`,
-            code: "QUOTA_EXCEEDED",
-            tool: name,
-            tier: opts.tier,
-            limit,
-            used: newCount,
-          }),
-          "QUOTA_EXCEEDED",
-        );
-      }
-    }
-
-    // knowledge_search needs the agent_id injected — LLM doesn't know it.
-    const body = name === "knowledge_search"
-      ? { ...args, agent_id: opts.agentId }
-      : args;
 
     const url = `${opts.supabaseUrl}/functions/v1/${fn}`;
     // Prefer the user's JWT when available (chat flow). Webhooks fall back to
