@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  Users, Plus, Search, MoreHorizontal, Eye, Trash2, Pencil, RotateCcw,
+  Users, Plus, Search, MoreHorizontal, Eye, Trash2, Pencil, RotateCcw, PowerOff,
   Trophy, DollarSign, LayoutTemplate,
 } from "lucide-react";
 import AddClientWizard from "@/components/clients/AddClientWizard";
