@@ -1,4 +1,8 @@
 // Sprint 2.5-e — Tool: knowledge_search (RAG sobre KBs do agente)
+// Auth modes:
+//   A) End-user JWT (chat flow via app-chat) — validates auth.user.id === user_agents.user_id
+//   B) Service role (internal webhooks: telnyx, whatsapp, batch-broadcast) — trusts caller,
+//      ownership inferred from agent_id provided in body.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -30,10 +34,38 @@ serve(async (req) => {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) return jsonError(500, "OPENAI_API_KEY not configured");
 
-  const admin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const admin = createClient(supabaseUrl, serviceKey);
+
+  // ── Auth: detect Mode A (user JWT) vs Mode B (service role bypass) ──
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const isServiceRole = serviceKey.length > 0 && bearerToken === serviceKey;
+
+  // Validate ownership of the agent
+  const { data: agent, error: agentErr } = await admin
+    .from("user_agents")
+    .select("id, user_id")
+    .eq("id", agent_id)
+    .maybeSingle();
+  if (agentErr) return jsonError(500, `Agent lookup failed: ${agentErr.message}`);
+  if (!agent) return jsonError(404, "Agent not found");
+
+  if (!isServiceRole) {
+    // Mode A: validate user JWT and ownership
+    if (!bearerToken) return jsonError(401, "Missing Authorization");
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${bearerToken}` } },
+    });
+    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(bearerToken);
+    if (claimsErr || !claims?.claims?.sub) return jsonError(401, "Invalid JWT");
+    if ((agent as any).user_id !== claims.claims.sub) {
+      return jsonError(403, "No permission for this agent");
+    }
+  }
+  // Mode B: trusted caller, ownership already implicit by agent_id
 
   // 1. Embed query
   let embedding: number[] | null = null;
@@ -55,7 +87,7 @@ serve(async (req) => {
     return jsonError(500, `Embedding error: ${(e as Error).message}`);
   }
 
-  // 2. Match via RPC
+  // 2. Match via RPC (uses admin client so RLS is bypassed; ownership already enforced above)
   const safeTopK = Math.min(Math.max(Number(top_k) || 5, 1), 10);
   const { data: matches, error: matchErr } = await admin.rpc("match_kb_chunks", {
     p_agent_id: agent_id,
@@ -67,7 +99,6 @@ serve(async (req) => {
 
   const matchList = (matches as any[]) ?? [];
 
-  // 3. Enriquece com título/source_type via kb_documents
   const docIds = Array.from(new Set(matchList.map((m) => m.document_id).filter(Boolean)));
   let docMap: Record<string, { title: string | null; source_type: string | null }> = {};
   if (docIds.length > 0) {
