@@ -96,6 +96,8 @@ const Clients = () => {
   }, [searchParams, setSearchParams]);
 
   const filtered = clients.filter((c) => {
+    // Esconde soft-deletados quando o filtro não é explícito
+    if (statusFilter === "all" && c.status === "inactive") return false;
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
