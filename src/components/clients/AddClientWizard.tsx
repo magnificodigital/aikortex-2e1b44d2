@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowRight, ArrowLeft, CheckCircle2, Copy, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Copy, Loader2, AlertTriangle, AlertCircle } from "lucide-react";
+import { useHasAsaasConfigured } from "@/hooks/use-has-asaas-configured";
 
 interface Props {
   open: boolean;
