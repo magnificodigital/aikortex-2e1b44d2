@@ -150,6 +150,7 @@ serve(async (req) => {
       client_email,
       client_phone,
       client_document,
+      billing_provider: 'asaas',
       asaas_customer_id: customer.id,
       platform_subscription_id: subscription.id,
       platform_subscription_status: 'pending',
