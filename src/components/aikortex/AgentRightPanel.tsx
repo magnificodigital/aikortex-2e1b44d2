@@ -1082,6 +1082,10 @@ const AgentRightPanel = ({
               <AgentToolsSection agentId={agentId} />
             )}
 
+            {activeSection === "resources.tables" && (
+              <ClientTablesSection agentId={agentId} isFreshNew={!agentId} />
+            )}
+
             {/* ── Recursos → Integrações ── */}
             {activeSection === "resources.integrations" && (
               <div className="space-y-6">
