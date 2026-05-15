@@ -94,8 +94,6 @@ export async function loadActiveModels(
       console.log(`[llm-fallback] no reliable free model — falling back to paid (count=${rows.length})`);
     }
   }
-  // TODO: temporary debug — remove after diagnosis.
-  console.log(`[llm-fallback] loadActiveModels result count=${rows.length} sample=[${rows.slice(0, 8).map((m: any) => `${m.model_id}(${m.status})`).join(", ")}]`);
   return rows.map((m: any) => m.model_id);
 }
 
