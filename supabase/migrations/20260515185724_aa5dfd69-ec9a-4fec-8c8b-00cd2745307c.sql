@@ -1,0 +1,1 @@
+ALTER TABLE public.agency_clients ADD COLUMN IF NOT EXISTS billing_provider text;
