@@ -179,8 +179,7 @@ export async function callLLM(
   if (options.preferredModel) {
     models = [options.preferredModel, ...models.filter((m) => m !== options.preferredModel)];
   }
-  // TODO: temporary debug — remove after diagnosis.
-  console.log(`[llm-fallback] models loaded count=${models.length} list=${models.slice(0, 5).join(",")}`);
+  
   if (models.length === 0) {
     return {
       success: false,
