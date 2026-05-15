@@ -287,6 +287,13 @@ const Clients = () => {
         agencyTier={agency?.tier ?? "starter"}
         onSuccess={async () => { await loadData(); await refreshClients(); }}
       />
+
+      <EditClientDialog
+        client={editingClient}
+        open={!!editingClient}
+        onOpenChange={(o) => { if (!o) setEditingClient(null); }}
+        onChanged={async () => { await loadData(); await refreshClients(); }}
+      />
       </ModuleGate>
     </DashboardLayout>
   );
