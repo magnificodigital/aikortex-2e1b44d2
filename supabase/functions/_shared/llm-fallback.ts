@@ -138,8 +138,7 @@ async function markFailure(
       : failures >= 2
       ? "degraded"
       : "healthy";
-    // TODO: temporary debug — remove after diagnosis.
-    console.log(`[llm-fallback] mark failure ${model_id} status=${status} newStatus=${newStatus} consecutiveFailures=${failures}`);
+    
     await supabase
       .from("available_llms")
       .update({
