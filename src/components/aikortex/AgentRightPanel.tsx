@@ -20,6 +20,7 @@ import AgentMemoryTab from "./AgentMemoryTab";
 import AgentToolsSection from "./AgentToolsSection";
 import AgentVersionsSection from "./AgentVersionsSection";
 import KnowledgeBaseSection from "./KnowledgeBaseSection";
+import ClientTablesSection from "./ClientTablesSection";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -131,7 +132,7 @@ const RIGHT_NAV: NavGroup[] = [
   { group: "Recursos", items: [
     { key: "resources.tools",        label: "Tools",          icon: Wrench },
     { key: "resources.kb",           label: "Knowledge Base", icon: BookOpen },
-    { key: "resources.tables",       label: "Tabelas",        icon: Database,  comingSoon: true, sprint: "2.6", masterRef: "13.5.11" },
+    { key: "resources.tables",       label: "Tabelas",        icon: Database,  masterRef: "13.5.11" },
     { key: "resources.integrations", label: "Integrações",    icon: Plug },
   ]},
   { group: "Comportamento", items: [
@@ -1079,6 +1080,10 @@ const AgentRightPanel = ({
             {/* ── Recursos → Tools (Sprint 2.4-a §13.15) ── */}
             {activeSection === "resources.tools" && (
               <AgentToolsSection agentId={agentId} />
+            )}
+
+            {activeSection === "resources.tables" && (
+              <ClientTablesSection agentId={agentId} isFreshNew={!agentId} />
             )}
 
             {/* ── Recursos → Integrações ── */}
