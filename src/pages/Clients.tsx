@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  Users, Plus, Search, MoreHorizontal, Eye, Trash2, Pencil, RotateCcw,
+  Users, Plus, Search, MoreHorizontal, Eye, Trash2, Pencil, RotateCcw, PowerOff,
   Trophy, DollarSign, LayoutTemplate,
 } from "lucide-react";
 import AddClientWizard from "@/components/clients/AddClientWizard";
@@ -256,7 +256,7 @@ const Clients = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(c.id, c.status); }}>
                             {c.status === "active" ? (
-                              <><Trash2 className="w-4 h-4 mr-2" /> Desativar</>
+                              <><PowerOff className="w-4 h-4 mr-2 text-orange-500" /> Desativar</>
                             ) : (
                               <><RotateCcw className="w-4 h-4 mr-2" /> Reativar</>
                             )}

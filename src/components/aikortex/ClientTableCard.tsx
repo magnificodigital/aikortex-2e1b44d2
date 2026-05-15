@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Settings, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import type { ClientTable } from "@/hooks/use-client-tables";
 import ClientTableSettingsDialog from "./ClientTableSettingsDialog";
 
 interface Props {
   table: ClientTable;
+  onOpenEditor: (table: ClientTable) => void;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -27,7 +27,7 @@ function timeAgo(iso: string): string {
   return `${d}d`;
 }
 
-export default function ClientTableCard({ table }: Props) {
+export default function ClientTableCard({ table, onOpenEditor }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const cols = table.columns ?? [];
   const rowsCount = table.rows_count ?? 0;
@@ -69,18 +69,9 @@ export default function ClientTableCard({ table }: Props) {
         </div>
       )}
 
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="inline-block">
-              <Button variant="outline" size="sm" className="h-7 text-xs" disabled>
-                Abrir editor
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>Disponível no Sprint 2.6-b</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onOpenEditor(table)}>
+        Abrir editor
+      </Button>
 
       <ClientTableSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} table={table} />
     </div>

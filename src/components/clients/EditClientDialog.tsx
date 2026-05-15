@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, PowerOff, Power } from "lucide-react";
 
 export type AgencyClientLite = {
   id: string;
@@ -150,8 +150,9 @@ const EditClientDialog = ({ client, open, onOpenChange, onChanged }: Props) => {
                   variant="outline"
                   onClick={handleToggleStatus}
                   disabled={togglingStatus}
-                  className="w-full"
+                  className={`w-full gap-2 ${isActive ? "text-orange-500 hover:text-orange-600 border-orange-500/40 hover:bg-orange-500/10" : ""}`}
                 >
+                  {isActive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
                   {isActive ? "Desativar cliente" : "Reativar cliente"}
                 </Button>
                 <p className="text-xs text-muted-foreground">
