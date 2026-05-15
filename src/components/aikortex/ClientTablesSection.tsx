@@ -3,9 +3,10 @@ import { Database, Plus, Users, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveClient } from "@/hooks/use-active-client";
-import { useClientTables } from "@/hooks/use-client-tables";
+import { useClientTables, type ClientTable } from "@/hooks/use-client-tables";
 import ClientTableCard from "./ClientTableCard";
 import CreateClientTableDialog from "./CreateClientTableDialog";
+import ClientTableEditor from "./ClientTableEditor";
 
 interface Props {
   agentId?: string;
@@ -16,6 +17,13 @@ export default function ClientTablesSection({ isFreshNew }: Props) {
   const { activeClientId, activeClientName, isAgencyMode } = useActiveClient();
   const { data: tables = [], isLoading } = useClientTables(activeClientId);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingTable, setEditingTable] = useState<ClientTable | null>(null);
+
+  // Keep editingTable in sync with latest table data (e.g. after rename)
+  const liveEditing = editingTable ? tables.find((t) => t.id === editingTable.id) ?? null : null;
+  if (liveEditing) {
+    return <ClientTableEditor table={liveEditing} onBack={() => setEditingTable(null)} />;
+  }
 
   if (isFreshNew) {
     return (
