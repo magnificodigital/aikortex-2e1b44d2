@@ -49,6 +49,28 @@ export const AGENT_TOOLS_CATALOG: Record<ToolKey, ToolCatalogEntry> = {
     secretHelpUrl: "https://platform.openai.com/api-keys",
     quotas: { starter: -1, explorer: -1, hack: -1 },
   },
+  table_read: {
+    key: "table_read",
+    name: "Consultar tabelas",
+    shortLabel: "table_read",
+    description:
+      "Permite o agente buscar registros nas tabelas do cliente (pacientes, produtos, agendamentos, etc.) com filtros.",
+    icon: Database,
+    requiredSecret: "—",
+    secretHelpUrl: "https://docs.lovable.dev/",
+    quotas: { starter: -1, explorer: -1, hack: -1 },
+  },
+  table_write: {
+    key: "table_write",
+    name: "Escrever em tabelas",
+    shortLabel: "table_write",
+    description:
+      "Permite o agente cadastrar, atualizar ou remover registros nas tabelas do cliente.",
+    icon: DatabaseZap,
+    requiredSecret: "—",
+    secretHelpUrl: "https://docs.lovable.dev/",
+    quotas: { starter: -1, explorer: -1, hack: -1 },
+  },
 };
 
 export const AGENT_TOOLS_LIST: ToolCatalogEntry[] = Object.values(AGENT_TOOLS_CATALOG);
