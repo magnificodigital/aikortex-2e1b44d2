@@ -62,8 +62,8 @@ serve(async (req) => {
     .maybeSingle()
 
   const asaasApiKey = secret?.asaas_api_key
-  if (!agency || !asaasApiKey) {
-    return new Response(JSON.stringify({ error: 'Asaas não configurado' }), { status: 400, headers: corsHeaders })
+  if (!agency) {
+    return new Response(JSON.stringify({ error: 'Perfil de agência não encontrado' }), { status: 404, headers: corsHeaders })
   }
 
   // Get client
@@ -102,32 +102,33 @@ serve(async (req) => {
   const agencyPrice = customPricing?.[template.slug] ?? Number(template.platform_price_monthly) * 2
   const platformPrice = Number(template.platform_price_monthly)
 
-  // Create subscription in Asaas with split
-  const subscriptionRes = await fetch(`${asaasBase}/subscriptions`, {
-    method: 'POST',
-    headers: {
-      'access_token': asaasApiKey,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      customer: client.asaas_customer_id,
-      billingType: 'CREDIT_CARD',
-      value: agencyPrice,
-      nextDueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-      cycle: 'MONTHLY',
-      description: `Template: ${template.name}`,
-      split: [
-        {
-          walletId: PLATFORM_WALLET_ID,
-          fixedValue: platformPrice
-        }
-      ]
-    })
-  })
+  // Modo manual quando Asaas não configurado
+  let asaasSubscriptionId: string | null = null
+  let asaasSubscriptionStatus = 'MANUAL'
 
-  const subscription = await subscriptionRes.json()
-  if (!subscriptionRes.ok) {
-    return new Response(JSON.stringify({ error: subscription }), { status: 500, headers: corsHeaders })
+  if (asaasApiKey && client.asaas_customer_id) {
+    const subscriptionRes = await fetch(`${asaasBase}/subscriptions`, {
+      method: 'POST',
+      headers: {
+        'access_token': asaasApiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        customer: client.asaas_customer_id,
+        billingType: 'CREDIT_CARD',
+        value: agencyPrice,
+        nextDueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        cycle: 'MONTHLY',
+        description: `Template: ${template.name}`,
+        split: [{ walletId: PLATFORM_WALLET_ID, fixedValue: platformPrice }]
+      })
+    })
+    const subscription = await subscriptionRes.json()
+    if (!subscriptionRes.ok) {
+      return new Response(JSON.stringify({ error: subscription }), { status: 500, headers: corsHeaders })
+    }
+    asaasSubscriptionId = subscription.id
+    asaasSubscriptionStatus = 'ACTIVE'
   }
 
   // Save subscription
@@ -141,8 +142,8 @@ serve(async (req) => {
       platform_price_monthly: platformPrice,
       status: 'trial',
       trial_ends_at: new Date(Date.now() + 7 * 86400000).toISOString(),
-      asaas_subscription_id: subscription.id,
-      asaas_subscription_status: 'ACTIVE',
+      asaas_subscription_id: asaasSubscriptionId,
+      asaas_subscription_status: asaasSubscriptionStatus,
       is_activated: false
     })
     .select()

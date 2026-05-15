@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowRight, ArrowLeft, CheckCircle2, Copy, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Copy, Loader2, AlertTriangle, AlertCircle } from "lucide-react";
+import { useHasAsaasConfigured } from "@/hooks/use-has-asaas-configured";
 
 interface Props {
   open: boolean;
@@ -34,6 +36,7 @@ const TIER_ORDER: Record<string, number> = { starter: 0, explorer: 1, hack: 2 };
 
 const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTier, onSuccess }: Props) => {
   const navigate = useNavigate();
+  const { hasAsaasConfigured } = useHasAsaasConfigured();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -80,21 +83,27 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
       const res = await supabase.functions.invoke("asaas-create-client", {
         body: { client_name: name, client_email: email, client_phone: phone, client_document: document },
       });
-      // Edge function returns 400 with structured payload — supabase-js puts that in res.error (FunctionsHttpError)
-      // but res.data is still parsed when available. Detect the "configure_asaas" action either way.
-      const payload: any = res.data ?? (res.error as any)?.context ?? null;
-      const errAction = payload?.action;
-      if (errAction === "configure_asaas") {
+
+      // Parse structured payload — supabase-js v2 puts non-2xx body in res.error.context (Response not yet consumed).
+      let payload: any = res.data;
+      if (!payload && res.error) {
+        const errorContext = (res.error as any)?.context;
+        if (errorContext && typeof errorContext.json === "function") {
+          try { payload = await errorContext.json(); } catch { payload = null; }
+        }
+      }
+
+      if (payload?.action === "configure_asaas") {
         toast.error("Configure sua chave Asaas primeiro", {
           action: { label: "Configurar", onClick: () => navigate("/settings?tab=financeiro") },
         });
         setLoading(false);
         return;
       }
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) { toast.error(typeof res.data.error === "string" ? res.data.error : "Erro ao criar cliente"); setLoading(false); return; }
+      if (res.error) throw new Error(payload?.error || res.error.message);
+      if (payload?.error) { toast.error(typeof payload.error === "string" ? payload.error : "Erro ao criar cliente"); setLoading(false); return; }
 
-      const clientId = res.data.client?.id;
+      const clientId = payload.client?.id;
       setCreatedClientId(clientId);
 
       // Optionally create workspace access for client
@@ -225,6 +234,16 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
         {/* Step 3 */}
         {step === 3 && (
           <div className="space-y-4">
+            {!hasAsaasConfigured && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Cobrança não configurada</AlertTitle>
+                <AlertDescription>
+                  Você ainda não configurou o Asaas. O cliente será criado sem cobrança automática.
+                  Configure depois em Conta → Financeiro para ativar pagamentos.
+                </AlertDescription>
+              </Alert>
+            )}
             <Card><CardContent className="p-4 space-y-2">
               <p className="text-sm font-medium text-foreground">{name}</p>
               <p className="text-xs text-muted-foreground">{email} · {phone}</p>

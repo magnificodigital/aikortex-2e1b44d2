@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           agency_id: string
           asaas_customer_id: string | null
+          billing_provider: string | null
           client_document: string | null
           client_email: string | null
           client_logo_url: string | null
@@ -35,6 +36,7 @@ export type Database = {
         Insert: {
           agency_id: string
           asaas_customer_id?: string | null
+          billing_provider?: string | null
           client_document?: string | null
           client_email?: string | null
           client_logo_url?: string | null
@@ -52,6 +54,7 @@ export type Database = {
         Update: {
           agency_id?: string
           asaas_customer_id?: string | null
+          billing_provider?: string | null
           client_document?: string | null
           client_email?: string | null
           client_logo_url?: string | null
