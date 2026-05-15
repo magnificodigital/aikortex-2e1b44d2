@@ -4,7 +4,7 @@
 import { callLLM } from "./llm-fallback.ts";
 import { applyToolsHints } from "./agent-runtime.ts";
 
-export type ToolKey = "web_search" | "image_gen" | "knowledge_search";
+export type ToolKey = "web_search" | "image_gen" | "knowledge_search" | "table_read" | "table_write";
 
 export interface ToolQuota {
   starter: number;
