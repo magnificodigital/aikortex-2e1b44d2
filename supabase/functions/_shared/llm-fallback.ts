@@ -199,8 +199,7 @@ export async function callLLM(
   for (const model of models) {
     attempts++;
     const t0 = Date.now();
-    // TODO: temporary debug — remove after diagnosis.
-    console.log(`[llm-fallback] trying ${model} (attempt ${attempts}/${models.length})`);
+    
     const body: Record<string, unknown> = {
       model,
       messages,
