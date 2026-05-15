@@ -117,6 +117,8 @@ interface ExecuteOptions {
   yearMonth: string;
   supabaseUrl: string;
   serviceKey: string;
+  anonKey: string;
+  userJwt: string | null;
 }
 
 /** Executes a single tool call by invoking the appropriate edge function. */
