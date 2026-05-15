@@ -94,8 +94,6 @@ export async function loadActiveModels(
       console.log(`[llm-fallback] no reliable free model — falling back to paid (count=${rows.length})`);
     }
   }
-  // TODO: temporary debug — remove after diagnosis.
-  console.log(`[llm-fallback] loadActiveModels result count=${rows.length} sample=[${rows.slice(0, 8).map((m: any) => `${m.model_id}(${m.status})`).join(", ")}]`);
   return rows.map((m: any) => m.model_id);
 }
 
@@ -140,8 +138,7 @@ async function markFailure(
       : failures >= 2
       ? "degraded"
       : "healthy";
-    // TODO: temporary debug — remove after diagnosis.
-    console.log(`[llm-fallback] mark failure ${model_id} status=${status} newStatus=${newStatus} consecutiveFailures=${failures}`);
+    
     await supabase
       .from("available_llms")
       .update({
@@ -162,8 +159,7 @@ export async function callLLM(
   options: LLMOptions = {},
   supabase?: SupabaseClient,
 ): Promise<LLMResult> {
-  // TODO: temporary debug — remove after diagnosis.
-  console.log(`[llm-fallback] callLLM start tier=${options.tier ?? "free"} preferredModel=${options.preferredModel ?? "none"} stream=${options.stream ?? false} toolsRequired=${options.toolsRequired ?? false}`);
+  
   const apiKey = options.apiKey || Deno.env.get("OPENROUTER_API_KEY") || "";
   if (!apiKey) {
     console.error("[llm-fallback] OPENROUTER_API_KEY ausente");
@@ -183,8 +179,7 @@ export async function callLLM(
   if (options.preferredModel) {
     models = [options.preferredModel, ...models.filter((m) => m !== options.preferredModel)];
   }
-  // TODO: temporary debug — remove after diagnosis.
-  console.log(`[llm-fallback] models loaded count=${models.length} list=${models.slice(0, 5).join(",")}`);
+  
   if (models.length === 0) {
     return {
       success: false,
@@ -204,8 +199,7 @@ export async function callLLM(
   for (const model of models) {
     attempts++;
     const t0 = Date.now();
-    // TODO: temporary debug — remove after diagnosis.
-    console.log(`[llm-fallback] trying ${model} (attempt ${attempts}/${models.length})`);
+    
     const body: Record<string, unknown> = {
       model,
       messages,
@@ -218,11 +212,7 @@ export async function callLLM(
     if (options.responseFormat) body.response_format = options.responseFormat;
     if (options.extraBody) Object.assign(body, options.extraBody);
 
-    // TODO: temp diag — remove after 2.5-e validation.
-    if (Array.isArray(options.tools) && options.tools.length > 0) {
-      const names = (options.tools as any[]).map((t) => t?.function?.name).filter(Boolean).join(", ");
-      console.log(`[llm-fallback] sending ${options.tools.length} tools to ${model}: [${names}]`);
-    }
+    
 
     try {
       const resp = await fetch(OPENROUTER_URL, {
@@ -284,8 +274,6 @@ export async function callLLM(
         continue;
       }
 
-      // TODO: temporary debug — remove after diagnosis.
-      console.log(`[llm-fallback] ${model} → status=${resp.status} latency=${latency}ms contentLen=${content?.length ?? 0} toolCalls=${hasToolCalls ? toolCalls.length : 0}`);
       markHealthy(supabase, model);
       return {
         success: true,
@@ -299,8 +287,6 @@ export async function callLLM(
     } catch (e) {
       const errMsg = (e as Error).message;
       const latency = Date.now() - t0;
-      // TODO: temporary debug — remove after diagnosis.
-      console.log(`[llm-fallback] ${model} → exception latency=${latency}ms msg=${errMsg}`);
       console.warn(`[llm-fallback] ${model} EXCEPTION latency=${latency}ms ${errMsg}`);
       markFailure(supabase, model, 0, errMsg);
       lastError = errMsg;
@@ -308,7 +294,6 @@ export async function callLLM(
     }
   }
 
-  // TODO: temporary debug — remove after diagnosis.
   console.error(`[llm-fallback] ALL MODELS FAILED. tried=${attempts}/${models.length} lastStatus=${lastStatus} lastError=${lastError}`);
   return {
     success: false,

@@ -2,3 +2,6 @@ project_id = "ldngvhemcqsfcjehvfyd"
 
 [functions.ai-gateway]
 verify_jwt = false
+
+[functions.tool-knowledge-search]
+verify_jwt = false

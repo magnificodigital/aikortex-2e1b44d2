@@ -127,12 +127,8 @@ async function executeToolCall(
   args: Record<string, unknown>,
   opts: ExecuteOptions,
 ): Promise<{ ok: boolean; result: string }> {
-  // TODO: temp diag — remove after confirming KB tool invocation in production logs.
-  console.log(`[agent-tools] dispatch tool name="${name}" args=${JSON.stringify(args).slice(0, 200)}`);
-
   const finish = (ok: boolean, result: string, error: string | null = null) => {
-    // TODO: temp diag — remove after confirming KB tool invocation in production logs.
-    console.log(`[agent-tools] toolCall ${name} resulted in: success=${ok} error=${error ?? "none"}`);
+    if (!ok) console.warn(`[agent-tools] toolCall ${name} failed: ${error ?? "unknown"}`);
     return { ok, result };
   };
 
@@ -150,7 +146,6 @@ async function executeToolCall(
   const limit = def?.quotas?.[opts.tier] ?? 0;
 
   try {
-    // Quota check (blocking) + atomic increment. Skipped when limit < 0 (unlimited).
     if (opts.agencyId && limit > 0) {
       const { data: newCount, error: incErr } = await opts.supabase.rpc("increment_agency_tool_usage", {
         p_agency_id: opts.agencyId,
@@ -181,49 +176,25 @@ async function executeToolCall(
       : args;
 
     const url = `${opts.supabaseUrl}/functions/v1/${fn}`;
-    if (name === "knowledge_search") {
-      // TODO: temp diag — remove after confirming KB tool invocation in production logs.
-      console.log(`[agent-tools] invoking tool-knowledge-search url=${url} agentId=${opts.agentId}`);
-      if (!opts.supabaseUrl || !opts.serviceKey) {
-        console.error(`[agent-tools] tool-knowledge-search missing env supabaseUrl=${!!opts.supabaseUrl} serviceKey=${!!opts.serviceKey}`);
-      }
-    }
+    // Prefer the user's JWT when available (chat flow). Webhooks fall back to
+    // the service-role key, which the target tool must explicitly accept.
+    const authToken = opts.userJwt ?? opts.serviceKey;
+    const apiKeyHeader = opts.anonKey || opts.serviceKey;
 
-    try {
-      // For knowledge_search, prefer the user's JWT so the gateway accepts it
-      // (sb_secret_* keys are NOT JWT format and the gateway rejects them).
-      // Fallback to serviceKey for background contexts (webhooks).
-      const authToken = name === "knowledge_search" && opts.userJwt ? opts.userJwt : opts.serviceKey;
-      const apiKeyHeader = opts.anonKey || opts.serviceKey;
-      if (name === "knowledge_search") {
-        console.log(`[agent-tools] tool dispatch using auth prefix=${authToken.slice(0, 10)}... (jwt=${!!opts.userJwt})`);
-      }
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          apikey: apiKeyHeader,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-      const text = await resp.text();
-      // TODO: temp diag — remove after confirming KB tool invocation in production logs.
-      console.log(`[agent-tools] ${fn} response status=${resp.status} ok=${resp.ok} bodyLen=${text.length} bodyPreview=${text.slice(0, 200)}`);
-      if (name === "knowledge_search") {
-        console.log(`[agent-tools] tool-knowledge-search response status=${resp.status} ok=${resp.ok}`);
-        if (!resp.ok) {
-          console.error(`[agent-tools] tool-knowledge-search HTTP ${resp.status}: ${text.slice(0, 300)}`);
-        }
-      }
-      return finish(resp.ok, text, resp.ok ? null : `HTTP_${resp.status}`);
-    } catch (e) {
-      const message = (e as Error).message;
-      if (name === "knowledge_search") {
-        console.error(`[agent-tools] tool-knowledge-search EXCEPTION: ${message} stack=${(e as Error).stack?.slice(0, 500)}`);
-      }
-      throw e;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        apikey: apiKeyHeader,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await resp.text();
+    if (!resp.ok) {
+      console.warn(`[agent-tools] ${fn} HTTP ${resp.status}: ${text.slice(0, 200)}`);
     }
+    return finish(resp.ok, text, resp.ok ? null : `HTTP_${resp.status}`);
   } catch (e) {
     const message = (e as Error).message;
     console.warn(`[agent-tools] ${fn} EXCEPTION ${message}`);
@@ -358,8 +329,6 @@ export async function runAgentLLM(opts: {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
   if (!apiKey) return null;
   const enabled = opts.agentId ? await loadEnabledTools(opts.supabase, opts.agentId) : [];
-  // TODO: temp diag — remove after confirming KB tool invocation in production logs.
-  console.log(`[agent-tools] runAgentLLM agentId=${opts.agentId ?? "none"} enabledTools=${enabled.length} toolNames=[${enabled.map((t) => t.tool_key).join(",")}] hasUserJwt=${!!opts.userJwt}`);
   const systemWithHints = applyToolsHints(opts.system, enabled);
   const fullMessages = [{ role: "system", content: systemWithHints }, ...opts.messages];
   const text = await runWithTools({
