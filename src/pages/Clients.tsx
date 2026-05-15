@@ -64,6 +64,7 @@ const Clients = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showWizard, setShowWizard] = useState(false);
+  const [editingClient, setEditingClient] = useState<AgencyClientLite | null>(null);
 
   const loadData = async () => {
     if (!user) return;
