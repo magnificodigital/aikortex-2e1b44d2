@@ -20,8 +20,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  Users, Plus, Search, MoreHorizontal, Eye, Settings, Ban, Trash2, Pencil,
-  Trophy, DollarSign, LayoutTemplate, TrendingUp,
+  Users, Plus, Search, MoreHorizontal, Eye, Trash2, Pencil, RotateCcw,
+  Trophy, DollarSign, LayoutTemplate,
 } from "lucide-react";
 import AddClientWizard from "@/components/clients/AddClientWizard";
 import EditClientDialog, { AgencyClientLite } from "@/components/clients/EditClientDialog";
@@ -45,8 +45,6 @@ type TemplateSub = {
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
   active: { label: "Ativo", class: "bg-green-500/10 text-green-600 border-green-500/20" },
-  pending: { label: "Pendente", class: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
-  suspended: { label: "Suspenso", class: "bg-destructive/10 text-destructive border-destructive/20" },
   inactive: { label: "Inativo", class: "bg-muted text-muted-foreground border-border" },
 };
 
@@ -62,7 +60,7 @@ const Clients = () => {
   const [agency, setAgency] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [showWizard, setShowWizard] = useState(false);
   const [editingClient, setEditingClient] = useState<AgencyClientLite | null>(null);
 
@@ -96,9 +94,9 @@ const Clients = () => {
   }, [searchParams, setSearchParams]);
 
   const filtered = clients.filter((c) => {
-    // Esconde soft-deletados quando o filtro não é explícito
-    if (statusFilter === "all" && c.status === "inactive") return false;
-    if (statusFilter !== "all" && c.status !== statusFilter) return false;
+    if (statusFilter === "active" && c.status !== "active") return false;
+    if (statusFilter === "inactive" && c.status !== "inactive") return false;
+    // "all" mostra ambos
     if (search) {
       const q = search.toLowerCase();
       if (!c.client_name.toLowerCase().includes(q) && !(c.client_email ?? "").toLowerCase().includes(q)) return false;
@@ -120,16 +118,13 @@ const Clients = () => {
 
   const getSubsForClient = (cId: string) => subs.filter((s) => s.client_id === cId && (s.status === "active" || s.status === "trial"));
 
-  const handleSuspend = async (id: string) => {
-    await supabase.from("agency_clients").update({ status: "suspended" }).eq("id", id);
-    toast.success("Cliente suspenso");
-    loadData();
-  };
-
-  const handleRemove = async (id: string) => {
-    await supabase.from("agency_clients").update({ status: "inactive" }).eq("id", id);
-    toast.success("Cliente removido");
-    loadData();
+  const handleToggleStatus = async (id: string, current: string | null) => {
+    const newStatus = current === "active" ? "inactive" : "active";
+    const { error } = await supabase.from("agency_clients").update({ status: newStatus }).eq("id", id);
+    if (error) { toast.error(`Erro: ${error.message}`); return; }
+    toast.success(newStatus === "active" ? "Cliente reativado" : "Cliente desativado");
+    await loadData();
+    await refreshClients();
   };
 
   if (loading) {
@@ -195,10 +190,9 @@ const Clients = () => {
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="active">Ativos</SelectItem>
+              <SelectItem value="inactive">Inativos</SelectItem>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativo</SelectItem>
-              <SelectItem value="pending">Pendente</SelectItem>
-              <SelectItem value="suspended">Suspenso</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -218,7 +212,7 @@ const Clients = () => {
             </TableHeader>
             <TableBody>
               {filtered.map((c) => {
-                const st = STATUS_MAP[c.status ?? "pending"] ?? STATUS_MAP.pending;
+                const st = STATUS_MAP[c.status ?? "active"] ?? STATUS_MAP.active;
                 const clientSubs = getSubsForClient(c.id);
                 const rev = clientSubs.reduce((s, sub) => s + Number(sub.agency_price_monthly), 0);
                 const initials = c.client_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -255,15 +249,17 @@ const Clients = () => {
                               client_name: c.client_name,
                               client_email: c.client_email,
                               client_phone: c.client_phone ?? null,
+                              status: c.status,
                             });
                           }}>
                             <Pencil className="w-4 h-4 mr-2" /> Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSuspend(c.id); }}>
-                            <Ban className="w-4 h-4 mr-2" /> Suspender
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); handleRemove(c.id); }}>
-                            <Trash2 className="w-4 h-4 mr-2" /> Desativar
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(c.id, c.status); }}>
+                            {c.status === "active" ? (
+                              <><Trash2 className="w-4 h-4 mr-2" /> Desativar</>
+                            ) : (
+                              <><RotateCcw className="w-4 h-4 mr-2" /> Reativar</>
+                            )}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
