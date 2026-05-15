@@ -117,6 +117,8 @@ interface ExecuteOptions {
   yearMonth: string;
   supabaseUrl: string;
   serviceKey: string;
+  anonKey: string;
+  userJwt: string | null;
 }
 
 /** Executes a single tool call by invoking the appropriate edge function. */
@@ -188,10 +190,19 @@ async function executeToolCall(
     }
 
     try {
+      // For knowledge_search, prefer the user's JWT so the gateway accepts it
+      // (sb_secret_* keys are NOT JWT format and the gateway rejects them).
+      // Fallback to serviceKey for background contexts (webhooks).
+      const authToken = name === "knowledge_search" && opts.userJwt ? opts.userJwt : opts.serviceKey;
+      const apiKeyHeader = opts.anonKey || opts.serviceKey;
+      if (name === "knowledge_search") {
+        console.log(`[agent-tools] tool dispatch using auth prefix=${authToken.slice(0, 10)}... (jwt=${!!opts.userJwt})`);
+      }
       const resp = await fetch(url, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${opts.serviceKey}`,
+          Authorization: `Bearer ${authToken}`,
+          apikey: apiKeyHeader,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -235,6 +246,8 @@ export interface RunWithToolsOptions {
   maxTokens?: number;
   /** Hard cap on tool-loop iterations to avoid runaway calls. */
   maxIterations?: number;
+  /** End-user JWT, propagated to tools that require user-scoped auth (e.g. knowledge_search). */
+  userJwt?: string | null;
 }
 
 /**
@@ -245,6 +258,7 @@ export interface RunWithToolsOptions {
 export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const yearMonth = new Date().toISOString().slice(0, 7);
   const maxIterations = opts.maxIterations ?? 3;
   const maxTokens = opts.maxTokens ?? 2048;
@@ -310,6 +324,8 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
         yearMonth,
         supabaseUrl,
         serviceKey,
+        anonKey,
+        userJwt: opts.userJwt ?? null,
       });
       messages.push({
         role: "tool",
@@ -336,12 +352,14 @@ export async function runAgentLLM(opts: {
   messages: Array<{ role: string; content: string }>;
   models?: string[]; // optional — when omitted, helper loads from available_llms
   maxTokens?: number;
+  /** End-user JWT — propagated to user-scoped tools (knowledge_search). */
+  userJwt?: string | null;
 }): Promise<string | null> {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
   if (!apiKey) return null;
   const enabled = opts.agentId ? await loadEnabledTools(opts.supabase, opts.agentId) : [];
   // TODO: temp diag — remove after confirming KB tool invocation in production logs.
-  console.log(`[agent-tools] runAgentLLM agentId=${opts.agentId ?? "none"} enabledTools=${enabled.length} toolNames=[${enabled.map((t) => t.tool_key).join(",")}]`);
+  console.log(`[agent-tools] runAgentLLM agentId=${opts.agentId ?? "none"} enabledTools=${enabled.length} toolNames=[${enabled.map((t) => t.tool_key).join(",")}] hasUserJwt=${!!opts.userJwt}`);
   const systemWithHints = applyToolsHints(opts.system, enabled);
   const fullMessages = [{ role: "system", content: systemWithHints }, ...opts.messages];
   const text = await runWithTools({
@@ -353,6 +371,7 @@ export async function runAgentLLM(opts: {
     agencyId: opts.agencyId ?? null,
     agentId: opts.agentId ?? null,
     maxTokens: opts.maxTokens,
+    userJwt: opts.userJwt ?? null,
   });
   return text || null;
 }
