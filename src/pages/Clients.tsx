@@ -20,10 +20,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  Users, Plus, Search, MoreHorizontal, Eye, Settings, Ban, Trash2,
+  Users, Plus, Search, MoreHorizontal, Eye, Settings, Ban, Trash2, Pencil,
   Trophy, DollarSign, LayoutTemplate, TrendingUp,
 } from "lucide-react";
 import AddClientWizard from "@/components/clients/AddClientWizard";
+import EditClientDialog, { AgencyClientLite } from "@/components/clients/EditClientDialog";
 
 type AgencyClient = {
   id: string;
