@@ -234,6 +234,16 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
         {/* Step 3 */}
         {step === 3 && (
           <div className="space-y-4">
+            {!hasAsaasConfigured && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Cobrança não configurada</AlertTitle>
+                <AlertDescription>
+                  Você ainda não configurou o Asaas. O cliente será criado sem cobrança automática.
+                  Configure depois em Conta → Financeiro para ativar pagamentos.
+                </AlertDescription>
+              </Alert>
+            )}
             <Card><CardContent className="p-4 space-y-2">
               <p className="text-sm font-medium text-foreground">{name}</p>
               <p className="text-xs text-muted-foreground">{email} · {phone}</p>
