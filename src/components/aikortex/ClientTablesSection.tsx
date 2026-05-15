@@ -113,7 +113,7 @@ export default function ClientTablesSection({ isFreshNew }: Props) {
           </div>
           <div className="space-y-2">
             {tables.map((t) => (
-              <ClientTableCard key={t.id} table={t} />
+              <ClientTableCard key={t.id} table={t} onOpenEditor={setEditingTable} />
             ))}
           </div>
         </>
