@@ -60,7 +60,7 @@ const Clients = () => {
   const [agency, setAgency] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [showWizard, setShowWizard] = useState(false);
   const [editingClient, setEditingClient] = useState<AgencyClientLite | null>(null);
 
@@ -190,10 +190,9 @@ const Clients = () => {
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="active">Ativos</SelectItem>
+              <SelectItem value="inactive">Inativos</SelectItem>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativo</SelectItem>
-              <SelectItem value="pending">Pendente</SelectItem>
-              <SelectItem value="suspended">Suspenso</SelectItem>
             </SelectContent>
           </Select>
         </div>
