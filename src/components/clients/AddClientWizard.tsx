@@ -36,6 +36,7 @@ const TIER_ORDER: Record<string, number> = { starter: 0, explorer: 1, hack: 2 };
 
 const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTier, onSuccess }: Props) => {
   const navigate = useNavigate();
+  const { hasAsaasConfigured } = useHasAsaasConfigured();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
