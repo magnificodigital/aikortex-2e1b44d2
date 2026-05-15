@@ -93,6 +93,22 @@ export function applyToolsHints(
   if (toolNames.includes("image_gen")) {
     hints.push("Você pode usar `image_gen` para gerar imagens quando o usuário pedir.");
   }
+  if (toolNames.includes("table_read")) {
+    hints.push(
+      "IMPORTANTE: Você tem acesso a TABELAS DE DADOS estruturadas (pacientes, produtos, agendamentos, etc.). " +
+        "SEMPRE use `table_read` quando o usuário perguntar sobre registros específicos: dados de uma pessoa, " +
+        "preço de um produto, status de um item, etc. Especifique sempre o table_name (nome exato da tabela). " +
+        "Use filter para refinar busca.",
+    );
+  }
+  if (toolNames.includes("table_write")) {
+    hints.push(
+      "IMPORTANTE: Você pode CADASTRAR, ATUALIZAR e REMOVER registros nas tabelas via `table_write`. " +
+        "Use quando o usuário pedir para registrar algo novo, atualizar dados existentes, ou remover registros. " +
+        "Para update/delete, SEMPRE inclua um filter (geralmente nome ou identificador único). " +
+        "Confirme com o usuário antes de operações destrutivas.",
+    );
+  }
   if (hints.length === 0) return systemPrompt;
   return systemPrompt + "\n\n## Ferramentas disponíveis\n" + hints.join("\n\n");
 }

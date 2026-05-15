@@ -4,7 +4,7 @@
 import { callLLM } from "./llm-fallback.ts";
 import { applyToolsHints } from "./agent-runtime.ts";
 
-export type ToolKey = "web_search" | "image_gen" | "knowledge_search";
+export type ToolKey = "web_search" | "image_gen" | "knowledge_search" | "table_read" | "table_write";
 
 export interface ToolQuota {
   starter: number;
@@ -78,6 +78,39 @@ export const TOOL_CATALOG: Record<ToolKey, ToolDefinition> = {
     },
     quotas: { starter: -1, explorer: -1, hack: -1 },
   },
+  table_read: {
+    key: "table_read",
+    name: "table_read",
+    description:
+      "Search rows in a client table. Use this when the user asks about specific records: people, prices, schedules, products, status of items. Always specify the table_name. Optionally provide a filter (key-value pairs) to narrow down results.",
+    parameters: {
+      type: "object",
+      properties: {
+        table_name: { type: "string", description: "Exact name of the table to search (case-sensitive, e.g. 'Pacientes')" },
+        filter: { type: "object", description: "Optional filter as key-value pairs. Example: {\"nome\": \"Maria\"}. Keys must match column keys.", additionalProperties: true },
+        limit: { type: "number", description: "Max rows to return. Default 10, max 50.", default: 10 },
+      },
+      required: ["table_name"],
+    },
+    quotas: { starter: -1, explorer: -1, hack: -1 },
+  },
+  table_write: {
+    key: "table_write",
+    name: "table_write",
+    description:
+      "Insert, update or delete rows in a client table. Use when the user asks to register a new entry, update existing data, or remove an entry. Always specify table_name and action. For update/delete, always include a filter.",
+    parameters: {
+      type: "object",
+      properties: {
+        table_name: { type: "string", description: "Exact name of the table" },
+        action: { type: "string", enum: ["insert", "update", "delete"], description: "Operation: insert (new row), update (modify existing), delete (remove)" },
+        data: { type: "object", description: "For insert: complete row data. For update: fields to modify. Keys match column keys.", additionalProperties: true },
+        filter: { type: "object", description: "Required for update/delete: identifies which rows to affect.", additionalProperties: true },
+      },
+      required: ["table_name", "action"],
+    },
+    quotas: { starter: -1, explorer: -1, hack: -1 },
+  },
 };
 
 export interface EnabledTool {
@@ -136,6 +169,8 @@ async function executeToolCall(
     name === "web_search" ? "tool-web-search" :
     name === "image_gen" ? "tool-image-gen" :
     name === "knowledge_search" ? "tool-knowledge-search" :
+    name === "table_read" ? "tool-table-read" :
+    name === "table_write" ? "tool-table-write" :
     null;
   if (!fn) {
     console.warn(`[agent-tools] UNKNOWN_TOOL name=${name}`);
@@ -170,10 +205,12 @@ async function executeToolCall(
       }
     }
 
-    // knowledge_search needs the agent_id injected — LLM doesn't know it.
-    const body = name === "knowledge_search"
+    // Tools that need agent_id injected — LLM doesn't know it.
+    const needsAgentId = name === "knowledge_search" || name === "table_read" || name === "table_write";
+    const body = needsAgentId
       ? { ...args, agent_id: opts.agentId }
       : args;
+
 
     const url = `${opts.supabaseUrl}/functions/v1/${fn}`;
     // Prefer the user's JWT when available (chat flow). Webhooks fall back to
