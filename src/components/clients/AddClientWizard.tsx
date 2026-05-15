@@ -83,21 +83,27 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
       const res = await supabase.functions.invoke("asaas-create-client", {
         body: { client_name: name, client_email: email, client_phone: phone, client_document: document },
       });
-      // Edge function returns 400 with structured payload — supabase-js puts that in res.error (FunctionsHttpError)
-      // but res.data is still parsed when available. Detect the "configure_asaas" action either way.
-      const payload: any = res.data ?? (res.error as any)?.context ?? null;
-      const errAction = payload?.action;
-      if (errAction === "configure_asaas") {
+
+      // Parse structured payload — supabase-js v2 puts non-2xx body in res.error.context (Response not yet consumed).
+      let payload: any = res.data;
+      if (!payload && res.error) {
+        const errorContext = (res.error as any)?.context;
+        if (errorContext && typeof errorContext.json === "function") {
+          try { payload = await errorContext.json(); } catch { payload = null; }
+        }
+      }
+
+      if (payload?.action === "configure_asaas") {
         toast.error("Configure sua chave Asaas primeiro", {
           action: { label: "Configurar", onClick: () => navigate("/settings?tab=financeiro") },
         });
         setLoading(false);
         return;
       }
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) { toast.error(typeof res.data.error === "string" ? res.data.error : "Erro ao criar cliente"); setLoading(false); return; }
+      if (res.error) throw new Error(payload?.error || res.error.message);
+      if (payload?.error) { toast.error(typeof payload.error === "string" ? payload.error : "Erro ao criar cliente"); setLoading(false); return; }
 
-      const clientId = res.data.client?.id;
+      const clientId = payload.client?.id;
       setCreatedClientId(clientId);
 
       // Optionally create workspace access for client
