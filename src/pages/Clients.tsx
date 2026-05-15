@@ -256,7 +256,7 @@ const Clients = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(c.id, c.status); }}>
                             {c.status === "active" ? (
-                              <><Trash2 className="w-4 h-4 mr-2" /> Desativar</>
+                              <><PowerOff className="w-4 h-4 mr-2 text-orange-500" /> Desativar</>
                             ) : (
                               <><RotateCcw className="w-4 h-4 mr-2" /> Reativar</>
                             )}
