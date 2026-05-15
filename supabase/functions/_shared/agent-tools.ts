@@ -169,7 +169,47 @@ async function executeToolCall(
     name === "web_search" ? "tool-web-search" :
     name === "image_gen" ? "tool-image-gen" :
     name === "knowledge_search" ? "tool-knowledge-search" :
+    name === "table_read" ? "tool-table-read" :
+    name === "table_write" ? "tool-table-write" :
     null;
+  if (!fn) {
+    console.warn(`[agent-tools] UNKNOWN_TOOL name=${name}`);
+    return finish(false, JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }), "UNKNOWN_TOOL");
+  }
+
+  const def = TOOL_CATALOG[name as ToolKey];
+  const limit = def?.quotas?.[opts.tier] ?? 0;
+
+  try {
+    if (opts.agencyId && limit > 0) {
+      const { data: newCount, error: incErr } = await opts.supabase.rpc("increment_agency_tool_usage", {
+        p_agency_id: opts.agencyId,
+        p_year_month: opts.yearMonth,
+        p_tool_key: name,
+      });
+      if (incErr) {
+        console.error("quota increment failed", incErr);
+      } else if (typeof newCount === "number" && newCount > limit) {
+        return finish(
+          false,
+          JSON.stringify({
+            error: `Quota mensal da tool "${name}" excedida no tier ${opts.tier} (${limit}/mês).`,
+            code: "QUOTA_EXCEEDED",
+            tool: name,
+            tier: opts.tier,
+            limit,
+            used: newCount,
+          }),
+          "QUOTA_EXCEEDED",
+        );
+      }
+    }
+
+    // Tools that need agent_id injected — LLM doesn't know it.
+    const needsAgentId = name === "knowledge_search" || name === "table_read" || name === "table_write";
+    const body = needsAgentId
+      ? { ...args, agent_id: opts.agentId }
+      : args;
   if (!fn) {
     console.warn(`[agent-tools] UNKNOWN_TOOL name=${name}`);
     return finish(false, JSON.stringify({ error: "Tool desconhecida", code: "UNKNOWN_TOOL" }), "UNKNOWN_TOOL");
