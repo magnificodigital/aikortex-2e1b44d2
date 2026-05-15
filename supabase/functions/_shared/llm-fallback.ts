@@ -212,11 +212,7 @@ export async function callLLM(
     if (options.responseFormat) body.response_format = options.responseFormat;
     if (options.extraBody) Object.assign(body, options.extraBody);
 
-    // TODO: temp diag — remove after 2.5-e validation.
-    if (Array.isArray(options.tools) && options.tools.length > 0) {
-      const names = (options.tools as any[]).map((t) => t?.function?.name).filter(Boolean).join(", ");
-      console.log(`[llm-fallback] sending ${options.tools.length} tools to ${model}: [${names}]`);
-    }
+    
 
     try {
       const resp = await fetch(OPENROUTER_URL, {
