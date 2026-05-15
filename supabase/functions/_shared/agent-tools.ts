@@ -190,10 +190,19 @@ async function executeToolCall(
     }
 
     try {
+      // For knowledge_search, prefer the user's JWT so the gateway accepts it
+      // (sb_secret_* keys are NOT JWT format and the gateway rejects them).
+      // Fallback to serviceKey for background contexts (webhooks).
+      const authToken = name === "knowledge_search" && opts.userJwt ? opts.userJwt : opts.serviceKey;
+      const apiKeyHeader = opts.anonKey || opts.serviceKey;
+      if (name === "knowledge_search") {
+        console.log(`[agent-tools] tool dispatch using auth prefix=${authToken.slice(0, 10)}... (jwt=${!!opts.userJwt})`);
+      }
       const resp = await fetch(url, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${opts.serviceKey}`,
+          Authorization: `Bearer ${authToken}`,
+          apikey: apiKeyHeader,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
