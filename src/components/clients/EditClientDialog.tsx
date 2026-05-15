@@ -1,134 +1,200 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Client, ClientStatus } from "@/types/client";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AlertTriangle } from "lucide-react";
 
-interface EditClientDialogProps {
-  client: Client | null;
+export type AgencyClientLite = {
+  id: string;
+  client_name: string;
+  client_email: string | null;
+  client_phone: string | null;
+};
+
+interface Props {
+  client: AgencyClientLite | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onChanged: () => void | Promise<void>;
 }
 
 interface FormData {
-  companyName: string;
-  contactName: string;
-  email: string;
-  phone: string;
-  website: string;
-  industry: string;
-  companySize: string;
-  status: ClientStatus;
-  accountManager: string;
+  client_name: string;
+  client_email: string;
+  client_phone: string;
 }
 
-const EditClientDialog = ({ client, open, onOpenChange }: EditClientDialogProps) => {
-  const { register, handleSubmit, reset, setValue, watch } = useForm<FormData>();
+const EditClientDialog = ({ client, open, onOpenChange, onChanged }: Props) => {
+  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<FormData>();
+  const [showHardDelete, setShowHardDelete] = useState(false);
+  const [typedName, setTypedName] = useState("");
+  const [softDeleting, setSoftDeleting] = useState(false);
+  const [hardDeleting, setHardDeleting] = useState(false);
 
   useEffect(() => {
     if (client && open) {
       reset({
-        companyName: client.companyName,
-        contactName: client.contactName,
-        email: client.email,
-        phone: client.phone,
-        website: client.website,
-        industry: client.industry,
-        companySize: client.companySize,
-        status: client.status,
-        accountManager: client.accountManager,
+        client_name: client.client_name,
+        client_email: client.client_email ?? "",
+        client_phone: client.client_phone ?? "",
       });
+      setTypedName("");
+      setShowHardDelete(false);
     }
   }, [client, open, reset]);
 
-  const onSubmit = (data: FormData) => {
-    // console.log("Updated client:", data);
-    toast.success(`Cliente "${data.companyName}" atualizado com sucesso!`);
+  if (!client) return null;
+
+  const onSubmit = async (data: FormData) => {
+    const { error } = await supabase
+      .from("agency_clients")
+      .update({
+        client_name: data.client_name.trim(),
+        client_email: data.client_email.trim() || null,
+        client_phone: data.client_phone.trim() || null,
+      })
+      .eq("id", client.id);
+    if (error) {
+      toast.error(`Erro ao atualizar: ${error.message}`);
+      return;
+    }
+    toast.success("Cliente atualizado");
+    await onChanged();
     onOpenChange(false);
   };
 
-  const status = watch("status");
-  const accountManager = watch("accountManager");
+  const handleSoftDelete = async () => {
+    setSoftDeleting(true);
+    const { error } = await supabase
+      .from("agency_clients")
+      .update({ status: "inactive" })
+      .eq("id", client.id);
+    setSoftDeleting(false);
+    if (error) {
+      toast.error(`Erro: ${error.message}`);
+      return;
+    }
+    toast.success("Cliente desativado");
+    await onChanged();
+    onOpenChange(false);
+  };
+
+  const handleHardDelete = async () => {
+    setHardDeleting(true);
+    const { error } = await supabase
+      .from("agency_clients")
+      .delete()
+      .eq("id", client.id);
+    setHardDeleting(false);
+    if (error) {
+      toast.error(`Erro ao excluir: ${error.message}`);
+      return;
+    }
+    toast.success("Cliente excluído permanentemente");
+    setShowHardDelete(false);
+    await onChanged();
+    onOpenChange(false);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Editar Cliente</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-4">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar cliente</DialogTitle>
+            <DialogDescription>Atualize as informações de contato do cliente.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label htmlFor="companyName">Empresa</Label>
-              <Input id="companyName" {...register("companyName", { required: true })} />
+              <Label htmlFor="client_name">Nome</Label>
+              <Input id="client_name" {...register("client_name", { required: true })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="contactName">Contato</Label>
-              <Input id="contactName" {...register("contactName", { required: true })} />
+              <Label htmlFor="client_email">Email</Label>
+              <Input id="client_email" type="email" {...register("client_email")} />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="client_phone">Telefone</Label>
+              <Input id="client_phone" {...register("client_phone")} />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+              <Button type="submit" disabled={isSubmitting}>Salvar</Button>
+            </div>
+          </form>
+
+          <div className="border-t border-border mt-6 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+              <h4 className="text-destructive font-semibold text-sm">Danger Zone</h4>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSoftDelete}
+                disabled={softDeleting}
+              >
+                Desativar cliente
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setShowHardDelete(true)}
+              >
+                Excluir permanentemente
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Excluir permanentemente remove o cliente e todos os dados associados
+              (tabelas, knowledge bases vinculados, conversas). Não é possível desfazer.
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...register("email", { required: true })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input id="phone" {...register("phone")} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="website">Website</Label>
-              <Input id="website" {...register("website")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="industry">Indústria</Label>
-              <Input id="industry" {...register("industry")} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={(v) => setValue("status", v as ClientStatus)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Ativo</SelectItem>
-                  <SelectItem value="onboarding">Onboarding</SelectItem>
-                  <SelectItem value="inactive">Inativo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Gerente</Label>
-              <Select value={accountManager} onValueChange={(v) => setValue("accountManager", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Maria Silva">Maria Silva</SelectItem>
-                  <SelectItem value="João Costa">João Costa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="companySize">Tamanho da Empresa</Label>
-            <Input id="companySize" {...register("companySize")} />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">Salvar Alterações</Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showHardDelete} onOpenChange={setShowHardDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso remove <strong>{client.client_name}</strong> e todos os dados:
+              tabelas, knowledge bases, conversas, históricos. Agentes vinculados perdem
+              o vínculo mas não são apagados.
+              <br /><br />
+              Para confirmar, digite o nome do cliente abaixo:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={typedName}
+            onChange={(e) => setTypedName(e.target.value)}
+            placeholder={client.client_name}
+            autoFocus
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={typedName !== client.client_name || hardDeleting}
+              onClick={handleHardDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {hardDeleting ? "Excluindo..." : "Excluir permanentemente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 

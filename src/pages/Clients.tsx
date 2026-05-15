@@ -20,10 +20,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  Users, Plus, Search, MoreHorizontal, Eye, Settings, Ban, Trash2,
+  Users, Plus, Search, MoreHorizontal, Eye, Settings, Ban, Trash2, Pencil,
   Trophy, DollarSign, LayoutTemplate, TrendingUp,
 } from "lucide-react";
 import AddClientWizard from "@/components/clients/AddClientWizard";
+import EditClientDialog, { AgencyClientLite } from "@/components/clients/EditClientDialog";
 
 type AgencyClient = {
   id: string;
@@ -63,6 +64,7 @@ const Clients = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showWizard, setShowWizard] = useState(false);
+  const [editingClient, setEditingClient] = useState<AgencyClientLite | null>(null);
 
   const loadData = async () => {
     if (!user) return;
@@ -94,6 +96,8 @@ const Clients = () => {
   }, [searchParams, setSearchParams]);
 
   const filtered = clients.filter((c) => {
+    // Esconde soft-deletados quando o filtro não é explícito
+    if (statusFilter === "all" && c.status === "inactive") return false;
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -244,11 +248,22 @@ const Clients = () => {
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/clients/${c.id}`); }}>
                             <Eye className="w-4 h-4 mr-2" /> Ver detalhes
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingClient({
+                              id: c.id,
+                              client_name: c.client_name,
+                              client_email: c.client_email,
+                              client_phone: c.client_phone ?? null,
+                            });
+                          }}>
+                            <Pencil className="w-4 h-4 mr-2" /> Editar
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSuspend(c.id); }}>
                             <Ban className="w-4 h-4 mr-2" /> Suspender
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); handleRemove(c.id); }}>
-                            <Trash2 className="w-4 h-4 mr-2" /> Remover
+                            <Trash2 className="w-4 h-4 mr-2" /> Desativar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -271,6 +286,13 @@ const Clients = () => {
         customPricing={agency?.custom_pricing}
         agencyTier={agency?.tier ?? "starter"}
         onSuccess={async () => { await loadData(); await refreshClients(); }}
+      />
+
+      <EditClientDialog
+        client={editingClient}
+        open={!!editingClient}
+        onOpenChange={(o) => { if (!o) setEditingClient(null); }}
+        onChanged={async () => { await loadData(); await refreshClients(); }}
       />
       </ModuleGate>
     </DashboardLayout>
