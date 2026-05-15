@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Settings, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import type { ClientTable } from "@/hooks/use-client-tables";
 import ClientTableSettingsDialog from "./ClientTableSettingsDialog";
 
 interface Props {
   table: ClientTable;
+  onOpenEditor: (table: ClientTable) => void;
 }
 
 const TYPE_LABELS: Record<string, string> = {
