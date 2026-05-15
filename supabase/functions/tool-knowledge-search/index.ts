@@ -22,7 +22,7 @@ serve(async (req) => {
   let body: any;
   try { body = await req.json(); } catch { return jsonError(400, "Invalid JSON"); }
 
-  const { agent_id, query, top_k = 5, min_similarity = 0.7 } = body || {};
+  const { agent_id, query, top_k = 5, min_similarity = 0.3 } = body || {};
   if (!agent_id || typeof query !== "string" || !query.trim()) {
     return jsonError(400, "Missing agent_id or query");
   }
