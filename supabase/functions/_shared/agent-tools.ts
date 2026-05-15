@@ -246,6 +246,8 @@ export interface RunWithToolsOptions {
   maxTokens?: number;
   /** Hard cap on tool-loop iterations to avoid runaway calls. */
   maxIterations?: number;
+  /** End-user JWT, propagated to tools that require user-scoped auth (e.g. knowledge_search). */
+  userJwt?: string | null;
 }
 
 /**
