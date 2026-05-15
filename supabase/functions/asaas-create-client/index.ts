@@ -60,11 +60,37 @@ serve(async (req) => {
     .maybeSingle()
 
   const asaasApiKey = secret?.asaas_api_key
+
+  // Modo "sem cobrança": Asaas não configurado → criar cliente apenas no Aikortex
   if (!asaasApiKey) {
+    if (!agency) {
+      return new Response(JSON.stringify({ error: 'Perfil de agência não encontrado' }), { status: 404, headers: corsHeaders })
+    }
+    const { data: newClient, error: insertError } = await supabase
+      .from('agency_clients')
+      .insert({
+        agency_id: agency.id,
+        client_name,
+        client_email,
+        client_phone,
+        client_document,
+        billing_provider: null,
+        asaas_customer_id: null,
+        status: 'active',
+      })
+      .select()
+      .single()
+
+    if (insertError) {
+      return new Response(JSON.stringify({ error: insertError.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     return new Response(JSON.stringify({
-      error: 'Configure sua chave Asaas primeiro',
-      action: 'configure_asaas'
-    }), { status: 400, headers: corsHeaders })
+      success: true,
+      client: newClient,
+      mode: 'no_billing',
+      message: 'Cliente criado sem cobrança automática. Configure Asaas em /settings?tab=financeiro para ativar cobrança.',
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 
   // Create customer in agency's Asaas
