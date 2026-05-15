@@ -258,6 +258,7 @@ export interface RunWithToolsOptions {
 export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const yearMonth = new Date().toISOString().slice(0, 7);
   const maxIterations = opts.maxIterations ?? 3;
   const maxTokens = opts.maxTokens ?? 2048;
