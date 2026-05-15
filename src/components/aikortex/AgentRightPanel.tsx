@@ -131,7 +131,7 @@ const RIGHT_NAV: NavGroup[] = [
   { group: "Recursos", items: [
     { key: "resources.tools",        label: "Tools",          icon: Wrench },
     { key: "resources.kb",           label: "Knowledge Base", icon: BookOpen },
-    { key: "resources.tables",       label: "Tabelas",        icon: Database,  comingSoon: true, sprint: "2.6", masterRef: "13.5.11" },
+    { key: "resources.tables",       label: "Tabelas",        icon: Database,  masterRef: "13.5.11" },
     { key: "resources.integrations", label: "Integrações",    icon: Plug },
   ]},
   { group: "Comportamento", items: [
