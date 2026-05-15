@@ -638,6 +638,7 @@ serve(async (req) => {
         // models omitted → helper loads from available_llms (single source of truth).
         const sysMsg = chatMessages.find((m) => m.role === "system");
         const rest = chatMessages.filter((m) => m.role !== "system");
+        const userJwt = authHeader?.replace(/^Bearer\s+/i, "") ?? null;
         content = (await runAgentLLM({
           supabase: adminClient,
           agentId,
@@ -645,6 +646,7 @@ serve(async (req) => {
           system: sysMsg?.content || "",
           messages: rest,
           maxTokens: 2048,
+          userJwt,
         })) || "";
       } else {
         content = await bufferFromPlatform(chatMessages, preferred, adminClient);
