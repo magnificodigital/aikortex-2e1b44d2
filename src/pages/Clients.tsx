@@ -118,16 +118,13 @@ const Clients = () => {
 
   const getSubsForClient = (cId: string) => subs.filter((s) => s.client_id === cId && (s.status === "active" || s.status === "trial"));
 
-  const handleSuspend = async (id: string) => {
-    await supabase.from("agency_clients").update({ status: "suspended" }).eq("id", id);
-    toast.success("Cliente suspenso");
-    loadData();
-  };
-
-  const handleRemove = async (id: string) => {
-    await supabase.from("agency_clients").update({ status: "inactive" }).eq("id", id);
-    toast.success("Cliente removido");
-    loadData();
+  const handleToggleStatus = async (id: string, current: string | null) => {
+    const newStatus = current === "active" ? "inactive" : "active";
+    const { error } = await supabase.from("agency_clients").update({ status: newStatus }).eq("id", id);
+    if (error) { toast.error(`Erro: ${error.message}`); return; }
+    toast.success(newStatus === "active" ? "Cliente reativado" : "Cliente desativado");
+    await loadData();
+    await refreshClients();
   };
 
   if (loading) {
@@ -216,7 +213,7 @@ const Clients = () => {
             </TableHeader>
             <TableBody>
               {filtered.map((c) => {
-                const st = STATUS_MAP[c.status ?? "pending"] ?? STATUS_MAP.pending;
+                const st = STATUS_MAP[c.status ?? "active"] ?? STATUS_MAP.active;
                 const clientSubs = getSubsForClient(c.id);
                 const rev = clientSubs.reduce((s, sub) => s + Number(sub.agency_price_monthly), 0);
                 const initials = c.client_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -253,15 +250,17 @@ const Clients = () => {
                               client_name: c.client_name,
                               client_email: c.client_email,
                               client_phone: c.client_phone ?? null,
+                              status: c.status,
                             });
                           }}>
                             <Pencil className="w-4 h-4 mr-2" /> Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSuspend(c.id); }}>
-                            <Ban className="w-4 h-4 mr-2" /> Suspender
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); handleRemove(c.id); }}>
-                            <Trash2 className="w-4 h-4 mr-2" /> Desativar
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(c.id, c.status); }}>
+                            {c.status === "active" ? (
+                              <><Trash2 className="w-4 h-4 mr-2" /> Desativar</>
+                            ) : (
+                              <><RotateCcw className="w-4 h-4 mr-2" /> Reativar</>
+                            )}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
