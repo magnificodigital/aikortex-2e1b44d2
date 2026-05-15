@@ -352,12 +352,14 @@ export async function runAgentLLM(opts: {
   messages: Array<{ role: string; content: string }>;
   models?: string[]; // optional — when omitted, helper loads from available_llms
   maxTokens?: number;
+  /** End-user JWT — propagated to user-scoped tools (knowledge_search). */
+  userJwt?: string | null;
 }): Promise<string | null> {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
   if (!apiKey) return null;
   const enabled = opts.agentId ? await loadEnabledTools(opts.supabase, opts.agentId) : [];
   // TODO: temp diag — remove after confirming KB tool invocation in production logs.
-  console.log(`[agent-tools] runAgentLLM agentId=${opts.agentId ?? "none"} enabledTools=${enabled.length} toolNames=[${enabled.map((t) => t.tool_key).join(",")}]`);
+  console.log(`[agent-tools] runAgentLLM agentId=${opts.agentId ?? "none"} enabledTools=${enabled.length} toolNames=[${enabled.map((t) => t.tool_key).join(",")}] hasUserJwt=${!!opts.userJwt}`);
   const systemWithHints = applyToolsHints(opts.system, enabled);
   const fullMessages = [{ role: "system", content: systemWithHints }, ...opts.messages];
   const text = await runWithTools({
@@ -369,6 +371,7 @@ export async function runAgentLLM(opts: {
     agencyId: opts.agencyId ?? null,
     agentId: opts.agentId ?? null,
     maxTokens: opts.maxTokens,
+    userJwt: opts.userJwt ?? null,
   });
   return text || null;
 }
