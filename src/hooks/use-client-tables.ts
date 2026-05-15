@@ -108,6 +108,115 @@ export function useDeleteClientTable() {
   });
 }
 
+export type ClientTableRow = {
+  id: string;
+  table_id: string;
+  data: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+};
+
+export function useClientTableRows(
+  tableId: string | null | undefined,
+  opts?: { page?: number; pageSize?: number }
+) {
+  const page = opts?.page ?? 1;
+  const pageSize = opts?.pageSize ?? 50;
+  return useQuery({
+    queryKey: ["client-table-rows", tableId, { page, pageSize }],
+    queryFn: async (): Promise<{ rows: ClientTableRow[]; total: number }> => {
+      if (!tableId) return { rows: [], total: 0 };
+      const offset = (page - 1) * pageSize;
+      const { data, error, count } = await supabase
+        .from("client_table_rows")
+        .select("*", { count: "exact" })
+        .eq("table_id", tableId)
+        .order("created_at", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      return { rows: (data ?? []) as ClientTableRow[], total: count ?? 0 };
+    },
+    enabled: !!tableId,
+  });
+}
+
+export function useCreateRow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ table_id, data }: { table_id: string; data: Record<string, any> }) => {
+      const { data: row, error } = await supabase
+        .from("client_table_rows")
+        .insert({ table_id, data })
+        .select()
+        .single();
+      if (error) throw error;
+      return row;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["client-table-rows", vars.table_id] });
+      qc.invalidateQueries({ queryKey: ["client-tables"] });
+    },
+    onError: (e) => toast.error(`Erro: ${(e as Error).message}`),
+  });
+}
+
+export function useUpdateRow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; table_id: string; data: Record<string, any> }) => {
+      const { data: row, error } = await supabase
+        .from("client_table_rows")
+        .update({ data })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return row;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["client-table-rows", vars.table_id] });
+    },
+    onError: (e) => toast.error(`Erro: ${(e as Error).message}`),
+  });
+}
+
+export function useDeleteRows() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ids }: { ids: string[]; table_id: string }) => {
+      const { error } = await supabase.from("client_table_rows").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["client-table-rows", vars.table_id] });
+      qc.invalidateQueries({ queryKey: ["client-tables"] });
+    },
+    onError: (e) => toast.error(`Erro: ${(e as Error).message}`),
+  });
+}
+
+export function useBulkInsertRows() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ table_id, rows }: { table_id: string; rows: Record<string, any>[] }) => {
+      const batchSize = 500;
+      let inserted = 0;
+      for (let i = 0; i < rows.length; i += batchSize) {
+        const batch = rows.slice(i, i + batchSize).map((data) => ({ table_id, data }));
+        const { error } = await supabase.from("client_table_rows").insert(batch);
+        if (error) throw error;
+        inserted += batch.length;
+      }
+      return { inserted };
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["client-table-rows", vars.table_id] });
+      qc.invalidateQueries({ queryKey: ["client-tables"] });
+    },
+    onError: (e) => toast.error(`Erro: ${(e as Error).message}`),
+  });
+}
+
 export function slugifyKey(label: string): string {
   return label
     .toLowerCase()
