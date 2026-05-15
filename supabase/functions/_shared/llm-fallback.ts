@@ -287,8 +287,6 @@ export async function callLLM(
     } catch (e) {
       const errMsg = (e as Error).message;
       const latency = Date.now() - t0;
-      // TODO: temporary debug — remove after diagnosis.
-      console.log(`[llm-fallback] ${model} → exception latency=${latency}ms msg=${errMsg}`);
       console.warn(`[llm-fallback] ${model} EXCEPTION latency=${latency}ms ${errMsg}`);
       markFailure(supabase, model, 0, errMsg);
       lastError = errMsg;
