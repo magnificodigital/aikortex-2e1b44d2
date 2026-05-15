@@ -19,6 +19,7 @@ export type AgencyClientLite = {
   client_name: string;
   client_email: string | null;
   client_phone: string | null;
+  status: string | null;
 };
 
 interface Props {
@@ -38,7 +39,7 @@ const EditClientDialog = ({ client, open, onOpenChange, onChanged }: Props) => {
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<FormData>();
   const [showHardDelete, setShowHardDelete] = useState(false);
   const [typedName, setTypedName] = useState("");
-  const [softDeleting, setSoftDeleting] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
   const [hardDeleting, setHardDeleting] = useState(false);
 
   useEffect(() => {
@@ -73,18 +74,21 @@ const EditClientDialog = ({ client, open, onOpenChange, onChanged }: Props) => {
     onOpenChange(false);
   };
 
-  const handleSoftDelete = async () => {
-    setSoftDeleting(true);
+  const isActive = client.status === "active";
+
+  const handleToggleStatus = async () => {
+    const newStatus = isActive ? "inactive" : "active";
+    setTogglingStatus(true);
     const { error } = await supabase
       .from("agency_clients")
-      .update({ status: "inactive" })
+      .update({ status: newStatus })
       .eq("id", client.id);
-    setSoftDeleting(false);
+    setTogglingStatus(false);
     if (error) {
       toast.error(`Erro: ${error.message}`);
       return;
     }
-    toast.success("Cliente desativado");
+    toast.success(newStatus === "active" ? "Cliente reativado" : "Cliente desativado");
     await onChanged();
     onOpenChange(false);
   };
@@ -139,27 +143,38 @@ const EditClientDialog = ({ client, open, onOpenChange, onChanged }: Props) => {
               <AlertTriangle className="w-4 h-4 text-destructive" />
               <h4 className="text-destructive font-semibold text-sm">Danger Zone</h4>
             </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSoftDelete}
-                disabled={softDeleting}
-              >
-                Desativar cliente
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => setShowHardDelete(true)}
-              >
-                Excluir permanentemente
-              </Button>
+            <div className="flex flex-col gap-3">
+              <div className="space-y-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleToggleStatus}
+                  disabled={togglingStatus}
+                  className="w-full"
+                >
+                  {isActive ? "Desativar cliente" : "Reativar cliente"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  {isActive
+                    ? "Pausa o cliente. Dados preservados. Pode reativar a qualquer momento."
+                    : "Reativa o cliente. Operação volta ao normal."}
+                </p>
+              </div>
+              <div className="space-y-1.5 pt-2 border-t border-border">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setShowHardDelete(true)}
+                  className="w-full"
+                >
+                  Excluir permanentemente
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Remove o cliente e dados relacionados (tabelas, KBs, conversas).
+                  Não é possível desfazer.
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Excluir permanentemente remove o cliente e todos os dados associados
-              (tabelas, knowledge bases vinculados, conversas). Não é possível desfazer.
-            </p>
           </div>
         </DialogContent>
       </Dialog>
