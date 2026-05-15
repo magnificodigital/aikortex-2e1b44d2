@@ -274,8 +274,6 @@ export async function callLLM(
         continue;
       }
 
-      // TODO: temporary debug — remove after diagnosis.
-      console.log(`[llm-fallback] ${model} → status=${resp.status} latency=${latency}ms contentLen=${content?.length ?? 0} toolCalls=${hasToolCalls ? toolCalls.length : 0}`);
       markHealthy(supabase, model);
       return {
         success: true,
