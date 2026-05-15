@@ -324,6 +324,8 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
         yearMonth,
         supabaseUrl,
         serviceKey,
+        anonKey,
+        userJwt: opts.userJwt ?? null,
       });
       messages.push({
         role: "tool",
