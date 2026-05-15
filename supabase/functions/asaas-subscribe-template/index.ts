@@ -62,8 +62,8 @@ serve(async (req) => {
     .maybeSingle()
 
   const asaasApiKey = secret?.asaas_api_key
-  if (!agency || !asaasApiKey) {
-    return new Response(JSON.stringify({ error: 'Asaas não configurado' }), { status: 400, headers: corsHeaders })
+  if (!agency) {
+    return new Response(JSON.stringify({ error: 'Perfil de agência não encontrado' }), { status: 404, headers: corsHeaders })
   }
 
   // Get client
