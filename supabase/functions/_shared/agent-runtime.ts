@@ -95,18 +95,21 @@ export function applyToolsHints(
   }
   if (toolNames.includes("table_read")) {
     hints.push(
-      "IMPORTANTE: Você tem acesso a TABELAS DE DADOS estruturadas (pacientes, produtos, agendamentos, etc.). " +
-        "SEMPRE use `table_read` quando o usuário perguntar sobre registros específicos: dados de uma pessoa, " +
-        "preço de um produto, status de um item, etc. Especifique sempre o table_name (nome exato da tabela). " +
-        "Use filter para refinar busca.",
+      "IMPORTANTE — table_read: você tem acesso a TABELAS de dados estruturadas (pacientes, produtos, etc.). " +
+        "SEMPRE use quando o usuário perguntar por registros específicos. " +
+        "`filter` é um OBJETO com chave-valor, exemplo: { \"nome\": \"Maria\" }. " +
+        "NUNCA coloque valores de filtro no topo do payload — sempre dentro de `filter`. " +
+        "Exemplo: { \"table_name\": \"Pacientes\", \"filter\": { \"nome\": \"Maria\" }, \"limit\": 10 }",
     );
   }
   if (toolNames.includes("table_write")) {
     hints.push(
-      "IMPORTANTE: Você pode CADASTRAR, ATUALIZAR e REMOVER registros nas tabelas via `table_write`. " +
-        "Use quando o usuário pedir para registrar algo novo, atualizar dados existentes, ou remover registros. " +
-        "Para update/delete, SEMPRE inclua um filter (geralmente nome ou identificador único). " +
-        "Confirme com o usuário antes de operações destrutivas.",
+      "IMPORTANTE — table_write: SEMPRE coloque os valores das colunas DENTRO de um objeto `data` (insert/update). " +
+        "Para update/delete, SEMPRE forneça `filter` com chave-valor para identificar registros. " +
+        "Confirme com o usuário antes de UPDATE ou DELETE. Exemplos:\n" +
+        "INSERT: { \"table_name\": \"Pacientes\", \"action\": \"insert\", \"data\": { \"nome\": \"Maria\", \"telefone\": \"11999\" } }\n" +
+        "UPDATE: { \"table_name\": \"Pacientes\", \"action\": \"update\", \"filter\": { \"nome\": \"Maria\" }, \"data\": { \"telefone\": \"11888\" } }\n" +
+        "DELETE: { \"table_name\": \"Pacientes\", \"action\": \"delete\", \"filter\": { \"nome\": \"Maria\" } }",
     );
   }
   if (hints.length === 0) return systemPrompt;
