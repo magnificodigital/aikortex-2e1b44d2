@@ -1087,6 +1087,10 @@ const AgentRightPanel = ({
               <ClientTablesSection agentId={agentId} isFreshNew={!agentId} />
             )}
 
+            {activeSection === "behavior.cadences" && (
+              <CadencesSection agentId={agentId} isFreshNew={!agentId} />
+            )}
+
             {/* ── Recursos → Integrações ── */}
             {activeSection === "resources.integrations" && (
               <div className="space-y-6">
