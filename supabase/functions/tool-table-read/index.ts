@@ -21,7 +21,26 @@ serve(async (req) => {
   let body: any;
   try { body = await req.json(); } catch { return jsonError(400, "Invalid JSON"); }
 
-  const { agent_id, table_name, filter, limit = 10 } = body || {};
+  const RESERVED = new Set(["agent_id", "table_name", "filter", "limit", "top_k"]);
+  let { agent_id, table_name, filter, limit = 10 } = body || {};
+
+  // Tolerance: if the LLM put filter keys at the top instead of inside `filter`,
+  // assemble a filter object from non-reserved fields.
+  if (!filter || (typeof filter === "object" && Object.keys(filter).length === 0)) {
+    const flat: Record<string, any> = {};
+    for (const [key, value] of Object.entries(body || {})) {
+      if (!RESERVED.has(key)) flat[key] = value;
+    }
+    if (Object.keys(flat).length > 0) {
+      filter = flat;
+      console.log(`[tool-table-read] auto-reconstructed filter from flat payload: ${JSON.stringify(filter)}`);
+    }
+  }
+
+  console.log(
+    `[tool-table-read] table=${table_name} hasFilter=${!!filter && Object.keys(filter || {}).length > 0} filterKeys=${filter ? Object.keys(filter).join(",") : "none"} limit=${limit}`,
+  );
+
   if (!agent_id || !table_name) return jsonError(400, "agent_id and table_name required");
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

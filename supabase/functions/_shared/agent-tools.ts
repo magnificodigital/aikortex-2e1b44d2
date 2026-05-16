@@ -82,12 +82,24 @@ export const TOOL_CATALOG: Record<ToolKey, ToolDefinition> = {
     key: "table_read",
     name: "table_read",
     description:
-      "Search rows in a client table. Use this when the user asks about specific records: people, prices, schedules, products, status of items. Always specify the table_name. Optionally provide a filter (key-value pairs) to narrow down results.",
+      `Read rows from a client table.
+
+CRITICAL JSON FORMAT:
+- table_name: string (exact table name, case-sensitive)
+- filter: OBJECT with column key-value pairs (do NOT spread filter fields at the top level)
+- limit: number (optional, default 10, max 50)
+
+Example:
+{
+  "table_name": "Pacientes",
+  "filter": { "nome": "Maria" },
+  "limit": 10
+}`,
     parameters: {
       type: "object",
       properties: {
-        table_name: { type: "string", description: "Exact name of the table to search (case-sensitive, e.g. 'Pacientes')" },
-        filter: { type: "object", description: "Optional filter as key-value pairs. Example: {\"nome\": \"Maria\"}. Keys must match column keys.", additionalProperties: true },
+        table_name: { type: "string", description: "Exact name of the table (case-sensitive, e.g. 'Pacientes')" },
+        filter: { type: "object", description: "Filter as key-value object. Example: {\"nome\": \"Maria\"}. NEVER put filter values at the top level.", additionalProperties: true },
         limit: { type: "number", description: "Max rows to return. Default 10, max 50.", default: 10 },
       },
       required: ["table_name"],
@@ -98,14 +110,42 @@ export const TOOL_CATALOG: Record<ToolKey, ToolDefinition> = {
     key: "table_write",
     name: "table_write",
     description:
-      "Insert, update or delete rows in a client table. Use when the user asks to register a new entry, update existing data, or remove an entry. Always specify table_name and action. For update/delete, always include a filter.",
+      `Insert, update or delete rows in a client table.
+
+CRITICAL JSON FORMAT for insert/update:
+- table_name: string
+- action: "insert" | "update" | "delete"
+- data: OBJECT with column key-value pairs (do NOT spread fields at the top level)
+- filter: OBJECT for update/delete (identifies which rows)
+
+Example INSERT:
+{
+  "table_name": "Pacientes",
+  "action": "insert",
+  "data": { "nome": "Maria", "telefone": "11999999999", "email": "maria@x.com" }
+}
+
+Example UPDATE:
+{
+  "table_name": "Pacientes",
+  "action": "update",
+  "filter": { "nome": "Maria" },
+  "data": { "telefone": "11888888888" }
+}
+
+Example DELETE:
+{
+  "table_name": "Pacientes",
+  "action": "delete",
+  "filter": { "nome": "Maria" }
+}`,
     parameters: {
       type: "object",
       properties: {
         table_name: { type: "string", description: "Exact name of the table" },
-        action: { type: "string", enum: ["insert", "update", "delete"], description: "Operation: insert (new row), update (modify existing), delete (remove)" },
-        data: { type: "object", description: "For insert: complete row data. For update: fields to modify. Keys match column keys.", additionalProperties: true },
-        filter: { type: "object", description: "Required for update/delete: identifies which rows to affect.", additionalProperties: true },
+        action: { type: "string", enum: ["insert", "update", "delete"], description: "Operation type" },
+        data: { type: "object", description: "OBJECT with column key-values. For insert: full row. For update: fields to modify. NEVER spread column fields at the top level — always wrap in `data`.", additionalProperties: true },
+        filter: { type: "object", description: "OBJECT key-value to identify rows. Required for update/delete.", additionalProperties: true },
       },
       required: ["table_name", "action"],
     },
