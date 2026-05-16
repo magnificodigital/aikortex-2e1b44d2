@@ -136,7 +136,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "resources.integrations", label: "Integrações",    icon: Plug },
   ]},
   { group: "Comportamento", items: [
-    { key: "behavior.cadences",  label: "Cadências", icon: Clock,  comingSoon: true, sprint: "2.7",  masterRef: "13.5.13" },
+    { key: "behavior.cadences",  label: "Cadências", icon: Clock,  masterRef: "13.5.13" },
     { key: "behavior.squad",     label: "Squad",     icon: Users,  comingSoon: true, sprint: "Fase E", masterRef: "13.5.14" },
   ]},
   { group: "Operação", items: [
