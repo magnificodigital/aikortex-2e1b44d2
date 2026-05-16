@@ -21,6 +21,7 @@ import AgentToolsSection from "./AgentToolsSection";
 import AgentVersionsSection from "./AgentVersionsSection";
 import KnowledgeBaseSection from "./KnowledgeBaseSection";
 import ClientTablesSection from "./ClientTablesSection";
+import CadencesSection from "./CadencesSection";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -136,7 +137,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "resources.integrations", label: "Integrações",    icon: Plug },
   ]},
   { group: "Comportamento", items: [
-    { key: "behavior.cadences",  label: "Cadências", icon: Clock,  comingSoon: true, sprint: "2.7",  masterRef: "13.5.13" },
+    { key: "behavior.cadences",  label: "Cadências", icon: Clock,  masterRef: "13.5.13" },
     { key: "behavior.squad",     label: "Squad",     icon: Users,  comingSoon: true, sprint: "Fase E", masterRef: "13.5.14" },
   ]},
   { group: "Operação", items: [
@@ -1084,6 +1085,10 @@ const AgentRightPanel = ({
 
             {activeSection === "resources.tables" && (
               <ClientTablesSection agentId={agentId} isFreshNew={!agentId} />
+            )}
+
+            {activeSection === "behavior.cadences" && (
+              <CadencesSection agentId={agentId} isFreshNew={!agentId} />
             )}
 
             {/* ── Recursos → Integrações ── */}
