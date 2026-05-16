@@ -20,7 +20,26 @@ serve(async (req) => {
   let body: any;
   try { body = await req.json(); } catch { return jsonError(400, "Invalid JSON"); }
 
-  const { agent_id, table_name, action, data, filter } = body || {};
+  const RESERVED = new Set(["agent_id", "table_name", "action", "data", "filter"]);
+  let { agent_id, table_name, action, data, filter } = body || {};
+
+  // Tolerance: if the LLM flattened the column fields at the top level,
+  // reconstruct `data` (for insert/update) from the non-reserved keys.
+  if (!data && (action === "insert" || action === "update")) {
+    const flatFields: Record<string, any> = {};
+    for (const [key, value] of Object.entries(body || {})) {
+      if (!RESERVED.has(key)) flatFields[key] = value;
+    }
+    if (Object.keys(flatFields).length > 0) {
+      data = flatFields;
+      console.log(`[tool-table-write] auto-reconstructed data from flat payload: ${JSON.stringify(data)}`);
+    }
+  }
+
+  console.log(
+    `[tool-table-write] action=${action} table=${table_name} hasData=${!!data} dataKeys=${data ? Object.keys(data).join(",") : "none"} hasFilter=${!!filter}`,
+  );
+
   if (!agent_id || !table_name || !action) return jsonError(400, "Missing required fields");
   if (!["insert", "update", "delete"].includes(action)) return jsonError(400, "Invalid action");
 
