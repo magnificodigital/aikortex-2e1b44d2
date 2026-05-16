@@ -217,6 +217,50 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_cadences: {
+        Row: {
+          agent_id: string
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          name: string
+          steps: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          name: string
+          steps?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          name?: string
+          steps?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_cadences_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_knowledge_bases: {
         Row: {
           agent_id: string
@@ -635,6 +679,78 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      cadence_executions: {
+        Row: {
+          agent_id: string
+          cadence_id: string
+          completed_at: string | null
+          contact_metadata: Json | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          current_step: number
+          id: string
+          last_error: string | null
+          metadata: Json
+          next_run_at: string | null
+          started_at: string
+          status: string
+          total_steps: number
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          cadence_id: string
+          completed_at?: string | null
+          contact_metadata?: Json | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          last_error?: string | null
+          metadata?: Json
+          next_run_at?: string | null
+          started_at?: string
+          status?: string
+          total_steps?: number
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          cadence_id?: string
+          completed_at?: string | null
+          contact_metadata?: Json | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          last_error?: string | null
+          metadata?: Json
+          next_run_at?: string | null
+          started_at?: string
+          status?: string
+          total_steps?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cadence_executions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cadence_executions_cadence_id_fkey"
+            columns: ["cadence_id"]
+            isOneToOne: false
+            referencedRelation: "agent_cadences"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       call_logs: {
         Row: {
