@@ -253,7 +253,7 @@ const LandingPage = () => {
         {/* CTA */}
         <button
           onClick={() => openAuthModal("signup")}
-          className="px-8 py-4 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-medium transition-colors shadow-lg mb-8"
+          className="group relative px-10 py-4 rounded-full overflow-hidden border border-primary/30 text-primary text-lg font-medium transition-all duration-300 hover:border-primary/60 hover:shadow-[0_0_28px_-8px_hsl(var(--primary)/0.4)] mb-8"
         >
           {t.ctaExperts}
         </button>
