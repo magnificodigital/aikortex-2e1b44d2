@@ -230,8 +230,8 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                         <Select value={s.channel} onValueChange={(v) => updateStep(idx, { channel: v as any })}>
                           <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                            <SelectItem value="email" disabled>Email (em breve)</SelectItem>
+                            <SelectItem value="whatsapp" disabled>WhatsApp (em breve)</SelectItem>
+                            <SelectItem value="email">Email</SelectItem>
                             <SelectItem value="sms" disabled>SMS (em breve)</SelectItem>
                           </SelectContent>
                         </Select>
