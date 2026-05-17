@@ -211,8 +211,8 @@ const Home = () => {
         <div className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-xl shadow-black/5 overflow-hidden mb-8">
           {/* Creation tabs */}
           <div className="flex items-center gap-1 px-4 pt-3 pb-1">
-            {(["app", "agentes", "flows"] as const).map((tab) => {
-              const labels = { app: "App", agentes: "Agentes", flows: "Flows" };
+            {(["app", "agentes"] as const).map((tab) => {
+              const labels = { app: "App", agentes: "Agentes" };
               return (
                 <button
                   key={tab}
@@ -225,7 +225,6 @@ const Home = () => {
                 >
                   {tab === "app" && <Monitor className="w-4 h-4" />}
                   {tab === "agentes" && <Sparkles className="w-4 h-4" />}
-                  {tab === "flows" && <Globe className="w-4 h-4" />}
                   {labels[tab]}
                 </button>
               );
