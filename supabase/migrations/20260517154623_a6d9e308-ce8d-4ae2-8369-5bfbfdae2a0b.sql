@@ -1,0 +1,1 @@
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.agency_secrets TO authenticated;
