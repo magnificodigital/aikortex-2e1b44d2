@@ -21,7 +21,7 @@ const translations = {
     banner: "Conheça os Agentes IA que trabalham 24/7",
     heroTitle1: "Infinitas ",
     heroTitle2: "possibilidades",
-    heroSubtitle: "Crie Agentes, Fluxos inteligentes e apps em\nminutos conversando com IA.",
+    heroSubtitle: "Crie Agentes inteligentes e Aplicações para Whatsapp e Web\nem minutos conversando com a inteligência artificial.",
     placeholder: "Crie um app que...",
     suggestions: {
       app: [
@@ -51,7 +51,7 @@ const translations = {
     banner: "Meet the AI Agents that work 24/7",
     heroTitle1: "Infinite ",
     heroTitle2: "possibilities",
-    heroSubtitle: "Create Agents, smart Flows and apps in\nminutes by chatting with AI.",
+    heroSubtitle: "Create intelligent Agents and Applications for WhatsApp and Web\nin minutes chatting with artificial intelligence.",
     placeholder: "Create an app that...",
     suggestions: {
       app: [
