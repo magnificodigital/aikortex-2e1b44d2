@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.tool-knowledge-search]
 verify_jwt = false
+
+[functions.send-cadence-step]
+verify_jwt = false

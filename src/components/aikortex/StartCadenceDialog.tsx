@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useScheduleCadenceExecution } from "@/hooks/use-agent-cadences";
+import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { useClientTables, useClientTableRows } from "@/hooks/use-client-tables";
 import type { AgentCadence } from "@/types/agent-cadences";
@@ -48,6 +49,10 @@ export default function StartCadenceDialog({ open, onOpenChange, agentId, cadenc
   const [manualPhone, setManualPhone] = useState("");
 
   const schedule = useScheduleCadenceExecution();
+  const { data: emailStatus } = useEmailIntegrationStatus();
+
+  const hasEmailStep = (cadence.steps ?? []).some((s) => s.channel === "email");
+  const emailBlocked = hasEmailStep && !emailStatus?.connected && (emailStatus?.trial_remaining ?? 0) === 0;
 
   const contact = useMemo(() => {
     if (source === "manual") {
@@ -165,18 +170,21 @@ export default function StartCadenceDialog({ open, onOpenChange, agentId, cadenc
             ))}
           </div>
 
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 flex gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-amber-700 dark:text-amber-300">
-              Engine de execução estará disponível no próximo sprint. Por enquanto, a cadência fica agendada mas não envia mensagens automáticas.
-            </p>
-          </div>
+          {emailBlocked && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 flex gap-2">
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <p className="text-[11px] text-destructive">
+                Esta cadência contém steps de email, mas você não conectou o Resend e seu trial gratuito acabou.
+                Acesse <strong>Configurações → Integrações → Email</strong> para conectar antes de iniciar.
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={schedule.isPending}>Cancelar</Button>
-          <Button onClick={onConfirm} disabled={schedule.isPending}>
-            {schedule.isPending ? "Agendando..." : "Agendar cadência"}
+          <Button onClick={onConfirm} disabled={schedule.isPending || emailBlocked}>
+            {schedule.isPending ? "Agendando..." : "Iniciar cadência"}
           </Button>
         </DialogFooter>
       </DialogContent>

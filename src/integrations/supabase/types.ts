@@ -82,18 +82,21 @@ export type Database = {
       agency_monthly_usage: {
         Row: {
           agency_id: string
+          emails_sent: number
           message_count: number
           updated_at: string
           year_month: string
         }
         Insert: {
           agency_id: string
+          emails_sent?: number
           message_count?: number
           updated_at?: string
           year_month: string
         }
         Update: {
           agency_id?: string
+          emails_sent?: number
           message_count?: number
           updated_at?: string
           year_month?: string
@@ -108,6 +111,7 @@ export type Database = {
           asaas_wallet_id: string | null
           created_at: string | null
           custom_pricing: Json | null
+          email_trial_used: number
           id: string
           logo_url: string | null
           platform_fee_monthly: number | null
@@ -123,6 +127,7 @@ export type Database = {
           asaas_wallet_id?: string | null
           created_at?: string | null
           custom_pricing?: Json | null
+          email_trial_used?: number
           id?: string
           logo_url?: string | null
           platform_fee_monthly?: number | null
@@ -138,6 +143,7 @@ export type Database = {
           asaas_wallet_id?: string | null
           created_at?: string | null
           custom_pricing?: Json | null
+          email_trial_used?: number
           id?: string
           logo_url?: string | null
           platform_fee_monthly?: number | null
@@ -170,16 +176,22 @@ export type Database = {
         Row: {
           agency_user_id: string
           asaas_api_key: string | null
+          resend_api_key: string | null
+          resend_from_email: string | null
           updated_at: string
         }
         Insert: {
           agency_user_id: string
           asaas_api_key?: string | null
+          resend_api_key?: string | null
+          resend_from_email?: string | null
           updated_at?: string
         }
         Update: {
           agency_user_id?: string
           asaas_api_key?: string | null
+          resend_api_key?: string | null
+          resend_from_email?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -2505,6 +2517,7 @@ export type Database = {
           tool_key: string
         }[]
       }
+      get_email_integration_status: { Args: never; Returns: Json }
       increment_agency_tool_usage: {
         Args: { p_agency_id: string; p_tool_key: string; p_year_month: string }
         Returns: number
@@ -2513,6 +2526,7 @@ export type Database = {
         Args: { p_agency_id: string; p_year_month: string }
         Returns: number
       }
+      increment_email_trial: { Args: { p_agency_id: string }; Returns: number }
       increment_monthly_usage: {
         Args: { p_user_id: string; p_year_month: string }
         Returns: undefined
