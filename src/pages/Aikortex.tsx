@@ -11,8 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useUserAgents, type UserAgent } from "@/hooks/use-user-agents";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { useGalleryTemplates } from "@/hooks/use-niche-templates";
-import NicheFilterBar from "@/components/templates/NicheFilterBar";
-import TemplateGrid from "@/components/templates/TemplateGrid";
+import TemplateNicheCarousel from "@/components/templates/TemplateNicheCarousel";
 import TemplateSearchInput from "@/components/templates/TemplateSearchInput";
 import UseTemplateDialog from "@/components/templates/UseTemplateDialog";
 import { toast } from "sonner";
@@ -201,12 +200,7 @@ const Aikortex = () => {
               </p>
             </div>
             <TemplateSearchInput value={search} onChange={setSearch} />
-            <NicheFilterBar
-              selectedNicheSlug={nicheSlug}
-              onSelect={setNiche}
-              category="agent"
-            />
-            <TemplateGrid
+            <TemplateNicheCarousel
               templates={templates}
               loading={templatesLoading}
               onUseTemplate={(t) => setUseTemplate(t)}
