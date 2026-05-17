@@ -52,12 +52,10 @@ const Home = () => {
   const { user, isPlatform } = useAuth();
   const navigate = useNavigate();
 
-  const FLOW_KEYWORDS = ["fluxo", "flow", "automação", "automatizar", "automatização", "automation", "pipeline", "workflow", "nutrição", "sequência", "automacao", "sequencia"];
   const AGENT_KEYWORDS = ["agente", "agent", "sdr", "bdr", "sac", "suporte", "atendimento", "qualificação", "qualificacao", "qualificador", "prospecção", "prospeccao", "captura de lead", "captação", "captacao", "cobranças", "cobranca", "onboarding", "customer success", "cs ", "assistente", "diagnóstico", "diagnostico", "agendador", "agendamento", "chatbot", "bot", "vendas", "vender", "retenção", "retencao", "pós-venda", "pos-venda"];
 
-  const detectCategory = (text: string): "app" | "agentes" | "flows" => {
+  const detectCategory = (text: string): "app" | "agentes" => {
     const lower = text.toLowerCase();
-    if (FLOW_KEYWORDS.some((k) => lower.includes(k))) return "flows";
     if (AGENT_KEYWORDS.some((k) => lower.includes(k))) return "agentes";
     return "app";
   };
