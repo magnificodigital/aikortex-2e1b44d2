@@ -48,6 +48,7 @@ const translations = {
     pricing: "Pricing",
     signIn: "Sign in",
     startFree: "Start free",
+    ctaExperts: "Talk to our specialists",
     newBadge: "New",
     banner: "Meet the AI Agents that work 24/7",
     heroTitle1: "Infinite ",
