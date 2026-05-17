@@ -242,22 +242,22 @@
 }
 
 .dark .landing-bg::before {
-  background: radial-gradient(circle, hsl(224 64% 57% / 0.25), transparent 65%);
-  opacity: 0.7;
+  background: radial-gradient(circle, hsl(222 38% 25% / 0.55), transparent 65%);
+  opacity: 0.75;
   width: 700px;
   height: 700px;
 }
 
 .dark .landing-bg::after {
-  background: radial-gradient(circle, hsl(199 70% 50% / 0.18), transparent 65%);
-  opacity: 0.6;
+  background: radial-gradient(circle, hsl(218 30% 30% / 0.35), transparent 65%);
+  opacity: 0.55;
   width: 600px;
   height: 600px;
 }
 
 .dark .landing-bg-orb {
-  background: radial-gradient(circle, hsl(260 50% 55% / 0.15), transparent 65%);
-  opacity: 0.5;
+  background: radial-gradient(circle, hsl(215 25% 45% / 0.2), transparent 65%);
+  opacity: 0.45;
   width: 500px;
   height: 500px;
 }
