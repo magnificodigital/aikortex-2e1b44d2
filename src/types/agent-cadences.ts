@@ -1,5 +1,10 @@
 export type CadenceChannel = 'whatsapp' | 'email' | 'sms';
 
+/**
+ * Step delay is expressed as pure offset from the cadence start:
+ * day + hour + minute compose a single duration (NOT an absolute clock time).
+ * Example: day=1, hour=2, minute=30 → fire 1d 2h 30min after started_at.
+ */
 export type CadenceStep = {
   id: string;
   day: number;
@@ -67,9 +72,21 @@ export function makeEmptyStep(): CadenceStep {
       ? crypto.randomUUID()
       : `step-${Math.random().toString(36).slice(2)}`,
     day: 0,
-    hour: 9,
+    hour: 0,
     minute: 0,
-    channel: 'whatsapp',
+    channel: 'email',
     message_template: '',
   };
+}
+
+export function stepDelaySeconds(step: { day: number; hour: number; minute: number }): number {
+  return (step.day ?? 0) * 86400 + (step.hour ?? 0) * 3600 + (step.minute ?? 0) * 60;
+}
+
+export function formatStepDelay(step: { day: number; hour: number; minute: number }): string {
+  const parts: string[] = [];
+  if (step.day) parts.push(`${step.day}d`);
+  if (step.hour) parts.push(`${step.hour}h`);
+  if (step.minute) parts.push(`${step.minute}min`);
+  return parts.length === 0 ? 'imediato' : `após ${parts.join(' ')}`;
 }

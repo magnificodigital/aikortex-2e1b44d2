@@ -21,7 +21,7 @@ import {
 } from "@/hooks/use-agent-cadences";
 import CadenceEditorDialog from "./CadenceEditorDialog";
 import StartCadenceDialog from "./StartCadenceDialog";
-import type { AgentCadence } from "@/types/agent-cadences";
+import { type AgentCadence, formatStepDelay } from "@/types/agent-cadences";
 
 interface Props {
   agentId?: string;
@@ -154,9 +154,7 @@ export default function CadencesSection({ agentId, isFreshNew }: Props) {
                     {visibleSteps.map((s) => (
                       <div key={s.id} className="flex items-center gap-2 text-[11px] text-muted-foreground">
                         <Clock className="w-3 h-3 shrink-0" />
-                        <span className="font-mono shrink-0">
-                          Dia {s.day}, {String(s.hour).padStart(2, "0")}:{String(s.minute).padStart(2, "0")}
-                        </span>
+                        <span className="font-mono shrink-0">{formatStepDelay(s)}</span>
                         <span className="text-muted-foreground/70">·</span>
                         <span className="capitalize">{s.channel}</span>
                         <span className="text-muted-foreground/70">·</span>

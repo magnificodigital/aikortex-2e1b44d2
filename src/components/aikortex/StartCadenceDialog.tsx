@@ -11,7 +11,7 @@ import { useScheduleCadenceExecution } from "@/hooks/use-agent-cadences";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { useClientTables, useClientTableRows } from "@/hooks/use-client-tables";
-import type { AgentCadence } from "@/types/agent-cadences";
+import { type AgentCadence, formatStepDelay, stepDelaySeconds } from "@/types/agent-cadences";
 
 interface Props {
   open: boolean;
@@ -21,21 +21,14 @@ interface Props {
 }
 
 function computeNextRunAt(step: { day: number; hour: number; minute: number } | undefined): string {
-  const base = new Date();
-  const d = step?.day ?? 0;
-  const h = step?.hour ?? 9;
-  const m = step?.minute ?? 0;
-  base.setDate(base.getDate() + d);
-  base.setHours(h, m, 0, 0);
-  return base.toISOString();
+  const base = Date.now();
+  const delaySec = step ? stepDelaySeconds(step) : 0;
+  return new Date(base + delaySec * 1000).toISOString();
 }
 
-function previewDateLabel(idx: number, step: { day: number; hour: number; minute: number }): string {
-  const d = new Date();
-  d.setDate(d.getDate() + step.day);
-  d.setHours(step.hour, step.minute, 0, 0);
-  const dayLabel = idx === 0 && step.day === 0 ? "hoje" : d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
-  return `${dayLabel} ${String(step.hour).padStart(2, "0")}:${String(step.minute).padStart(2, "0")}`;
+function previewDateLabel(step: { day: number; hour: number; minute: number }): string {
+  const target = new Date(Date.now() + stepDelaySeconds(step) * 1000);
+  return target.toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 export default function StartCadenceDialog({ open, onOpenChange, agentId, cadence }: Props) {
@@ -163,9 +156,9 @@ export default function StartCadenceDialog({ open, onOpenChange, agentId, cadenc
 
           <div className="rounded-lg border border-border p-3 space-y-1.5 bg-muted/30">
             <p className="text-xs font-medium text-foreground">Visualização da cadência</p>
-            {cadence.steps.map((s, i) => (
+            {cadence.steps.map((s) => (
               <p key={s.id} className="text-[11px] text-muted-foreground font-mono truncate">
-                Dia {s.day} ({previewDateLabel(i, s)}): "{(s.message_template || "").slice(0, 50)}{s.message_template.length > 50 ? "..." : ""}"
+                {formatStepDelay(s)} ({previewDateLabel(s)}): "{(s.message_template || "").slice(0, 50)}{s.message_template.length > 50 ? "..." : ""}"
               </p>
             ))}
           </div>

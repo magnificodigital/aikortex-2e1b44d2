@@ -36,10 +36,9 @@ function renderTemplate(tpl: string, meta: Record<string, any> | null | undefine
 }
 
 function computeNextRunAt(startedAt: string, step: { day: number; hour: number; minute: number }): string {
-  const base = new Date(startedAt);
-  base.setUTCDate(base.getUTCDate() + (step.day ?? 0));
-  base.setUTCHours(step.hour ?? 9, step.minute ?? 0, 0, 0);
-  return base.toISOString();
+  const base = new Date(startedAt).getTime();
+  const delaySec = (step.day ?? 0) * 86400 + (step.hour ?? 0) * 3600 + (step.minute ?? 0) * 60;
+  return new Date(base + delaySec * 1000).toISOString();
 }
 
 function currentYearMonth(): string {

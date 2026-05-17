@@ -15,6 +15,7 @@ import {
   type CadenceStep,
   makeEmptyStep,
   sortStepsChronologically,
+  formatStepDelay,
 } from "@/types/agent-cadences";
 
 interface Props {
@@ -47,11 +48,13 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
       toast.error(`Máximo de ${MAX_STEPS} steps`);
       return;
     }
-    // Default new step shifts one day forward from last
+    // Default new step adds 1 day to the previous delay
     const last = steps[steps.length - 1];
     const next = makeEmptyStep();
     next.day = Math.min(365, (last?.day ?? 0) + 1);
-    next.hour = last?.hour ?? 9;
+    next.hour = last?.hour ?? 0;
+    next.minute = last?.minute ?? 0;
+    next.channel = last?.channel ?? "email";
     setSteps((prev) => [...prev, next]);
   };
 
@@ -178,7 +181,10 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                 {steps.map((s, idx) => (
                   <div key={s.id} className="rounded-lg border border-border p-3 space-y-2 bg-card/50">
                     <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="font-mono text-[10px]">Step {idx + 1}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="font-mono text-[10px]">Step {idx + 1}</Badge>
+                        <span className="text-[10px] text-muted-foreground">{formatStepDelay(s)} do início</span>
+                      </div>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -191,50 +197,53 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Dia</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={365}
-                          value={s.day}
-                          onChange={(e) => updateStep(idx, { day: Math.max(0, Math.min(365, parseInt(e.target.value || "0", 10))) })}
-                          className="h-8"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Hora</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={23}
-                          value={s.hour}
-                          onChange={(e) => updateStep(idx, { hour: Math.max(0, Math.min(23, parseInt(e.target.value || "0", 10))) })}
-                          className="h-8"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Minuto</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={59}
-                          value={s.minute}
-                          onChange={(e) => updateStep(idx, { minute: Math.max(0, Math.min(59, parseInt(e.target.value || "0", 10))) })}
-                          className="h-8"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Canal</Label>
-                        <Select value={s.channel} onValueChange={(v) => updateStep(idx, { channel: v as any })}>
-                          <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="whatsapp" disabled>WhatsApp (em breve)</SelectItem>
-                            <SelectItem value="email">Email</SelectItem>
-                            <SelectItem value="sms" disabled>SMS (em breve)</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Aguardar desde o início da cadência</Label>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={365}
+                            value={s.day}
+                            onChange={(e) => updateStep(idx, { day: Math.max(0, Math.min(365, parseInt(e.target.value || "0", 10))) })}
+                            className="h-8"
+                          />
+                          <p className="text-[9px] text-muted-foreground text-center">dias</p>
+                        </div>
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={23}
+                            value={s.hour}
+                            onChange={(e) => updateStep(idx, { hour: Math.max(0, Math.min(23, parseInt(e.target.value || "0", 10))) })}
+                            className="h-8"
+                          />
+                          <p className="text-[9px] text-muted-foreground text-center">horas</p>
+                        </div>
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={59}
+                            value={s.minute}
+                            onChange={(e) => updateStep(idx, { minute: Math.max(0, Math.min(59, parseInt(e.target.value || "0", 10))) })}
+                            className="h-8"
+                          />
+                          <p className="text-[9px] text-muted-foreground text-center">min</p>
+                        </div>
+                        <div className="space-y-1">
+                          <Select value={s.channel} onValueChange={(v) => updateStep(idx, { channel: v as any })}>
+                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="whatsapp" disabled>WhatsApp (em breve)</SelectItem>
+                              <SelectItem value="email">Email</SelectItem>
+                              <SelectItem value="sms" disabled>SMS (em breve)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-[9px] text-muted-foreground text-center">canal</p>
+                        </div>
                       </div>
                     </div>
 
