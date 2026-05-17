@@ -204,8 +204,7 @@ const Home = () => {
           {getGreeting()}, <span className="italic">{userName}</span>
         </h1>
         <p className="text-sm lg:text-base text-muted-foreground mb-10 text-center max-w-lg">
-          Crie Agentes, Fluxos inteligentes e apps em<br />
-          minutos conversando com IA.
+          Crie Agentes inteligentes e Aplicações para Whatsapp e Web em minutos conversando com IA.
         </p>
 
         {/* Prompt Box */}
