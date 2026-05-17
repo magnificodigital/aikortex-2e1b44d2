@@ -73,7 +73,14 @@ async function sendViaEmail(opts: {
 
   if (secrets?.resend_api_key) {
     apiKey = secrets.resend_api_key;
-    fromEmail = secrets.resend_from_email ?? 'no-reply@aikortex.com';
+    const from = (secrets.resend_from_email ?? '').trim();
+    if (!from) {
+      return {
+        ok: false,
+        error: 'MISSING_FROM_EMAIL: configure o campo "From" em Settings → Integrações → Email (precisa ser um endereço cujo domínio esteja verified na sua conta Resend)',
+      };
+    }
+    fromEmail = from;
   } else if ((agency?.email_trial_used ?? 0) < TRIAL_LIMIT && AIKORTEX_RESEND_API_KEY) {
     apiKey = AIKORTEX_RESEND_API_KEY;
     fromEmail = 'onboarding@resend.dev';

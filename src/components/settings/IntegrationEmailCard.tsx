@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   useEmailIntegrationStatus,
   useSaveEmailIntegration,
   useDisconnectEmailIntegration,
 } from "@/hooks/use-email-integration";
+
+const EMAIL_RE = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
 
 export default function IntegrationEmailCard() {
   const { data: status, isLoading } = useEmailIntegrationStatus();
@@ -29,9 +32,21 @@ export default function IntegrationEmailCard() {
   const isConnected = !!status?.connected;
   const showForm = editing || !isConnected;
 
+  const fromTrimmed = fromEmail.trim();
+  const fromDomain = fromTrimmed.includes("@") ? fromTrimmed.split("@")[1] : "";
+  const fromValid = EMAIL_RE.test(fromTrimmed);
+
   const onSave = async () => {
-    if (!apiKey.trim() || !fromEmail.trim()) return;
-    await save.mutateAsync({ api_key: apiKey.trim(), from_email: fromEmail.trim() });
+    const key = apiKey.trim();
+    if (!key) {
+      toast.error("Informe sua API Key do Resend");
+      return;
+    }
+    if (!fromValid) {
+      toast.error("From inválido — use um endereço completo, ex: contato@send.suaempresa.com");
+      return;
+    }
+    await save.mutateAsync({ api_key: key, from_email: fromTrimmed });
     setApiKey("");
     setEditing(false);
   };
@@ -148,12 +163,25 @@ export default function IntegrationEmailCard() {
               <Input
                 value={fromEmail}
                 onChange={(e) => setFromEmail(e.target.value)}
-                placeholder="no-reply@seudominio.com.br"
+                placeholder="contato@send.suaempresa.com.br"
                 className="text-xs"
               />
-              <p className="text-[11px] text-muted-foreground">
-                Domínio precisa estar verificado no Resend.
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                O domínio depois do <code className="px-1 py-px rounded bg-muted/60">@</code>{" "}
+                {fromDomain ? <strong className="text-foreground">({fromDomain})</strong> : ""} precisa estar{" "}
+                <a
+                  href="https://resend.com/domains"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline inline-flex items-center gap-0.5"
+                >
+                  verified na sua conta Resend <ExternalLink className="w-3 h-3" />
+                </a>
+                . Se você verificou um subdomínio (ex.: <code className="px-1 py-px rounded bg-muted/60">send.empresa.com</code>), o From precisa terminar nele — não no domínio root.
               </p>
+              {fromTrimmed && !fromValid && (
+                <p className="text-[11px] text-destructive">Formato inválido — use um email completo (local@dominio.tld)</p>
+              )}
             </div>
             <div className="flex gap-2">
               {editing && (
@@ -161,7 +189,7 @@ export default function IntegrationEmailCard() {
                   Cancelar
                 </Button>
               )}
-              <Button size="sm" onClick={onSave} disabled={save.isPending || !apiKey.trim() || !fromEmail.trim()}>
+              <Button size="sm" onClick={onSave} disabled={save.isPending || !apiKey.trim() || !fromValid}>
                 {save.isPending ? "Salvando..." : "Salvar conexão"}
               </Button>
             </div>
