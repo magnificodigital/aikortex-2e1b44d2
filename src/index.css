@@ -309,12 +309,11 @@ body::after {
   filter: blur(70px);
 }
 
-/* Dark mode - brushed chrome steel-blue base */
+/* Dark mode - neutral gradient background */
 .dark body {
   background:
-    radial-gradient(ellipse 90% 70% at 50% -10%, hsl(222 38% 21%) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 80% 10%, hsl(218 40% 18% / 0.55) 0%, transparent 55%),
-    linear-gradient(180deg, hsl(222 43% 7%) 0%, hsl(222 45% 5%) 100%);
+    radial-gradient(ellipse 80% 60% at 50% 0%, hsl(230 12% 14% / 0.6) 0%, transparent 55%),
+    linear-gradient(180deg, hsl(230 15% 10%) 0%, hsl(230 18% 7%) 100%);
   min-height: 100vh;
 }
 
