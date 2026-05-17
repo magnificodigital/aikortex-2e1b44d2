@@ -305,15 +305,15 @@ body::after {
 }
 
 .dark body::before {
-  background: radial-gradient(ellipse 60% 100% at 50% 0%, hsl(224 64% 57% / 0.12), transparent 70%);
-  height: 250px;
-  filter: blur(50px);
+  background: radial-gradient(ellipse 60% 100% at 50% 0%, hsl(222 38% 30% / 0.22), transparent 70%);
+  height: 280px;
+  filter: blur(60px);
 }
 
 .dark body::after {
-  background: radial-gradient(ellipse 40% 100% at 40% 0%, hsl(199 70% 50% / 0.08), transparent 70%);
-  height: 200px;
-  filter: blur(60px);
+  background: radial-gradient(ellipse 40% 100% at 40% 0%, hsl(215 25% 45% / 0.12), transparent 70%);
+  height: 220px;
+  filter: blur(70px);
 }
 
 /* Dark mode - brushed chrome steel-blue base */
