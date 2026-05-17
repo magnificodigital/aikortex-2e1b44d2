@@ -187,72 +187,70 @@
 .landing-bg {
   position: relative;
   overflow: hidden;
+  background: hsl(230 20% 8%);
 }
 
-.landing-bg::before,
-.landing-bg::after {
+/* Soft secondary atmospheric blobs (kept subtle) */
+.landing-bg::before {
   content: '';
   position: fixed;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.4;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.landing-bg::before {
   width: 600px;
   height: 600px;
   top: -10%;
   right: -5%;
-  background: radial-gradient(circle, hsl(220 18% 48% / 0.15), transparent 70%);
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle, hsl(215 30% 35% / 0.18), transparent 70%);
   animation: mesh-move 20s ease-in-out infinite;
 }
 
+/* Film grain overlay across the whole landing surface */
 .landing-bg::after {
-  width: 500px;
-  height: 500px;
-  bottom: -5%;
-  left: -5%;
-  background: radial-gradient(circle, hsl(199 89% 48% / 0.1), transparent 70%);
-  animation: mesh-move-alt 25s ease-in-out infinite;
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.18;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  animation: none;
 }
 
+/* Top-center light beam (the cone of light from the reference image) */
 .landing-bg-orb {
   position: fixed;
-  width: 400px;
-  height: 400px;
-  top: 40%;
-  left: 50%;
-  margin-left: -200px;
-  border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.25;
+  inset: -10% -20% auto -20%;
+  height: 110vh;
   pointer-events: none;
   z-index: 0;
-  background: radial-gradient(circle, hsl(220 20% 55% / 0.12), transparent 70%);
-  animation: mesh-move-slow 30s ease-in-out infinite;
+  opacity: 1;
+  background:
+    radial-gradient(ellipse 38% 70% at 50% 0%, hsl(210 90% 92% / 0.55) 0%, hsl(210 80% 70% / 0.28) 25%, hsl(215 70% 45% / 0.18) 45%, transparent 65%),
+    radial-gradient(ellipse 70% 90% at 50% -10%, hsl(215 60% 40% / 0.35) 0%, transparent 60%);
+  filter: blur(20px);
+  animation: none;
+}
+
+.dark .landing-bg {
+  background: hsl(230 22% 6%);
 }
 
 .dark .landing-bg::before {
-  background: radial-gradient(circle, hsl(222 38% 25% / 0.55), transparent 65%);
-  opacity: 0.75;
+  background: radial-gradient(circle, hsl(215 30% 30% / 0.25), transparent 70%);
+  opacity: 0.5;
   width: 700px;
   height: 700px;
 }
 
-.dark .landing-bg::after {
-  background: radial-gradient(circle, hsl(218 30% 30% / 0.35), transparent 65%);
-  opacity: 0.55;
-  width: 600px;
-  height: 600px;
-}
-
 .dark .landing-bg-orb {
-  background: radial-gradient(circle, hsl(215 25% 45% / 0.2), transparent 65%);
-  opacity: 0.45;
-  width: 500px;
-  height: 500px;
+  background:
+    radial-gradient(ellipse 38% 70% at 50% 0%, hsl(210 95% 95% / 0.7) 0%, hsl(210 85% 75% / 0.35) 22%, hsl(215 75% 50% / 0.22) 45%, transparent 65%),
+    radial-gradient(ellipse 70% 90% at 50% -10%, hsl(215 65% 42% / 0.4) 0%, transparent 60%);
+  opacity: 1;
 }
 
 /* Ambient top light animation */
