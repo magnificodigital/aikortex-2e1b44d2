@@ -156,6 +156,25 @@ const Home = () => {
     return "Boa noite";
   };
 
+  // Heurística simples para detectar gênero a partir do primeiro nome (PT-BR).
+  // Nomes terminados em 'a' geralmente são femininos; demais exceções listadas.
+  const detectHonorific = (fullName: string): "Sr" | "Sra" => {
+    const first = (fullName || "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+    if (!first) return "Sr";
+    const maleEndingInA = new Set([
+      "luca", "costa", "iuda", "barnaba", "elias", "tobias", "matias",
+      "joshua", "akira", "yoshua",
+    ]);
+    const femaleNotEndingInA = new Set([
+      "beatriz", "ines", "inês", "isis", "íris", "iris", "carmen", "miriam",
+      "raquel", "isabel", "soledad", "esther", "ester", "abigail", "rute",
+      "ruth", "judite", "estér",
+    ]);
+    if (femaleNotEndingInA.has(first)) return "Sra";
+    if (maleEndingInA.has(first)) return "Sr";
+    return first.endsWith("a") ? "Sra" : "Sr";
+  };
+
   const handlePromptChange = (val: string) => {
     setPrompt(val);
     if (val.trim().length > 3) {
@@ -192,10 +211,10 @@ const Home = () => {
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-3.5rem)] px-4">
         {/* Greeting */}
         <h1 className="text-3xl lg:text-5xl font-light text-foreground mb-3 text-center">
-          {getGreeting()}, <span className="italic">{userName}</span>
+          {getGreeting()}, {detectHonorific(userName)}. <span className="italic">{userName}</span>
         </h1>
         <p className="text-sm lg:text-base text-muted-foreground mb-10 text-center max-w-lg">
-          Crie Agentes inteligentes e Aplicações para Whatsapp e Web em minutos conversando com IA.
+          Crie Agentes inteligentes e Aplicações para Whatsapp e Web em minutos conversando com a inteligência artificial.
         </p>
 
         {/* Prompt Box */}
