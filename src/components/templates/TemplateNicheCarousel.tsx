@@ -39,6 +39,7 @@ const TemplateNicheCarousel = ({
   onUseTemplate,
   activeNiche,
   onNicheChange,
+  allNiches,
 }: Props) => {
   const groups = useMemo<NicheGroup[]>(() => {
     const map = new Map<string, NicheGroup>();
