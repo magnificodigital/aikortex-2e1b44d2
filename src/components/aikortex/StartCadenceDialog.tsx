@@ -49,6 +49,10 @@ export default function StartCadenceDialog({ open, onOpenChange, agentId, cadenc
   const [manualPhone, setManualPhone] = useState("");
 
   const schedule = useScheduleCadenceExecution();
+  const { data: emailStatus } = useEmailIntegrationStatus();
+
+  const hasEmailStep = (cadence.steps ?? []).some((s) => s.channel === "email");
+  const emailBlocked = hasEmailStep && !emailStatus?.connected && (emailStatus?.trial_remaining ?? 0) === 0;
 
   const contact = useMemo(() => {
     if (source === "manual") {
