@@ -76,9 +76,7 @@ const Home = () => {
     const detected = detectCategory(text);
     if (detected !== activeCreationTab) setActiveCreationTab(detected);
 
-    if (detected === "flows") {
-      navigate("/aikortex/automations", { state: { initialPrompt: text } });
-    } else if (detected === "agentes") {
+    if (detected === "agentes") {
       const agentInfo = detectAgentType(text);
 
       if (agentInfo) {
