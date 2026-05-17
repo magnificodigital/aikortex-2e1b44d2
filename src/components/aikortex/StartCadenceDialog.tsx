@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useScheduleCadenceExecution } from "@/hooks/use-agent-cadences";
+import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { useClientTables, useClientTableRows } from "@/hooks/use-client-tables";
 import type { AgentCadence } from "@/types/agent-cadences";
