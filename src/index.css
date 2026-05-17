@@ -55,46 +55,53 @@
   }
 
   .dark {
-    --background: 230 15% 9%;
-    --foreground: 220 15% 94%;
+    /* Brushed Chrome Metallic — deep navy base with silver chrome accents */
+    --background: 222 43% 7%;            /* #0a0f1a */
+    --foreground: 214 32% 91%;           /* slate-200 */
 
-    --card: 230 13% 12%;
-    --card-foreground: 220 15% 94%;
+    --card: 225 47% 10%;                 /* #0d1324 */
+    --card-foreground: 214 32% 91%;
 
-    --popover: 230 13% 12%;
-    --popover-foreground: 220 15% 94%;
+    --popover: 222 47% 11%;              /* slate-900 */
+    --popover-foreground: 214 32% 91%;
 
-    --primary: 220 20% 55%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary = brushed silver / chrome */
+    --primary: 213 27% 84%;              /* slate-300 */
+    --primary-foreground: 222 43% 7%;
 
-    --secondary: 230 10% 15%;
-    --secondary-foreground: 220 12% 88%;
+    --secondary: 220 37% 14%;            /* #162033 */
+    --secondary-foreground: 214 25% 80%;
 
-    --muted: 230 10% 13%;
-    --muted-foreground: 220 8% 48%;
+    --muted: 222 47% 11%;
+    --muted-foreground: 215 20% 55%;     /* slate-500 → 400 */
 
-    --accent: 230 10% 14%;
-    --accent-foreground: 220 15% 94%;
+    --accent: 220 37% 14%;
+    --accent-foreground: 214 32% 91%;
 
     --destructive: 0 68% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 230 8% 16%;
-    --input: 230 8% 16%;
-    --ring: 220 20% 55%;
+    --border: 217 33% 17%;               /* slate-800 */
+    --input: 217 33% 17%;
+    --ring: 213 27% 70%;
 
-    --sidebar-background: 230 15% 8%;
-    --sidebar-foreground: 220 8% 52%;
-    --sidebar-primary: 220 20% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 230 10% 12%;
-    --sidebar-accent-foreground: 220 15% 94%;
-    --sidebar-border: 230 8% 14%;
-    --sidebar-ring: 220 20% 55%;
+    --sidebar-background: 222 45% 6%;
+    --sidebar-foreground: 215 16% 55%;
+    --sidebar-primary: 213 27% 84%;
+    --sidebar-primary-foreground: 222 43% 7%;
+    --sidebar-accent: 220 37% 11%;
+    --sidebar-accent-foreground: 214 32% 91%;
+    --sidebar-border: 217 33% 14%;
+    --sidebar-ring: 213 27% 70%;
 
     --success: 152 60% 48%;
     --warning: 42 88% 56%;
     --info: 205 85% 52%;
+
+    /* Chrome gradient (silver brushed bevel) */
+    --gradient-chrome: linear-gradient(180deg, hsl(214 32% 91%) 0%, hsl(215 20% 65%) 100%);
+    --gradient-chrome-tr: linear-gradient(135deg, hsl(215 20% 55%) 0%, hsl(214 32% 88%) 100%);
+    --shadow-chrome: 0 1px 0 rgba(255,255,255,0.18) inset, 0 4px 12px rgba(0,0,0,0.45);
   }
 }
 
