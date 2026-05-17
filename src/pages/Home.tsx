@@ -48,7 +48,7 @@ function detectChannel(text: string): AppChannel {
 
 const Home = () => {
   const [prompt, setPrompt] = useState("");
-  const [activeCreationTab, setActiveCreationTab] = useState<"app" | "agentes" | "flows">("app");
+  const [activeCreationTab, setActiveCreationTab] = useState<"app" | "agentes">("app");
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [userName, setUserName] = useState("Usuário");
   const [detectedChannel, setDetectedChannel] = useState<AppChannel>(null);
