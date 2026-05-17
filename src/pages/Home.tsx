@@ -156,6 +156,25 @@ const Home = () => {
     return "Boa noite";
   };
 
+  // Heurística simples para detectar gênero a partir do primeiro nome (PT-BR).
+  // Nomes terminados em 'a' geralmente são femininos; demais exceções listadas.
+  const detectHonorific = (fullName: string): "Sr" | "Sra" => {
+    const first = (fullName || "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+    if (!first) return "Sr";
+    const maleEndingInA = new Set([
+      "luca", "costa", "iuda", "barnaba", "elias", "tobias", "matias",
+      "joshua", "akira", "yoshua",
+    ]);
+    const femaleNotEndingInA = new Set([
+      "beatriz", "ines", "inês", "isis", "íris", "iris", "carmen", "miriam",
+      "raquel", "isabel", "soledad", "esther", "ester", "abigail", "rute",
+      "ruth", "judite", "estér",
+    ]);
+    if (femaleNotEndingInA.has(first)) return "Sra";
+    if (maleEndingInA.has(first)) return "Sr";
+    return first.endsWith("a") ? "Sra" : "Sr";
+  };
+
   const handlePromptChange = (val: string) => {
     setPrompt(val);
     if (val.trim().length > 3) {
