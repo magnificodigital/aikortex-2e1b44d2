@@ -54,11 +54,10 @@ const TemplateNicheCarousel = ({
     return Array.from(map.values());
   }, [templates]);
 
-  const filterPills = useMemo(() => {
-    // Build category pills from currently loaded groups; if a niche filter is
-    // active we still want to show the other options, so derive from full data.
-    return groups;
-  }, [groups]);
+  const filterPills = useMemo<NicheOption[]>(() => {
+    if (allNiches && allNiches.length > 0) return allNiches;
+    return groups.map((g) => ({ slug: g.slug, name_pt: g.name, icon: g.icon }));
+  }, [allNiches, groups]);
 
   if (loading) {
     return (
