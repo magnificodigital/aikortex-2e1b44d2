@@ -15,12 +15,15 @@ const NICHE_BG: Record<string, string> = {
   imobiliario: bgImobiliario,
 };
 
+type NicheOption = { slug: string; name_pt: string; icon: string };
+
 type Props = {
   templates: TemplateRow[];
   loading?: boolean;
   onUseTemplate: (template: TemplateRow) => void;
   activeNiche?: string | null;
   onNicheChange?: (slug: string | null) => void;
+  allNiches?: NicheOption[];
 };
 
 type NicheGroup = {
