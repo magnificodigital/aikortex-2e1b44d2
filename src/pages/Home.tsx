@@ -22,11 +22,6 @@ const suggestionsByTab = {
     ["Agente BDR LinkedIn", "Agente CS Pós-Venda", "Agente de Pesquisa"],
     ["Agente de Onboarding", "Agente Cobranças", "Agente Agendamento"],
   ],
-  flows: [
-    ["Fluxo de Onboarding", "Automação de E-mail", "Pipeline de Vendas"],
-    ["Nutrição de Leads", "Fluxo Pós-Compra", "Workflow de Aprovação"],
-    ["Integração CRM + WhatsApp", "Fluxo de Cobrança", "Sequência Follow-up"],
-  ],
 };
 
 const tabIcons = { app: Monitor, agentes: Sparkles };
