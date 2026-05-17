@@ -68,6 +68,7 @@ const Aikortex = () => {
     category: "agent",
     search,
   });
+  const { data: nichesData } = useNichesWithCounts("agent");
 
   const [useTemplate, setUseTemplate] = useState<TemplateRow | null>(null);
 
