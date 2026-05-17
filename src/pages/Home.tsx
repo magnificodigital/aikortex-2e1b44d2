@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Monitor, Sparkles, Globe, ArrowUp, RefreshCw } from "lucide-react";
+import { Monitor, Sparkles, ArrowUp, RefreshCw } from "lucide-react";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,14 +22,9 @@ const suggestionsByTab = {
     ["Agente BDR LinkedIn", "Agente CS Pós-Venda", "Agente de Pesquisa"],
     ["Agente de Onboarding", "Agente Cobranças", "Agente Agendamento"],
   ],
-  flows: [
-    ["Fluxo de Onboarding", "Automação de E-mail", "Pipeline de Vendas"],
-    ["Nutrição de Leads", "Fluxo Pós-Compra", "Workflow de Aprovação"],
-    ["Integração CRM + WhatsApp", "Fluxo de Cobrança", "Sequência Follow-up"],
-  ],
 };
 
-const tabIcons = { app: Monitor, agentes: Sparkles, flows: Globe };
+const tabIcons = { app: Monitor, agentes: Sparkles };
 
 const WHATSAPP_KEYWORDS = ["whatsapp", "wpp", "zap", "zapzap", "mensagem", "conversa", "chat", "atendimento", "sac", "suporte ao cliente", "cliente pelo whatsapp", "whats"];
 const WEB_KEYWORDS = ["web", "site", "website", "dashboard", "portal", "painel", "landing", "página", "pagina", "sistema web", "plataforma", "saas", "aplicativo web", "app web"];
@@ -48,7 +43,7 @@ function detectChannel(text: string): AppChannel {
 
 const Home = () => {
   const [prompt, setPrompt] = useState("");
-  const [activeCreationTab, setActiveCreationTab] = useState<"app" | "agentes" | "flows">("app");
+  const [activeCreationTab, setActiveCreationTab] = useState<"app" | "agentes">("app");
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [userName, setUserName] = useState("Usuário");
   const [detectedChannel, setDetectedChannel] = useState<AppChannel>(null);
@@ -57,12 +52,10 @@ const Home = () => {
   const { user, isPlatform } = useAuth();
   const navigate = useNavigate();
 
-  const FLOW_KEYWORDS = ["fluxo", "flow", "automação", "automatizar", "automatização", "automation", "pipeline", "workflow", "nutrição", "sequência", "automacao", "sequencia"];
   const AGENT_KEYWORDS = ["agente", "agent", "sdr", "bdr", "sac", "suporte", "atendimento", "qualificação", "qualificacao", "qualificador", "prospecção", "prospeccao", "captura de lead", "captação", "captacao", "cobranças", "cobranca", "onboarding", "customer success", "cs ", "assistente", "diagnóstico", "diagnostico", "agendador", "agendamento", "chatbot", "bot", "vendas", "vender", "retenção", "retencao", "pós-venda", "pos-venda"];
 
-  const detectCategory = (text: string): "app" | "agentes" | "flows" => {
+  const detectCategory = (text: string): "app" | "agentes" => {
     const lower = text.toLowerCase();
-    if (FLOW_KEYWORDS.some((k) => lower.includes(k))) return "flows";
     if (AGENT_KEYWORDS.some((k) => lower.includes(k))) return "agentes";
     return "app";
   };
@@ -83,9 +76,7 @@ const Home = () => {
     const detected = detectCategory(text);
     if (detected !== activeCreationTab) setActiveCreationTab(detected);
 
-    if (detected === "flows") {
-      navigate("/aikortex/automations", { state: { initialPrompt: text } });
-    } else if (detected === "agentes") {
+    if (detected === "agentes") {
       const agentInfo = detectAgentType(text);
 
       if (agentInfo) {
@@ -138,7 +129,7 @@ const Home = () => {
     setSuggestionIndex((prev) => (prev + 1) % suggestionsByTab[activeCreationTab].length);
   }, [activeCreationTab]);
 
-  const handleTabChange = (tab: "app" | "agentes" | "flows") => {
+  const handleTabChange = (tab: "app" | "agentes") => {
     setActiveCreationTab(tab);
     setSuggestionIndex(0);
   };
@@ -211,8 +202,8 @@ const Home = () => {
         <div className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-xl shadow-black/5 overflow-hidden mb-8">
           {/* Creation tabs */}
           <div className="flex items-center gap-1 px-4 pt-3 pb-1">
-            {(["app", "agentes", "flows"] as const).map((tab) => {
-              const labels = { app: "App", agentes: "Agentes", flows: "Flows" };
+            {(["app", "agentes"] as const).map((tab) => {
+              const labels = { app: "App", agentes: "Agentes" };
               return (
                 <button
                   key={tab}
@@ -225,7 +216,6 @@ const Home = () => {
                 >
                   {tab === "app" && <Monitor className="w-4 h-4" />}
                   {tab === "agentes" && <Sparkles className="w-4 h-4" />}
-                  {tab === "flows" && <Globe className="w-4 h-4" />}
                   {labels[tab]}
                 </button>
               );
@@ -239,9 +229,7 @@ const Home = () => {
             placeholder={
               activeCreationTab === "app"
                 ? "Descreva o app que você quer criar..."
-                : activeCreationTab === "agentes"
-                ? "Descreva o agente que você precisa..."
-                : "Descreva o fluxo que você quer automatizar..."
+                : "Descreva o agente que você precisa..."
             }
             className="w-full bg-transparent border-none outline-none resize-none text-sm text-foreground placeholder:text-muted-foreground/50 px-5 py-3 min-h-[90px]"
             onKeyDown={(e) => {
