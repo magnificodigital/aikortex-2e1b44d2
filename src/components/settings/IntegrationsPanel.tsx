@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { IntegrationsGrid, ALL_PROVIDERS } from "@/components/shared/IntegrationsGrid";
 import IntegrationEmailCard from "@/components/settings/IntegrationEmailCard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+// Badge already imported above
 
 const PLACEHOLDER_CHANNELS = [
   { icon: MessageSquare, label: "WhatsApp (Meta Cloud API)", desc: "Templates aprovados e disparos via WABA. Disponível no próximo sprint." },
