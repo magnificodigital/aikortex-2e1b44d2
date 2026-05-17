@@ -17,6 +17,7 @@ const translations = {
     pricing: "Preços",
     signIn: "Entrar",
     startFree: "Comece grátis",
+    ctaExperts: "Fale com nossos especialistas",
     newBadge: "Novo",
     banner: "Conheça os Agentes IA que trabalham 24/7",
     heroTitle1: "Infinitas ",
