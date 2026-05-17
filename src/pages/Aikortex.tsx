@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useUserAgents, type UserAgent } from "@/hooks/use-user-agents";
 import { useActiveClient } from "@/hooks/use-active-client";
-import { useGalleryTemplates } from "@/hooks/use-niche-templates";
+import { useGalleryTemplates, useNichesWithCounts } from "@/hooks/use-niche-templates";
 import TemplateNicheCarousel from "@/components/templates/TemplateNicheCarousel";
 import TemplateSearchInput from "@/components/templates/TemplateSearchInput";
 import UseTemplateDialog from "@/components/templates/UseTemplateDialog";
