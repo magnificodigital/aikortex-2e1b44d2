@@ -145,14 +145,7 @@ const LandingPage = () => {
       {/* Top Navbar */}
       <header className={`relative z-20 flex items-center justify-between px-4 sm:px-6 lg:px-10 h-14 border-b ${borderColor}`}>
         <div className="flex items-center gap-6">
-          <img src={isDark ? aikortexLogoWhite : aikortexLogoBlack} alt="Aikortex" className="h-6 w-auto object-contain" />
-          <nav className={`hidden md:flex items-center gap-5 text-sm ${textMuted}`}>
-            <button onClick={() => setActiveCreationTab("agentes")} className={`flex items-center gap-1.5 ${textHover} transition-colors`}>
-              {t.agents}
-              <span className="text-[10px] font-bold uppercase bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">{t.newBadge}</span>
-            </button>
-            <button onClick={() => openAuthModal("signup")} className={`${textHover} transition-colors`}>{t.pricing}</button>
-          </nav>
+          <img src={isDark ? aikortexLogoWhite : aikortexLogoBlack} alt="Aikortex" className="h-8 w-auto object-contain" />
         </div>
 
         {/* Desktop actions */}
