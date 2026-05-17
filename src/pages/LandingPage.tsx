@@ -17,11 +17,12 @@ const translations = {
     pricing: "Preços",
     signIn: "Entrar",
     startFree: "Comece grátis",
+    ctaExperts: "Fale com nossos especialistas",
     newBadge: "Novo",
     banner: "Conheça os Agentes IA que trabalham 24/7",
     heroTitle1: "Infinitas ",
     heroTitle2: "possibilidades",
-    heroSubtitle: "Crie Agentes, Fluxos inteligentes e apps em\nminutos conversando com IA.",
+    heroSubtitle: "Crie Agentes inteligentes e Aplicações para Whatsapp e Web\nem minutos conversando com a inteligência artificial.",
     placeholder: "Crie um app que...",
     suggestions: {
       app: [
@@ -47,11 +48,12 @@ const translations = {
     pricing: "Pricing",
     signIn: "Sign in",
     startFree: "Start free",
+    ctaExperts: "Talk to our specialists",
     newBadge: "New",
     banner: "Meet the AI Agents that work 24/7",
     heroTitle1: "Infinite ",
     heroTitle2: "possibilities",
-    heroSubtitle: "Create Agents, smart Flows and apps in\nminutes by chatting with AI.",
+    heroSubtitle: "Create intelligent Agents and Applications for WhatsApp and Web\nin minutes chatting with artificial intelligence.",
     placeholder: "Create an app that...",
     suggestions: {
       app: [
@@ -270,73 +272,13 @@ const LandingPage = () => {
           {t.heroSubtitle}
         </p>
 
-        {/* Prompt Box */}
-        <div className={`w-full max-w-2xl rounded-xl border ${cardBg} p-1 mb-8`}>
-          <div className="flex items-center gap-1 px-3 pt-2 pb-1">
-            {(["app", "agentes", "flows"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => handleTabChange(tab)}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  activeCreationTab === tab ? "bg-primary/15 text-primary" : tabInactive
-                }`}
-              >
-                {tab === "app" && <Monitor className="w-4 h-4" />}
-                {tab === "agentes" && <Sparkles className="w-4 h-4" />}
-                {tab === "flows" && <Globe className="w-4 h-4" />}
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder={t.placeholder}
-            className={`w-full bg-transparent border-none outline-none resize-none text-sm ${inputText} px-4 py-3 min-h-[80px]`}
-          />
-
-          <div className="flex items-center justify-between px-3 pb-2">
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className={`h-8 w-8 ${textLight} ${textHover} hover:bg-accent/50`}>
-                <Plus className="w-4 h-4" />
-              </Button>
-              <button className={`flex items-center gap-1.5 h-8 px-3 text-xs ${textLight} border ${isDark ? "border-white/10 hover:bg-white/5" : "border-border hover:bg-accent"} rounded-lg transition-colors`}>
-                <Monitor className="w-3.5 h-3.5" />
-                GPT-5
-                <ChevronDown className="w-3 h-3" />
-              </button>
-            </div>
-            <Button
-              size="icon"
-              className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
-              disabled={!prompt.trim()}
-              onClick={() => openAuthModal("signup")}
-            >
-              <ArrowUp className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Suggestions */}
-        <div className="flex items-center gap-3 flex-wrap justify-center">
-          {currentSuggestions.map((label) => (
-            <button
-              key={label}
-              onClick={() => setPrompt(label)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm ${suggBorder} transition-colors`}
-            >
-              <SuggestionIcon className="w-4 h-4" />
-              {label}
-            </button>
-          ))}
-          <button
-            onClick={refreshSuggestions}
-            className={`flex items-center justify-center w-10 h-10 rounded-full border ${suggBorder} transition-colors`}
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
+        {/* CTA */}
+        <button
+          onClick={() => openAuthModal("signup")}
+          className="px-8 py-4 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-medium transition-colors shadow-lg mb-8"
+        >
+          {t.ctaExperts}
+        </button>
       </div>
 
       {/* Auth Modal */}
