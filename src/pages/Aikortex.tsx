@@ -109,9 +109,26 @@ const Aikortex = () => {
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
-            <TabsTrigger value="mine">Meus Agentes ({agents.length})</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsList className="relative h-11 p-1 bg-card/60 backdrop-blur-sm border border-border rounded-full inline-flex gap-1">
+            <TabsTrigger
+              value="mine"
+              className="relative z-10 rounded-full px-5 h-9 text-sm font-medium text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_24px_-6px_hsl(var(--primary)/0.6)] transition-all"
+            >
+              <span className="inline-flex items-center gap-2">
+                Meus Agentes
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-foreground/10 data-[state=active]:bg-primary-foreground/15">
+                  {agents.length}
+                </span>
+              </span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="templates"
+              className="relative z-10 rounded-full px-5 h-9 text-sm font-medium text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_24px_-6px_hsl(var(--primary)/0.6)] transition-all"
+            >
+              <span className="inline-flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5" /> Templates
+              </span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="mine" className="mt-6">
