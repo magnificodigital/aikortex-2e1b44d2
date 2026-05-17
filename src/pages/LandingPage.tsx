@@ -200,21 +200,6 @@ const LandingPage = () => {
           />
           <div className={`absolute top-14 left-0 right-0 z-20 md:hidden border-b ${borderColor} ${isDark ? "bg-[#0a0a0f]/95 backdrop-blur-xl" : "bg-white/95 backdrop-blur-xl"} animate-in slide-in-from-top-2 duration-200`}>
             <div className="flex flex-col px-5 py-4 gap-1">
-              <button
-                onClick={() => { setActiveCreationTab("agentes"); setMobileMenuOpen(false); }}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm ${textMuted} ${textHover} transition-colors text-left`}
-              >
-                <Sparkles className="w-4 h-4" />
-                {t.agents}
-                <span className="text-[10px] font-bold uppercase bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">{t.newBadge}</span>
-              </button>
-              <button
-                onClick={() => openAuthModal("signup")}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm ${textMuted} ${textHover} transition-colors text-left`}
-              >
-                {t.pricing}
-              </button>
-
               <div className={`my-2 border-t ${borderColor}`} />
 
               <Select value={lang} onValueChange={(v) => { handleLangChange(v); setMobileMenuOpen(false); }}>
