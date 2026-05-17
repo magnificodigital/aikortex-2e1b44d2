@@ -83,7 +83,9 @@ async function sendViaEmail(opts: {
     fromEmail = from;
   } else if ((agency?.email_trial_used ?? 0) < TRIAL_LIMIT && AIKORTEX_RESEND_API_KEY) {
     apiKey = AIKORTEX_RESEND_API_KEY;
-    fromEmail = 'onboarding@resend.dev';
+    // Domínio verificado na conta Resend master da Aikortex.
+    // Deve sempre apontar pra um domínio cujo DNS está verified nessa conta.
+    fromEmail = 'cortesia@sendmail.aikortex.com';
     isTrial = true;
   } else if ((agency?.email_trial_used ?? 0) >= TRIAL_LIMIT) {
     return { ok: false, error: 'TRIAL_EXHAUSTED: configure sua chave Resend em Settings → Integrações → Email' };
