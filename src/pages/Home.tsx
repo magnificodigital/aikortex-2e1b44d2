@@ -29,7 +29,7 @@ const suggestionsByTab = {
   ],
 };
 
-const tabIcons = { app: Monitor, agentes: Sparkles, flows: Globe };
+const tabIcons = { app: Monitor, agentes: Sparkles };
 
 const WHATSAPP_KEYWORDS = ["whatsapp", "wpp", "zap", "zapzap", "mensagem", "conversa", "chat", "atendimento", "sac", "suporte ao cliente", "cliente pelo whatsapp", "whats"];
 const WEB_KEYWORDS = ["web", "site", "website", "dashboard", "portal", "painel", "landing", "página", "pagina", "sistema web", "plataforma", "saas", "aplicativo web", "app web"];
