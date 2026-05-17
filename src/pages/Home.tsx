@@ -129,7 +129,7 @@ const Home = () => {
     setSuggestionIndex((prev) => (prev + 1) % suggestionsByTab[activeCreationTab].length);
   }, [activeCreationTab]);
 
-  const handleTabChange = (tab: "app" | "agentes" | "flows") => {
+  const handleTabChange = (tab: "app" | "agentes") => {
     setActiveCreationTab(tab);
     setSuggestionIndex(0);
   };
