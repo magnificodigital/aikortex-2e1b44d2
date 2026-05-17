@@ -222,6 +222,9 @@ const Aikortex = () => {
               templates={templates}
               loading={templatesLoading}
               onUseTemplate={(t) => setUseTemplate(t)}
+              activeNiche={nicheSlug}
+              onNicheChange={setNiche}
+              allNiches={nichesData?.niches.map((n) => ({ slug: n.slug, name_pt: n.name_pt, icon: n.icon }))}
             />
           </TabsContent>
         </Tabs>
