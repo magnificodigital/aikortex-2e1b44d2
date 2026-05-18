@@ -235,11 +235,11 @@ const LandingPage = () => {
       {/* Content */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4">
         {/* Announcement Banner */}
-        <button className={`flex items-center gap-2 mb-10 px-5 py-2.5 rounded-full border text-sm ${bannerBg} transition-colors`}>
+        <div className={`flex items-center gap-2 mb-10 text-sm ${textMuted}`}>
           <span className="text-[10px] font-bold uppercase bg-primary text-primary-foreground px-2 py-0.5 rounded-full">{t.newBadge}</span>
           {t.banner}
           <span className={isDark ? "text-white/40" : "text-muted-foreground"}>→</span>
-        </button>
+        </div>
 
         {/* Hero */}
         <h1 className="text-5xl sm:text-6xl lg:text-7xl font-light text-center mb-5 tracking-tight">
@@ -253,12 +253,10 @@ const LandingPage = () => {
         {/* CTA */}
         <button
           onClick={() => openAuthModal("signup")}
-          className="group px-10 py-3.5 rounded-full border border-white/15 bg-transparent text-white/70 text-base font-light tracking-wide transition-all duration-300 hover:border-white/30 hover:text-white hover:bg-white/[0.03] active:scale-[0.98] mb-8"
+          className={`flex items-center gap-2 mb-8 px-5 py-2.5 rounded-full border text-sm ${bannerBg} transition-colors`}
         >
-          <span className="flex items-center gap-2">
-            {t.ctaExperts}
-            <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
-          </span>
+          {t.ctaExperts}
+          <ArrowRight className="w-4 h-4" />
         </button>
       </div>
 
