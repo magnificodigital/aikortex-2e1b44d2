@@ -253,12 +253,11 @@ const LandingPage = () => {
         {/* CTA */}
         <button
           onClick={() => openAuthModal("signup")}
-          className="group relative px-10 py-4 cursor-pointer transition-all duration-300 active:scale-95 mb-8"
+          className="group px-10 py-3.5 rounded-full border border-white/15 bg-transparent text-white/70 text-base font-light tracking-wide transition-all duration-300 hover:border-white/30 hover:text-white hover:bg-white/[0.03] active:scale-[0.98] mb-8"
         >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] transition-all duration-300 group-hover:border-white/40 group-hover:from-white/20 group-hover:to-white/10" />
-          <span className="relative flex items-center gap-2 text-white font-medium tracking-wide text-lg">
+          <span className="flex items-center gap-2">
             {t.ctaExperts}
-            <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
+            <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
           </span>
         </button>
       </div>
