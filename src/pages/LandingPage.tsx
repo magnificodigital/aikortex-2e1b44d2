@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import aikortexLogoWhite from "@/assets/aikortex-logo-white.png";
 import aikortexLogoBlack from "@/assets/aikortex-logo-black.png";
-import { Monitor, Sparkles, Globe, ArrowUp, Plus, RefreshCw, Sun, Moon, ChevronDown, Menu, X } from "lucide-react";
+import { Monitor, Sparkles, Globe, ArrowUp, Plus, RefreshCw, Sun, Moon, ChevronDown, Menu, X, ArrowRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
