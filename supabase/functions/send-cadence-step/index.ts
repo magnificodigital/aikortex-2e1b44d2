@@ -299,8 +299,8 @@ Deno.serve(async (req) => {
             to: meta.email || meta.Email || execution.contact_phone, // fallback
             subject,
             body: message,
-            fromName: cadence.from_name ?? null,
-            replyTo: cadence.reply_to ?? null,
+            fromName: (currentStep.from_name ?? '').toString().trim() || null,
+            replyTo: (currentStep.reply_to ?? '').toString().trim() || null,
           });
           break;
         case 'whatsapp':
