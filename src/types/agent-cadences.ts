@@ -4,6 +4,9 @@ export type CadenceChannel = 'whatsapp' | 'email' | 'sms';
  * Step delay is expressed as pure offset from the cadence start:
  * day + hour + minute compose a single duration (NOT an absolute clock time).
  * Example: day=1, hour=2, minute=30 → fire 1d 2h 30min after started_at.
+ *
+ * subject_template applies only to email channel. Supports placeholders
+ * the same way message_template does ({nome}, {email}, or any contact_metadata key).
  */
 export type CadenceStep = {
   id: string;
@@ -11,6 +14,7 @@ export type CadenceStep = {
   hour: number;
   minute: number;
   channel: CadenceChannel;
+  subject_template?: string;
   message_template: string;
   conditions?: {
     skip_if_replied?: boolean;
@@ -26,6 +30,8 @@ export type AgentCadence = {
   steps: CadenceStep[];
   trigger_type: 'manual' | 'auto';
   enabled: boolean;
+  from_name: string | null;
+  reply_to: string | null;
   executions_count?: number;
   created_at: string;
   updated_at: string;
@@ -75,6 +81,7 @@ export function makeEmptyStep(): CadenceStep {
     hour: 0,
     minute: 0,
     channel: 'email',
+    subject_template: '',
     message_template: '',
   };
 }

@@ -9,6 +9,8 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const AIKORTEX_RESEND_API_KEY = Deno.env.get('AIKORTEX_RESEND_API_KEY') ?? '';
+const HMAC_SECRET = Deno.env.get('UNSUBSCRIBE_HMAC_SECRET') ?? '';
+const PUBLIC_FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
 const TRIAL_LIMIT = 100;
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -45,13 +47,73 @@ function currentYearMonth(): string {
   return new Date().toISOString().slice(0, 7);
 }
 
+async function signUnsubscribe(agentId: string, email: string): Promise<string> {
+  if (!HMAC_SECRET) return '';
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(HMAC_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const payload = `${agentId}|${email.toLowerCase().trim()}`;
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function buildUnsubscribeUrl(agentId: string, email: string): Promise<string> {
+  const sig = await signUnsubscribe(agentId, email);
+  return `${PUBLIC_FUNCTIONS_BASE}/cadence-unsubscribe?agent=${encodeURIComponent(agentId)}&email=${encodeURIComponent(email)}&sig=${sig}`;
+}
+
+async function isUnsubscribed(agentId: string, email: string): Promise<boolean> {
+  const { data } = await admin
+    .from('cadence_unsubscribes')
+    .select('id')
+    .eq('agent_id', agentId)
+    .ilike('contact_email', email.trim())
+    .eq('channel', 'email')
+    .maybeSingle();
+  return !!data;
+}
+
+// Constrói "Name <email@x.com>" (RFC 5322) ou só "email" se nome vazio.
+// Faz escaping mínimo de aspas no nome.
+function buildFromHeader(email: string, name: string | null | undefined): string {
+  const n = (name ?? '').trim();
+  if (!n) return email;
+  const safe = n.replace(/"/g, '\\"');
+  return `"${safe}" <${email}>`;
+}
+
+function appendUnsubscribeFooter(body: string, unsubscribeUrl: string, fromName: string | null | undefined): string {
+  const sender = (fromName ?? '').trim() || 'este remetente';
+  const footer = [
+    '',
+    '',
+    '— — —',
+    `Você está recebendo este email porque consta em uma lista de contatos gerenciada por ${sender}.`,
+    `Para parar de receber, clique aqui: ${unsubscribeUrl}`,
+  ].join('\n');
+  return `${body}${footer}`;
+}
+
 async function sendViaEmail(opts: {
   agencyId: string;
+  agentId: string;
   to: string | null | undefined;
   subject: string;
   body: string;
-}): Promise<{ ok: boolean; error?: string; trial?: boolean }> {
+  fromName: string | null;
+  replyTo: string | null;
+}): Promise<{ ok: boolean; error?: string; trial?: boolean; skipped?: 'unsubscribed' }> {
   if (!opts.to) return { ok: false, error: 'Contato sem email' };
+
+  // Compliance: verificar opt-out ANTES de qualquer envio
+  if (await isUnsubscribed(opts.agentId, opts.to)) {
+    log('skipping unsubscribed contact', opts.to);
+    return { ok: false, skipped: 'unsubscribed', error: 'RECIPIENT_UNSUBSCRIBED' };
+  }
 
   const { data: secrets } = await admin
     .from('agency_secrets')
@@ -83,8 +145,6 @@ async function sendViaEmail(opts: {
     fromEmail = from;
   } else if ((agency?.email_trial_used ?? 0) < TRIAL_LIMIT && AIKORTEX_RESEND_API_KEY) {
     apiKey = AIKORTEX_RESEND_API_KEY;
-    // Domínio verificado na conta Resend master da Aikortex.
-    // Deve sempre apontar pra um domínio cujo DNS está verified nessa conta.
     fromEmail = 'cortesia@sendmail.aikortex.com';
     isTrial = true;
   } else if ((agency?.email_trial_used ?? 0) >= TRIAL_LIMIT) {
@@ -93,7 +153,27 @@ async function sendViaEmail(opts: {
     return { ok: false, error: 'MISSING_CHANNEL_CONFIG: nenhuma chave Resend disponível (trial Aikortex não configurado)' };
   }
 
-  log('sending email', { to: opts.to, from: fromEmail, isTrial });
+  const fromHeader = buildFromHeader(fromEmail, opts.fromName);
+  const unsubscribeUrl = await buildUnsubscribeUrl(opts.agentId, opts.to);
+  const bodyWithFooter = appendUnsubscribeFooter(opts.body, unsubscribeUrl, opts.fromName);
+
+  const payload: Record<string, unknown> = {
+    from: fromHeader,
+    to: opts.to,
+    subject: opts.subject,
+    text: bodyWithFooter,
+    // List-Unsubscribe header (RFC 8058) — clientes de email reconhecem e mostram
+    // botão nativo "cancelar inscrição"; melhora reputation e reduz spam-flag.
+    headers: {
+      'List-Unsubscribe': `<${unsubscribeUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+  };
+  if (opts.replyTo && opts.replyTo.trim()) {
+    payload.reply_to = opts.replyTo.trim();
+  }
+
+  log('sending email', { to: opts.to, from: fromHeader, replyTo: payload.reply_to, isTrial });
 
   const resp = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -101,12 +181,7 @@ async function sendViaEmail(opts: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: opts.to,
-      subject: opts.subject,
-      text: opts.body,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!resp.ok) {
@@ -202,21 +277,30 @@ Deno.serve(async (req) => {
     await admin.from('cadence_executions').update({ status: 'running' }).eq('id', executionId);
 
     const meta = (execution.contact_metadata ?? {}) as Record<string, any>;
-    const message = renderTemplate(currentStep.message_template ?? '', {
+    const placeholders = {
       ...meta,
       nome: meta.nome || meta.name || execution.contact_name,
       name: meta.name || meta.nome || execution.contact_name,
-    });
+    };
+    const message = renderTemplate(currentStep.message_template ?? '', placeholders);
 
-    let sendResult: { ok: boolean; error?: string; trial?: boolean };
+    // Subject: usa template do step se existir, com fallback pro nome da cadência + step #.
+    const subjectTpl = (currentStep.subject_template ?? '').toString().trim();
+    const subjectFallback = `${cadence.name} — Mensagem ${execution.current_step + 1}`;
+    const subject = subjectTpl ? renderTemplate(subjectTpl, placeholders) : subjectFallback;
+
+    let sendResult: { ok: boolean; error?: string; trial?: boolean; skipped?: 'unsubscribed' };
     try {
       switch (currentStep.channel) {
         case 'email':
           sendResult = await sendViaEmail({
             agencyId,
+            agentId: execution.agent_id,
             to: meta.email || meta.Email || execution.contact_phone, // fallback
-            subject: `${cadence.name} — Step ${execution.current_step + 1}`,
+            subject,
             body: message,
+            fromName: cadence.from_name ?? null,
+            replyTo: cadence.reply_to ?? null,
           });
           break;
         case 'whatsapp':
@@ -233,6 +317,16 @@ Deno.serve(async (req) => {
     }
 
     log('send result', sendResult);
+
+    // Caso especial: contato descadastrou → cancela a execution inteira (não tenta steps seguintes).
+    if (sendResult.skipped === 'unsubscribed') {
+      await admin.from('cadence_executions').update({
+        status: 'cancelled',
+        completed_at: new Date().toISOString(),
+        last_error: 'recipient_unsubscribed',
+      }).eq('id', executionId);
+      return jsonOk(sendResult);
+    }
 
     if (sendResult.ok) {
       const nextIdx = execution.current_step + 1;

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Clock, Plus, Trash2, X, Calendar } from "lucide-react";
+import { useState } from "react";
+import { Clock, Plus, Trash2, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,21 @@ import {
   formatStepDelay,
 } from "@/types/agent-cadences";
 
+// Substitui placeholders {chave} usando o meta fornecido (espelha o engine do servidor).
+function renderTemplate(tpl: string, meta: Record<string, any>): string {
+  return (tpl ?? "").replace(/\{(\w+)\}/g, (_, k) => (meta?.[k] ?? `{${k}}`));
+}
+
+// Contato de exemplo usado pra preview no editor.
+const PREVIEW_CONTACT: Record<string, string> = {
+  nome: "Maria Silva",
+  name: "Maria Silva",
+  telefone: "(11) 99999-9999",
+  email: "maria@exemplo.com",
+};
+
+const EMAIL_RE = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,6 +47,8 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
   const [name, setName] = useState(cadence?.name ?? "");
   const [description, setDescription] = useState(cadence?.description ?? "");
   const [triggerType, setTriggerType] = useState<"manual" | "auto">(cadence?.trigger_type ?? "manual");
+  const [fromName, setFromName] = useState(cadence?.from_name ?? "");
+  const [replyTo, setReplyTo] = useState(cadence?.reply_to ?? "");
   const [steps, setSteps] = useState<CadenceStep[]>(
     cadence?.steps?.length ? cadence.steps : [makeEmptyStep()]
   );
@@ -68,6 +85,7 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
 
   const validate = (): string | null => {
     if (!name.trim()) return "Nome é obrigatório";
+    if (replyTo.trim() && !EMAIL_RE.test(replyTo.trim())) return "Reply-to: formato de email inválido";
     if (steps.length === 0) return "Adicione ao menos 1 step";
     if (steps.length > MAX_STEPS) return `Máximo ${MAX_STEPS} steps`;
     for (const [i, s] of steps.entries()) {
@@ -78,6 +96,10 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
       const msg = (s.message_template ?? "").trim();
       if (msg.length < 1) return `Step ${n}: mensagem obrigatória`;
       if (msg.length > 1000) return `Step ${n}: mensagem até 1000 caracteres`;
+      if (s.channel === "email") {
+        const subj = (s.subject_template ?? "").trim();
+        if (subj.length > 200) return `Step ${n}: assunto até 200 caracteres`;
+      }
       const placeholders = Array.from(new Set((msg.match(/\{[^}]+\}/g) ?? [])));
       if (placeholders.length > 10) return `Step ${n}: máximo 10 placeholders distintos`;
     }
@@ -91,6 +113,8 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
       return;
     }
     const ordered = sortStepsChronologically(steps);
+    const fromNameTrimmed = fromName.trim() || null;
+    const replyToTrimmed = replyTo.trim() || null;
     try {
       if (isEdit && cadence) {
         await update.mutateAsync({
@@ -100,6 +124,8 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
           description: description.trim() || null,
           steps: ordered,
           trigger_type: triggerType,
+          from_name: fromNameTrimmed,
+          reply_to: replyToTrimmed,
         });
       } else {
         await create.mutateAsync({
@@ -109,6 +135,8 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
           steps: ordered,
           trigger_type: triggerType,
           enabled: true,
+          from_name: fromNameTrimmed,
+          reply_to: replyToTrimmed,
         });
       }
       onOpenChange(false);
@@ -116,6 +144,8 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
       /* toast handled in hook */
     }
   };
+
+  const hasEmailStep = steps.some((s) => s.channel === "email");
 
   const saving = create.isPending || update.isPending;
 
@@ -168,6 +198,43 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                 maxLength={500}
               />
             </div>
+
+            {hasEmailStep && (
+              <div className="border-t border-border pt-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-medium">Remetente do email</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cad-from-name" className="text-xs">Nome do remetente (display)</Label>
+                    <Input
+                      id="cad-from-name"
+                      value={fromName}
+                      onChange={(e) => setFromName(e.target.value)}
+                      placeholder="Ex: Clínica São Paulo"
+                      maxLength={60}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Aparece como "<strong>{fromName.trim() || "Nome"}</strong> &lt;email@...&gt;" no inbox.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cad-reply-to" className="text-xs">Responder para (reply-to)</Label>
+                    <Input
+                      id="cad-reply-to"
+                      value={replyTo}
+                      onChange={(e) => setReplyTo(e.target.value)}
+                      placeholder="contato@suaempresa.com.br"
+                      type="email"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Opcional. Se preenchido, respostas vão para esse endereço em vez do "from".
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="border-t border-border pt-3">
               <div className="flex items-center justify-between mb-2">
@@ -247,6 +314,21 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                       </div>
                     </div>
 
+                    {s.channel === "email" && (
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Assunto do email</Label>
+                        <Input
+                          value={s.subject_template ?? ""}
+                          onChange={(e) => updateStep(idx, { subject_template: e.target.value })}
+                          placeholder="Ex: Olá {nome}, sua consulta foi confirmada"
+                          maxLength={200}
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Suporta placeholders. Se vazio, será usado o nome da cadência + número da mensagem.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="space-y-1">
                       <Label className="text-[10px] text-muted-foreground">Mensagem</Label>
                       <Textarea
@@ -257,9 +339,37 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                         maxLength={1000}
                       />
                       <p className="text-[10px] text-muted-foreground">
-                        Placeholders: <code>{"{nome}"}</code>, <code>{"{telefone}"}</code>, <code>{"{email}"}</code>
+                        Placeholders: <code>{"{nome}"}</code>, <code>{"{telefone}"}</code>, <code>{"{email}"}</code> ou qualquer coluna da tabela do cliente.
                       </p>
                     </div>
+
+                    {s.channel === "email" && (s.message_template?.trim() || s.subject_template?.trim()) && (
+                      <div className="rounded-md border border-dashed border-border bg-muted/20 p-2.5 space-y-1.5">
+                        <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Preview (com contato de exemplo)</p>
+                        <div className="space-y-0.5 text-[11px]">
+                          <p>
+                            <span className="text-muted-foreground">De: </span>
+                            <span className="font-medium">{fromName.trim() || "(sem nome)"} </span>
+                            <span className="text-muted-foreground">&lt;contato@...&gt;</span>
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Assunto: </span>
+                            <span className="font-medium">
+                              {renderTemplate(s.subject_template?.trim() || `${name || "Cadência"} — Mensagem ${idx + 1}`, PREVIEW_CONTACT)}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="border-t border-border/50 pt-1.5">
+                          <pre className="whitespace-pre-wrap font-sans text-[11px] text-foreground/90 leading-relaxed">
+{renderTemplate(s.message_template || "", PREVIEW_CONTACT)}
+
+— — —
+Você está recebendo este email porque consta em uma lista de contatos gerenciada por {fromName.trim() || "este remetente"}.
+Para parar de receber, clique aqui: [link gerado automaticamente]
+                          </pre>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

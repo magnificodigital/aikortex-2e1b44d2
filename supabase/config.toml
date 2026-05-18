@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.send-cadence-step]
 verify_jwt = false
+
+[functions.cadence-unsubscribe]
+verify_jwt = false
