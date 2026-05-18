@@ -214,12 +214,6 @@ const LandingPage = () => {
                 >
                   {t.signIn}
                 </button>
-                <button
-                  onClick={() => openAuthModal("signup")}
-                  className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium transition-colors"
-                >
-                  {t.startFree}
-                </button>
               </div>
             </div>
           </div>
