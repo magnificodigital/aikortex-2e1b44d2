@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import aikortexLogoWhite from "@/assets/aikortex-logo-white.png";
 import aikortexLogoBlack from "@/assets/aikortex-logo-black.png";
-import { Monitor, Sparkles, Globe, ArrowUp, Plus, RefreshCw, Sun, Moon, ChevronDown, Menu, X } from "lucide-react";
+import { Monitor, Sparkles, Globe, ArrowUp, Plus, RefreshCw, Sun, Moon, ChevronDown, Menu, X, ArrowRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
@@ -253,9 +253,13 @@ const LandingPage = () => {
         {/* CTA */}
         <button
           onClick={() => openAuthModal("signup")}
-          className="relative px-10 py-4 rounded-full bg-gradient-to-r from-primary/80 to-primary/50 text-primary-foreground text-lg font-medium transition-all duration-300 hover:brightness-110 hover:shadow-[0_0_32px_-8px_hsl(var(--primary)/0.45)] mb-8"
+          className="group relative px-10 py-4 cursor-pointer transition-all duration-300 active:scale-95 mb-8"
         >
-          {t.ctaExperts}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] transition-all duration-300 group-hover:border-white/40 group-hover:from-white/20 group-hover:to-white/10" />
+          <span className="relative flex items-center gap-2 text-white font-medium tracking-wide text-lg">
+            {t.ctaExperts}
+            <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
+          </span>
         </button>
       </div>
 
