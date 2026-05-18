@@ -143,7 +143,7 @@ const LandingPage = () => {
     <div className={`min-h-screen ${bg} flex flex-col landing-bg`}>
       <div className="landing-bg-orb" />
       {/* Top Navbar */}
-      <header className={`relative z-20 flex items-center justify-between px-4 sm:px-6 lg:px-10 h-14 border-b ${borderColor}`}>
+      <header className="relative z-20 flex items-center justify-between px-4 sm:px-6 lg:px-10 h-14">
         <div className="flex items-center gap-6">
           <img src={isDark ? aikortexLogoWhite : aikortexLogoBlack} alt="Aikortex" className="h-8 w-auto object-contain" />
         </div>
@@ -165,12 +165,6 @@ const LandingPage = () => {
           </Select>
           <button onClick={() => openAuthModal("signin")} className={`${textHover} transition-colors`}>
             {t.signIn}
-          </button>
-          <button
-            onClick={() => openAuthModal("signup")}
-            className="px-4 py-1.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium transition-colors"
-          >
-            {t.startFree}
           </button>
         </div>
 
@@ -219,12 +213,6 @@ const LandingPage = () => {
                   className={`w-full py-2.5 rounded-lg text-sm font-medium border ${isDark ? "border-white/10 text-white/80 hover:bg-white/5" : "border-border text-foreground hover:bg-accent"} transition-colors`}
                 >
                   {t.signIn}
-                </button>
-                <button
-                  onClick={() => openAuthModal("signup")}
-                  className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium transition-colors"
-                >
-                  {t.startFree}
                 </button>
               </div>
             </div>
