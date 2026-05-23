@@ -104,8 +104,6 @@ async function sendViaEmail(opts: {
   to: string | null | undefined;
   subject: string;
   body: string;
-  fromName: string | null;
-  replyTo: string | null;
 }): Promise<{ ok: boolean; error?: string; trial?: boolean; skipped?: 'unsubscribed' }> {
   if (!opts.to) return { ok: false, error: 'Contato sem email' };
 
@@ -117,7 +115,7 @@ async function sendViaEmail(opts: {
 
   const { data: secrets } = await admin
     .from('agency_secrets')
-    .select('resend_api_key, resend_from_email, agency_user_id')
+    .select('resend_api_key, resend_from_email, default_from_name, default_reply_to, agency_user_id')
     .eq('agency_user_id', (
       await admin.from('agency_profiles').select('user_id').eq('id', opts.agencyId).maybeSingle()
     ).data?.user_id ?? '')
@@ -133,6 +131,11 @@ async function sendViaEmail(opts: {
   let fromEmail = '';
   let isTrial = false;
 
+  // Identidade do remetente: vem sempre de agency_secrets (BYOK) ou do default Aikortex (trial).
+  // Nunca do step — step só carrega conteúdo (subject + message).
+  let fromName: string | null = (secrets?.default_from_name ?? '').toString().trim() || null;
+  let replyTo: string | null = (secrets?.default_reply_to ?? '').toString().trim() || null;
+
   if (secrets?.resend_api_key) {
     apiKey = secrets.resend_api_key;
     const from = (secrets.resend_from_email ?? '').trim();
@@ -146,6 +149,10 @@ async function sendViaEmail(opts: {
   } else if ((agency?.email_trial_used ?? 0) < TRIAL_LIMIT && AIKORTEX_RESEND_API_KEY) {
     apiKey = AIKORTEX_RESEND_API_KEY;
     fromEmail = 'cortesia@sendmail.aikortex.com';
+    // Trial: identidade padrão Aikortex (sobrescreve qualquer default_from_name da agência,
+    // pra deixar claro que é cortesia).
+    fromName = 'Aikortex (cortesia)';
+    replyTo = null;
     isTrial = true;
   } else if ((agency?.email_trial_used ?? 0) >= TRIAL_LIMIT) {
     return { ok: false, error: 'TRIAL_EXHAUSTED: configure sua chave Resend em Settings → Integrações → Email' };
@@ -153,9 +160,9 @@ async function sendViaEmail(opts: {
     return { ok: false, error: 'MISSING_CHANNEL_CONFIG: nenhuma chave Resend disponível (trial Aikortex não configurado)' };
   }
 
-  const fromHeader = buildFromHeader(fromEmail, opts.fromName);
+  const fromHeader = buildFromHeader(fromEmail, fromName);
   const unsubscribeUrl = await buildUnsubscribeUrl(opts.agentId, opts.to);
-  const bodyWithFooter = appendUnsubscribeFooter(opts.body, unsubscribeUrl, opts.fromName);
+  const bodyWithFooter = appendUnsubscribeFooter(opts.body, unsubscribeUrl, fromName);
 
   const payload: Record<string, unknown> = {
     from: fromHeader,
@@ -169,11 +176,11 @@ async function sendViaEmail(opts: {
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
   };
-  if (opts.replyTo && opts.replyTo.trim()) {
-    payload.reply_to = opts.replyTo.trim();
+  if (replyTo) {
+    payload.reply_to = replyTo;
   }
 
-  log('sending email', { to: opts.to, from: fromHeader, replyTo: payload.reply_to, isTrial });
+  log('sending email', { to: opts.to, from: fromHeader, replyTo, isTrial });
 
   const resp = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -299,8 +306,6 @@ Deno.serve(async (req) => {
             to: meta.email || meta.Email || execution.contact_phone, // fallback
             subject,
             body: message,
-            fromName: (currentStep.from_name ?? '').toString().trim() || null,
-            replyTo: (currentStep.reply_to ?? '').toString().trim() || null,
           });
           break;
         case 'whatsapp':

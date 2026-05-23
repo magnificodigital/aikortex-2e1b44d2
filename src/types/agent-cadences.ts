@@ -5,12 +5,13 @@ export type CadenceChannel = 'whatsapp' | 'email' | 'sms';
  * day + hour + minute compose a single duration (NOT an absolute clock time).
  * Example: day=1, hour=2, minute=30 → fire 1d 2h 30min after started_at.
  *
- * Channel-specific fields (per-step, not per-cadence):
- *   - subject_template / from_name / reply_to : usados apenas quando channel='email'
- *   - (futuro) whatsapp_template_id : quando channel='whatsapp'
- *   - (futuro) sms_sender_id : quando channel='sms'
+ * Conteúdo editorial por step (apenas o que muda mensagem a mensagem):
+ *   - subject_template : assunto do email (canal='email'). Suporta placeholders.
+ *   - message_template : corpo da mensagem (qualquer canal). Suporta placeholders.
  *
- * Templates suportam placeholders {chave} substituídos por contact_metadata.
+ * Identidade do remetente (from_name, reply_to, api_key) vive em
+ * agency_secrets — configurada uma vez por agência em Settings → Integrações.
+ * O engine puxa de lá em runtime.
  */
 export type CadenceStep = {
   id: string;
@@ -18,11 +19,7 @@ export type CadenceStep = {
   hour: number;
   minute: number;
   channel: CadenceChannel;
-  // Email-specific (channel='email')
   subject_template?: string;
-  from_name?: string;
-  reply_to?: string;
-  // Core
   message_template: string;
   conditions?: {
     skip_if_replied?: boolean;

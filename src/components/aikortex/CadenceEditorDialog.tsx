@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Clock, Plus, Trash2, Mail } from "lucide-react";
+import { Clock, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useCreateCadence, useUpdateCadence } from "@/hooks/use-agent-cadences";
+import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import {
   type AgentCadence,
   type CadenceStep,
@@ -31,8 +32,6 @@ const PREVIEW_CONTACT: Record<string, string> = {
   email: "maria@exemplo.com",
 };
 
-const EMAIL_RE = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
-
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -53,6 +52,13 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
 
   const create = useCreateCadence();
   const update = useUpdateCadence();
+  const { data: emailStatus } = useEmailIntegrationStatus();
+
+  // Identidade do remetente vem da integração (Settings → Integrações → Email).
+  // O preview mostra como vai chegar no inbox real.
+  const senderName = emailStatus?.from_name?.trim() || (emailStatus?.connected ? "(sem nome configurado)" : "Aikortex (cortesia)");
+  const senderEmail = emailStatus?.from_email || (emailStatus?.connected ? "" : "cortesia@sendmail.aikortex.com");
+  const senderReplyTo = emailStatus?.reply_to?.trim() || "";
 
   const updateStep = (idx: number, patch: Partial<CadenceStep>) => {
     setSteps((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
@@ -96,10 +102,6 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
       if (s.channel === "email") {
         const subj = (s.subject_template ?? "").trim();
         if (subj.length > 200) return `Step ${n}: assunto até 200 caracteres`;
-        const fn = (s.from_name ?? "").trim();
-        if (fn.length > 60) return `Step ${n}: nome do remetente até 60 caracteres`;
-        const rt = (s.reply_to ?? "").trim();
-        if (rt && !EMAIL_RE.test(rt)) return `Step ${n}: reply-to inválido`;
       }
       const placeholders = Array.from(new Set((msg.match(/\{[^}]+\}/g) ?? [])));
       if (placeholders.length > 10) return `Step ${n}: máximo 10 placeholders distintos`;
@@ -271,48 +273,18 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                     </div>
 
                     {s.channel === "email" && (
-                      <div className="space-y-2 rounded-md border border-dashed border-primary/30 bg-primary/5 p-2.5">
-                        <div className="flex items-center gap-1.5">
-                          <Mail className="w-3.5 h-3.5 text-primary" />
-                          <p className="text-[10px] uppercase tracking-wider font-semibold text-primary">Configurações de email</p>
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground">Assunto</Label>
-                          <Input
-                            value={s.subject_template ?? ""}
-                            onChange={(e) => updateStep(idx, { subject_template: e.target.value })}
-                            placeholder="Ex: Olá {nome}, sua consulta foi confirmada"
-                            maxLength={200}
-                            className="h-8 text-xs"
-                          />
-                          <p className="text-[9px] text-muted-foreground">
-                            Suporta placeholders. Se vazio, usa nome da cadência + número da mensagem.
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-[10px] text-muted-foreground">Nome do remetente</Label>
-                            <Input
-                              value={s.from_name ?? ""}
-                              onChange={(e) => updateStep(idx, { from_name: e.target.value })}
-                              placeholder="Ex: Clínica São Paulo"
-                              maxLength={60}
-                              className="h-8 text-xs"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-[10px] text-muted-foreground">Responder para (opcional)</Label>
-                            <Input
-                              type="email"
-                              value={s.reply_to ?? ""}
-                              onChange={(e) => updateStep(idx, { reply_to: e.target.value })}
-                              placeholder="contato@suaempresa.com"
-                              className="h-8 text-xs"
-                            />
-                          </div>
-                        </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Assunto do email</Label>
+                        <Input
+                          value={s.subject_template ?? ""}
+                          onChange={(e) => updateStep(idx, { subject_template: e.target.value })}
+                          placeholder="Ex: Olá {nome}, sua consulta foi confirmada"
+                          maxLength={200}
+                          className="h-8 text-xs"
+                        />
+                        <p className="text-[9px] text-muted-foreground">
+                          Suporta placeholders. Se vazio, usa nome da cadência + número da mensagem.
+                        </p>
                       </div>
                     )}
 
@@ -336,13 +308,13 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                         <div className="space-y-0.5 text-[11px]">
                           <p>
                             <span className="text-muted-foreground">De: </span>
-                            <span className="font-medium">{(s.from_name ?? "").trim() || "(sem nome)"} </span>
-                            <span className="text-muted-foreground">&lt;contato@...&gt;</span>
+                            <span className="font-medium">{senderName} </span>
+                            {senderEmail && <span className="text-muted-foreground">&lt;{senderEmail}&gt;</span>}
                           </p>
-                          {(s.reply_to ?? "").trim() && (
+                          {senderReplyTo && (
                             <p>
                               <span className="text-muted-foreground">Reply-to: </span>
-                              <span className="font-medium">{s.reply_to}</span>
+                              <span className="font-medium">{senderReplyTo}</span>
                             </p>
                           )}
                           <p>
@@ -357,10 +329,15 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
 {renderTemplate(s.message_template || "", PREVIEW_CONTACT)}
 
 — — —
-Você está recebendo este email porque consta em uma lista de contatos gerenciada por {(s.from_name ?? "").trim() || "este remetente"}.
+Você está recebendo este email porque consta em uma lista de contatos gerenciada por {senderName}.
 Para parar de receber, clique aqui: [link gerado automaticamente]
                           </pre>
                         </div>
+                        {!emailStatus?.connected && !emailStatus?.from_name && (
+                          <p className="text-[10px] text-amber-600 dark:text-amber-400 pt-1 border-t border-amber-500/20">
+                            ⚠ Configure o nome do remetente em <strong>Settings → Integrações → Email</strong> pra personalizar como o email chega no inbox.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

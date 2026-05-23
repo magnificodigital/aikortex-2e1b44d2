@@ -6,6 +6,8 @@ export type EmailIntegrationStatus = {
   agency_id: string | null;
   connected: boolean;
   from_email: string | null;
+  from_name: string | null;
+  reply_to: string | null;
   api_key_suffix: string | null;
   trial_used: number;
   trial_remaining: number;
@@ -25,7 +27,12 @@ export function useEmailIntegrationStatus() {
 export function useSaveEmailIntegration() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { api_key: string; from_email: string }) => {
+    mutationFn: async (payload: {
+      api_key: string;
+      from_email: string;
+      from_name?: string | null;
+      reply_to?: string | null;
+    }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
       const { error } = await (supabase as any)
@@ -35,6 +42,8 @@ export function useSaveEmailIntegration() {
             agency_user_id: user.id,
             resend_api_key: payload.api_key,
             resend_from_email: payload.from_email,
+            default_from_name: payload.from_name ?? null,
+            default_reply_to: payload.reply_to ?? null,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "agency_user_id" }

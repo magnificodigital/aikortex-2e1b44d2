@@ -22,11 +22,15 @@ export default function IntegrationEmailCard() {
   const [editing, setEditing] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [fromEmail, setFromEmail] = useState("");
+  const [fromName, setFromName] = useState("");
+  const [replyTo, setReplyTo] = useState("");
   const [showKey, setShowKey] = useState(false);
 
   useEffect(() => {
     if (status?.from_email) setFromEmail(status.from_email);
-  }, [status?.from_email]);
+    if (status?.from_name) setFromName(status.from_name);
+    if (status?.reply_to) setReplyTo(status.reply_to);
+  }, [status?.from_email, status?.from_name, status?.reply_to]);
 
   const trialRemaining = status?.trial_remaining ?? 0;
   const isConnected = !!status?.connected;
@@ -35,6 +39,9 @@ export default function IntegrationEmailCard() {
   const fromTrimmed = fromEmail.trim();
   const fromDomain = fromTrimmed.includes("@") ? fromTrimmed.split("@")[1] : "";
   const fromValid = EMAIL_RE.test(fromTrimmed);
+
+  const replyTrimmed = replyTo.trim();
+  const replyValid = !replyTrimmed || EMAIL_RE.test(replyTrimmed);
 
   const onSave = async () => {
     const key = apiKey.trim();
@@ -46,7 +53,16 @@ export default function IntegrationEmailCard() {
       toast.error("From inválido — use um endereço completo, ex: contato@send.suaempresa.com");
       return;
     }
-    await save.mutateAsync({ api_key: key, from_email: fromTrimmed });
+    if (!replyValid) {
+      toast.error("Reply-to inválido — deixe vazio ou use um email completo");
+      return;
+    }
+    await save.mutateAsync({
+      api_key: key,
+      from_email: fromTrimmed,
+      from_name: fromName.trim() || null,
+      reply_to: replyTrimmed || null,
+    });
     setApiKey("");
     setEditing(false);
   };
@@ -115,8 +131,16 @@ export default function IntegrationEmailCard() {
         {isConnected && !editing && (
           <div className="space-y-2 rounded-md border border-border p-3 bg-muted/30">
             <div className="text-xs flex justify-between gap-2">
-              <span className="text-muted-foreground">From:</span>
+              <span className="text-muted-foreground">From email:</span>
               <span className="font-mono text-foreground">{status?.from_email}</span>
+            </div>
+            <div className="text-xs flex justify-between gap-2">
+              <span className="text-muted-foreground">Nome do remetente:</span>
+              <span className="font-mono text-foreground">{status?.from_name || <em className="text-muted-foreground/70">(não configurado)</em>}</span>
+            </div>
+            <div className="text-xs flex justify-between gap-2">
+              <span className="text-muted-foreground">Reply-to:</span>
+              <span className="font-mono text-foreground">{status?.reply_to || <em className="text-muted-foreground/70">(usa o from)</em>}</span>
             </div>
             <div className="text-xs flex justify-between gap-2">
               <span className="text-muted-foreground">API Key:</span>
@@ -183,13 +207,46 @@ export default function IntegrationEmailCard() {
                 <p className="text-[11px] text-destructive">Formato inválido — use um email completo (local@dominio.tld)</p>
               )}
             </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border">
+              <div className="space-y-1">
+                <Label className="text-xs">Nome do remetente</Label>
+                <Input
+                  value={fromName}
+                  onChange={(e) => setFromName(e.target.value)}
+                  placeholder="Ex: Clínica São Paulo"
+                  maxLength={60}
+                  className="text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Aparece como "<strong>{fromName.trim() || "Nome"}</strong> &lt;{fromTrimmed || "email@..."}&gt;" no inbox.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Responder para (opcional)</Label>
+                <Input
+                  type="email"
+                  value={replyTo}
+                  onChange={(e) => setReplyTo(e.target.value)}
+                  placeholder="atendimento@suaempresa.com"
+                  className="text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Se preenchido, respostas vão pra esse endereço em vez do "from".
+                </p>
+                {replyTrimmed && !replyValid && (
+                  <p className="text-[11px] text-destructive">Formato inválido</p>
+                )}
+              </div>
+            </div>
+
             <div className="flex gap-2">
               {editing && (
                 <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setApiKey(""); }}>
                   Cancelar
                 </Button>
               )}
-              <Button size="sm" onClick={onSave} disabled={save.isPending || !apiKey.trim() || !fromValid}>
+              <Button size="sm" onClick={onSave} disabled={save.isPending || !apiKey.trim() || !fromValid || !replyValid}>
                 {save.isPending ? "Salvando..." : "Salvar conexão"}
               </Button>
             </div>
