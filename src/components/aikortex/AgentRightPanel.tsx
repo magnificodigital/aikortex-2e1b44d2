@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS, type ProviderConfig } from "@/components/shared/IntegrationsGrid";
+import OutboundChannelsBlock from "@/components/settings/OutboundChannelsBlock";
 import { Button } from "@/components/ui/button";
 import type { AgentType } from "@/types/agent-builder";
 import { CHANNELS_BY_AGENT_TYPE, TOOLS_BY_AGENT_TYPE } from "@/types/agent-builder";
@@ -1098,6 +1099,8 @@ const AgentRightPanel = ({
                   <h2 className="text-lg font-bold text-foreground">Integrações</h2>
                   <p className="text-sm text-muted-foreground mt-1">Conecte integrações para expandir as capacidades do agente.</p>
                 </div>
+
+                <OutboundChannelsBlock />
 
                 <IntegrationsGrid
                   providers={LLM_PROVIDERS}

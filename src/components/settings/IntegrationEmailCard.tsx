@@ -131,7 +131,7 @@ export default function IntegrationEmailCard() {
         {isConnected && !editing && (
           <div className="space-y-2 rounded-md border border-border p-3 bg-muted/30">
             <div className="text-xs flex justify-between gap-2">
-              <span className="text-muted-foreground">From email:</span>
+              <span className="text-muted-foreground">Email do remetente:</span>
               <span className="font-mono text-foreground">{status?.from_email}</span>
             </div>
             <div className="text-xs flex justify-between gap-2">
@@ -139,11 +139,11 @@ export default function IntegrationEmailCard() {
               <span className="font-mono text-foreground">{status?.from_name || <em className="text-muted-foreground/70">(não configurado)</em>}</span>
             </div>
             <div className="text-xs flex justify-between gap-2">
-              <span className="text-muted-foreground">Reply-to:</span>
-              <span className="font-mono text-foreground">{status?.reply_to || <em className="text-muted-foreground/70">(usa o from)</em>}</span>
+              <span className="text-muted-foreground">Responder para:</span>
+              <span className="font-mono text-foreground">{status?.reply_to || <em className="text-muted-foreground/70">(usa o email do remetente)</em>}</span>
             </div>
             <div className="text-xs flex justify-between gap-2">
-              <span className="text-muted-foreground">API Key:</span>
+              <span className="text-muted-foreground">Chave da API:</span>
               <span className="font-mono text-foreground">••••{status?.api_key_suffix}</span>
             </div>
             <div className="flex gap-2 pt-1">
@@ -164,7 +164,7 @@ export default function IntegrationEmailCard() {
         {showForm && (
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs">API Key (re_...)</Label>
+              <Label className="text-xs">Chave da API (re_...)</Label>
               <div className="relative">
                 <Input
                   type={showKey ? "text" : "password"}
@@ -183,7 +183,7 @@ export default function IntegrationEmailCard() {
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">From Email</Label>
+              <Label className="text-xs">Email do remetente</Label>
               <Input
                 value={fromEmail}
                 onChange={(e) => setFromEmail(e.target.value)}
