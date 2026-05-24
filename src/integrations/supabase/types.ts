@@ -232,6 +232,7 @@ export type Database = {
       agent_cadences: {
         Row: {
           agent_id: string
+          auto_trigger_table_id: string | null
           created_at: string
           description: string | null
           enabled: boolean
@@ -243,6 +244,7 @@ export type Database = {
         }
         Insert: {
           agent_id: string
+          auto_trigger_table_id?: string | null
           created_at?: string
           description?: string | null
           enabled?: boolean
@@ -254,6 +256,7 @@ export type Database = {
         }
         Update: {
           agent_id?: string
+          auto_trigger_table_id?: string | null
           created_at?: string
           description?: string | null
           enabled?: boolean
@@ -269,6 +272,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_cadences_auto_trigger_table_id_fkey"
+            columns: ["auto_trigger_table_id"]
+            isOneToOne: false
+            referencedRelation: "client_tables"
             referencedColumns: ["id"]
           },
         ]
