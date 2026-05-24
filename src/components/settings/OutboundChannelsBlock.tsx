@@ -13,7 +13,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
+import IntegrationVoiceForm from "@/components/settings/IntegrationVoiceForm";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
+import { useVoiceIntegrationStatus } from "@/hooks/use-voice-integration";
 
 type ChannelStatus = "connected" | "disconnected" | "coming_soon";
 
@@ -59,11 +61,11 @@ const CHANNELS: ChannelDef[] = [
   {
     key: "voice",
     name: "Voz",
-    provider: "ElevenLabs / Telnyx",
+    provider: "Telnyx + ElevenLabs",
     icon: Mic,
     iconBg: "bg-purple-500/10",
     iconColor: "text-purple-600 dark:text-purple-400",
-    description: "Chamadas com voz sintética.",
+    description: "Telefonia (Telnyx) e síntese de voz (ElevenLabs) para chamadas e voice mode.",
   },
 ];
 
@@ -84,11 +86,18 @@ function StatusLabel({ status }: { status: ChannelStatus }) {
 
 export default function OutboundChannelsBlock() {
   const { data: emailStatus } = useEmailIntegrationStatus();
+  const { data: voiceStatus } = useVoiceIntegrationStatus();
   const [openDialog, setOpenDialog] = useState<ChannelDef["key"] | null>(null);
 
   const statusFor = (key: ChannelDef["key"]): ChannelStatus => {
     if (key === "email") {
       return emailStatus?.connected ? "connected" : "disconnected";
+    }
+    if (key === "voice") {
+      // Voz é canal "ativo" se pelo menos um dos 2 provedores (Telnyx ou ElevenLabs) estiver conectado.
+      return (voiceStatus?.telnyx_connected || voiceStatus?.elevenlabs_connected)
+        ? "connected"
+        : "disconnected";
     }
     return "coming_soon";
   };
@@ -102,6 +111,12 @@ export default function OutboundChannelsBlock() {
       if ((emailStatus?.trial_remaining ?? 0) > 0) {
         return `${emailStatus?.trial_remaining} emails cortesia disponíveis`;
       }
+    }
+    if (key === "voice") {
+      const parts: string[] = [];
+      if (voiceStatus?.telnyx_connected) parts.push("Telnyx");
+      if (voiceStatus?.elevenlabs_connected) parts.push("ElevenLabs");
+      if (parts.length > 0) return parts.join(" + ");
     }
     return null;
   };
@@ -207,6 +222,26 @@ export default function OutboundChannelsBlock() {
             </div>
           </DialogHeader>
           <IntegrationEmailForm onClose={() => setOpenDialog(null)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog do Voz (Telnyx + ElevenLabs) */}
+      <Dialog open={openDialog === "voice"} onOpenChange={(o) => { if (!o) setOpenDialog(null); }}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <Mic className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">Voz (Telnyx + ElevenLabs)</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  Configuração do canal de voz: telefonia e síntese de fala
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <IntegrationVoiceForm onClose={() => setOpenDialog(null)} />
         </DialogContent>
       </Dialog>
     </div>

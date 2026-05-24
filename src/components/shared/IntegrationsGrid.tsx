@@ -58,14 +58,6 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     apiKeyUrlLabel: "aistudio.google.com",
   },
   {
-    label: "ElevenLabs",
-    provider: "elevenlabs",
-    description: "Voz IA, text-to-speech e clonagem de voz",
-    logo: "https://cdn.simpleicons.org/elevenlabs",
-    apiKeyUrl: "https://elevenlabs.io/settings/api-keys",
-    apiKeyUrlLabel: "elevenlabs.io",
-  },
-  {
     label: "DeepSeek",
     provider: "deepseek",
     description: "DeepSeek R1, V3 e modelos open-source de alto desempenho",
@@ -76,17 +68,9 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
 ];
 
 export const SERVICE_PROVIDERS: IntegrationProvider[] = [
-  {
-    label: "Telnyx",
-    provider: "telnyx",
-    description: "Ligações inbound e outbound via telefone real. Cada agência precisa de sua própria conta.",
-    logo: "https://cdn.brandfetch.io/idpKX4_j8-/w/400/h/400/theme/dark/icon.jpeg",
-    apiKeyUrl: "https://portal.telnyx.com/#/app/api-keys",
-    apiKeyUrlLabel: "portal.telnyx.com",
-  },
   { label: "Gmail", provider: "gmail", description: "Ler, enviar e compor e-mails.", logo: "https://cdn.simpleicons.org/gmail" },
   { label: "Google Calendar", provider: "google_calendar", description: "Ler e gerenciar eventos.", logo: "https://cdn.simpleicons.org/googlecalendar" },
-  { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: "https://cdn.simpleicons.org/microsoftoutlook" },
+  { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: "https://cdn.simpleicons.org/microsoftoutlook/0078D4" },
   { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly" },
   { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets" },
   { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: "https://cdn.simpleicons.org/googledrive" },
