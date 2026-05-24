@@ -40,6 +40,7 @@ export function useCreateCadence() {
       steps: CadenceStep[];
       trigger_type?: "manual" | "auto";
       enabled?: boolean;
+      auto_trigger_table_id?: string | null;
     }) => {
       const { data, error } = await (supabase as any)
         .from("agent_cadences")
@@ -50,6 +51,7 @@ export function useCreateCadence() {
           steps: payload.steps,
           trigger_type: payload.trigger_type ?? "manual",
           enabled: payload.enabled ?? true,
+          auto_trigger_table_id: payload.auto_trigger_table_id ?? null,
         })
         .select()
         .single();
@@ -79,6 +81,7 @@ export function useUpdateCadence() {
       steps?: CadenceStep[];
       trigger_type?: "manual" | "auto";
       enabled?: boolean;
+      auto_trigger_table_id?: string | null;
     }) => {
       const { data, error } = await (supabase as any)
         .from("agent_cadences")

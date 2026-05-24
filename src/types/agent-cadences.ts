@@ -35,6 +35,8 @@ export type AgentCadence = {
   steps: CadenceStep[];
   trigger_type: 'manual' | 'auto';
   enabled: boolean;
+  /** Quando trigger_type='auto', aponta para a tabela do cliente cujo INSERT dispara essa cadência. */
+  auto_trigger_table_id: string | null;
   executions_count?: number;
   created_at: string;
   updated_at: string;

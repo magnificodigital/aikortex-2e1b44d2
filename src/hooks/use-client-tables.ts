@@ -22,6 +22,48 @@ export type ClientTable = {
   updated_at: string;
 };
 
+export type AgencyClientTable = ClientTable & {
+  client_name: string;
+};
+
+/**
+ * Lista TODAS as tabelas de TODOS os clientes da agência logada.
+ * Usado pelo seletor de auto-trigger de cadência, que precisa cruzar clientes.
+ * Cada item vem com `client_name` pra desambiguar na UI.
+ */
+export function useAllAgencyClientTables() {
+  return useQuery({
+    queryKey: ["all-agency-client-tables"],
+    queryFn: async (): Promise<AgencyClientTable[]> => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      // 1) acha agency_id pelo user logado
+      const { data: agencyRow } = await supabase
+        .from("agency_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!agencyRow?.id) return [];
+
+      // 2) lista todas as tabelas dos clientes dessa agência
+      const { data, error } = await supabase
+        .from("client_tables")
+        .select("*, client:agency_clients!inner(id, client_name, agency_id)")
+        .eq("enabled", true)
+        .eq("client.agency_id", agencyRow.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      return (data ?? []).map((t: any) => ({
+        ...t,
+        columns: Array.isArray(t.columns) ? t.columns : [],
+        client_name: t.client?.client_name ?? "(sem nome)",
+      })) as AgencyClientTable[];
+    },
+  });
+}
+
 export function useClientTables(clientId: string | null | undefined) {
   return useQuery({
     queryKey: ["client-tables", clientId],

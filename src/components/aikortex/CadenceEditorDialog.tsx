@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useCreateCadence, useUpdateCadence } from "@/hooks/use-agent-cadences";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
+import { useAllAgencyClientTables } from "@/hooks/use-client-tables";
 import {
   type AgentCadence,
   type CadenceStep,
@@ -46,6 +47,7 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
   const [name, setName] = useState(cadence?.name ?? "");
   const [description, setDescription] = useState(cadence?.description ?? "");
   const [triggerType, setTriggerType] = useState<"manual" | "auto">(cadence?.trigger_type ?? "manual");
+  const [autoTriggerTableId, setAutoTriggerTableId] = useState<string | null>(cadence?.auto_trigger_table_id ?? null);
   const [steps, setSteps] = useState<CadenceStep[]>(
     cadence?.steps?.length ? cadence.steps : [makeEmptyStep()]
   );
@@ -53,6 +55,7 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
   const create = useCreateCadence();
   const update = useUpdateCadence();
   const { data: emailStatus } = useEmailIntegrationStatus();
+  const { data: allTables = [] } = useAllAgencyClientTables();
 
   // Identidade do remetente vem da integração (Settings → Integrações → Email).
   // O preview mostra como vai chegar no inbox real.
@@ -89,6 +92,9 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
 
   const validate = (): string | null => {
     if (!name.trim()) return "Nome é obrigatório";
+    if (triggerType === "auto" && !autoTriggerTableId) {
+      return "Trigger automático: selecione uma tabela que vai disparar a cadência";
+    }
     if (steps.length === 0) return "Adicione ao menos 1 step";
     if (steps.length > MAX_STEPS) return `Máximo ${MAX_STEPS} steps`;
     for (const [i, s] of steps.entries()) {
@@ -116,6 +122,7 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
       return;
     }
     const ordered = sortStepsChronologically(steps);
+    const triggerTableId = triggerType === "auto" ? autoTriggerTableId : null;
     try {
       if (isEdit && cadence) {
         await update.mutateAsync({
@@ -125,6 +132,7 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
           description: description.trim() || null,
           steps: ordered,
           trigger_type: triggerType,
+          auto_trigger_table_id: triggerTableId,
         });
       } else {
         await create.mutateAsync({
@@ -134,6 +142,7 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
           steps: ordered,
           trigger_type: triggerType,
           enabled: true,
+          auto_trigger_table_id: triggerTableId,
         });
       }
       onOpenChange(false);
@@ -172,11 +181,18 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
               </div>
               <div className="space-y-1.5">
                 <Label>Trigger</Label>
-                <Select value={triggerType} onValueChange={(v) => setTriggerType(v as any)}>
+                <Select
+                  value={triggerType}
+                  onValueChange={(v) => {
+                    const next = v as "manual" | "auto";
+                    setTriggerType(next);
+                    if (next === "manual") setAutoTriggerTableId(null);
+                  }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="manual">Manual (agência inicia)</SelectItem>
-                    <SelectItem value="auto" disabled>Automático (em breve)</SelectItem>
+                    <SelectItem value="auto">Automático (ao inserir na tabela)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -193,6 +209,42 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                 maxLength={500}
               />
             </div>
+
+            {triggerType === "auto" && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Tabela que dispara essa cadência *</Label>
+                  <Select
+                    value={autoTriggerTableId ?? ""}
+                    onValueChange={(v) => setAutoTriggerTableId(v || null)}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={allTables.length === 0 ? "Nenhuma tabela disponível" : "Escolha a tabela"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allTables.length === 0 && (
+                        <div className="px-2 py-3 text-xs text-muted-foreground">
+                          Nenhuma tabela cadastrada. Crie uma em <strong>Clientes → [Cliente] → Tabelas</strong>.
+                        </div>
+                      )}
+                      {allTables.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          <span className="font-medium">{t.name}</span>
+                          <span className="text-muted-foreground text-xs ml-2">· {t.client_name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Toda vez que uma linha for inserida nessa tabela (manualmente ou via API/integração),
+                  uma execução da cadência será criada automaticamente. O engine extrai{" "}
+                  <code className="px-1 py-px rounded bg-muted/60">nome</code>,{" "}
+                  <code className="px-1 py-px rounded bg-muted/60">email</code> e{" "}
+                  <code className="px-1 py-px rounded bg-muted/60">telefone</code> da linha pra usar como contato.
+                </p>
+              </div>
+            )}
 
             <div className="border-t border-border pt-3">
               <div className="flex items-center justify-between mb-2">
