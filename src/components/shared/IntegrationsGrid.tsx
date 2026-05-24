@@ -86,9 +86,7 @@ export const SERVICE_PROVIDERS: IntegrationProvider[] = [
   { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly" },
   { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets" },
   { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: "https://cdn.simpleicons.org/googledrive" },
-  { label: "Piperun", provider: "piperun", description: "CRM de vendas e automação.", logo: "https://www.piperun.com/wp-content/uploads/2023/07/favicon-piperun-crm.png" },
-  { label: "HubSpot", provider: "hubspot", description: "CRM, marketing e vendas.", logo: "https://cdn.simpleicons.org/hubspot" },
-  { label: "RD Station", provider: "rdstation", description: "Automação de marketing e CRM.", logo: "https://cdn.simpleicons.org/rdstation" },
+
 ];
 
 export const ALL_PROVIDERS = [...LLM_PROVIDERS, ...SERVICE_PROVIDERS];
