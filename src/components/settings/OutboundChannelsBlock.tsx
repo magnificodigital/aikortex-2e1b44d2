@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Mail, MessageSquare, Phone, Mic, CheckCircle2, Settings } from "lucide-react";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,10 +41,11 @@ const CHANNELS: ChannelDef[] = [
     key: "whatsapp",
     name: "WhatsApp",
     provider: "Meta Cloud API",
-    icon: MessageSquare,
-    iconBg: "bg-green-500/10",
-    iconColor: "text-green-600 dark:text-green-400",
+    icon: WhatsAppIcon,
+    iconBg: "bg-[#25D366]/10",
+    iconColor: "text-[#25D366]",
     description: "Templates aprovados via WABA.",
+
   },
   {
     key: "sms",

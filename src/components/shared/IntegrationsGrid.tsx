@@ -408,9 +408,10 @@ export function IntegrationsGrid({
                     <img
                       src={p.logo}
                       alt={p.label}
-                      className="w-7 h-7 rounded object-contain shrink-0"
+                      className="w-7 h-7 rounded object-contain shrink-0 [filter:brightness(0)] dark:[filter:brightness(0)_invert(1)]"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                     />
+
                   ) : (
                     <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
                       <Sparkles className="w-4 h-4 text-primary" />
