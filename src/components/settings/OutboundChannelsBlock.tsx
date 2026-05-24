@@ -41,10 +41,11 @@ const CHANNELS: ChannelDef[] = [
     key: "whatsapp",
     name: "WhatsApp",
     provider: "Meta Cloud API",
-    icon: MessageSquare,
-    iconBg: "bg-green-500/10",
-    iconColor: "text-green-600 dark:text-green-400",
+    icon: WhatsAppIcon,
+    iconBg: "bg-[#25D366]/10",
+    iconColor: "text-[#25D366]",
     description: "Templates aprovados via WABA.",
+
   },
   {
     key: "sms",
