@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import aikortexIconDark from "@/assets/aikortex-icon-dark.png";
 import aikortexIconLight from "@/assets/aikortex-icon-light.png";
+import outlookCalendarIcon from "@/assets/outlook-calendar-icon.png";
 
 
 export interface IntegrationProvider {
