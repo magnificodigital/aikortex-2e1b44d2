@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Check, Eye, EyeOff, ExternalLink, Blocks, Plus, Trash2, Webhook, Globe, Bot } from "lucide-react";
 import { toast } from "sonner";
-import { IntegrationsGrid, ALL_PROVIDERS } from "@/components/shared/IntegrationsGrid";
+import { IntegrationsGrid, ALL_PROVIDERS, LLM_PROVIDERS, SERVICE_PROVIDERS } from "@/components/shared/IntegrationsGrid";
 import OutboundChannelsBlock from "@/components/settings/OutboundChannelsBlock";
 import EmptyIntegrationSection from "@/components/settings/EmptyIntegrationSection";
 
@@ -16,7 +16,18 @@ export const IntegrationsPanel = () => {
     <div className="space-y-8">
       <OutboundChannelsBlock />
 
-      <IntegrationsGrid />
+      <IntegrationsGrid
+        providers={LLM_PROVIDERS}
+        title="Modelos de IA (LLMs)"
+        subtitle="Conecte provedores de IA para potencializar seus agentes e apps."
+      />
+
+      <IntegrationsGrid
+        providers={SERVICE_PROVIDERS}
+        title="APIs & Serviços"
+        subtitle="Conecte ferramentas externas para expandir as capacidades dos agentes."
+      />
+
 
       <EmptyIntegrationSection
         icon={Blocks}
