@@ -10,6 +10,9 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import aikortexIconDark from "@/assets/aikortex-icon-dark.png";
+import aikortexIconLight from "@/assets/aikortex-icon-light.png";
+
 
 export interface IntegrationProvider {
   label: string;
@@ -86,9 +89,7 @@ export const SERVICE_PROVIDERS: IntegrationProvider[] = [
   { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly" },
   { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets" },
   { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: "https://cdn.simpleicons.org/googledrive" },
-  { label: "Piperun", provider: "piperun", description: "CRM de vendas e automação.", logo: "https://www.piperun.com/wp-content/uploads/2023/07/favicon-piperun-crm.png" },
-  { label: "HubSpot", provider: "hubspot", description: "CRM, marketing e vendas.", logo: "https://cdn.simpleicons.org/hubspot" },
-  { label: "RD Station", provider: "rdstation", description: "Automação de marketing e CRM.", logo: "https://cdn.simpleicons.org/rdstation" },
+
 ];
 
 export const ALL_PROVIDERS = [...LLM_PROVIDERS, ...SERVICE_PROVIDERS];
@@ -404,19 +405,24 @@ export function IntegrationsGrid({
                 className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  {p.logo ? (
+                  {p.provider === "aikortex" ? (
+                    <>
+                      <img src={aikortexIconDark} alt="Aikortex" className="w-7 h-7 object-contain shrink-0 block dark:hidden" />
+                      <img src={aikortexIconLight} alt="Aikortex" className="w-7 h-7 object-contain shrink-0 hidden dark:block" />
+                    </>
+                  ) : p.logo ? (
                     <img
                       src={p.logo}
                       alt={p.label}
                       className="w-7 h-7 rounded object-contain shrink-0 [filter:brightness(0)] dark:[filter:brightness(0)_invert(1)]"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                     />
-
                   ) : (
                     <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
                       <Sparkles className="w-4 h-4 text-primary" />
                     </div>
                   )}
+
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-foreground">{p.label}</p>
