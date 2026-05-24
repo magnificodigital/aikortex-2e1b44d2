@@ -396,6 +396,8 @@ export function IntegrationsGrid({
                       <img src={aikortexIconDark} alt="Aikortex" className="w-7 h-7 object-contain shrink-0 block dark:hidden" />
                       <img src={aikortexIconLight} alt="Aikortex" className="w-7 h-7 object-contain shrink-0 hidden dark:block" />
                     </>
+                  ) : p.provider === "outlook_calendar" ? (
+                    <img src={p.logo} alt={p.label} className="w-7 h-7 object-contain shrink-0" />
                   ) : p.logo ? (
                     <img
                       src={p.logo}
