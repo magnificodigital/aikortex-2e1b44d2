@@ -405,19 +405,24 @@ export function IntegrationsGrid({
                 className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  {p.logo ? (
+                  {p.provider === "aikortex" ? (
+                    <>
+                      <img src={aikortexIconDark} alt="Aikortex" className="w-7 h-7 object-contain shrink-0 block dark:hidden" />
+                      <img src={aikortexIconLight} alt="Aikortex" className="w-7 h-7 object-contain shrink-0 hidden dark:block" />
+                    </>
+                  ) : p.logo ? (
                     <img
                       src={p.logo}
                       alt={p.label}
                       className="w-7 h-7 rounded object-contain shrink-0 [filter:brightness(0)] dark:[filter:brightness(0)_invert(1)]"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                     />
-
                   ) : (
                     <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
                       <Sparkles className="w-4 h-4 text-primary" />
                     </div>
                   )}
+
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-foreground">{p.label}</p>
