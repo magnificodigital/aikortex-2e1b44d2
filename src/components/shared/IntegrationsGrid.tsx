@@ -36,10 +36,11 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     label: "OpenAI",
     provider: "openai",
     description: "GPT-4o, GPT-4.5, o3 e modelos de linguagem avançados",
-    logo: "https://cdn.simpleicons.org/openai",
+    logo: new URL("@/assets/openai-icon.png", import.meta.url).href,
     apiKeyUrl: "https://platform.openai.com/api-keys",
     apiKeyUrlLabel: "platform.openai.com",
   },
+
   {
     label: "Anthropic",
     provider: "anthropic",
