@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import aikortexIconDark from "@/assets/aikortex-icon-dark.png";
 import aikortexIconLight from "@/assets/aikortex-icon-light.png";
+import outlookCalendarIcon from "@/assets/outlook-calendar-icon.png";
 
 
 export interface IntegrationProvider {
@@ -70,7 +71,7 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
 export const SERVICE_PROVIDERS: IntegrationProvider[] = [
   { label: "Gmail", provider: "gmail", description: "Ler, enviar e compor e-mails.", logo: "https://cdn.simpleicons.org/gmail" },
   { label: "Google Calendar", provider: "google_calendar", description: "Ler e gerenciar eventos.", logo: "https://cdn.simpleicons.org/googlecalendar" },
-  { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: "https://cdn.simpleicons.org/microsoftoutlook/0078D4" },
+  { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: outlookCalendarIcon },
   { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly" },
   { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets" },
   { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: "https://cdn.simpleicons.org/googledrive" },
@@ -395,6 +396,8 @@ export function IntegrationsGrid({
                       <img src={aikortexIconDark} alt="Aikortex" className="w-7 h-7 object-contain shrink-0 block dark:hidden" />
                       <img src={aikortexIconLight} alt="Aikortex" className="w-7 h-7 object-contain shrink-0 hidden dark:block" />
                     </>
+                  ) : p.provider === "outlook_calendar" ? (
+                    <img src={p.logo} alt={p.label} className="w-7 h-7 object-contain shrink-0" />
                   ) : p.logo ? (
                     <img
                       src={p.logo}
