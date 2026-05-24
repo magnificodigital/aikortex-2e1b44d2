@@ -71,7 +71,7 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
 export const SERVICE_PROVIDERS: IntegrationProvider[] = [
   { label: "Gmail", provider: "gmail", description: "Ler, enviar e compor e-mails.", logo: "https://cdn.simpleicons.org/gmail" },
   { label: "Google Calendar", provider: "google_calendar", description: "Ler e gerenciar eventos.", logo: "https://cdn.simpleicons.org/googlecalendar" },
-  { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: "https://cdn.simpleicons.org/microsoftoutlook/0078D4" },
+  { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: outlookCalendarIcon },
   { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly" },
   { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets" },
   { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: "https://cdn.simpleicons.org/googledrive" },
