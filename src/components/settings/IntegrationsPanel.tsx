@@ -9,6 +9,7 @@ import { Check, Eye, EyeOff, ExternalLink, Blocks, Plus, Trash2, Webhook, Globe,
 import { toast } from "sonner";
 import { IntegrationsGrid, ALL_PROVIDERS } from "@/components/shared/IntegrationsGrid";
 import OutboundChannelsBlock from "@/components/settings/OutboundChannelsBlock";
+import EmptyIntegrationSection from "@/components/settings/EmptyIntegrationSection";
 
 export const IntegrationsPanel = () => {
   return (
@@ -17,29 +18,19 @@ export const IntegrationsPanel = () => {
 
       <IntegrationsGrid />
 
-      {/* MCPs */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Blocks className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">MCPs</h3>
-        </div>
-        <p className="text-xs text-muted-foreground">Conecte servidores MCP para estender o contexto.</p>
-        <Button variant="outline" size="sm" className="text-xs gap-1.5">
-          <Plus className="w-3 h-3" /> Adicionar MCP
-        </Button>
-      </div>
+      <EmptyIntegrationSection
+        icon={Blocks}
+        title="MCPs"
+        description="Conecte servidores MCP (Model Context Protocol) para estender o contexto do agente com fontes externas."
+        actionLabel="Adicionar MCP"
+      />
 
-      {/* Webhooks */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Webhook className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Webhooks</h3>
-        </div>
-        <p className="text-xs text-muted-foreground">Configure webhooks para receber e enviar eventos em tempo real.</p>
-        <Button variant="outline" size="sm" className="text-xs gap-1.5">
-          <Plus className="w-3 h-3" /> Adicionar Webhook
-        </Button>
-      </div>
+      <EmptyIntegrationSection
+        icon={Webhook}
+        title="Webhooks"
+        description="Configure webhooks para receber e enviar eventos em tempo real entre o Aikortex e sistemas externos."
+        actionLabel="Adicionar Webhook"
+      />
     </div>
   );
 };

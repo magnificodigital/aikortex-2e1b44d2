@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS, type ProviderConfig } from "@/components/shared/IntegrationsGrid";
 import OutboundChannelsBlock from "@/components/settings/OutboundChannelsBlock";
+import EmptyIntegrationSection from "@/components/settings/EmptyIntegrationSection";
 import { Button } from "@/components/ui/button";
 import type { AgentType } from "@/types/agent-builder";
 import { CHANNELS_BY_AGENT_TYPE, TOOLS_BY_AGENT_TYPE } from "@/types/agent-builder";
@@ -1122,15 +1123,18 @@ const AgentRightPanel = ({
                   storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
                 />
 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2"><Blocks className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold">MCPs</h3></div>
-                  <p className="text-xs text-muted-foreground">Conecte servidores MCP para estender o contexto.</p>
-                  <Button variant="outline" size="sm" className="text-xs gap-1.5"><Plus className="w-3 h-3" /> Adicionar MCP</Button>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2"><Webhook className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold">Webhooks</h3></div>
-                  <Button variant="outline" size="sm" className="text-xs gap-1.5"><Plus className="w-3 h-3" /> Adicionar Webhook</Button>
-                </div>
+                <EmptyIntegrationSection
+                  icon={Blocks}
+                  title="MCPs"
+                  description="Conecte servidores MCP (Model Context Protocol) para estender o contexto do agente com fontes externas."
+                  actionLabel="Adicionar MCP"
+                />
+                <EmptyIntegrationSection
+                  icon={Webhook}
+                  title="Webhooks"
+                  description="Configure webhooks para receber e enviar eventos em tempo real entre o Aikortex e sistemas externos."
+                  actionLabel="Adicionar Webhook"
+                />
               </div>
             )}
 
