@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Mail, MessageSquare, Phone, Mic, CheckCircle2, Settings } from "lucide-react";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
