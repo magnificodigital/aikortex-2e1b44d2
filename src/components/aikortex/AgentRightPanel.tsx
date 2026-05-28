@@ -160,7 +160,9 @@ const RIGHT_NAV: NavGroup[] = [
   ]},
   { group: "Integrações", items: [
     { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
-    { key: "integrations.apis",      label: "Modelos & APIs",       icon: Plug },
+    { key: "integrations.llms",      label: "LLMs",                 icon: Sparkles },
+    { key: "integrations.apis",      label: "APIs",                 icon: Plug },
+    { key: "integrations.mcps",      label: "MCPs",                 icon: Blocks },
   ]},
   { group: "Automações", items: [
     { key: "behavior.cadences",      label: "Cadências",            icon: Clock,           masterRef: "13.5.13" },
@@ -1243,40 +1245,59 @@ const AgentRightPanel = ({
               </div>
             )}
 
-            {/* ── Integrações → Modelos & APIs ── */}
-            {activeSection === "integrations.apis" && (
+            {/* ── Integrações → LLMs ── */}
+            {activeSection === "integrations.llms" && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">Modelos & APIs</h2>
+                  <h2 className="text-lg font-bold text-foreground">Modelos de IA (LLMs)</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Conecte LLMs e serviços externos que seu agente vai usar (não inclui canais — esses ficam em <strong>Canais</strong>).
+                    Conecte suas chaves de API para que o agente use modelos como OpenAI, Anthropic, Gemini, etc.
                   </p>
                 </div>
-
                 <IntegrationsGrid
                   providers={LLM_PROVIDERS}
-                  title="Modelos de IA (LLMs)"
-                  subtitle="Conecte suas chaves de API para utilizar modelos de IA."
+                  showTitle={false}
                   onConnectedProvidersChange={setSavedIntegrations}
                   onProviderConfigsChange={setIntegrationConfigs}
                   initialProviderConfigs={integrationConfigs}
                   storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
                 />
+              </div>
+            )}
 
+            {/* ── Integrações → APIs ── */}
+            {activeSection === "integrations.apis" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">APIs & Serviços</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Conecte serviços externos (Gmail, Calendar, Drive, CRMs) que o agente pode invocar como ferramentas.
+                  </p>
+                </div>
                 <IntegrationsGrid
                   providers={SERVICE_PROVIDERS}
-                  title="Serviços & Ferramentas"
-                  subtitle="Conecte serviços externos para expandir as capacidades."
+                  showTitle={false}
                   onConnectedProvidersChange={(providers) => setSavedIntegrations(prev => Array.from(new Set([...prev.filter((provider) => !SERVICE_PROVIDERS.some((service) => service.provider === provider)), ...providers])))}
                   onProviderConfigsChange={(configs) => setIntegrationConfigs(prev => ({ ...prev, ...configs }))}
                   initialProviderConfigs={integrationConfigs}
                   storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
                 />
+              </div>
+            )}
 
+            {/* ── Integrações → MCPs ── */}
+            {activeSection === "integrations.mcps" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">MCPs & Webhooks</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Servidores MCP (Model Context Protocol) e Webhooks pra estender o contexto e a comunicação do agente.
+                  </p>
+                </div>
                 <EmptyIntegrationSection
                   icon={Blocks}
                   title="MCPs"
-                  description="Conecte servidores MCP (Model Context Protocol) para estender o contexto do agente com fontes externas."
+                  description="Conecte servidores MCP para estender o contexto do agente com fontes externas (filesystem, DB, search, etc)."
                   actionLabel="Adicionar MCP"
                 />
                 <EmptyIntegrationSection
