@@ -17,6 +17,7 @@ import {
   Youtube, Rss, Map, CloudUpload, Type, ChevronDown, ChevronUp, BookOpen,
   Brain, Wrench, Database, Workflow, GitBranch, FlaskConical, ScanSearch, FileCode2,
   ShieldAlert, Sliders, Phone, Sparkles, Share2, Plug, Bot, Lightbulb, Users, Clock, Construction,
+  Activity,
 } from "lucide-react";
 import AgentMemoryTab from "./AgentMemoryTab";
 import AgentToolsSection from "./AgentToolsSection";
@@ -24,6 +25,7 @@ import AgentVersionsSection from "./AgentVersionsSection";
 import KnowledgeBaseSection from "./KnowledgeBaseSection";
 import ClientTablesSection from "./ClientTablesSection";
 import CadencesSection from "./CadencesSection";
+import CadenceExecutionsPanel from "./CadenceExecutionsPanel";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -143,6 +145,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "behavior.squad",     label: "Squad",     icon: Users,  comingSoon: true, sprint: "Fase E", masterRef: "13.5.14" },
   ]},
   { group: "Operação", items: [
+    { key: "ops.executions", label: "Execuções",icon: Activity },
     { key: "ops.versions",   label: "Versões",  icon: GitBranch },
     { key: "ops.test",       label: "Testar",   icon: FlaskConical },
     { key: "ops.inspector",  label: "Inspetor", icon: ScanSearch,   comingSoon: true, sprint: "Movimento 1.5",  masterRef: "13.5.16" },
@@ -867,6 +870,19 @@ const AgentRightPanel = ({
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* ── Operação → Execuções (dashboard de cadências) ── */}
+            {activeSection === "ops.executions" && (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Execuções</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Acompanhe em tempo real as cadências disparadas para os contatos do agente.
+                  </p>
+                </div>
+                <CadenceExecutionsPanel agentId={agentId} />
               </div>
             )}
 
