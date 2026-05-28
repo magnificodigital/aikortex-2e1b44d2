@@ -19,6 +19,21 @@ function jsonRes(body: unknown, status = 200) {
   });
 }
 
+function isMetaTokenExpired(data: any): boolean {
+  return data?.error?.code === 190 && data?.error?.error_subcode === 463;
+}
+
+function metaTokenExpiredBody(data: unknown) {
+  return {
+    templates: [],
+    integration_error: {
+      code: "META_TOKEN_EXPIRED",
+      message: "Token do WhatsApp expirado. Atualize o System User Access Token em Integrações → WhatsApp.",
+      details: data,
+    },
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -63,6 +78,7 @@ Deno.serve(async (req) => {
           { headers: { Authorization: `Bearer ${WABA_TOKEN}` } },
         );
         const data = await resp.json();
+        if (!resp.ok && isMetaTokenExpired(data)) return jsonRes(metaTokenExpiredBody(data));
         if (!resp.ok) return jsonRes({ error: "Erro ao listar templates", details: data }, resp.status);
         return jsonRes({ templates: data.data || [], paging: data.paging });
       }
@@ -78,6 +94,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ name, category, language, components }),
         });
         const data = await resp.json();
+        if (!resp.ok && isMetaTokenExpired(data)) return jsonRes(metaTokenExpiredBody(data), 401);
         if (!resp.ok) return jsonRes({ error: "Erro ao criar template", details: data }, resp.status);
         return jsonRes({ success: true, template: data });
       }
@@ -91,6 +108,7 @@ Deno.serve(async (req) => {
           headers: { Authorization: `Bearer ${WABA_TOKEN}` },
         });
         const data = await resp.json();
+        if (!resp.ok && isMetaTokenExpired(data)) return jsonRes(metaTokenExpiredBody(data), 401);
         return jsonRes({ success: resp.ok, data }, resp.ok ? 200 : resp.status);
       }
 

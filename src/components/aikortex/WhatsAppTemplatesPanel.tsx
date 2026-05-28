@@ -35,7 +35,7 @@ import {
   countTemplateVariables,
   templateBodyPreview,
   useDeleteWhatsAppTemplate,
-  useWhatsAppTemplates,
+  useWhatsAppTemplatesResponse,
   type WhatsAppTemplate,
   type WhatsAppTemplateStatus,
 } from "@/hooks/use-whatsapp-templates";
@@ -57,7 +57,9 @@ const STATUS_META: Record<WhatsAppTemplateStatus, {
 
 export default function WhatsAppTemplatesPanel() {
   const { data: waStatus } = useWhatsAppIntegrationStatus();
-  const { data: templates = [], isLoading, isError, error, refetch, isRefetching } = useWhatsAppTemplates();
+  const { data: templatesResponse, isLoading, isError, error, refetch, isRefetching } = useWhatsAppTemplatesResponse();
+  const templates = templatesResponse?.templates ?? [];
+  const integrationError = templatesResponse?.integration_error;
   const deleteMut = useDeleteWhatsAppTemplate();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<"all" | WhatsAppTemplateStatus>("all");
@@ -166,6 +168,20 @@ export default function WhatsAppTemplatesPanel() {
           className="h-9 pl-8 text-xs"
         />
       </div>
+
+      {integrationError?.code === "META_TOKEN_EXPIRED" && (
+        <Card className="p-4 border-destructive/30 bg-destructive/5">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <div className="space-y-1 text-xs">
+              <p className="font-medium text-destructive">Token do WhatsApp expirado</p>
+              <p className="text-muted-foreground">
+                Atualize o System User Access Token em <strong>Recursos → Integrações → WhatsApp</strong> para voltar a listar templates.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Lista */}
       {isLoading ? (
