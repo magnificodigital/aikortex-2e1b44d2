@@ -80,7 +80,13 @@ function humanizeError(err: string | null | undefined): string {
       if (e?.code === 131009) return "WhatsApp: template não existe ou não foi aprovado";
       if (e?.code === 131008) return "WhatsApp: parâmetros do template inválidos";
       if (e?.code === 132012) return "WhatsApp: template pausado pela Meta (qualidade baixa)";
-      if (e?.code === 132001) return "WhatsApp: número destino inválido";
+      if (e?.code === 132001) {
+        // "(#132001) Template name does not exist in the translation" → idioma errado
+        const detail = e?.error_data?.details;
+        return detail ? `WhatsApp: ${detail}` : "WhatsApp: template não existe no idioma escolhido (troque o código de idioma, ex: en_US)";
+      }
+      if (e?.code === 132000) return "WhatsApp: número de parâmetros do template não confere";
+      if (e?.code === 100) return "WhatsApp: número destino em formato inválido (use E.164 sem +)";
       if (e?.code === 190 || e?.code === 102) return "WhatsApp: token inválido ou expirado";
       if (e?.message) return `WhatsApp: ${e.message}`;
     } catch { /* não-JSON, cai abaixo */ }

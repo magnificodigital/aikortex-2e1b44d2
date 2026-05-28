@@ -362,11 +362,15 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                           <div className="space-y-1">
                             <Label className="text-[10px] text-muted-foreground">Idioma</Label>
                             <Input
-                              value={s.whatsapp_template_language ?? "pt_BR"}
+                              value={s.whatsapp_template_language ?? "en_US"}
                               onChange={(e) => updateStep(idx, { whatsapp_template_language: e.target.value })}
-                              placeholder="pt_BR"
+                              placeholder="en_US"
                               className="h-8 text-xs font-mono"
                             />
+                            <p className="text-[9px] text-muted-foreground">
+                              Use <code className="px-1 py-px rounded bg-muted/60">en_US</code> pro template padrão{" "}
+                              <code className="px-1 py-px rounded bg-muted/60">hello_world</code>. Pra templates seus em PT, use o idioma exato em que você aprovou na Meta (ex: <code className="px-1 py-px rounded bg-muted/60">pt_BR</code>).
+                            </p>
                           </div>
                         </div>
 
