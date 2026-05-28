@@ -28,6 +28,10 @@ import CadencesSection from "./CadencesSection";
 import CadenceExecutionsPanel from "./CadenceExecutionsPanel";
 import WhatsAppTemplatesPanel from "./WhatsAppTemplatesPanel";
 import AgentOverviewPanel from "./AgentOverviewPanel";
+import { useAgentCadences } from "@/hooks/use-agent-cadences";
+import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
+import { useWhatsAppIntegrationStatus } from "@/hooks/use-whatsapp-integration";
+import { useWhatsAppTemplates } from "@/hooks/use-whatsapp-templates";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -625,6 +629,35 @@ const AgentRightPanel = ({
       .filter(g => g.items.length > 0);
   }, [showAdvanced]);
 
+  /* ── Status badges nos itens do menu ── */
+  const { data: cadencesForBadge = [] } = useAgentCadences(agentId);
+  const { data: emailStatusForBadge } = useEmailIntegrationStatus();
+  const { data: waStatusForBadge } = useWhatsAppIntegrationStatus();
+  const { data: waTemplatesForBadge = [] } = useWhatsAppTemplates();
+
+  // Retorna o conteúdo do badge pra um item do menu:
+  //   - número: pra coisas contáveis (cadências, templates aprovados, integrações ativas)
+  //   - 'dot': verde se há config (boolean)
+  //   - null: sem badge
+  function getMenuBadge(key: string): { kind: "count"; value: number } | { kind: "dot" } | null {
+    switch (key) {
+      case "behavior.cadences":
+        return cadencesForBadge.length > 0 ? { kind: "count", value: cadencesForBadge.length } : null;
+      case "resources.integrations": {
+        const n = (emailStatusForBadge?.connected ? 1 : 0) + (waStatusForBadge?.connected ? 1 : 0);
+        return n > 0 ? { kind: "count", value: n } : null;
+      }
+      case "resources.wa_templates": {
+        const n = waTemplatesForBadge.filter((t) => t.status === "APPROVED").length;
+        return n > 0 ? { kind: "count", value: n } : null;
+      }
+      case "config.agent":
+        return (agentInstructions?.trim() && agentToneOfVoice?.trim()) ? { kind: "dot" } : null;
+      default:
+        return null;
+    }
+  }
+
   // If active section becomes hidden after toggling off, fall back to default.
   useEffect(() => {
     const visible = visibleNav.flatMap(g => g.items).some(i => i.key === activeSection);
@@ -679,9 +712,23 @@ const AgentRightPanel = ({
                       <Icon className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">{item.label}</span>
                     </span>
-                    {capActive ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-label="ativo" />
-                    ) : null}
+                    {(() => {
+                      const badge = getMenuBadge(item.key);
+                      if (capActive) {
+                        return <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-label="ativo" />;
+                      }
+                      if (badge?.kind === "count") {
+                        return (
+                          <span className="text-[9px] bg-primary/15 text-primary rounded-full px-1.5 py-0 font-semibold shrink-0">
+                            {badge.value}
+                          </span>
+                        );
+                      }
+                      if (badge?.kind === "dot") {
+                        return <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-label="configurado" />;
+                      }
+                      return null;
+                    })()}
                   </button>
                 );
               })}
