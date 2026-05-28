@@ -127,6 +127,7 @@ type NavItem = {
   comingSoon?: boolean;
   sprint?: string;         // sprint target shown on placeholder
   masterRef?: string;      // master section ref shown on placeholder
+  indent?: boolean;        // visual sub-item (rendered with indent + smaller)
 };
 type NavGroup = { group: string; items: NavItem[] };
 
@@ -147,6 +148,7 @@ const RIGHT_NAV: NavGroup[] = [
   { group: "Canais", items: [
     { key: "channels.email",         label: "Email",                icon: Mail },
     { key: "channels.whatsapp",      label: "WhatsApp",             icon: MessageSquare },
+    { key: "resources.wa_templates", label: "Templates",            icon: FileText,        indent: true },
     { key: "channels.voice",         label: "Voz",                  icon: Mic },
     { key: "channels.sms",           label: "SMS",                  icon: Phone,           comingSoon: true, sprint: "futuro" },
     { key: "channels.instagram",     label: "Instagram",            icon: Camera,          comingSoon: true, sprint: "futuro" },
@@ -154,7 +156,6 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "channels.linkedin",      label: "LinkedIn",             icon: Share2,          comingSoon: true, sprint: "futuro" },
     { key: "channels.tiktok",        label: "TikTok",               icon: Share2,          comingSoon: true, sprint: "futuro" },
     { key: "channels.telegram",      label: "Telegram",             icon: Share2,          comingSoon: true, sprint: "futuro" },
-    { key: "resources.wa_templates", label: "Templates WhatsApp",   icon: MessageSquare },
   ]},
   { group: "Integrações", items: [
     { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
@@ -710,14 +711,14 @@ const AgentRightPanel = ({
                     key={item.key}
                     type="button"
                     onClick={() => goSection(item.key)}
-                    className={`w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
+                    className={`w-full text-left flex items-center justify-between gap-2 ${item.indent ? "pl-7 pr-2 py-1" : "px-2 py-1.5"} rounded-md text-xs transition-colors ${
                       active
                         ? "bg-primary/10 text-primary font-medium"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
                   >
                     <span className="flex items-center gap-2 min-w-0">
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <Icon className={`${item.indent ? "w-3 h-3" : "w-3.5 h-3.5"} shrink-0`} />
                       <span className="truncate">{item.label}</span>
                     </span>
                     {(() => {
