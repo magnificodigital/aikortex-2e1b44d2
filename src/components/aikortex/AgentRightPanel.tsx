@@ -136,8 +136,8 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
   ]},
   { group: "Recursos", items: [
-    { key: "resources.tools",            label: "Tools",                icon: Wrench },
-    { key: "resources.kb",               label: "Knowledge Base",       icon: BookOpen },
+    { key: "resources.tools",            label: "Ferramentas",          icon: Wrench },
+    { key: "resources.kb",               label: "Base de Conhecimento", icon: BookOpen },
     { key: "resources.tables",           label: "Tabelas",              icon: Database,        masterRef: "13.5.11" },
     { key: "resources.integrations",     label: "Integrações",          icon: Plug },
     { key: "resources.wa_templates",     label: "Templates WhatsApp",   icon: MessageSquare },
@@ -154,8 +154,8 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "ops.spec",       label: "Spec",     icon: FileText,     comingSoon: true, sprint: "Fase E",         masterRef: "13.5.17" },
   ]},
   { group: "Sistema", items: [
-    { key: "system.advanced",  label: "Avançado",   icon: Sliders },
-    { key: "system.danger",    label: "Danger Zone", icon: ShieldAlert },
+    { key: "system.advanced",  label: "Avançado",     icon: Sliders },
+    { key: "system.danger",    label: "Zona de Risco", icon: ShieldAlert },
   ]},
 ];
 

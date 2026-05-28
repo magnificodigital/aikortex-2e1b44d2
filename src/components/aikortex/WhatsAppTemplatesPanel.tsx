@@ -7,11 +7,13 @@ import {
   Hash,
   MessageSquare,
   PauseCircle,
+  Plus,
   RefreshCw,
   Search,
   Trash2,
   XCircle,
 } from "lucide-react";
+import WhatsAppTemplateCreatorDialog from "./WhatsAppTemplateCreatorDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -61,6 +63,7 @@ export default function WhatsAppTemplatesPanel() {
   const [filter, setFilter] = useState<"all" | WhatsAppTemplateStatus>("all");
   const [search, setSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<WhatsAppTemplate | null>(null);
+  const [openCreator, setOpenCreator] = useState(false);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -143,14 +146,13 @@ export default function WhatsAppTemplatesPanel() {
           >
             <RefreshCw className={`w-3 h-3 ${isRefetching ? "animate-spin" : ""}`} /> Atualizar
           </Button>
-          <a
-            href="https://business.facebook.com/wa/manage/message-templates"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] text-primary hover:underline inline-flex items-center gap-0.5"
+          <Button
+            size="sm"
+            className="h-7 text-[11px] gap-1"
+            onClick={() => setOpenCreator(true)}
           >
-            Criar template na Meta <ExternalLink className="w-3 h-3" />
-          </a>
+            <Plus className="w-3 h-3" /> Criar template
+          </Button>
         </div>
       </div>
 
@@ -251,6 +253,9 @@ export default function WhatsAppTemplatesPanel() {
           </div>
         </ScrollArea>
       )}
+
+      {/* Creator dialog */}
+      <WhatsAppTemplateCreatorDialog open={openCreator} onOpenChange={setOpenCreator} />
 
       {/* Confirm delete */}
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(null); }}>
