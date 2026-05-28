@@ -17,7 +17,7 @@ import {
   Youtube, Rss, Map, CloudUpload, Type, ChevronDown, ChevronUp, BookOpen,
   Brain, Wrench, Database, Workflow, GitBranch, FlaskConical, ScanSearch, FileCode2,
   ShieldAlert, Sliders, Phone, Sparkles, Share2, Plug, Bot, Lightbulb, Users, Clock, Construction,
-  Activity, MessageSquare,
+  Activity, MessageSquare, Home,
 } from "lucide-react";
 import AgentMemoryTab from "./AgentMemoryTab";
 import AgentToolsSection from "./AgentToolsSection";
@@ -27,6 +27,7 @@ import ClientTablesSection from "./ClientTablesSection";
 import CadencesSection from "./CadencesSection";
 import CadenceExecutionsPanel from "./CadenceExecutionsPanel";
 import WhatsAppTemplatesPanel from "./WhatsAppTemplatesPanel";
+import AgentOverviewPanel from "./AgentOverviewPanel";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -123,6 +124,9 @@ type NavItem = {
 type NavGroup = { group: string; items: NavItem[] };
 
 const RIGHT_NAV: NavGroup[] = [
+  { group: "Geral", items: [
+    { key: "overview",           label: "Visão geral", icon: Home },
+  ]},
   { group: "Configuração", items: [
     { key: "config.agent",       label: "Agente",   icon: Bot },
     { key: "config.voice",       label: "Voz",      icon: Mic },
@@ -159,7 +163,7 @@ const RIGHT_NAV: NavGroup[] = [
   ]},
 ];
 
-const DEFAULT_SECTION = "config.agent";
+const DEFAULT_SECTION = "overview";
 
 /* Vibe Mode (Master v7.4 §13.2): items shown only when "Mostrar opções avançadas" is ON. */
 const ADVANCED_KEYS = new Set<string>(["caps.planning", "caps.reasoning", "system.advanced"]);
@@ -950,6 +954,19 @@ const AgentRightPanel = ({
               </div>
             )}
 
+
+                {/* ── Visão Geral (home) ── */}
+                {activeSection === "overview" && agentId && (
+                  <AgentOverviewPanel
+                    agentId={agentId}
+                    agentName={agent.name}
+                    agentVersion={null}
+                    agentStatus={canPublish ? "publicado" : "rascunho"}
+                    isInstructionsSet={!!(agentInstructions && agentInstructions.trim().length > 0)}
+                    isTonalitySet={!!(agentToneOfVoice && agentToneOfVoice.trim().length > 0)}
+                    onGoSection={goSection}
+                  />
+                )}
 
                 {/* Identidade */}
                 {activeSection === "config.agent" && (
