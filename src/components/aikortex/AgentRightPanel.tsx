@@ -2,6 +2,9 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS, type ProviderConfig } from "@/components/shared/IntegrationsGrid";
 import OutboundChannelsBlock from "@/components/settings/OutboundChannelsBlock";
 import EmptyIntegrationSection from "@/components/settings/EmptyIntegrationSection";
+import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
+import IntegrationVoiceForm from "@/components/settings/IntegrationVoiceForm";
+import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
 import { Button } from "@/components/ui/button";
 import type { AgentType } from "@/types/agent-builder";
 import { CHANNELS_BY_AGENT_TYPE, TOOLS_BY_AGENT_TYPE } from "@/types/agent-builder";
@@ -129,26 +132,32 @@ type NavGroup = { group: string; items: NavItem[] };
 
 const RIGHT_NAV: NavGroup[] = [
   { group: "Geral", items: [
-    { key: "overview",           label: "Visão geral", icon: Home },
-    { key: "config.agent",       label: "Agente",      icon: Bot },
+    { key: "overview",               label: "Visão geral",          icon: Home },
+    { key: "config.agent",           label: "Agente",               icon: Bot },
   ]},
   { group: "Capacidades", items: [
-    { key: "caps.planning",      label: "Planning",        icon: Lightbulb },
-    { key: "caps.reasoning",     label: "Reasoning",       icon: Brain },
-    { key: "caps.memory",        label: "Memória",         icon: Brain },
-    { key: "caps.runtime",       label: "Code Runtime",    icon: FileCode2,   comingSoon: true, sprint: "futuro", masterRef: "13.5.7" },
-    { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
-  ]},
-  { group: "Canais", items: [
-    { key: "channels.outbound",      label: "Canais de Disparo", icon: Share2 },
-    { key: "resources.wa_templates", label: "Templates WhatsApp", icon: MessageSquare },
-  ]},
-  { group: "Conhecimento", items: [
-    { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
+    { key: "caps.planning",          label: "Planning",             icon: Lightbulb },
+    { key: "caps.reasoning",         label: "Reasoning",            icon: Brain },
+    { key: "caps.memory",            label: "Memória",              icon: Brain },
     { key: "resources.kb",           label: "Base de Conhecimento", icon: BookOpen },
     { key: "resources.tables",       label: "Tabelas",              icon: Database,        masterRef: "13.5.11" },
+    { key: "caps.runtime",           label: "Code Runtime",         icon: FileCode2,       comingSoon: true, sprint: "futuro", masterRef: "13.5.7" },
+    { key: "caps.autoint",           label: "Auto-integração",      icon: Workflow,        comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
+  ]},
+  { group: "Canais", items: [
+    { key: "channels.email",         label: "Email",                icon: Mail },
+    { key: "channels.whatsapp",      label: "WhatsApp",             icon: MessageSquare },
+    { key: "channels.voice",         label: "Voz",                  icon: Mic },
+    { key: "channels.sms",           label: "SMS",                  icon: Phone,           comingSoon: true, sprint: "futuro" },
+    { key: "channels.instagram",     label: "Instagram",            icon: Camera,          comingSoon: true, sprint: "futuro" },
+    { key: "channels.facebook",      label: "Facebook",             icon: Share2,          comingSoon: true, sprint: "futuro" },
+    { key: "channels.linkedin",      label: "LinkedIn",             icon: Share2,          comingSoon: true, sprint: "futuro" },
+    { key: "channels.tiktok",        label: "TikTok",               icon: Share2,          comingSoon: true, sprint: "futuro" },
+    { key: "channels.telegram",      label: "Telegram",             icon: Share2,          comingSoon: true, sprint: "futuro" },
+    { key: "resources.wa_templates", label: "Templates WhatsApp",   icon: MessageSquare },
   ]},
   { group: "Integrações", items: [
+    { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
     { key: "integrations.apis",      label: "Modelos & APIs",       icon: Plug },
   ]},
   { group: "Automações", items: [
@@ -159,12 +168,10 @@ const RIGHT_NAV: NavGroup[] = [
   { group: "Operação", items: [
     { key: "ops.versions",           label: "Versões",              icon: GitBranch },
     { key: "ops.test",               label: "Testar",               icon: FlaskConical },
-    { key: "ops.inspector",          label: "Inspetor",             icon: ScanSearch,      comingSoon: true, sprint: "Movimento 1.5",  masterRef: "13.5.16" },
-    { key: "ops.spec",               label: "Spec",                 icon: FileText,        comingSoon: true, sprint: "Fase E",         masterRef: "13.5.17" },
-  ]},
-  { group: "Sistema", items: [
     { key: "system.advanced",        label: "Avançado",             icon: Sliders },
     { key: "system.danger",          label: "Zona de Risco",        icon: ShieldAlert },
+    { key: "ops.inspector",          label: "Inspetor",             icon: ScanSearch,      comingSoon: true, sprint: "Movimento 1.5",  masterRef: "13.5.16" },
+    { key: "ops.spec",               label: "Spec",                 icon: FileText,        comingSoon: true, sprint: "Fase E",         masterRef: "13.5.17" },
   ]},
 ];
 
@@ -644,10 +651,10 @@ const AgentRightPanel = ({
     switch (key) {
       case "behavior.cadences":
         return cadencesForBadge.length > 0 ? { kind: "count", value: cadencesForBadge.length } : null;
-      case "channels.outbound": {
-        const n = (emailStatusForBadge?.connected ? 1 : 0) + (waStatusForBadge?.connected ? 1 : 0);
-        return n > 0 ? { kind: "count", value: n } : null;
-      }
+      case "channels.email":
+        return emailStatusForBadge?.connected ? { kind: "dot" } : null;
+      case "channels.whatsapp":
+        return waStatusForBadge?.connected ? { kind: "dot" } : null;
       case "resources.wa_templates": {
         const n = waTemplatesForBadge.filter((t) => t.status === "APPROVED").length;
         return n > 0 ? { kind: "count", value: n } : null;
@@ -1176,17 +1183,48 @@ const AgentRightPanel = ({
               <CadencesSection agentId={agentId} isFreshNew={!agentId} />
             )}
 
-            {/* ── Canais → Canais de Disparo ── */}
-            {activeSection === "channels.outbound" && (
-              <div className="space-y-6">
+            {/* ── Canais → Email ── */}
+            {activeSection === "channels.email" && (
+              <div className="space-y-6 max-w-2xl">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">Canais de Disparo</h2>
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-emerald-500" /> Email
+                  </h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Configure por onde seu agente se comunica com clientes — Email, WhatsApp, Voz e SMS.
-                    Cada canal tem suas próprias credenciais e features.
+                    Provedor Resend. Configure aqui pra disparar cadências e mensagens transacionais.
                   </p>
                 </div>
-                <OutboundChannelsBlock />
+                <IntegrationEmailForm />
+              </div>
+            )}
+
+            {/* ── Canais → WhatsApp ── */}
+            {activeSection === "channels.whatsapp" && (
+              <div className="space-y-6 max-w-2xl">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-[#25D366]" /> WhatsApp
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Conta WhatsApp Business via Meta Cloud API. Pra usar pra cadências, vá em <strong>Templates WhatsApp</strong> abaixo.
+                  </p>
+                </div>
+                <IntegrationWhatsAppForm />
+              </div>
+            )}
+
+            {/* ── Canais → Voz ── */}
+            {activeSection === "channels.voice" && (
+              <div className="space-y-6 max-w-2xl">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Mic className="w-5 h-5 text-purple-500" /> Voz
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Telefonia (Telnyx) e síntese de voz (ElevenLabs). Configure cada provedor independentemente.
+                  </p>
+                </div>
+                <IntegrationVoiceForm />
               </div>
             )}
 
