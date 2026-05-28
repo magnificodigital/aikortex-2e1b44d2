@@ -81,21 +81,31 @@ async function callTemplatesFn<T = any>(
   return json as T;
 }
 
+async function listWhatsAppTemplates(): Promise<WhatsAppTemplatesResponse> {
+  try {
+    const res = await callTemplatesFn<WhatsAppTemplatesResponse>("list");
+    return { templates: res.templates ?? [], integration_error: res.integration_error };
+  } catch (e) {
+    // Se WhatsApp não está configurado, retorna vazio (não erro) — UI mostra estado
+    const msg = (e as Error).message;
+    if (msg.includes("MISSING_WABA_CONFIG")) return { templates: [] };
+    throw e;
+  }
+}
+
+export function useWhatsAppTemplatesResponse() {
+  return useQuery({
+    queryKey: ["whatsapp-templates"],
+    queryFn: listWhatsAppTemplates,
+    staleTime: 60_000,
+  });
+}
+
 export function useWhatsAppTemplates() {
   return useQuery({
     queryKey: ["whatsapp-templates"],
-    queryFn: async (): Promise<WhatsAppTemplatesResponse> => {
-      try {
-        const res = await callTemplatesFn<WhatsAppTemplatesResponse>("list");
-        return { templates: res.templates ?? [], integration_error: res.integration_error };
-      } catch (e) {
-        // Se WhatsApp não está configurado, retorna vazio (não erro) — UI mostra estado
-        const msg = (e as Error).message;
-        if (msg.includes("MISSING_WABA_CONFIG")) return { templates: [] };
-        throw e;
-      }
-    },
-    select: (res) => res,
+    queryFn: listWhatsAppTemplates,
+    select: (res): WhatsAppTemplate[] => res.templates,
     staleTime: 60_000,
   });
 }
