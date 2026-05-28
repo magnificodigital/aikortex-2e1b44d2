@@ -51,6 +51,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { IntegrationsPanel, ChannelsPanel } from "@/components/settings/IntegrationsPanel";
+import AgencyChannelsManager from "@/components/settings/AgencyChannelsManager";
 import AgencyPermissions from "@/components/settings/AgencyPermissions";
 import SubscriptionTab from "@/components/settings/SubscriptionTab";
 import AsaasConfigTab from "@/components/settings/AsaasConfigTab";
@@ -707,6 +708,7 @@ const SettingsPage = () => {
 
           {/* ── CANAIS ─────────────────────────── */}
           <TabsContent value="channels" className="space-y-6">
+            <AgencyChannelsManager />
             <ChannelsPanel />
           </TabsContent>
 

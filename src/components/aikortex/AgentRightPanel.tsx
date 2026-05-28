@@ -35,6 +35,7 @@ import { useAgentCadences } from "@/hooks/use-agent-cadences";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import { useWhatsAppIntegrationStatus } from "@/hooks/use-whatsapp-integration";
 import { useWhatsAppTemplates } from "@/hooks/use-whatsapp-templates";
+import { useEnabledChannels } from "@/hooks/use-enabled-channels";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -629,14 +630,27 @@ const AgentRightPanel = ({
     try { localStorage.setItem(SHOW_ADVANCED_LS_KEY, showAdvanced ? "1" : "0"); } catch {}
   }, [showAdvanced]);
 
+  /* ── Canais ativados pela agência (Settings → Canais) ── */
+  const { data: enabledChannelsList = [] } = useEnabledChannels();
+  const enabledSet = useMemo(() => new Set(enabledChannelsList), [enabledChannelsList]);
+
   const visibleNav = useMemo(() => {
     return RIGHT_NAV
-      .map(g => ({
-        ...g,
-        items: g.items.filter(i => !i.comingSoon && (showAdvanced || !ADVANCED_KEYS.has(i.key))),
-      }))
+      .map(g => {
+        let items = g.items.filter(i => !i.comingSoon && (showAdvanced || !ADVANCED_KEYS.has(i.key)));
+        // Filtra Canais por enabled list (sub-items como Templates sempre passam)
+        if (g.group === "Canais") {
+          items = items.filter((i) => {
+            if (i.indent) return true; // sub-items (ex: Templates) sempre aparecem
+            if (!i.key.startsWith("channels.")) return true;
+            const channelKey = i.key.replace("channels.", "");
+            return enabledSet.has(channelKey);
+          });
+        }
+        return { ...g, items };
+      })
       .filter(g => g.items.length > 0);
-  }, [showAdvanced]);
+  }, [showAdvanced, enabledSet]);
 
   /* ── Status badges nos itens do menu ── */
   const { data: cadencesForBadge = [] } = useAgentCadences(agentId);
