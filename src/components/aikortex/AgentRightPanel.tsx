@@ -138,7 +138,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "config.agent",           label: "Agente",               icon: Bot },
   ]},
   { group: "Capacidades", items: [
-    { key: "caps.intelligence",      label: "Inteligência",         icon: Brain },
+    { key: "caps.intelligence",      label: "Raciocínio",           icon: Brain },
     { key: "resources.kb",           label: "Conhecimento",         icon: BookOpen },
     { key: "resources.tables",       label: "Tabelas",              icon: Database,        masterRef: "13.5.11" },
     { key: "caps.runtime",           label: "Code Runtime",         icon: FileCode2,       comingSoon: true, sprint: "futuro", masterRef: "13.5.7" },
@@ -796,7 +796,7 @@ const AgentRightPanel = ({
               <div className="space-y-6">
                 <div>
                   <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-primary" /> Inteligência
+                    <Brain className="w-5 h-5 text-primary" /> Raciocínio
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Como o agente raciocina, planeja e lembra de contexto. Ative as capacidades necessárias pro perfil dele.
