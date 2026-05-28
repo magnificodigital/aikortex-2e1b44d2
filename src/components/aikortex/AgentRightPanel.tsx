@@ -171,7 +171,6 @@ const RIGHT_NAV: NavGroup[] = [
   ]},
   { group: "Operação", items: [
     { key: "ops.versions",           label: "Versões",              icon: GitBranch },
-    { key: "system.advanced",        label: "Avançado",             icon: Sliders },
     { key: "system.danger",          label: "Zona de Risco",        icon: ShieldAlert },
     { key: "ops.inspector",          label: "Inspetor",             icon: ScanSearch,      comingSoon: true, sprint: "Movimento 1.5",  masterRef: "13.5.16" },
     { key: "ops.spec",               label: "Spec",                 icon: FileText,        comingSoon: true, sprint: "Fase E",         masterRef: "13.5.17" },
@@ -1250,7 +1249,7 @@ const AgentRightPanel = ({
                 <div>
                   <h2 className="text-lg font-bold text-foreground">Modelos de IA (LLMs)</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Conecte suas chaves de API para que o agente use modelos como OpenAI, Anthropic, Gemini, etc.
+                    Conecte suas chaves de API e ajuste <strong>temperatura</strong>, <strong>max tokens</strong> e <strong>top-p</strong> de cada modelo individualmente. Clique no card do provedor pra configurar.
                   </p>
                 </div>
                 <IntegrationsGrid
