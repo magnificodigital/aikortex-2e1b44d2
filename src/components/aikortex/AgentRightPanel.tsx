@@ -138,9 +138,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "config.agent",           label: "Agente",               icon: Bot },
   ]},
   { group: "Capacidades", items: [
-    { key: "caps.planning",          label: "Planning",             icon: Lightbulb },
-    { key: "caps.reasoning",         label: "Reasoning",            icon: Brain },
-    { key: "caps.memory",            label: "Memória",              icon: Brain },
+    { key: "caps.intelligence",      label: "Inteligência",         icon: Brain },
     { key: "resources.kb",           label: "Conhecimento",         icon: BookOpen },
     { key: "resources.tables",       label: "Tabelas",              icon: Database,        masterRef: "13.5.11" },
     { key: "caps.runtime",           label: "Code Runtime",         icon: FileCode2,       comingSoon: true, sprint: "futuro", masterRef: "13.5.7" },
@@ -179,7 +177,7 @@ const RIGHT_NAV: NavGroup[] = [
 const DEFAULT_SECTION = "overview";
 
 /* Vibe Mode (Master v7.4 §13.2): items shown only when "Mostrar opções avançadas" is ON. */
-const ADVANCED_KEYS = new Set<string>(["caps.planning", "caps.reasoning", "system.advanced"]);
+const ADVANCED_KEYS = new Set<string>(["system.advanced"]);
 const SHOW_ADVANCED_LS_KEY = "aikortex_show_advanced";
 
 const PlaceholderSection = ({ title, masterRef, sprint, icon: Icon }: { title: string; masterRef?: string; sprint?: string; icon: any }) => (
@@ -716,9 +714,11 @@ const AgentRightPanel = ({
                 const Icon = item.icon;
                 const active = activeSection === item.key;
                 const capActive =
-                  (item.key === "caps.planning"  && capabilities.planning.enabled) ||
-                  (item.key === "caps.reasoning" && capabilities.reasoning.enabled) ||
-                  (item.key === "caps.memory"    && capabilities.memory.enabled);
+                  item.key === "caps.intelligence" && (
+                    capabilities.planning.enabled ||
+                    capabilities.reasoning.enabled ||
+                    capabilities.memory.enabled
+                  );
                 return (
                   <button
                     key={item.key}
@@ -791,105 +791,109 @@ const AgentRightPanel = ({
               />
             )}
 
-            {/* ── Capacidades → Planning ── */}
-            {activeSection === "caps.planning" && (
+            {/* ── Capacidades → Inteligência (Planning + Reasoning + Memória unificados) ── */}
+            {activeSection === "caps.intelligence" && (
               <div className="space-y-6">
                 <div>
                   <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                    <Lightbulb className="w-5 h-5 text-primary" /> Planning
+                    <Brain className="w-5 h-5 text-primary" /> Inteligência
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Antes de responder, o agente decompõe a solicitação em passos e os executa em sequência. Útil para tarefas complexas que exigem múltiplas ações.
+                    Como o agente raciocina, planeja e lembra de contexto. Ative as capacidades necessárias pro perfil dele.
                   </p>
                 </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Ativar Planning</p>
-                    <p className="text-xs text-muted-foreground">Reduz alucinações em fluxos complexos.</p>
+
+                {/* ── Planning ── */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Planning</h3>
                   </div>
-                  <Switch
-                    checked={capabilities.planning.enabled}
-                    onCheckedChange={(v) => updateCapability("planning", { enabled: v })}
-                  />
-                </div>
-                {capabilities.planning.enabled && (
-                  <div className="rounded-lg border border-border p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-foreground">Número máximo de passos</p>
-                      <span className="text-sm font-semibold text-primary">{capabilities.planning.max_steps}</span>
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    Antes de responder, o agente decompõe a solicitação em passos e os executa em sequência. Útil para tarefas complexas.
+                  </p>
+                  <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Ativar Planning</p>
+                      <p className="text-xs text-muted-foreground">Reduz alucinações em fluxos complexos.</p>
                     </div>
-                    <Slider
-                      min={3}
-                      max={30}
-                      step={1}
-                      value={[capabilities.planning.max_steps]}
-                      onValueChange={([v]) => updateCapability("planning", { max_steps: v })}
+                    <Switch
+                      checked={capabilities.planning.enabled}
+                      onCheckedChange={(v) => updateCapability("planning", { enabled: v })}
                     />
-                    <p className="text-[11px] text-muted-foreground">Slider de 3 a 30 passos. Recomendado: 10.</p>
                   </div>
-                )}
-              </div>
-            )}
+                  {capabilities.planning.enabled && (
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-foreground">Número máximo de passos</p>
+                        <span className="text-sm font-semibold text-primary">{capabilities.planning.max_steps}</span>
+                      </div>
+                      <Slider
+                        min={3}
+                        max={30}
+                        step={1}
+                        value={[capabilities.planning.max_steps]}
+                        onValueChange={([v]) => updateCapability("planning", { max_steps: v })}
+                      />
+                      <p className="text-[11px] text-muted-foreground">3 a 30 passos. Recomendado: 10.</p>
+                    </div>
+                  )}
+                </div>
 
-            {/* ── Capacidades → Reasoning ── */}
-            {activeSection === "caps.reasoning" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-primary" /> Reasoning
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Antes de responder, o agente "pensa" usando chain-of-thought. Melhora respostas em perguntas que exigem dedução ou interpretação ambígua.
+                {/* ── Reasoning ── */}
+                <div className="space-y-3 border-t border-border pt-5">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Reasoning</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    Antes de responder, o agente "pensa" usando chain-of-thought. Melhora respostas que exigem dedução ou interpretação ambígua.
                   </p>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Ativar Reasoning</p>
-                    <p className="text-xs text-muted-foreground">Mais qualidade em respostas com nuance.</p>
+                  <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Ativar Reasoning</p>
+                      <p className="text-xs text-muted-foreground">Mais qualidade em respostas com nuance.</p>
+                    </div>
+                    <Switch
+                      checked={capabilities.reasoning.enabled}
+                      onCheckedChange={(v) => updateCapability("reasoning", { enabled: v })}
+                    />
                   </div>
-                  <Switch
-                    checked={capabilities.reasoning.enabled}
-                    onCheckedChange={(v) => updateCapability("reasoning", { enabled: v })}
-                  />
+                  {capabilities.reasoning.enabled && (
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                      <p className="text-sm font-medium text-foreground">Profundidade do raciocínio</p>
+                      <RadioGroup
+                        value={capabilities.reasoning.depth}
+                        onValueChange={(v) => updateCapability("reasoning", { depth: v as "low" | "medium" | "high" })}
+                        className="gap-2"
+                      >
+                        {[
+                          { v: "low",    label: "Baixa",  desc: "Raciocínio breve, foco no essencial." },
+                          { v: "medium", label: "Média",  desc: "Chain-of-thought equilibrado. Recomendado." },
+                          { v: "high",   label: "Alta",   desc: "Raciocínio aprofundado. Maior latência e custo." },
+                        ].map((opt) => (
+                          <label key={opt.v} htmlFor={`reasoning-${opt.v}`} className="flex items-start gap-2 cursor-pointer rounded-md hover:bg-muted/40 p-2 -mx-2">
+                            <RadioGroupItem value={opt.v} id={`reasoning-${opt.v}`} className="mt-0.5" />
+                            <div>
+                              <p className="text-sm text-foreground">{opt.label}</p>
+                              <p className="text-[11px] text-muted-foreground">{opt.desc}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </RadioGroup>
+                    </div>
+                  )}
                 </div>
-                {capabilities.reasoning.enabled && (
-                  <div className="rounded-lg border border-border p-4 space-y-3">
-                    <p className="text-sm font-medium text-foreground">Profundidade do raciocínio</p>
-                    <RadioGroup
-                      value={capabilities.reasoning.depth}
-                      onValueChange={(v) => updateCapability("reasoning", { depth: v as "low" | "medium" | "high" })}
-                      className="gap-2"
-                    >
-                      {[
-                        { v: "low",    label: "Baixa",  desc: "Raciocínio breve, foco no essencial." },
-                        { v: "medium", label: "Média",  desc: "Chain-of-thought equilibrado. Recomendado." },
-                        { v: "high",   label: "Alta",   desc: "Raciocínio aprofundado. Maior latência e custo." },
-                      ].map((opt) => (
-                        <label key={opt.v} htmlFor={`reasoning-${opt.v}`} className="flex items-start gap-2 cursor-pointer rounded-md hover:bg-muted/40 p-2 -mx-2">
-                          <RadioGroupItem value={opt.v} id={`reasoning-${opt.v}`} className="mt-0.5" />
-                          <div>
-                            <p className="text-sm text-foreground">{opt.label}</p>
-                            <p className="text-[11px] text-muted-foreground">{opt.desc}</p>
-                          </div>
-                        </label>
-                      ))}
-                    </RadioGroup>
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* ── Capacidades → Memória ── */}
-            {activeSection === "caps.memory" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-primary" /> Memória persistente
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    O agente lembra contexto de conversas anteriores e acessa informações relevantes via busca semântica.
+                {/* ── Memória ── */}
+                <div className="space-y-3 border-t border-border pt-5">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Memória persistente</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    O agente lembra contexto de conversas anteriores e acessa informações via busca semântica.
                   </p>
-                </div>
 
                 <div className="flex items-center justify-between rounded-lg border border-border p-4">
                   <div>
@@ -940,7 +944,7 @@ const AgentRightPanel = ({
                       <div className="flex-1 space-y-1">
                         <p className="text-sm font-medium text-foreground">Memória persistente requer Anthropic</p>
                         <p className="text-xs text-muted-foreground">Configure sua chave Anthropic em Recursos → Integrações para ativar a memória do agente.</p>
-                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>Ir para Integrações</Button>
+                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("integrations.llms")}>Ir para Integrações</Button>
                       </div>
                     </div>
                   )}
@@ -1160,7 +1164,7 @@ const AgentRightPanel = ({
                         <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-xs font-medium text-foreground">Configure sua chave da ElevenLabs em Integrações para ativar ligações com voz.</p>
-                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("integrations.llms")}>
                             Ir para Integrações
                           </Button>
                         </div>
@@ -1173,7 +1177,7 @@ const AgentRightPanel = ({
                         <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-xs font-medium text-foreground">Configure sua chave da Telnyx em Integrações para ativar ligações por telefone.</p>
-                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("resources.integrations")}>
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => goSection("integrations.llms")}>
                             Ir para Integrações
                           </Button>
                         </div>
