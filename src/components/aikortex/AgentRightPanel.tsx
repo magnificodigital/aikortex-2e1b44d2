@@ -635,10 +635,13 @@ const AgentRightPanel = ({
     return RIGHT_NAV
       .map(g => {
         let items = g.items.filter(i => !i.comingSoon && (showAdvanced || !ADVANCED_KEYS.has(i.key)));
-        // Filtra Canais por enabled list (sub-items como Templates sempre passam)
         if (g.group === "Canais") {
           items = items.filter((i) => {
-            if (i.indent) return true; // sub-items (ex: Templates) sempre aparecem
+            // Sub-item Templates só aparece quando WhatsApp está ativo (ou Templates já está aberto)
+            if (i.key === "resources.wa_templates") {
+              return activeSection === "channels.whatsapp" || activeSection === "resources.wa_templates";
+            }
+            if (i.indent) return true;
             if (!i.key.startsWith("channels.")) return true;
             const channelKey = i.key.replace("channels.", "");
             return enabledSet.has(channelKey);
@@ -647,7 +650,7 @@ const AgentRightPanel = ({
         return { ...g, items };
       })
       .filter(g => g.items.length > 0);
-  }, [showAdvanced, enabledSet]);
+  }, [showAdvanced, enabledSet, activeSection]);
 
   /* ── Status badges nos itens do menu ── */
   const { data: cadencesForBadge = [] } = useAgentCadences(agentId);
