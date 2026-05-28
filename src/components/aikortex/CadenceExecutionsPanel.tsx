@@ -64,7 +64,29 @@ function humanizeError(err: string | null | undefined): string {
   if (err.startsWith("TRIAL_EXHAUSTED")) return "Trial gratuito esgotado — conecte sua chave Resend";
   if (err.startsWith("MISSING_FROM_EMAIL")) return "Email do remetente não configurado em Integrações";
   if (err.startsWith("MISSING_CHANNEL_CONFIG")) return "Provedor de email não conectado";
+  if (err.startsWith("MISSING_TEMPLATE_NAME")) return "Template WhatsApp não configurado no step";
+  if (err.startsWith("MISSING_WABA_CONFIG")) return "WhatsApp não conectado em Integrações";
   if (err === "Contato sem email") return "Contato sem campo email";
+  if (err === "Contato sem telefone") return "Contato sem campo telefone";
+
+  // WhatsApp Meta Cloud API: "WhatsApp 400: {"error":{"message":"...","code":131009}}"
+  const waMatch = err.match(/^WhatsApp (\d+):\s*(.+)$/);
+  if (waMatch) {
+    const code = waMatch[1];
+    try {
+      const parsed = JSON.parse(waMatch[2].trim());
+      const e = parsed?.error;
+      if (e?.code === 131026) return "WhatsApp: número não tem WhatsApp ou janela 24h expirada";
+      if (e?.code === 131009) return "WhatsApp: template não existe ou não foi aprovado";
+      if (e?.code === 131008) return "WhatsApp: parâmetros do template inválidos";
+      if (e?.code === 132012) return "WhatsApp: template pausado pela Meta (qualidade baixa)";
+      if (e?.code === 132001) return "WhatsApp: número destino inválido";
+      if (e?.code === 190 || e?.code === 102) return "WhatsApp: token inválido ou expirado";
+      if (e?.message) return `WhatsApp: ${e.message}`;
+    } catch { /* não-JSON, cai abaixo */ }
+    return `WhatsApp ${code}`;
+  }
+  if (err.startsWith("WhatsApp: ")) return err;
 
   // Resend: "Resend 403: {"statusCode":403,"message":"...","name":"validation_error"}"
   const resendMatch = err.match(/^Resend (\d+):\s*(.+)$/);

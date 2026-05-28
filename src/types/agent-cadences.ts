@@ -5,13 +5,16 @@ export type CadenceChannel = 'whatsapp' | 'email' | 'sms';
  * day + hour + minute compose a single duration (NOT an absolute clock time).
  * Example: day=1, hour=2, minute=30 → fire 1d 2h 30min after started_at.
  *
- * Conteúdo editorial por step (apenas o que muda mensagem a mensagem):
- *   - subject_template : assunto do email (canal='email'). Suporta placeholders.
- *   - message_template : corpo da mensagem (qualquer canal). Suporta placeholders.
+ * Conteúdo editorial por step:
+ *   - subject_template : assunto do email (channel='email'). Placeholders {chave}.
+ *   - message_template : corpo de texto (qualquer canal). Placeholders {chave}.
+ *   - whatsapp_template_name : nome do template aprovado na Meta (channel='whatsapp').
+ *   - whatsapp_template_language : código BCP-47 (default 'pt_BR').
+ *   - whatsapp_template_variables : strings na ordem dos {{1}}, {{2}}... do
+ *       template aprovado. Cada string aceita placeholders {chave} do contato.
  *
- * Identidade do remetente (from_name, reply_to, api_key) vive em
- * agency_secrets — configurada uma vez por agência em Settings → Integrações.
- * O engine puxa de lá em runtime.
+ * Identidade do remetente (from_name email, WABA tokens) vive em agency_secrets
+ * ou user_api_keys — configurada uma vez por agência em Settings → Integrações.
  */
 export type CadenceStep = {
   id: string;
@@ -19,7 +22,13 @@ export type CadenceStep = {
   hour: number;
   minute: number;
   channel: CadenceChannel;
+  // Email-specific
   subject_template?: string;
+  // WhatsApp-specific (template message — único formato permitido fora da janela de 24h)
+  whatsapp_template_name?: string;
+  whatsapp_template_language?: string;
+  whatsapp_template_variables?: string[];
+  // Core (texto livre — corpo do email, preview de log)
   message_template: string;
   conditions?: {
     skip_if_replied?: boolean;

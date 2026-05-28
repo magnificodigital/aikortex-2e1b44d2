@@ -14,8 +14,10 @@ import {
 } from "@/components/ui/dialog";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import IntegrationVoiceForm from "@/components/settings/IntegrationVoiceForm";
+import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import { useVoiceIntegrationStatus } from "@/hooks/use-voice-integration";
+import { useWhatsAppIntegrationStatus } from "@/hooks/use-whatsapp-integration";
 
 type ChannelStatus = "connected" | "disconnected" | "coming_soon";
 
@@ -46,8 +48,7 @@ const CHANNELS: ChannelDef[] = [
     icon: WhatsAppIcon,
     iconBg: "bg-[#25D366]/10",
     iconColor: "text-[#25D366]",
-    description: "Templates aprovados via WABA.",
-
+    description: "Mensagens template aprovadas via WABA + auto-reply do agente.",
   },
   {
     key: "sms",
@@ -87,11 +88,15 @@ function StatusLabel({ status }: { status: ChannelStatus }) {
 export default function OutboundChannelsBlock() {
   const { data: emailStatus } = useEmailIntegrationStatus();
   const { data: voiceStatus } = useVoiceIntegrationStatus();
+  const { data: waStatus } = useWhatsAppIntegrationStatus();
   const [openDialog, setOpenDialog] = useState<ChannelDef["key"] | null>(null);
 
   const statusFor = (key: ChannelDef["key"]): ChannelStatus => {
     if (key === "email") {
       return emailStatus?.connected ? "connected" : "disconnected";
+    }
+    if (key === "whatsapp") {
+      return waStatus?.connected ? "connected" : "disconnected";
     }
     if (key === "voice") {
       // Voz é canal "ativo" se pelo menos um dos 2 provedores (Telnyx ou ElevenLabs) estiver conectado.
@@ -111,6 +116,9 @@ export default function OutboundChannelsBlock() {
       if ((emailStatus?.trial_remaining ?? 0) > 0) {
         return `${emailStatus?.trial_remaining} emails cortesia disponíveis`;
       }
+    }
+    if (key === "whatsapp" && waStatus?.connected) {
+      return waStatus.phone_number_id_suffix ? `Phone ID ••••${waStatus.phone_number_id_suffix}` : "WABA configurada";
     }
     if (key === "voice") {
       const parts: string[] = [];
@@ -222,6 +230,26 @@ export default function OutboundChannelsBlock() {
             </div>
           </DialogHeader>
           <IntegrationEmailForm onClose={() => setOpenDialog(null)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog do WhatsApp */}
+      <Dialog open={openDialog === "whatsapp"} onOpenChange={(o) => { if (!o) setOpenDialog(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#25D366]/10 flex items-center justify-center">
+                <WhatsAppIcon className="w-5 h-5 text-[#25D366]" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">WhatsApp (Meta Cloud API)</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  Configuração da conta WhatsApp Business para cadências e auto-reply
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <IntegrationWhatsAppForm onClose={() => setOpenDialog(null)} />
         </DialogContent>
       </Dialog>
 

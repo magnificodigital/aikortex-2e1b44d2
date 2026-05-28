@@ -98,6 +98,105 @@ function appendUnsubscribeFooter(body: string, unsubscribeUrl: string, fromName:
   return `${body}${footer}`;
 }
 
+const WHATSAPP_GRAPH_BASE = 'https://graph.facebook.com/v21.0';
+
+/**
+ * Envia uma mensagem template via WhatsApp Cloud API.
+ * Sempre usa formato "template" porque mensagens free-form só funcionam dentro
+ * da janela de 24h da última msg do contato — pra cadências (que disparam frio),
+ * template aprovado é único caminho confiável.
+ */
+async function sendViaWhatsApp(opts: {
+  agentId: string;
+  agentUserId: string;
+  to: string | null | undefined;
+  templateName: string;
+  templateLanguage: string;
+  templateVariables: string[];
+  fallbackBody: string;
+}): Promise<{ ok: boolean; error?: string; wamid?: string }> {
+  if (!opts.to) return { ok: false, error: 'Contato sem telefone' };
+  if (!opts.templateName) {
+    return { ok: false, error: 'MISSING_TEMPLATE_NAME: configure um template aprovado da Meta para este step' };
+  }
+
+  const { data: keys } = await admin
+    .from('user_api_keys')
+    .select('provider, api_key')
+    .eq('user_id', opts.agentUserId)
+    .in('provider', ['whatsapp_access_token', 'whatsapp_phone_number_id']);
+
+  const keyMap: Record<string, string> = {};
+  (keys ?? []).forEach((k: any) => { keyMap[k.provider] = k.api_key; });
+
+  const accessToken = keyMap.whatsapp_access_token;
+  const phoneNumberId = keyMap.whatsapp_phone_number_id;
+  if (!accessToken || !phoneNumberId) {
+    return { ok: false, error: 'MISSING_WABA_CONFIG: conecte sua conta WhatsApp em Integrações → WhatsApp' };
+  }
+
+  const components = opts.templateVariables.length > 0 ? [{
+    type: 'body',
+    parameters: opts.templateVariables.map((v) => ({ type: 'text', text: v })),
+  }] : undefined;
+
+  const payload: Record<string, unknown> = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: opts.to,
+    type: 'template',
+    template: {
+      name: opts.templateName,
+      language: { code: opts.templateLanguage || 'pt_BR' },
+      ...(components ? { components } : {}),
+    },
+  };
+
+  log('sending whatsapp', { to: opts.to, template: opts.templateName });
+
+  const resp = await fetch(`${WHATSAPP_GRAPH_BASE}/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const respText = await resp.text();
+  if (!resp.ok) {
+    log('whatsapp error', resp.status, respText);
+    return { ok: false, error: `WhatsApp ${resp.status}: ${respText.slice(0, 250)}` };
+  }
+
+  let wamid: string | undefined;
+  try {
+    const data = JSON.parse(respText);
+    wamid = data?.messages?.[0]?.id;
+  } catch { /* ignore */ }
+
+  // Registra mensagem outgoing no histórico de WhatsApp (mesma tabela usada
+  // pelo whatsapp-send manual + auto-reply do agente)
+  try {
+    await admin.from('whatsapp_messages').insert({
+      wamid: wamid ?? null,
+      from_number: phoneNumberId,
+      phone_number_id: phoneNumberId,
+      to_number: opts.to,
+      message_type: 'template',
+      content: opts.fallbackBody || opts.templateName,
+      raw_payload: payload,
+      direction: 'outgoing',
+      status: 'sent',
+      user_id: opts.agentUserId,
+    });
+  } catch (e) {
+    log('whatsapp_messages insert error (ignored)', (e as Error).message);
+  }
+
+  return { ok: true, wamid };
+}
+
 async function sendViaEmail(opts: {
   agencyId: string;
   agentId: string;
@@ -296,7 +395,7 @@ Deno.serve(async (req) => {
     const subjectFallback = `${cadence.name} — Mensagem ${execution.current_step + 1}`;
     const subject = subjectTpl ? renderTemplate(subjectTpl, placeholders) : subjectFallback;
 
-    let sendResult: { ok: boolean; error?: string; trial?: boolean; skipped?: 'unsubscribed' };
+    let sendResult: { ok: boolean; error?: string; trial?: boolean; skipped?: 'unsubscribed'; wamid?: string };
     try {
       switch (currentStep.channel) {
         case 'email':
@@ -308,9 +407,22 @@ Deno.serve(async (req) => {
             body: message,
           });
           break;
-        case 'whatsapp':
-          sendResult = { ok: false, error: 'WhatsApp não disponível neste sprint (Sprint 2.7-c)' };
+        case 'whatsapp': {
+          const rawVars = Array.isArray(currentStep.whatsapp_template_variables)
+            ? currentStep.whatsapp_template_variables
+            : [];
+          const renderedVars = rawVars.map((v: any) => renderTemplate(String(v ?? ''), placeholders));
+          sendResult = await sendViaWhatsApp({
+            agentId: execution.agent_id,
+            agentUserId: execution.agent?.user_id ?? '',
+            to: meta.telefone || meta.phone || meta.whatsapp || execution.contact_phone,
+            templateName: (currentStep.whatsapp_template_name ?? '').toString().trim(),
+            templateLanguage: (currentStep.whatsapp_template_language ?? 'pt_BR').toString(),
+            templateVariables: renderedVars,
+            fallbackBody: message,
+          });
           break;
+        }
         case 'sms':
           sendResult = { ok: false, error: 'SMS não disponível neste sprint' };
           break;
@@ -334,6 +446,12 @@ Deno.serve(async (req) => {
     }
 
     if (sendResult.ok) {
+      // Anota o wamid do último envio (se WhatsApp) pra correlacionar
+      // statuses sent/delivered/read recebidos via webhook.
+      const updatedMeta = sendResult.wamid
+        ? { ...(execution.metadata ?? {}), last_wamid: sendResult.wamid, last_channel: currentStep.channel }
+        : execution.metadata;
+
       const nextIdx = execution.current_step + 1;
       const nextStep = steps[nextIdx];
       if (nextStep) {
@@ -342,12 +460,14 @@ Deno.serve(async (req) => {
           current_step: nextIdx,
           next_run_at: computeNextRunAt(execution.started_at, nextStep),
           last_error: null,
+          metadata: updatedMeta,
         }).eq('id', executionId);
       } else {
         await admin.from('cadence_executions').update({
           status: 'completed',
           completed_at: new Date().toISOString(),
           last_error: null,
+          metadata: updatedMeta,
         }).eq('id', executionId);
       }
     } else {

@@ -109,6 +109,11 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
         const subj = (s.subject_template ?? "").trim();
         if (subj.length > 200) return `Step ${n}: assunto até 200 caracteres`;
       }
+      if (s.channel === "whatsapp") {
+        const tname = (s.whatsapp_template_name ?? "").trim();
+        if (!tname) return `Step ${n}: nome do template WhatsApp é obrigatório`;
+        if (!/^[a-z0-9_]+$/.test(tname)) return `Step ${n}: template name precisa ser lowercase, dígitos e underscore`;
+      }
       const placeholders = Array.from(new Set((msg.match(/\{[^}]+\}/g) ?? [])));
       if (placeholders.length > 10) return `Step ${n}: máximo 10 placeholders distintos`;
     }
@@ -314,8 +319,8 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                           <Select value={s.channel} onValueChange={(v) => updateStep(idx, { channel: v as any })}>
                             <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="whatsapp" disabled>WhatsApp (em breve)</SelectItem>
                               <SelectItem value="email">Email</SelectItem>
+                              <SelectItem value="whatsapp">WhatsApp</SelectItem>
                               <SelectItem value="sms" disabled>SMS (em breve)</SelectItem>
                             </SelectContent>
                           </Select>
@@ -337,6 +342,82 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                         <p className="text-[9px] text-muted-foreground">
                           Suporta placeholders. Se vazio, usa nome da cadência + número da mensagem.
                         </p>
+                      </div>
+                    )}
+
+                    {s.channel === "whatsapp" && (
+                      <div className="space-y-2 rounded-md border border-[#25D366]/30 bg-[#25D366]/5 p-2.5">
+                        <p className="text-[10px] uppercase tracking-wider text-[#25D366] font-semibold">Template WhatsApp (aprovado pela Meta)</p>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Nome do template *</Label>
+                            <Input
+                              value={s.whatsapp_template_name ?? ""}
+                              onChange={(e) => updateStep(idx, { whatsapp_template_name: e.target.value })}
+                              placeholder="ex: hello_world"
+                              className="h-8 text-xs font-mono"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Idioma</Label>
+                            <Input
+                              value={s.whatsapp_template_language ?? "pt_BR"}
+                              onChange={(e) => updateStep(idx, { whatsapp_template_language: e.target.value })}
+                              placeholder="pt_BR"
+                              className="h-8 text-xs font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">
+                            Variáveis do template (ordem dos {"{{1}}, {{2}}..."})
+                          </Label>
+                          {(s.whatsapp_template_variables ?? []).map((v, vi) => (
+                            <div key={vi} className="flex gap-1.5">
+                              <span className="text-[10px] font-mono text-muted-foreground self-center w-6">{`{{${vi + 1}}}`}</span>
+                              <Input
+                                value={v}
+                                onChange={(e) => {
+                                  const next = [...(s.whatsapp_template_variables ?? [])];
+                                  next[vi] = e.target.value;
+                                  updateStep(idx, { whatsapp_template_variables: next });
+                                }}
+                                placeholder="Ex: {nome} ou texto fixo"
+                                className="h-7 text-[11px]"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0"
+                                onClick={() => {
+                                  const next = (s.whatsapp_template_variables ?? []).filter((_, i) => i !== vi);
+                                  updateStep(idx, { whatsapp_template_variables: next });
+                                }}
+                              >
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[10px] gap-1"
+                            onClick={() => {
+                              const next = [...(s.whatsapp_template_variables ?? []), ""];
+                              updateStep(idx, { whatsapp_template_variables: next });
+                            }}
+                          >
+                            <Plus className="w-3 h-3" /> Adicionar variável
+                          </Button>
+                          <p className="text-[9px] text-muted-foreground">
+                            Cada variável aceita placeholders <code className="px-1 py-px rounded bg-muted/60">{"{nome}"}</code>,
+                            <code className="px-1 py-px rounded bg-muted/60">{"{telefone}"}</code>, etc. ou texto fixo.
+                          </p>
+                        </div>
                       </div>
                     )}
 

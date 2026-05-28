@@ -86,6 +86,42 @@ serve(async (req) => {
 
       if (value.statuses) {
         console.log("Status update:", JSON.stringify(value.statuses));
+        // Tenta correlacionar com cadence_executions via wamid armazenado em metadata.last_wamid
+        for (const st of value.statuses) {
+          const wamid = st.id;
+          const newStatus = st.status; // sent | delivered | read | failed
+          if (!wamid || !newStatus) continue;
+          try {
+            const { data: exec } = await supabase
+              .from("cadence_executions")
+              .select("id, metadata")
+              .eq("metadata->>last_wamid", wamid)
+              .maybeSingle();
+            if (exec) {
+              const prevMeta = (exec.metadata ?? {}) as Record<string, unknown>;
+              const updates: Record<string, unknown> = {
+                metadata: { ...prevMeta, whatsapp_last_status: newStatus, whatsapp_status_at: new Date().toISOString() },
+              };
+              // Se falhou no provedor, marca execution como failed
+              if (newStatus === "failed") {
+                const errMsg = st.errors?.[0]?.title || st.errors?.[0]?.message || "WhatsApp delivery failed";
+                updates.status = "failed";
+                updates.last_error = `WhatsApp: ${errMsg}`;
+              }
+              await supabase
+                .from("cadence_executions")
+                .update(updates)
+                .eq("id", exec.id);
+            }
+            // Atualiza também whatsapp_messages se houver row com esse wamid
+            await supabase
+              .from("whatsapp_messages")
+              .update({ status: newStatus })
+              .eq("wamid", wamid);
+          } catch (err) {
+            console.error("status update error", err);
+          }
+        }
         return new Response(JSON.stringify({ status: "status_received" }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
