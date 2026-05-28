@@ -141,7 +141,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "caps.planning",          label: "Planning",             icon: Lightbulb },
     { key: "caps.reasoning",         label: "Reasoning",            icon: Brain },
     { key: "caps.memory",            label: "Memória",              icon: Brain },
-    { key: "resources.kb",           label: "Base de Conhecimento", icon: BookOpen },
+    { key: "resources.kb",           label: "Conhecimento",         icon: BookOpen },
     { key: "resources.tables",       label: "Tabelas",              icon: Database,        masterRef: "13.5.11" },
     { key: "caps.runtime",           label: "Code Runtime",         icon: FileCode2,       comingSoon: true, sprint: "futuro", masterRef: "13.5.7" },
     { key: "caps.autoint",           label: "Auto-integração",      icon: Workflow,        comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
@@ -171,7 +171,6 @@ const RIGHT_NAV: NavGroup[] = [
   ]},
   { group: "Operação", items: [
     { key: "ops.versions",           label: "Versões",              icon: GitBranch },
-    { key: "ops.test",               label: "Testar",               icon: FlaskConical },
     { key: "system.advanced",        label: "Avançado",             icon: Sliders },
     { key: "system.danger",          label: "Zona de Risco",        icon: ShieldAlert },
     { key: "ops.inspector",          label: "Inspetor",             icon: ScanSearch,      comingSoon: true, sprint: "Movimento 1.5",  masterRef: "13.5.16" },
