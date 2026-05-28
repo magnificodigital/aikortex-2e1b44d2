@@ -161,8 +161,7 @@ const RIGHT_NAV: NavGroup[] = [
   { group: "Integrações", items: [
     { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
     { key: "integrations.llms",      label: "LLMs",                 icon: Sparkles },
-    { key: "integrations.apis",      label: "APIs",                 icon: Plug },
-    { key: "integrations.mcps",      label: "MCPs",                 icon: Blocks },
+    { key: "integrations.apis",      label: "APIs & Webhooks",      icon: Plug },
   ]},
   { group: "Automações", items: [
     { key: "behavior.cadences",      label: "Cadências",            icon: Clock,           masterRef: "13.5.13" },
@@ -1263,15 +1262,16 @@ const AgentRightPanel = ({
               </div>
             )}
 
-            {/* ── Integrações → APIs ── */}
+            {/* ── Integrações → APIs & Webhooks ── */}
             {activeSection === "integrations.apis" && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">APIs & Serviços</h2>
+                  <h2 className="text-lg font-bold text-foreground">APIs & Webhooks</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Conecte serviços externos (Gmail, Calendar, Drive, CRMs) que o agente pode invocar como ferramentas.
+                    Conecte serviços externos (Gmail, Calendar, Drive, CRMs), MCPs e webhooks que o agente pode usar.
                   </p>
                 </div>
+
                 <IntegrationsGrid
                   providers={SERVICE_PROVIDERS}
                   showTitle={false}
@@ -1280,28 +1280,17 @@ const AgentRightPanel = ({
                   initialProviderConfigs={integrationConfigs}
                   storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
                 />
-              </div>
-            )}
 
-            {/* ── Integrações → MCPs ── */}
-            {activeSection === "integrations.mcps" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">MCPs & Webhooks</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Servidores MCP (Model Context Protocol) e Webhooks pra estender o contexto e a comunicação do agente.
-                  </p>
-                </div>
                 <EmptyIntegrationSection
                   icon={Blocks}
                   title="MCPs"
-                  description="Conecte servidores MCP para estender o contexto do agente com fontes externas (filesystem, DB, search, etc)."
+                  description="Conecte servidores MCP (Model Context Protocol) para estender o contexto do agente com fontes externas (filesystem, DB, search, etc)."
                   actionLabel="Adicionar MCP"
                 />
                 <EmptyIntegrationSection
                   icon={Webhook}
                   title="Webhooks"
-                  description="Configure webhooks para receber e enviar eventos em tempo real entre o Aikortex e sistemas externos."
+                  description="Configure webhooks pra receber e enviar eventos em tempo real entre o Aikortex e sistemas externos."
                   actionLabel="Adicionar Webhook"
                 />
               </div>
