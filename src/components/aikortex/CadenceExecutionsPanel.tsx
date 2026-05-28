@@ -51,6 +51,49 @@ const STATUS_META: Record<CadenceExecutionStatus, {
   paused: { label: "Pausada", badge: "bg-purple-500/10 text-purple-600 border-purple-500/30", icon: PauseCircle },
 };
 
+/**
+ * Converte erros técnicos do engine em mensagens humanas pro usuário.
+ * Trata erros conhecidos (códigos do engine) e tenta extrair a mensagem
+ * limpa de respostas JSON de provedores (Resend, etc.).
+ */
+function humanizeError(err: string | null | undefined): string {
+  if (!err) return "";
+
+  // Códigos do engine
+  if (err === "recipient_unsubscribed") return "Contato descadastrou da lista";
+  if (err.startsWith("TRIAL_EXHAUSTED")) return "Trial gratuito esgotado — conecte sua chave Resend";
+  if (err.startsWith("MISSING_FROM_EMAIL")) return "Email do remetente não configurado em Integrações";
+  if (err.startsWith("MISSING_CHANNEL_CONFIG")) return "Provedor de email não conectado";
+  if (err === "Contato sem email") return "Contato sem campo email";
+
+  // Resend: "Resend 403: {"statusCode":403,"message":"...","name":"validation_error"}"
+  const resendMatch = err.match(/^Resend (\d+):\s*(.+)$/);
+  if (resendMatch) {
+    const code = resendMatch[1];
+    const payload = resendMatch[2].trim();
+    try {
+      const parsed = JSON.parse(payload);
+      if (parsed.message) {
+        // Tradução de mensagens recorrentes do Resend
+        const m = parsed.message as string;
+        if (m.includes("domain is not verified")) {
+          const dom = m.match(/The (.+?) domain is not verified/)?.[1];
+          return `Domínio ${dom ?? "do remetente"} não verificado no Resend`;
+        }
+        if (m.includes("API key is invalid") || code === "401") return "Chave Resend inválida ou revogada";
+        if (m.includes("rate limit")) return "Resend: limite de envios excedido";
+        return `Resend: ${m}`;
+      }
+    } catch {
+      /* não-JSON, cai no fallback abaixo */
+    }
+    return `Resend ${code}: ${payload.slice(0, 80)}`;
+  }
+
+  // Fallback: corta string longa
+  return err.length > 90 ? `${err.slice(0, 90)}…` : err;
+}
+
 function formatRel(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -81,15 +124,15 @@ function StatCard({
   bg?: string;
 }) {
   return (
-    <Card className="p-3">
-      <div className="flex items-start gap-2">
-        <div className={`w-8 h-8 rounded-md ${bg} flex items-center justify-center shrink-0`}>
+    <Card className="p-3.5">
+      <div className="flex items-start gap-2.5">
+        <div className={`w-9 h-9 rounded-md ${bg} flex items-center justify-center shrink-0`}>
           <Icon className={`w-4 h-4 ${color}`} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
-          <p className={`text-xl font-bold ${color} leading-tight`}>{value}</p>
-          {hint && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{hint}</p>}
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">{label}</p>
+          <p className={`text-xl font-bold ${color} leading-tight mt-0.5`}>{value}</p>
+          {hint && <p className="text-[10px] text-muted-foreground mt-1 leading-snug line-clamp-2">{hint}</p>}
         </div>
       </div>
     </Card>
@@ -119,7 +162,7 @@ export default function CadenceExecutionsPanel({ agentId }: Props) {
   return (
     <div className="space-y-4">
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <StatCard
           icon={Send}
           label="Total"
@@ -148,7 +191,7 @@ export default function CadenceExecutionsPanel({ agentId }: Props) {
           icon={UserX}
           label="Descadastrados"
           value={stats?.unsubscribedCount ?? 0}
-          hint="contatos que clicaram em opt-out"
+          hint="clicaram em opt-out"
           color="text-amber-600"
           bg="bg-amber-500/10"
         />
@@ -233,7 +276,8 @@ export default function CadenceExecutionsPanel({ agentId }: Props) {
                       <p className="text-[11px] text-muted-foreground truncate">
                         {e.cadence_name ?? "Cadência removida"} · Step {e.current_step}/{e.total_steps}
                         {e.status === "pending" && e.next_run_at && ` · próximo ${formatRel(e.next_run_at)}`}
-                        {e.status === "failed" && e.last_error && ` · erro: ${e.last_error.slice(0, 50)}`}
+                        {e.status === "failed" && e.last_error && ` · ${humanizeError(e.last_error)}`}
+                        {e.status === "cancelled" && e.last_error === "recipient_unsubscribed" && ` · contato descadastrou`}
                       </p>
                     </div>
                     <Badge variant="outline" className={`text-[10px] shrink-0 ${meta.badge}`}>
@@ -308,12 +352,20 @@ export default function CadenceExecutionsPanel({ agentId }: Props) {
                 )}
 
                 {drillDown.last_error && (
-                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 space-y-1">
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 space-y-1.5">
                     <div className="flex items-center gap-1.5">
                       <AlertTriangle className="w-3 h-3 text-destructive" />
                       <p className="text-[10px] uppercase tracking-wider text-destructive font-semibold">Último erro</p>
                     </div>
-                    <p className="text-[11px] font-mono text-destructive break-all">{drillDown.last_error}</p>
+                    <p className="text-[12px] text-destructive">{humanizeError(drillDown.last_error)}</p>
+                    <details className="group">
+                      <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground">
+                        Ver mensagem técnica
+                      </summary>
+                      <p className="text-[10px] font-mono text-muted-foreground break-all mt-1.5 p-2 rounded bg-muted/40">
+                        {drillDown.last_error}
+                      </p>
+                    </details>
                   </div>
                 )}
 
