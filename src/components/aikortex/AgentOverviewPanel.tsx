@@ -73,7 +73,7 @@ export default function AgentOverviewPanel({
     {
       label: "Conecte pelo menos um canal (Email ou WhatsApp)",
       done: hasAnyChannel,
-      onGo: () => onGoSection("resources.integrations"),
+      onGo: () => onGoSection("channels.outbound"),
     },
     {
       label: "Crie pelo menos uma cadência",
@@ -105,7 +105,7 @@ export default function AgentOverviewPanel({
         label: "Conectar canal",
         description: "Email ou WhatsApp pra começar a se comunicar",
         icon: Plug,
-        onGo: () => onGoSection("resources.integrations"),
+        onGo: () => onGoSection("channels.outbound"),
         primary: true,
       });
     }
@@ -318,11 +318,12 @@ export default function AgentOverviewPanel({
           {[
             { label: "Cadências", icon: Clock, key: "behavior.cadences" },
             { label: "Execuções", icon: Send, key: "ops.executions" },
-            { label: "Integrações", icon: Plug, key: "resources.integrations" },
+            { label: "Canais", icon: Plug, key: "channels.outbound" },
+            { label: "Integrações", icon: Plug, key: "integrations.apis" },
             { label: "Ferramentas", icon: Wrench, key: "resources.tools" },
             { label: "Tabelas", icon: Database, key: "resources.tables" },
             { label: "Templates WhatsApp", icon: MessageSquare, key: "resources.wa_templates" },
-            { label: "Email", icon: Mail, key: "resources.integrations" },
+            { label: "Email", icon: Mail, key: "channels.outbound" },
           ].map((s) => {
             const Icon = s.icon;
             return (

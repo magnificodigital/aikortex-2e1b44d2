@@ -130,11 +130,7 @@ type NavGroup = { group: string; items: NavItem[] };
 const RIGHT_NAV: NavGroup[] = [
   { group: "Geral", items: [
     { key: "overview",           label: "Visão geral", icon: Home },
-  ]},
-  { group: "Configuração", items: [
-    { key: "config.agent",       label: "Agente",   icon: Bot },
-    { key: "config.voice",       label: "Voz",      icon: Mic },
-    { key: "config.channels",    label: "Canais",   icon: Share2 },
+    { key: "config.agent",       label: "Agente",      icon: Bot },
   ]},
   { group: "Capacidades", items: [
     { key: "caps.planning",      label: "Planning",        icon: Lightbulb },
@@ -143,27 +139,32 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "caps.runtime",       label: "Code Runtime",    icon: FileCode2,   comingSoon: true, sprint: "futuro", masterRef: "13.5.7" },
     { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
   ]},
-  { group: "Recursos", items: [
-    { key: "resources.tools",            label: "Ferramentas",          icon: Wrench },
-    { key: "resources.kb",               label: "Base de Conhecimento", icon: BookOpen },
-    { key: "resources.tables",           label: "Tabelas",              icon: Database,        masterRef: "13.5.11" },
-    { key: "resources.integrations",     label: "Integrações",          icon: Plug },
-    { key: "resources.wa_templates",     label: "Templates WhatsApp",   icon: MessageSquare },
+  { group: "Canais", items: [
+    { key: "channels.outbound",      label: "Canais de Disparo", icon: Share2 },
+    { key: "resources.wa_templates", label: "Templates WhatsApp", icon: MessageSquare },
   ]},
-  { group: "Comportamento", items: [
-    { key: "behavior.cadences",  label: "Cadências", icon: Clock,  masterRef: "13.5.13" },
-    { key: "behavior.squad",     label: "Squad",     icon: Users,  comingSoon: true, sprint: "Fase E", masterRef: "13.5.14" },
+  { group: "Conhecimento", items: [
+    { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
+    { key: "resources.kb",           label: "Base de Conhecimento", icon: BookOpen },
+    { key: "resources.tables",       label: "Tabelas",              icon: Database,        masterRef: "13.5.11" },
+  ]},
+  { group: "Integrações", items: [
+    { key: "integrations.apis",      label: "Modelos & APIs",       icon: Plug },
+  ]},
+  { group: "Automações", items: [
+    { key: "behavior.cadences",      label: "Cadências",            icon: Clock,           masterRef: "13.5.13" },
+    { key: "ops.executions",         label: "Execuções",            icon: Activity },
+    { key: "behavior.squad",         label: "Squad",                icon: Users,           comingSoon: true, sprint: "Fase E", masterRef: "13.5.14" },
   ]},
   { group: "Operação", items: [
-    { key: "ops.executions", label: "Execuções",icon: Activity },
-    { key: "ops.versions",   label: "Versões",  icon: GitBranch },
-    { key: "ops.test",       label: "Testar",   icon: FlaskConical },
-    { key: "ops.inspector",  label: "Inspetor", icon: ScanSearch,   comingSoon: true, sprint: "Movimento 1.5",  masterRef: "13.5.16" },
-    { key: "ops.spec",       label: "Spec",     icon: FileText,     comingSoon: true, sprint: "Fase E",         masterRef: "13.5.17" },
+    { key: "ops.versions",           label: "Versões",              icon: GitBranch },
+    { key: "ops.test",               label: "Testar",               icon: FlaskConical },
+    { key: "ops.inspector",          label: "Inspetor",             icon: ScanSearch,      comingSoon: true, sprint: "Movimento 1.5",  masterRef: "13.5.16" },
+    { key: "ops.spec",               label: "Spec",                 icon: FileText,        comingSoon: true, sprint: "Fase E",         masterRef: "13.5.17" },
   ]},
   { group: "Sistema", items: [
-    { key: "system.advanced",  label: "Avançado",     icon: Sliders },
-    { key: "system.danger",    label: "Zona de Risco", icon: ShieldAlert },
+    { key: "system.advanced",        label: "Avançado",             icon: Sliders },
+    { key: "system.danger",          label: "Zona de Risco",        icon: ShieldAlert },
   ]},
 ];
 
@@ -643,7 +644,7 @@ const AgentRightPanel = ({
     switch (key) {
       case "behavior.cadences":
         return cadencesForBadge.length > 0 ? { kind: "count", value: cadencesForBadge.length } : null;
-      case "resources.integrations": {
+      case "channels.outbound": {
         const n = (emailStatusForBadge?.connected ? 1 : 0) + (waStatusForBadge?.connected ? 1 : 0);
         return n > 0 ? { kind: "count", value: n } : null;
       }
@@ -1175,15 +1176,29 @@ const AgentRightPanel = ({
               <CadencesSection agentId={agentId} isFreshNew={!agentId} />
             )}
 
-            {/* ── Recursos → Integrações ── */}
-            {activeSection === "resources.integrations" && (
+            {/* ── Canais → Canais de Disparo ── */}
+            {activeSection === "channels.outbound" && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">Integrações</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Conecte integrações para expandir as capacidades do agente.</p>
+                  <h2 className="text-lg font-bold text-foreground">Canais de Disparo</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Configure por onde seu agente se comunica com clientes — Email, WhatsApp, Voz e SMS.
+                    Cada canal tem suas próprias credenciais e features.
+                  </p>
                 </div>
-
                 <OutboundChannelsBlock />
+              </div>
+            )}
+
+            {/* ── Integrações → Modelos & APIs ── */}
+            {activeSection === "integrations.apis" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Modelos & APIs</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Conecte LLMs e serviços externos que seu agente vai usar (não inclui canais — esses ficam em <strong>Canais</strong>).
+                  </p>
+                </div>
 
                 <IntegrationsGrid
                   providers={LLM_PROVIDERS}
