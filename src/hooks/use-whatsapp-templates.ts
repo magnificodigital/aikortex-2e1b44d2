@@ -30,6 +30,17 @@ export type WhatsAppTemplate = {
   rejected_reason?: string;
 };
 
+export type WhatsAppTemplatesIntegrationError = {
+  code: "META_TOKEN_EXPIRED" | string;
+  message: string;
+  details?: unknown;
+};
+
+export type WhatsAppTemplatesResponse = {
+  templates: WhatsAppTemplate[];
+  integration_error?: WhatsAppTemplatesIntegrationError;
+};
+
 /**
  * Conta quantos placeholders {{N}} aparecem no body do template.
  * Usado pelo CadenceEditorDialog pra pré-popular o número de variáveis
@@ -63,24 +74,28 @@ async function callTemplatesFn<T = any>(
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await resp.json();
-  if (!resp.ok) throw new Error(json?.error || `whatsapp-templates ${action} failed (${resp.status})`);
+  if (!resp.ok) {
+    const msg = json?.integration_error?.message || json?.error || `whatsapp-templates ${action} failed (${resp.status})`;
+    throw new Error(msg);
+  }
   return json as T;
 }
 
 export function useWhatsAppTemplates() {
   return useQuery({
     queryKey: ["whatsapp-templates"],
-    queryFn: async (): Promise<WhatsAppTemplate[]> => {
+    queryFn: async (): Promise<WhatsAppTemplatesResponse> => {
       try {
-        const res = await callTemplatesFn<{ templates: WhatsAppTemplate[] }>("list");
-        return res.templates ?? [];
+        const res = await callTemplatesFn<WhatsAppTemplatesResponse>("list");
+        return { templates: res.templates ?? [], integration_error: res.integration_error };
       } catch (e) {
         // Se WhatsApp não está configurado, retorna vazio (não erro) — UI mostra estado
         const msg = (e as Error).message;
-        if (msg.includes("MISSING_WABA_CONFIG")) return [];
+        if (msg.includes("MISSING_WABA_CONFIG")) return { templates: [] };
         throw e;
       }
     },
+    select: (res) => res,
     staleTime: 60_000,
   });
 }
