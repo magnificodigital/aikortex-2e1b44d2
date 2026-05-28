@@ -161,7 +161,7 @@ const RIGHT_NAV: NavGroup[] = [
   { group: "Integrações", items: [
     { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
     { key: "integrations.llms",      label: "LLMs",                 icon: Sparkles },
-    { key: "integrations.apis",      label: "APIs & Webhooks",      icon: Plug },
+    { key: "integrations.apis",      label: "MCPs & APIs",          icon: Plug },
   ]},
   { group: "Automações", items: [
     { key: "behavior.cadences",      label: "Cadências",            icon: Clock,           masterRef: "13.5.13" },
@@ -1262,13 +1262,13 @@ const AgentRightPanel = ({
               </div>
             )}
 
-            {/* ── Integrações → APIs & Webhooks ── */}
+            {/* ── Integrações → MCPs & APIs ── */}
             {activeSection === "integrations.apis" && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">APIs & Webhooks</h2>
+                  <h2 className="text-lg font-bold text-foreground">MCPs & APIs</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Conecte serviços externos (Gmail, Calendar, Drive, CRMs), MCPs e webhooks que o agente pode usar.
+                    Conecte MCPs, APIs de serviços externos (Gmail, Calendar, Drive, CRMs) e webhooks que o agente pode usar.
                   </p>
                 </div>
 
