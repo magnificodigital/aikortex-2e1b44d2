@@ -13,6 +13,12 @@ import { useCreateCadence, useUpdateCadence } from "@/hooks/use-agent-cadences";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import { useAllAgencyClientTables } from "@/hooks/use-client-tables";
 import {
+  countTemplateVariables,
+  templateBodyPreview,
+  useWhatsAppTemplates,
+} from "@/hooks/use-whatsapp-templates";
+import { ExternalLink } from "lucide-react";
+import {
   type AgentCadence,
   type CadenceStep,
   makeEmptyStep,
@@ -56,6 +62,8 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
   const update = useUpdateCadence();
   const { data: emailStatus } = useEmailIntegrationStatus();
   const { data: allTables = [] } = useAllAgencyClientTables();
+  const { data: waTemplates = [] } = useWhatsAppTemplates();
+  const approvedTemplates = waTemplates.filter((t) => t.status === "APPROVED");
 
   // Identidade do remetente vem da integração (Settings → Integrações → Email).
   // O preview mostra como vai chegar no inbox real.
@@ -111,8 +119,19 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
       }
       if (s.channel === "whatsapp") {
         const tname = (s.whatsapp_template_name ?? "").trim();
-        if (!tname) return `Step ${n}: nome do template WhatsApp é obrigatório`;
-        if (!/^[a-z0-9_]+$/.test(tname)) return `Step ${n}: template name precisa ser lowercase, dígitos e underscore`;
+        if (!tname) return `Step ${n}: escolha um template WhatsApp aprovado`;
+        if (!/^[a-z0-9_]+$/.test(tname)) return `Step ${n}: nome do template inválido (esperado lowercase + dígitos + underscore)`;
+        // Confere se todas as variáveis foram preenchidas (se o template tem N vars, precisa de N strings não-vazias)
+        const selectedTpl = approvedTemplates.find((t) => t.name === tname && t.language === s.whatsapp_template_language);
+        if (selectedTpl) {
+          const expected = countTemplateVariables(selectedTpl);
+          const vars = (s.whatsapp_template_variables ?? []).slice(0, expected);
+          for (let vi = 0; vi < expected; vi++) {
+            if (!vars[vi] || !vars[vi].trim()) {
+              return `Step ${n}: preencha a variável {{${vi + 1}}} do template ${tname}`;
+            }
+          }
+        }
       }
       const placeholders = Array.from(new Set((msg.match(/\{[^}]+\}/g) ?? [])));
       if (placeholders.length > 10) return `Step ${n}: máximo 10 placeholders distintos`;
@@ -345,85 +364,109 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                       </div>
                     )}
 
-                    {s.channel === "whatsapp" && (
-                      <div className="space-y-2 rounded-md border border-[#25D366]/30 bg-[#25D366]/5 p-2.5">
-                        <p className="text-[10px] uppercase tracking-wider text-[#25D366] font-semibold">Template WhatsApp (aprovado pela Meta)</p>
+                    {s.channel === "whatsapp" && (() => {
+                      const selectedTpl = approvedTemplates.find((t) =>
+                        t.name === s.whatsapp_template_name && t.language === (s.whatsapp_template_language ?? t.language)
+                      );
+                      const tplBody = templateBodyPreview(selectedTpl);
+                      const expectedVars = countTemplateVariables(selectedTpl);
+                      const currentVars = s.whatsapp_template_variables ?? [];
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-[10px] text-muted-foreground">Nome do template *</Label>
-                            <Input
-                              value={s.whatsapp_template_name ?? ""}
-                              onChange={(e) => updateStep(idx, { whatsapp_template_name: e.target.value })}
-                              placeholder="ex: hello_world"
-                              className="h-8 text-xs font-mono"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-[10px] text-muted-foreground">Idioma</Label>
-                            <Input
-                              value={s.whatsapp_template_language ?? "en_US"}
-                              onChange={(e) => updateStep(idx, { whatsapp_template_language: e.target.value })}
-                              placeholder="en_US"
-                              className="h-8 text-xs font-mono"
-                            />
-                            <p className="text-[9px] text-muted-foreground">
-                              Use <code className="px-1 py-px rounded bg-muted/60">en_US</code> pro template padrão{" "}
-                              <code className="px-1 py-px rounded bg-muted/60">hello_world</code>. Pra templates seus em PT, use o idioma exato em que você aprovou na Meta (ex: <code className="px-1 py-px rounded bg-muted/60">pt_BR</code>).
-                            </p>
-                          </div>
-                        </div>
+                      return (
+                        <div className="space-y-2 rounded-md border border-[#25D366]/30 bg-[#25D366]/5 p-2.5">
+                          <p className="text-[10px] uppercase tracking-wider text-[#25D366] font-semibold">Template WhatsApp (aprovado pela Meta)</p>
 
-                        <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground">
-                            Variáveis do template (ordem dos {"{{1}}, {{2}}..."})
-                          </Label>
-                          {(s.whatsapp_template_variables ?? []).map((v, vi) => (
-                            <div key={vi} className="flex gap-1.5">
-                              <span className="text-[10px] font-mono text-muted-foreground self-center w-6">{`{{${vi + 1}}}`}</span>
-                              <Input
-                                value={v}
-                                onChange={(e) => {
-                                  const next = [...(s.whatsapp_template_variables ?? [])];
-                                  next[vi] = e.target.value;
-                                  updateStep(idx, { whatsapp_template_variables: next });
-                                }}
-                                placeholder="Ex: {nome} ou texto fixo"
-                                className="h-7 text-[11px]"
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 shrink-0"
-                                onClick={() => {
-                                  const next = (s.whatsapp_template_variables ?? []).filter((_, i) => i !== vi);
-                                  updateStep(idx, { whatsapp_template_variables: next });
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Template *</Label>
+                            {approvedTemplates.length === 0 ? (
+                              <div className="text-[11px] text-muted-foreground border border-dashed border-border rounded p-2 leading-relaxed">
+                                Nenhum template aprovado encontrado.{" "}
+                                <a
+                                  href="https://business.facebook.com/wa/manage/message-templates"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline inline-flex items-center gap-0.5"
+                                >
+                                  Criar na Meta <ExternalLink className="w-3 h-3" />
+                                </a>{" "}
+                                ou veja em <strong>Recursos → Templates WhatsApp</strong>.
+                              </div>
+                            ) : (
+                              <Select
+                                value={s.whatsapp_template_name && s.whatsapp_template_language
+                                  ? `${s.whatsapp_template_name}|${s.whatsapp_template_language}`
+                                  : ""}
+                                onValueChange={(v) => {
+                                  const [name, lang] = v.split("|");
+                                  const tpl = approvedTemplates.find((t) => t.name === name && t.language === lang);
+                                  const needVars = countTemplateVariables(tpl);
+                                  const existing = s.whatsapp_template_variables ?? [];
+                                  // Ajusta tamanho do array de variáveis pro número correto do template
+                                  const newVars = Array.from({ length: needVars }, (_, i) => existing[i] ?? "");
+                                  updateStep(idx, {
+                                    whatsapp_template_name: name,
+                                    whatsapp_template_language: lang,
+                                    whatsapp_template_variables: newVars,
+                                  });
                                 }}
                               >
-                                <Trash2 className="w-3 h-3 text-destructive" />
-                              </Button>
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Escolha um template aprovado" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[300px]">
+                                  {approvedTemplates.map((t) => (
+                                    <SelectItem key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-mono text-xs">{t.name}</span>
+                                        <span className="text-[10px] text-muted-foreground">· {t.language} · {t.category}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+
+                          {tplBody && (
+                            <div className="rounded bg-muted/40 p-2 space-y-0.5">
+                              <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Preview do template</p>
+                              <p className="text-[11px] font-mono text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                                {tplBody}
+                              </p>
                             </div>
-                          ))}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-[10px] gap-1"
-                            onClick={() => {
-                              const next = [...(s.whatsapp_template_variables ?? []), ""];
-                              updateStep(idx, { whatsapp_template_variables: next });
-                            }}
-                          >
-                            <Plus className="w-3 h-3" /> Adicionar variável
-                          </Button>
-                          <p className="text-[9px] text-muted-foreground">
-                            Cada variável aceita placeholders <code className="px-1 py-px rounded bg-muted/60">{"{nome}"}</code>,
-                            <code className="px-1 py-px rounded bg-muted/60">{"{telefone}"}</code>, etc. ou texto fixo.
-                          </p>
+                          )}
+
+                          {expectedVars > 0 && (
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">
+                                Variáveis do template ({expectedVars} {expectedVars === 1 ? "necessária" : "necessárias"})
+                              </Label>
+                              {Array.from({ length: expectedVars }).map((_, vi) => (
+                                <div key={vi} className="flex gap-1.5 items-center">
+                                  <span className="text-[10px] font-mono text-muted-foreground w-8">{`{{${vi + 1}}}`}</span>
+                                  <Input
+                                    value={currentVars[vi] ?? ""}
+                                    onChange={(e) => {
+                                      const next = [...currentVars];
+                                      next[vi] = e.target.value;
+                                      // garante tamanho mínimo
+                                      while (next.length < expectedVars) next.push("");
+                                      updateStep(idx, { whatsapp_template_variables: next });
+                                    }}
+                                    placeholder="Ex: {nome} ou texto fixo"
+                                    className="h-7 text-[11px]"
+                                  />
+                                </div>
+                              ))}
+                              <p className="text-[9px] text-muted-foreground">
+                                Cada variável aceita placeholders <code className="px-1 py-px rounded bg-muted/60">{"{nome}"}</code>,
+                                <code className="px-1 py-px rounded bg-muted/60">{"{telefone}"}</code>, etc. ou texto fixo.
+                              </p>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     <div className="space-y-1">
                       <Label className="text-[10px] text-muted-foreground">Mensagem</Label>

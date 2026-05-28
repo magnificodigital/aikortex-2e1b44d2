@@ -17,7 +17,7 @@ import {
   Youtube, Rss, Map, CloudUpload, Type, ChevronDown, ChevronUp, BookOpen,
   Brain, Wrench, Database, Workflow, GitBranch, FlaskConical, ScanSearch, FileCode2,
   ShieldAlert, Sliders, Phone, Sparkles, Share2, Plug, Bot, Lightbulb, Users, Clock, Construction,
-  Activity,
+  Activity, MessageSquare,
 } from "lucide-react";
 import AgentMemoryTab from "./AgentMemoryTab";
 import AgentToolsSection from "./AgentToolsSection";
@@ -26,6 +26,7 @@ import KnowledgeBaseSection from "./KnowledgeBaseSection";
 import ClientTablesSection from "./ClientTablesSection";
 import CadencesSection from "./CadencesSection";
 import CadenceExecutionsPanel from "./CadenceExecutionsPanel";
+import WhatsAppTemplatesPanel from "./WhatsAppTemplatesPanel";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -135,10 +136,11 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "caps.autoint",       label: "Auto-integração", icon: Workflow,    comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
   ]},
   { group: "Recursos", items: [
-    { key: "resources.tools",        label: "Tools",          icon: Wrench },
-    { key: "resources.kb",           label: "Knowledge Base", icon: BookOpen },
-    { key: "resources.tables",       label: "Tabelas",        icon: Database,  masterRef: "13.5.11" },
-    { key: "resources.integrations", label: "Integrações",    icon: Plug },
+    { key: "resources.tools",            label: "Tools",                icon: Wrench },
+    { key: "resources.kb",               label: "Knowledge Base",       icon: BookOpen },
+    { key: "resources.tables",           label: "Tabelas",              icon: Database,        masterRef: "13.5.11" },
+    { key: "resources.integrations",     label: "Integrações",          icon: Plug },
+    { key: "resources.wa_templates",     label: "Templates WhatsApp",   icon: MessageSquare },
   ]},
   { group: "Comportamento", items: [
     { key: "behavior.cadences",  label: "Cadências", icon: Clock,  masterRef: "13.5.13" },
@@ -1151,6 +1153,19 @@ const AgentRightPanel = ({
                   description="Configure webhooks para receber e enviar eventos em tempo real entre o Aikortex e sistemas externos."
                   actionLabel="Adicionar Webhook"
                 />
+              </div>
+            )}
+
+            {/* ── Recursos → Templates WhatsApp ── */}
+            {activeSection === "resources.wa_templates" && (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Templates WhatsApp</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Templates aprovados pela Meta — usados em cadências WhatsApp pra contatar fora da janela de 24h.
+                  </p>
+                </div>
+                <WhatsAppTemplatesPanel />
               </div>
             )}
 

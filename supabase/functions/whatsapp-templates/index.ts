@@ -1,141 +1,104 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// Lista/cria/deleta templates do WhatsApp via Meta Cloud API.
+// Lê tokens BYOK do user_api_keys (mesma estratégia de whatsapp-send).
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
 };
 
 const GRAPH_API = "https://graph.facebook.com/v21.0";
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+function jsonRes(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-    const WABA_ID = Deno.env.get("WHATSAPP_BUSINESS_ACCOUNT_ID");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    if (!WHATSAPP_TOKEN || !WABA_ID) {
-      return new Response(JSON.stringify({ error: "Credenciais WhatsApp não configuradas" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) return jsonRes({ error: "Authorization header required" }, 401);
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return jsonRes({ error: "Unauthorized" }, 401);
+
+    const { data: keys } = await supabase
+      .from("user_api_keys")
+      .select("provider, api_key")
+      .eq("user_id", user.id)
+      .in("provider", ["whatsapp_access_token", "whatsapp_business_account_id"]);
+
+    const keyMap: Record<string, string> = {};
+    (keys ?? []).forEach((k: any) => { keyMap[k.provider] = k.api_key; });
+    const WABA_TOKEN = keyMap.whatsapp_access_token;
+    const WABA_ID = keyMap.whatsapp_business_account_id;
+
+    if (!WABA_TOKEN || !WABA_ID) {
+      return jsonRes({
+        error: "MISSING_WABA_CONFIG: configure access_token e business_account_id em Integrações → WhatsApp"
+      }, 400);
     }
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action") || "list";
 
     switch (action) {
-      // ── List templates ──
       case "list": {
-        const limit = url.searchParams.get("limit") || "20";
-        const response = await fetch(
-          `${GRAPH_API}/${WABA_ID}/message_templates?limit=${limit}`,
-          {
-            headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` },
-          }
+        // Campos relevantes: name, status, language, category, components (pra detectar variáveis)
+        const fields = "name,status,language,category,components,quality_score,rejected_reason";
+        const limit = url.searchParams.get("limit") || "100";
+        const resp = await fetch(
+          `${GRAPH_API}/${WABA_ID}/message_templates?fields=${fields}&limit=${limit}`,
+          { headers: { Authorization: `Bearer ${WABA_TOKEN}` } },
         );
-        const data = await response.json();
-
-        if (!response.ok) {
-          return new Response(JSON.stringify({ error: "Erro ao listar templates", details: data }), {
-            status: response.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        return new Response(JSON.stringify({
-          templates: data.data || [],
-          paging: data.paging,
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        const data = await resp.json();
+        if (!resp.ok) return jsonRes({ error: "Erro ao listar templates", details: data }, resp.status);
+        return jsonRes({ templates: data.data || [], paging: data.paging });
       }
 
-      // ── Create template ──
       case "create": {
-        const body = await req.json();
+        const body = await req.json().catch(() => ({}));
         const { name, category = "UTILITY", language = "pt_BR", components } = body;
+        if (!name || !components) return jsonRes({ error: "name e components são obrigatórios" }, 400);
 
-        if (!name || !components) {
-          return new Response(JSON.stringify({ error: "name e components são obrigatórios" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        const response = await fetch(`${GRAPH_API}/${WABA_ID}/message_templates`, {
+        const resp = await fetch(`${GRAPH_API}/${WABA_ID}/message_templates`, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name,
-            category,
-            language,
-            components,
-          }),
+          headers: { Authorization: `Bearer ${WABA_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ name, category, language, components }),
         });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          return new Response(JSON.stringify({ error: "Erro ao criar template", details: data }), {
-            status: response.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        return new Response(JSON.stringify({ success: true, template: data }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        const data = await resp.json();
+        if (!resp.ok) return jsonRes({ error: "Erro ao criar template", details: data }, resp.status);
+        return jsonRes({ success: true, template: data });
       }
 
-      // ── Delete template ──
       case "delete": {
-        const body = await req.json();
+        const body = await req.json().catch(() => ({}));
         const { name } = body;
-
-        if (!name) {
-          return new Response(JSON.stringify({ error: "name é obrigatório" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        const response = await fetch(
-          `${GRAPH_API}/${WABA_ID}/message_templates?name=${name}`,
-          {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` },
-          }
-        );
-
-        const data = await response.json();
-
-        return new Response(JSON.stringify({ success: response.ok, data }), {
-          status: response.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        if (!name) return jsonRes({ error: "name é obrigatório" }, 400);
+        const resp = await fetch(`${GRAPH_API}/${WABA_ID}/message_templates?name=${encodeURIComponent(name)}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${WABA_TOKEN}` },
         });
+        const data = await resp.json();
+        return jsonRes({ success: resp.ok, data }, resp.ok ? 200 : resp.status);
       }
 
       default:
-        return new Response(JSON.stringify({ error: `Ação '${action}' não suportada` }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonRes({ error: `Ação '${action}' não suportada` }, 400);
     }
   } catch (e) {
     console.error("Templates error:", e);
-    return new Response(JSON.stringify({
-      error: e instanceof Error ? e.message : "Erro desconhecido",
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonRes({ error: e instanceof Error ? e.message : "Erro desconhecido" }, 500);
   }
 });
