@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Calendar, AlertTriangle } from "lucide-react";
+import { Calendar, AlertTriangle, Mail, MessageSquare, Mic, Phone } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,17 @@ function previewDateLabel(step: { day: number; hour: number; minute: number }): 
 }
 
 const EMAIL_RE = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
+
+const CHANNEL_META: Record<string, {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge: string;
+}> = {
+  email:    { label: "Email",    icon: Mail,           badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" },
+  whatsapp: { label: "WhatsApp", icon: MessageSquare,  badge: "bg-[#25D366]/10 text-[#1da851] border-[#25D366]/30" },
+  voice:    { label: "Voz",      icon: Mic,            badge: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30" },
+  sms:      { label: "SMS",      icon: Phone,          badge: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30" },
+};
 
 /** Strip básico de HTML pra preview legível na visualização da cadência. */
 function stripHtmlForPreview(text: string): string {
@@ -211,18 +223,39 @@ export default function StartCadenceDialog({ open, onOpenChange, agentId, cadenc
             </div>
           )}
 
-          <div className="rounded-lg border border-border p-3 space-y-1.5 bg-muted/30">
+          <div className="rounded-lg border border-border p-3 space-y-2 bg-muted/30">
             <p className="text-xs font-medium text-foreground">Visualização da cadência</p>
-            {cadence.steps.map((s) => {
-              const cleanText = stripHtmlForPreview(s.message_template || "");
-              const truncated = cleanText.length > 60 ? `${cleanText.slice(0, 60)}…` : cleanText;
-              return (
-                <p key={s.id} className="text-[11px] text-muted-foreground font-mono truncate">
-                  <span className="uppercase tracking-wider text-[9px] text-foreground/60">{s.channel}</span>{" "}
-                  {formatStepDelay(s)} ({previewDateLabel(s)}): "{truncated}"
-                </p>
-              );
-            })}
+            <div className="space-y-1.5">
+              {cadence.steps.map((s, idx) => {
+                const cleanText = stripHtmlForPreview(s.message_template || "");
+                const truncated = cleanText.length > 90 ? `${cleanText.slice(0, 90)}…` : cleanText;
+                const meta = CHANNEL_META[s.channel] ?? CHANNEL_META.email;
+                const ChannelIcon = meta.icon;
+                return (
+                  <div
+                    key={s.id}
+                    className="flex items-start gap-2 rounded-md bg-background border border-border/60 p-2"
+                  >
+                    <div className="flex items-center justify-center w-5 h-5 rounded-full bg-muted text-[10px] font-semibold text-muted-foreground shrink-0 mt-0.5">
+                      {idx + 1}
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge variant="outline" className={`text-[10px] gap-1 ${meta.badge}`}>
+                          <ChannelIcon className="w-2.5 h-2.5" /> {meta.label}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">
+                          {formatStepDelay(s)} · {previewDateLabel(s)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-foreground/80 leading-relaxed line-clamp-2">
+                        {truncated || <span className="italic text-muted-foreground">Sem mensagem definida</span>}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {emailBlocked && (
