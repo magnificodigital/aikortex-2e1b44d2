@@ -1,8 +1,26 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Mail, MessageSquare, Mic, Phone, Camera, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Mail, Mic, Phone, Camera, Share2, Settings, CheckCircle2 } from "lucide-react";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
+import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
+import IntegrationVoiceForm from "@/components/settings/IntegrationVoiceForm";
+import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
+import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
+import { useVoiceIntegrationStatus } from "@/hooks/use-voice-integration";
+import { useWhatsAppIntegrationStatus } from "@/hooks/use-whatsapp-integration";
 import { type ChannelKey, useEnabledChannels, useToggleChannel } from "@/hooks/use-enabled-channels";
+
+type ConfigurableKey = "email" | "whatsapp" | "voice";
 
 type ChannelDef = {
   key: ChannelKey;
@@ -13,6 +31,7 @@ type ChannelDef = {
   iconBg: string;
   iconColor: string;
   comingSoon?: boolean;
+  configurable?: ConfigurableKey;
 };
 
 const CHANNELS: ChannelDef[] = [
@@ -24,15 +43,17 @@ const CHANNELS: ChannelDef[] = [
     icon: Mail,
     iconBg: "bg-emerald-500/10",
     iconColor: "text-emerald-600",
+    configurable: "email",
   },
   {
     key: "whatsapp",
     name: "WhatsApp",
     provider: "Meta Cloud API",
     description: "Templates aprovados + auto-reply do agente",
-    icon: MessageSquare,
+    icon: WhatsAppIcon,
     iconBg: "bg-[#25D366]/10",
     iconColor: "text-[#25D366]",
+    configurable: "whatsapp",
   },
   {
     key: "voice",
@@ -42,6 +63,7 @@ const CHANNELS: ChannelDef[] = [
     icon: Mic,
     iconBg: "bg-purple-500/10",
     iconColor: "text-purple-600",
+    configurable: "voice",
   },
   {
     key: "sms",
@@ -108,6 +130,39 @@ const CHANNELS: ChannelDef[] = [
 export default function AgencyChannelsManager() {
   const { data: enabled = [] } = useEnabledChannels();
   const toggle = useToggleChannel();
+  const { data: emailStatus } = useEmailIntegrationStatus();
+  const { data: voiceStatus } = useVoiceIntegrationStatus();
+  const { data: waStatus } = useWhatsAppIntegrationStatus();
+  const [openDialog, setOpenDialog] = useState<ConfigurableKey | null>(null);
+
+  const isConfigured = (k: ConfigurableKey): boolean => {
+    if (k === "email") return !!emailStatus?.connected;
+    if (k === "whatsapp") return !!waStatus?.connected;
+    if (k === "voice") return !!(voiceStatus?.telnyx_connected || voiceStatus?.elevenlabs_connected);
+    return false;
+  };
+
+  const summaryFor = (k: ConfigurableKey): string | null => {
+    if (k === "email") {
+      if (emailStatus?.connected && emailStatus?.from_email) {
+        const name = emailStatus.from_name?.trim();
+        return name ? `${name} <${emailStatus.from_email}>` : emailStatus.from_email;
+      }
+      if ((emailStatus?.trial_remaining ?? 0) > 0) {
+        return `${emailStatus?.trial_remaining} emails cortesia disponíveis`;
+      }
+    }
+    if (k === "whatsapp" && waStatus?.connected) {
+      return waStatus.phone_number_id_suffix ? `Phone ID ••••${waStatus.phone_number_id_suffix}` : "WABA configurada";
+    }
+    if (k === "voice") {
+      const parts: string[] = [];
+      if (voiceStatus?.telnyx_connected) parts.push("Telnyx");
+      if (voiceStatus?.elevenlabs_connected) parts.push("ElevenLabs");
+      if (parts.length > 0) return parts.join(" + ");
+    }
+    return null;
+  };
 
   const enabledCount = CHANNELS.filter((c) => !c.comingSoon && enabled.includes(c.key)).length;
   const availableCount = CHANNELS.filter((c) => !c.comingSoon).length;
@@ -116,13 +171,14 @@ export default function AgencyChannelsManager() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Canais disponíveis</h3>
+          <h3 className="text-sm font-semibold text-foreground">Canais</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Ative aqui os canais que sua agência vai oferecer. Eles aparecerão no menu lateral
-            de cada agente, em <strong>Canais</strong>.
+            Ative os canais que sua agência vai oferecer e configure os provedores.
+            Eles aparecem no menu lateral de cada agente.
           </p>
         </div>
-        <Badge variant="outline" className="text-xs shrink-0">
+        <Badge variant="outline" className="text-xs shrink-0 gap-1">
+          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
           {enabledCount}/{availableCount} ativos
         </Badge>
       </div>
@@ -132,36 +188,138 @@ export default function AgencyChannelsManager() {
           const isEnabled = enabled.includes(ch.key);
           const isComingSoon = !!ch.comingSoon;
           const Icon = ch.icon;
+          const configured = ch.configurable ? isConfigured(ch.configurable) : false;
+          const summary = ch.configurable ? summaryFor(ch.configurable) : null;
+
           return (
             <Card
               key={ch.key}
-              className={`p-3 flex items-start gap-3 transition-colors ${
+              className={`p-3 flex flex-col gap-3 transition-colors ${
                 isComingSoon ? "opacity-60" : ""
               }`}
             >
-              <div className={`w-10 h-10 rounded-lg ${ch.iconBg} flex items-center justify-center shrink-0`}>
-                <Icon className={`w-5 h-5 ${ch.iconColor}`} />
-              </div>
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-foreground truncate">{ch.name}</p>
-                  {isComingSoon ? (
-                    <Badge variant="outline" className="text-[9px] shrink-0">Em breve</Badge>
-                  ) : (
-                    <Switch
-                      checked={isEnabled}
-                      onCheckedChange={(v) => toggle.mutate({ channel: ch.key, enabled: v })}
-                      disabled={toggle.isPending}
-                    />
-                  )}
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-lg ${ch.iconBg} flex items-center justify-center shrink-0`}>
+                  <Icon className={`w-5 h-5 ${ch.iconColor}`} />
                 </div>
-                <p className="text-[11px] text-muted-foreground">{ch.provider}</p>
-                <p className="text-[10px] text-muted-foreground/80 leading-snug pt-0.5">{ch.description}</p>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-foreground truncate">{ch.name}</p>
+                    {isComingSoon ? (
+                      <Badge variant="outline" className="text-[9px] shrink-0">Em breve</Badge>
+                    ) : (
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={(v) => toggle.mutate({ channel: ch.key, enabled: v })}
+                        disabled={toggle.isPending}
+                      />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{ch.provider}</p>
+                  <p className="text-[10px] text-muted-foreground/80 leading-snug pt-0.5">{ch.description}</p>
+                </div>
               </div>
+
+              {ch.configurable && !isComingSoon && (
+                <div className="space-y-2 pt-1 border-t border-border/50">
+                  {summary && (
+                    <p className="text-[11px] text-foreground/70 font-mono truncate" title={summary}>
+                      {summary}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-[10px]">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          configured ? "bg-emerald-500" : "bg-muted-foreground/40"
+                        }`}
+                        aria-hidden
+                      />
+                      <span className={configured ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}>
+                        {configured ? "Provedor conectado" : "Provedor não conectado"}
+                      </span>
+                    </span>
+                    <Button
+                      variant={configured ? "outline" : "default"}
+                      size="sm"
+                      className="text-xs h-7 gap-1.5"
+                      onClick={() => setOpenDialog(ch.configurable!)}
+                    >
+                      {configured ? (
+                        <>
+                          <Settings className="w-3 h-3" /> Editar
+                        </>
+                      ) : (
+                        "Configurar"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card>
           );
         })}
       </div>
+
+      {/* Dialog do Email */}
+      <Dialog open={openDialog === "email"} onOpenChange={(o) => { if (!o) setOpenDialog(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <Mail className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">Email (Resend)</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  Configuração do canal de disparo por email
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <IntegrationEmailForm onClose={() => setOpenDialog(null)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog do WhatsApp */}
+      <Dialog open={openDialog === "whatsapp"} onOpenChange={(o) => { if (!o) setOpenDialog(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#25D366]/10 flex items-center justify-center">
+                <WhatsAppIcon className="w-5 h-5 text-[#25D366]" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">WhatsApp (Meta Cloud API)</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  Configuração da conta WhatsApp Business para cadências e auto-reply
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <IntegrationWhatsAppForm onClose={() => setOpenDialog(null)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog da Voz (Telnyx + ElevenLabs) */}
+      <Dialog open={openDialog === "voice"} onOpenChange={(o) => { if (!o) setOpenDialog(null); }}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <Mic className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">Voz (Telnyx + ElevenLabs)</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  Configuração do canal de voz: telefonia e síntese de fala
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <IntegrationVoiceForm onClose={() => setOpenDialog(null)} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

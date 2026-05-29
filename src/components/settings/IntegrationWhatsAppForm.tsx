@@ -42,7 +42,7 @@ const WABA_FIELDS = [
 ] as const;
 
 /**
- * Form WABA reusado dentro do dialog do canal WhatsApp no OutboundChannelsBlock.
+ * Form WABA reusado dentro do dialog do canal WhatsApp no AgencyChannelsManager.
  * Lê/grava campos diretamente em user_api_keys (padrão A: BYOK).
  */
 export default function IntegrationWhatsAppForm({ onClose }: Props) {

@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS, type ProviderConfig } from "@/components/shared/IntegrationsGrid";
-import OutboundChannelsBlock from "@/components/settings/OutboundChannelsBlock";
 import EmptyIntegrationSection from "@/components/settings/EmptyIntegrationSection";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import IntegrationVoiceForm from "@/components/settings/IntegrationVoiceForm";
@@ -635,10 +634,12 @@ const AgentRightPanel = ({
     return RIGHT_NAV
       .map(g => {
         let items = g.items.filter(i => !i.comingSoon && (showAdvanced || !ADVANCED_KEYS.has(i.key)));
+        // Filtra Canais por enabled list. Sub-item Templates só aparece quando o usuário
+        // está em WhatsApp (ou já está no próprio Templates).
         if (g.group === "Canais") {
           items = items.filter((i) => {
-            // Sub-item Templates só aparece quando WhatsApp está ativo (ou Templates já está aberto)
             if (i.key === "resources.wa_templates") {
+              if (!enabledSet.has("whatsapp")) return false;
               return activeSection === "channels.whatsapp" || activeSection === "resources.wa_templates";
             }
             if (i.indent) return true;

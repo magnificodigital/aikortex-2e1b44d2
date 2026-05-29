@@ -19,7 +19,7 @@ interface Props {
 
 /**
  * Conteúdo do formulário de integração com Resend (Email).
- * Renderizado dentro de um Dialog em OutboundChannelsBlock.
+ * Renderizado dentro de um Dialog em AgencyChannelsManager.
  * Não inclui Card wrapper nem header — esses são responsabilidade do dialog pai.
  */
 export default function IntegrationEmailForm({ onClose }: Props) {

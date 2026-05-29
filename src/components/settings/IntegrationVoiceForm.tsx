@@ -22,7 +22,7 @@ interface Props {
  *   - Telnyx: telefonia (chamadas inbound/outbound via número real)
  *   - ElevenLabs: síntese de voz (TTS)
  *
- * Ambos compartilham o canal "Voz" no OutboundChannelsBlock.
+ * Ambos compartilham o canal "Voz" no AgencyChannelsManager.
  * Cada um pode ser conectado/desconectado independentemente.
  * Dados gravados em user_api_keys (mesma tabela que IntegrationsGrid usa).
  */

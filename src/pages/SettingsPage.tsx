@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
   Settings,
@@ -33,24 +32,15 @@ import {
   Facebook,
   Mail,
   Phone,
-  MapPin,
   Star,
   ArrowUp,
   ArrowDown,
   Plug,
-  MessageSquare,
-  Share2,
-  ShoppingBag,
-  BarChart3,
-  Bot,
-  Calendar,
   CreditCard,
-  Zap,
-  Shield,
   Radio,
   DollarSign,
 } from "lucide-react";
-import { IntegrationsPanel, ChannelsPanel } from "@/components/settings/IntegrationsPanel";
+import { IntegrationsPanel } from "@/components/settings/IntegrationsPanel";
 import AgencyChannelsManager from "@/components/settings/AgencyChannelsManager";
 import AgencyPermissions from "@/components/settings/AgencyPermissions";
 import SubscriptionTab from "@/components/settings/SubscriptionTab";
@@ -84,16 +74,6 @@ interface LandingSection {
   visible: boolean;
 }
 
-interface Integration {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  category: string;
-  connected: boolean;
-  color: string;
-}
-
 // ─── DEFAULT DATA ──────────────────────────────────
 const defaultColors: BrandColors = {
   primary: "#2563eb",
@@ -122,21 +102,6 @@ const defaultSections: LandingSection[] = [
   { id: "s6", type: "contact", title: "Contato", subtitle: "Fale conosco", content: "contato@agencia.com | +55 11 99999-9999 | São Paulo, SP", visible: true },
 ];
 
-const defaultIntegrations: Integration[] = [
-  { id: "whatsapp", name: "WhatsApp Business", description: "Atendimento e automação via WhatsApp", icon: <MessageSquare className="w-5 h-5" />, category: "Comunicação", connected: false, color: "#25D366" },
-  { id: "instagram", name: "Instagram", description: "Gestão de conteúdo e DMs automatizados", icon: <Instagram className="w-5 h-5" />, category: "Redes Sociais", connected: false, color: "#E4405F" },
-  { id: "facebook", name: "Facebook", description: "Páginas, Ads e Messenger", icon: <Facebook className="w-5 h-5" />, category: "Redes Sociais", connected: false, color: "#1877F2" },
-  { id: "tiktok", name: "TikTok", description: "Publicação e analytics de vídeos", icon: <Share2 className="w-5 h-5" />, category: "Redes Sociais", connected: false, color: "#000000" },
-  { id: "google", name: "Google Workspace", description: "Gmail, Calendar, Drive e Analytics", icon: <Globe className="w-5 h-5" />, category: "Produtividade", connected: false, color: "#4285F4" },
-  { id: "slack", name: "Slack", description: "Notificações e comunicação da equipe", icon: <MessageSquare className="w-5 h-5" />, category: "Produtividade", connected: false, color: "#4A154B" },
-  { id: "stripe", name: "Stripe", description: "Pagamentos e cobranças recorrentes", icon: <CreditCard className="w-5 h-5" />, category: "Financeiro", connected: false, color: "#635BFF" },
-  { id: "shopify", name: "Shopify", description: "E-commerce e gestão de produtos", icon: <ShoppingBag className="w-5 h-5" />, category: "E-commerce", connected: false, color: "#96BF48" },
-  { id: "analytics", name: "Google Analytics", description: "Métricas e relatórios de tráfego", icon: <BarChart3 className="w-5 h-5" />, category: "Analytics", connected: false, color: "#E37400" },
-  { id: "openai", name: "OpenAI", description: "GPT e modelos de IA generativa", icon: <Bot className="w-5 h-5" />, category: "IA", connected: false, color: "#10A37F" },
-  { id: "calendly", name: "Calendly", description: "Agendamento automático de reuniões", icon: <Calendar className="w-5 h-5" />, category: "Produtividade", connected: false, color: "#006BFF" },
-  { id: "zapier", name: "Zapier", description: "Automação entre plataformas", icon: <Zap className="w-5 h-5" />, category: "Automação", connected: false, color: "#FF4A00" },
-];
-
 const iconMap: Record<string, React.ReactNode> = {
   instagram: <Instagram className="w-4 h-4" />,
   linkedin: <Linkedin className="w-4 h-4" />,
@@ -151,20 +116,12 @@ const iconMap: Record<string, React.ReactNode> = {
 
 // ─── HELPERS ────────────────────────────────────────
 const STORAGE_KEY = "aihub_brand";
-const INTEGRATIONS_KEY = "aihub_integrations";
 
 const loadBrand = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
-};
-
-const loadIntegrations = (): Record<string, boolean> => {
-  try {
-    const raw = localStorage.getItem(INTEGRATIONS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
 };
 
 const hexToHsl = (hex: string): string => {
@@ -205,7 +162,6 @@ const fileToBase64 = (file: File): Promise<string> =>
 // ─── SETTINGS PAGE ─────────────────────────────────
 const SettingsPage = () => {
   const saved = loadBrand();
-  const savedIntegrations = loadIntegrations();
 
   const [colors, setColors] = useState<BrandColors>(saved?.colors ?? defaultColors);
   const [logoUrl, setLogoUrl] = useState<string | null>(saved?.logoUrl ?? null);
@@ -216,10 +172,6 @@ const SettingsPage = () => {
   const [bioTitle, setBioTitle] = useState(saved?.bioTitle ?? "Minha Agência");
   const [bioDescription, setBioDescription] = useState(saved?.bioDescription ?? "Especialistas em automação e inteligência artificial");
   const [sections, setSections] = useState<LandingSection[]>(saved?.sections ?? defaultSections);
-  const [integrations, setIntegrations] = useState<Integration[]>(() =>
-    defaultIntegrations.map(i => ({ ...i, connected: savedIntegrations[i.id] ?? false }))
-  );
-  const [integrationFilter, setIntegrationFilter] = useState("Todas");
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
@@ -330,22 +282,6 @@ const SettingsPage = () => {
 
     toast({ title: "Brand salvo com sucesso", description: "Todas as configurações foram aplicadas." });
   };
-
-  // Integration handlers
-  const toggleIntegration = (id: string) => {
-    setIntegrations(prev => {
-      const updated = prev.map(i => i.id === id ? { ...i, connected: !i.connected } : i);
-      const state: Record<string, boolean> = {};
-      updated.forEach(i => { state[i.id] = i.connected; });
-      localStorage.setItem(INTEGRATIONS_KEY, JSON.stringify(state));
-      const item = updated.find(i => i.id === id)!;
-      toast({ title: item.connected ? `${item.name} conectado` : `${item.name} desconectado` });
-      return updated;
-    });
-  };
-
-  const categories = ["Todas", ...Array.from(new Set(integrations.map(i => i.category)))];
-  const filteredIntegrations = integrationFilter === "Todas" ? integrations : integrations.filter(i => i.category === integrationFilter);
 
   return (
     <DashboardLayout>
@@ -709,7 +645,6 @@ const SettingsPage = () => {
           {/* ── CANAIS ─────────────────────────── */}
           <TabsContent value="channels" className="space-y-6">
             <AgencyChannelsManager />
-            <ChannelsPanel />
           </TabsContent>
 
 
