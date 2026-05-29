@@ -10,17 +10,20 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Mail, Mic, Phone, Camera, Share2, Settings, CheckCircle2 } from "lucide-react";
+import { Mail, Mic, Phone, Camera, Share2, Settings, CheckCircle2, FileText } from "lucide-react";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import IntegrationVoiceForm from "@/components/settings/IntegrationVoiceForm";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
+import EmailTemplatesPanel from "@/components/aikortex/EmailTemplatesPanel";
+import WhatsAppTemplatesPanel from "@/components/aikortex/WhatsAppTemplatesPanel";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import { useVoiceIntegrationStatus } from "@/hooks/use-voice-integration";
 import { useWhatsAppIntegrationStatus } from "@/hooks/use-whatsapp-integration";
 import { type ChannelKey, useEnabledChannels, useToggleChannel } from "@/hooks/use-enabled-channels";
 
 type ConfigurableKey = "email" | "whatsapp" | "voice";
+type TemplatesKey = "email" | "whatsapp";
 
 type ChannelDef = {
   key: ChannelKey;
@@ -32,6 +35,7 @@ type ChannelDef = {
   iconColor: string;
   comingSoon?: boolean;
   configurable?: ConfigurableKey;
+  templates?: TemplatesKey;
 };
 
 const CHANNELS: ChannelDef[] = [
@@ -44,6 +48,7 @@ const CHANNELS: ChannelDef[] = [
     iconBg: "bg-emerald-500/10",
     iconColor: "text-emerald-600",
     configurable: "email",
+    templates: "email",
   },
   {
     key: "whatsapp",
@@ -54,6 +59,7 @@ const CHANNELS: ChannelDef[] = [
     iconBg: "bg-[#25D366]/10",
     iconColor: "text-[#25D366]",
     configurable: "whatsapp",
+    templates: "whatsapp",
   },
   {
     key: "voice",
@@ -134,6 +140,7 @@ export default function AgencyChannelsManager() {
   const { data: voiceStatus } = useVoiceIntegrationStatus();
   const { data: waStatus } = useWhatsAppIntegrationStatus();
   const [openDialog, setOpenDialog] = useState<ConfigurableKey | null>(null);
+  const [openTemplates, setOpenTemplates] = useState<TemplatesKey | null>(null);
 
   const isConfigured = (k: ConfigurableKey): boolean => {
     if (k === "email") return !!emailStatus?.connected;
@@ -239,14 +246,26 @@ export default function AgencyChannelsManager() {
                         {configured ? "Provedor conectado" : "Provedor não conectado"}
                       </span>
                     </span>
-                    <Button
-                      variant={configured ? "outline" : "default"}
-                      size="sm"
-                      className="text-xs h-7 gap-1.5"
-                      onClick={() => setOpenDialog(ch.configurable!)}
-                    >
-                      <Settings className="w-3 h-3" /> Gerenciar
-                    </Button>
+                    <div className="flex items-center gap-1.5">
+                      {ch.templates && configured && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7 gap-1.5"
+                          onClick={() => setOpenTemplates(ch.templates!)}
+                        >
+                          <FileText className="w-3 h-3" /> Templates
+                        </Button>
+                      )}
+                      <Button
+                        variant={configured ? "outline" : "default"}
+                        size="sm"
+                        className="text-xs h-7 gap-1.5"
+                        onClick={() => setOpenDialog(ch.configurable!)}
+                      >
+                        <Settings className="w-3 h-3" /> Gerenciar
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -312,6 +331,46 @@ export default function AgencyChannelsManager() {
             </div>
           </DialogHeader>
           <IntegrationVoiceForm onClose={() => setOpenDialog(null)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Templates de Email */}
+      <Dialog open={openTemplates === "email"} onOpenChange={(o) => { if (!o) setOpenTemplates(null); }}>
+        <DialogContent className="sm:max-w-5xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">Templates de Email</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  Layouts reusáveis com assunto, corpo formatado e variáveis. Selecionáveis em qualquer cadência de email.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <EmailTemplatesPanel />
+        </DialogContent>
+      </Dialog>
+
+      {/* Templates de WhatsApp */}
+      <Dialog open={openTemplates === "whatsapp"} onOpenChange={(o) => { if (!o) setOpenTemplates(null); }}>
+        <DialogContent className="sm:max-w-5xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#25D366]/10 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-[#25D366]" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">Templates de WhatsApp</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  Templates aprovados pela Meta — usados em cadências WhatsApp pra contatar fora da janela de 24h.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <WhatsAppTemplatesPanel />
         </DialogContent>
       </Dialog>
     </div>
