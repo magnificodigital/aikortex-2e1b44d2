@@ -247,10 +247,10 @@ function handleAgentReply(
       const usedPhoneId = phoneNumberId || keyMap.whatsapp_phone_number_id;
       console.log(`[auto-reply] usedPhoneId=${usedPhoneId} hasToken=${!!keyMap.whatsapp_access_token}`);
 
-      // Load agent config from user_agents table
+      // Load agent config from user_agents (instructions/objective ficam dentro do JSON config)
       const { data: agent, error: agentErr } = await supabase
         .from("user_agents")
-        .select("name, objective, instructions, tone_of_voice, company_name, config")
+        .select("name, description, config")
         .eq("id", agentConfig.api_key)
         .maybeSingle();
 
@@ -261,12 +261,23 @@ function handleAgentReply(
       }
       console.log(`[auto-reply] agent loaded: ${agent.name}`);
 
-      const baseSystem = `Você é ${agent.name || "Assistente"}${agent.company_name ? ` da ${agent.company_name}` : ""}.
-Objetivo: ${agent.objective || "Atender e qualificar leads via WhatsApp."}
-Tom: ${agent.tone_of_voice || "Profissional e Amigável"}
-Instruções: ${agent.instructions || ""}
-Responda sempre em português do Brasil. Seja natural e conversacional.`;
-      const system = applyCapabilityAddons(baseSystem, (agent.config as any)?.capabilities);
+      // Extrai fields do config JSONB com fallbacks. Shape esperado vem do AgentBuilder
+      // (businessContext + profile), mas tolera ausência.
+      const cfg = (agent.config as any) ?? {};
+      const ctx = cfg.businessContext ?? cfg.business_context ?? {};
+      const profile = cfg.profile ?? {};
+
+      const companyName = ctx.companyName || ctx.company_name || cfg.company_name || "";
+      const toneOfVoice = ctx.toneOfVoice || ctx.tone_of_voice || profile.communicationStyle || cfg.tone_of_voice || "Profissional e amigável";
+      const instructions = profile.instructions || cfg.instructions || "";
+      const primaryGoal = profile.primaryGoal || cfg.objective || agent.description || "Atender e qualificar leads via WhatsApp.";
+
+      const baseSystem = `Você é ${agent.name || "Assistente"}${companyName ? ` da ${companyName}` : ""}.
+Objetivo: ${primaryGoal}
+Tom: ${toneOfVoice}
+${instructions ? `Instruções: ${instructions}\n` : ""}Responda sempre em português do Brasil. Seja natural e conversacional. Mensagens curtas (1-3 frases).`;
+      const system = applyCapabilityAddons(baseSystem, cfg.capabilities);
+      console.log(`[auto-reply] system prompt length=${system.length}`);
 
       console.log(`[auto-reply] calling LLM for agent=${agent.name}`);
       const replyText = await runAgentLLM({
