@@ -213,6 +213,8 @@ function handleAgentReply(
 ) {
   (async () => {
     try {
+      console.log(`[auto-reply] start user=${ownerUserId} contact=${contactNumber}`);
+
       // Check if user has a WhatsApp agent configured
       const { data: agentConfig } = await supabase
         .from("user_api_keys")
@@ -221,7 +223,11 @@ function handleAgentReply(
         .eq("user_id", ownerUserId)
         .maybeSingle();
 
-      if (!agentConfig?.api_key) return;
+      if (!agentConfig?.api_key) {
+        console.warn(`[auto-reply] skipped: no whatsapp_agent_id configured for user=${ownerUserId}`);
+        return;
+      }
+      console.log(`[auto-reply] agentId=${agentConfig.api_key}`);
 
       // Fetch owner's WABA access token for sending replies
       const { data: wabaKeys } = await supabase
@@ -233,18 +239,27 @@ function handleAgentReply(
       const keyMap: Record<string, string> = {};
       (wabaKeys || []).forEach((k: any) => { keyMap[k.provider] = k.api_key; });
 
-      if (!keyMap.whatsapp_access_token) return;
+      if (!keyMap.whatsapp_access_token) {
+        console.error(`[auto-reply] skipped: no whatsapp_access_token for user=${ownerUserId}`);
+        return;
+      }
 
       const usedPhoneId = phoneNumberId || keyMap.whatsapp_phone_number_id;
+      console.log(`[auto-reply] usedPhoneId=${usedPhoneId} hasToken=${!!keyMap.whatsapp_access_token}`);
 
       // Load agent config from user_agents table
-      const { data: agent } = await supabase
+      const { data: agent, error: agentErr } = await supabase
         .from("user_agents")
         .select("name, role, objective, instructions, tone_of_voice, company_name, config")
         .eq("id", agentConfig.api_key)
         .maybeSingle();
 
-      if (!agent) return;
+      if (agentErr) console.error(`[auto-reply] agent fetch error:`, agentErr);
+      if (!agent) {
+        console.error(`[auto-reply] skipped: agent ${agentConfig.api_key} not found in user_agents`);
+        return;
+      }
+      console.log(`[auto-reply] agent loaded: ${agent.name}`);
 
       const baseSystem = `Você é ${agent.name || "Assistente"}${agent.company_name ? ` da ${agent.company_name}` : ""}.
 Objetivo: ${agent.objective || "Atender e qualificar leads via WhatsApp."}
@@ -253,6 +268,7 @@ Instruções: ${agent.instructions || ""}
 Responda sempre em português do Brasil. Seja natural e conversacional.`;
       const system = applyCapabilityAddons(baseSystem, (agent.config as any)?.capabilities);
 
+      console.log(`[auto-reply] calling LLM for agent=${agent.name}`);
       const replyText = await runAgentLLM({
         supabase,
         agentId: agentConfig.api_key,
@@ -261,6 +277,12 @@ Responda sempre em português do Brasil. Seja natural e conversacional.`;
         messages: [{ role: "user", content: messageContent }],
         maxTokens: 1024,
       });
+
+      if (!replyText) {
+        console.error(`[auto-reply] LLM returned empty reply`);
+        return;
+      }
+      console.log(`[auto-reply] LLM reply ready (${replyText.length} chars), sending...`);
 
       if (replyText && usedPhoneId) {
         // Send reply via WhatsApp Graph API directly (no auth needed, we have token)
