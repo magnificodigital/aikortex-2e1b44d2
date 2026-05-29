@@ -29,6 +29,7 @@ import ClientTablesSection from "./ClientTablesSection";
 import CadencesSection from "./CadencesSection";
 import CadenceExecutionsPanel from "./CadenceExecutionsPanel";
 import WhatsAppTemplatesPanel from "./WhatsAppTemplatesPanel";
+import EmailTemplatesPanel from "./EmailTemplatesPanel";
 import AgentOverviewPanel from "./AgentOverviewPanel";
 import { useAgentCadences } from "@/hooks/use-agent-cadences";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
@@ -144,9 +145,10 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "caps.autoint",           label: "Auto-integração",      icon: Workflow,        comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
   ]},
   { group: "Canais", items: [
-    { key: "channels.email",         label: "Email",                icon: Mail },
-    { key: "channels.whatsapp",      label: "WhatsApp",             icon: MessageSquare },
-    { key: "resources.wa_templates", label: "Templates",            icon: FileText,        indent: true },
+    { key: "channels.email",            label: "Email",                icon: Mail },
+    { key: "resources.email_templates", label: "Templates",            icon: FileText,        indent: true },
+    { key: "channels.whatsapp",         label: "WhatsApp",             icon: MessageSquare },
+    { key: "resources.wa_templates",    label: "Templates",            icon: FileText,        indent: true },
     { key: "channels.voice",         label: "Voz",                  icon: Mic },
     { key: "channels.sms",           label: "SMS",                  icon: Phone,           comingSoon: true, sprint: "futuro" },
     { key: "channels.instagram",     label: "Instagram",            icon: Camera,          comingSoon: true, sprint: "futuro" },
@@ -634,10 +636,14 @@ const AgentRightPanel = ({
     return RIGHT_NAV
       .map(g => {
         let items = g.items.filter(i => !i.comingSoon && (showAdvanced || !ADVANCED_KEYS.has(i.key)));
-        // Filtra Canais por enabled list. Sub-item Templates só aparece quando o usuário
-        // está em WhatsApp (ou já está no próprio Templates).
+        // Filtra Canais por enabled list. Sub-itens Templates só aparecem quando o usuário
+        // está no canal-pai (ou já está no próprio Templates).
         if (g.group === "Canais") {
           items = items.filter((i) => {
+            if (i.key === "resources.email_templates") {
+              if (!enabledSet.has("email")) return false;
+              return activeSection === "channels.email" || activeSection === "resources.email_templates";
+            }
             if (i.key === "resources.wa_templates") {
               if (!enabledSet.has("whatsapp")) return false;
               return activeSection === "channels.whatsapp" || activeSection === "resources.wa_templates";
@@ -1302,6 +1308,19 @@ const AgentRightPanel = ({
                   description="Configure webhooks pra receber e enviar eventos em tempo real entre o Aikortex e sistemas externos."
                   actionLabel="Adicionar Webhook"
                 />
+              </div>
+            )}
+
+            {/* ── Recursos → Templates Email ── */}
+            {activeSection === "resources.email_templates" && (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Templates de Email</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Layouts reusáveis com assunto, corpo formatado e variáveis. Selecionáveis nas cadências de email.
+                  </p>
+                </div>
+                <EmailTemplatesPanel />
               </div>
             )}
 

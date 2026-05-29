@@ -17,7 +17,8 @@ import {
   templateBodyPreview,
   useWhatsAppTemplates,
 } from "@/hooks/use-whatsapp-templates";
-import { ExternalLink } from "lucide-react";
+import { useEmailTemplates } from "@/hooks/use-email-templates";
+import { ExternalLink, Mail } from "lucide-react";
 import {
   type AgentCadence,
   type CadenceStep,
@@ -64,6 +65,35 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
   const { data: allTables = [] } = useAllAgencyClientTables();
   const { data: waTemplates = [] } = useWhatsAppTemplates();
   const approvedTemplates = waTemplates.filter((t) => t.status === "APPROVED");
+  const { data: emailTemplates = [] } = useEmailTemplates();
+
+  // Strip HTML tags pra converter body_html de template em texto plano
+  // (cadence envia text-only via Resend hoje; futura versão pode mandar HTML).
+  const stripHtmlToText = (html: string): string => {
+    if (!html) return "";
+    return html
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<\/h[1-6]>/gi, "\n\n")
+      .replace(/<\/li>/gi, "\n")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  };
+
+  const applyEmailTemplate = (idx: number, templateId: string) => {
+    const tpl = emailTemplates.find((t) => t.id === templateId);
+    if (!tpl) return;
+    updateStep(idx, {
+      subject_template: tpl.subject,
+      message_template: stripHtmlToText(tpl.body_html),
+    });
+    toast.success(`Template "${tpl.name}" aplicado ao passo ${idx + 1}`);
+  };
 
   // Identidade do remetente vem da integração (Settings → Integrações → Email).
   // O preview mostra como vai chegar no inbox real.
@@ -349,18 +379,46 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                     </div>
 
                     {s.channel === "email" && (
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Assunto do email</Label>
-                        <Input
-                          value={s.subject_template ?? ""}
-                          onChange={(e) => updateStep(idx, { subject_template: e.target.value })}
-                          placeholder="Ex: Olá {nome}, sua consulta foi confirmada"
-                          maxLength={200}
-                          className="h-8 text-xs"
-                        />
-                        <p className="text-[9px] text-muted-foreground">
-                          Suporta placeholders. Se vazio, usa nome da cadência + número da mensagem.
-                        </p>
+                      <div className="space-y-2">
+                        {emailTemplates.length > 0 && (
+                          <div className="space-y-1 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
+                            <Label className="text-[10px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                              <Mail className="w-3 h-3" /> Aplicar template
+                            </Label>
+                            <Select onValueChange={(v) => applyEmailTemplate(idx, v)}>
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Escolha um template salvo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {emailTemplates.map((t) => (
+                                  <SelectItem key={t.id} value={t.id}>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="text-xs font-medium">{t.name}</span>
+                                      <span className="text-[10px] text-muted-foreground truncate">{t.subject}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-[9px] text-muted-foreground">
+                              Copia assunto + corpo do template. Você pode editar livremente abaixo.
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Assunto do email</Label>
+                          <Input
+                            value={s.subject_template ?? ""}
+                            onChange={(e) => updateStep(idx, { subject_template: e.target.value })}
+                            placeholder="Ex: Olá {nome}, sua consulta foi confirmada"
+                            maxLength={200}
+                            className="h-8 text-xs"
+                          />
+                          <p className="text-[9px] text-muted-foreground">
+                            Suporta placeholders. Se vazio, usa nome da cadência + número da mensagem.
+                          </p>
+                        </div>
                       </div>
                     )}
 
