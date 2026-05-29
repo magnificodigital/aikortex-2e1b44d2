@@ -250,7 +250,7 @@ function handleAgentReply(
       // Load agent config from user_agents table
       const { data: agent, error: agentErr } = await supabase
         .from("user_agents")
-        .select("name, role, objective, instructions, tone_of_voice, company_name, config")
+        .select("name, objective, instructions, tone_of_voice, company_name, config")
         .eq("id", agentConfig.api_key)
         .maybeSingle();
 
