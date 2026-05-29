@@ -34,7 +34,7 @@ import { useAgentCadences } from "@/hooks/use-agent-cadences";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import { useWhatsAppIntegrationStatus } from "@/hooks/use-whatsapp-integration";
 import { useWhatsAppTemplates } from "@/hooks/use-whatsapp-templates";
-import { useEnabledChannels } from "@/hooks/use-enabled-channels";
+import { useEnabledChannels, type ChannelKey } from "@/hooks/use-enabled-channels";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
