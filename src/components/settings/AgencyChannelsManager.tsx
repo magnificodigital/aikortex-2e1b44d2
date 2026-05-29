@@ -220,7 +220,7 @@ export default function AgencyChannelsManager() {
                 </div>
               </div>
 
-              {ch.configurable && !isComingSoon && (
+              {ch.configurable && !isComingSoon && isEnabled && (
                 <div className="space-y-2 pt-1 border-t border-border/50">
                   {summary && (
                     <p className="text-[11px] text-foreground/70 font-mono truncate" title={summary}>
@@ -245,13 +245,7 @@ export default function AgencyChannelsManager() {
                       className="text-xs h-7 gap-1.5"
                       onClick={() => setOpenDialog(ch.configurable!)}
                     >
-                      {configured ? (
-                        <>
-                          <Settings className="w-3 h-3" /> Editar
-                        </>
-                      ) : (
-                        "Configurar"
-                      )}
+                      <Settings className="w-3 h-3" /> Gerenciar
                     </Button>
                   </div>
                 </div>
