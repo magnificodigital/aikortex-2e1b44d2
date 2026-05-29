@@ -645,7 +645,7 @@ const AgentRightPanel = ({
             if (i.indent) return true;
             if (!i.key.startsWith("channels.")) return true;
             const channelKey = i.key.replace("channels.", "");
-            return enabledSet.has(channelKey);
+            return enabledSet.has(channelKey as ChannelKey);
           });
         }
         return { ...g, items };
