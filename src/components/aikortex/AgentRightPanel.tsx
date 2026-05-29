@@ -953,6 +953,7 @@ const AgentRightPanel = ({
                     </div>
                   )}
                 </div>
+                </div>
               </div>
             )}
 
