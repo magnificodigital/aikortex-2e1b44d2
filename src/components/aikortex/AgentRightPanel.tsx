@@ -34,7 +34,7 @@ import { useAgentCadences } from "@/hooks/use-agent-cadences";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import { useWhatsAppIntegrationStatus } from "@/hooks/use-whatsapp-integration";
 import { useWhatsAppTemplates } from "@/hooks/use-whatsapp-templates";
-import { useEnabledChannels } from "@/hooks/use-enabled-channels";
+import { useEnabledChannels, type ChannelKey } from "@/hooks/use-enabled-channels";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -645,7 +645,7 @@ const AgentRightPanel = ({
             if (i.indent) return true;
             if (!i.key.startsWith("channels.")) return true;
             const channelKey = i.key.replace("channels.", "");
-            return enabledSet.has(channelKey);
+            return enabledSet.has(channelKey as ChannelKey);
           });
         }
         return { ...g, items };
@@ -952,6 +952,7 @@ const AgentRightPanel = ({
                       </div>
                     </div>
                   )}
+                </div>
                 </div>
               </div>
             )}
