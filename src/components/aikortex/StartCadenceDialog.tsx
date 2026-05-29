@@ -31,6 +31,24 @@ function previewDateLabel(step: { day: number; hour: number; minute: number }): 
   return target.toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+const EMAIL_RE = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
+
+/** Strip básico de HTML pra preview legível na visualização da cadência. */
+function stripHtmlForPreview(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/(p|div|h[1-6]|li)>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export default function StartCadenceDialog({ open, onOpenChange, agentId, cadence }: Props) {
   const { activeClientId } = useActiveClient();
   const { data: tables = [] } = useClientTables(activeClientId);
@@ -40,16 +58,21 @@ export default function StartCadenceDialog({ open, onOpenChange, agentId, cadenc
   const [selectedRowId, setSelectedRowId] = useState<string>("");
   const [manualName, setManualName] = useState("");
   const [manualPhone, setManualPhone] = useState("");
+  const [manualEmail, setManualEmail] = useState("");
 
   const schedule = useScheduleCadenceExecution();
   const { data: emailStatus } = useEmailIntegrationStatus();
 
   const hasEmailStep = (cadence.steps ?? []).some((s) => s.channel === "email");
+  const hasWhatsappStep = (cadence.steps ?? []).some((s) => s.channel === "whatsapp");
   const emailBlocked = hasEmailStep && !emailStatus?.connected && (emailStatus?.trial_remaining ?? 0) === 0;
 
   const contact = useMemo(() => {
     if (source === "manual") {
-      return { name: manualName.trim(), phone: manualPhone.trim(), metadata: {} as Record<string, any> };
+      const metadata: Record<string, any> = {};
+      const trimmedEmail = manualEmail.trim();
+      if (trimmedEmail) metadata.email = trimmedEmail;
+      return { name: manualName.trim(), phone: manualPhone.trim(), metadata };
     }
     const row = rowsData?.rows.find((r) => r.id === selectedRowId);
     if (!row) return { name: "", phone: "", metadata: {} };
@@ -59,15 +82,28 @@ export default function StartCadenceDialog({ open, onOpenChange, agentId, cadenc
     const phone =
       data.telefone || data.phone || data.celular || data.whatsapp || "";
     return { name: String(name || ""), phone: String(phone || ""), metadata: data };
-  }, [source, manualName, manualPhone, rowsData, selectedRowId]);
+  }, [source, manualName, manualPhone, manualEmail, rowsData, selectedRowId]);
+
+  const manualEmailInvalid = source === "manual" && manualEmail.trim().length > 0 && !EMAIL_RE.test(manualEmail.trim());
 
   const onConfirm = async () => {
-    if (!contact.name && !contact.phone) {
-      toast.error("Selecione ou informe um contato");
+    if (!contact.name && !contact.phone && !contact.metadata?.email) {
+      toast.error("Informe ao menos nome, telefone ou email do contato");
       return;
     }
     if (!cadence.steps?.length) {
       toast.error("Cadência sem steps");
+      return;
+    }
+    if (hasEmailStep) {
+      const email = contact.metadata?.email || contact.metadata?.Email;
+      if (!email || !EMAIL_RE.test(String(email))) {
+        toast.error("Cadência tem step de email — informe um email válido");
+        return;
+      }
+    }
+    if (hasWhatsappStep && !contact.phone) {
+      toast.error("Cadência tem step de WhatsApp — informe um telefone");
       return;
     }
     try {
@@ -142,25 +178,51 @@ export default function StartCadenceDialog({ open, onOpenChange, agentId, cadenc
           )}
 
           {source === "manual" && (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">Nome</Label>
-                <Input value={manualName} onChange={(e) => setManualName(e.target.value)} className="h-9" />
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Nome</Label>
+                  <Input value={manualName} onChange={(e) => setManualName(e.target.value)} className="h-9" placeholder="Maria Silva" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">
+                    Telefone {hasWhatsappStep && <span className="text-destructive">*</span>}
+                  </Label>
+                  <Input value={manualPhone} onChange={(e) => setManualPhone(e.target.value)} className="h-9" placeholder="+5511999999999" />
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Telefone</Label>
-                <Input value={manualPhone} onChange={(e) => setManualPhone(e.target.value)} className="h-9" placeholder="+5511..." />
-              </div>
+              {hasEmailStep && (
+                <div className="space-y-1">
+                  <Label className="text-xs">
+                    Email <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="email"
+                    value={manualEmail}
+                    onChange={(e) => setManualEmail(e.target.value)}
+                    className="h-9"
+                    placeholder="contato@exemplo.com"
+                  />
+                  {manualEmailInvalid && (
+                    <p className="text-[11px] text-destructive">Formato de email inválido</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           <div className="rounded-lg border border-border p-3 space-y-1.5 bg-muted/30">
             <p className="text-xs font-medium text-foreground">Visualização da cadência</p>
-            {cadence.steps.map((s) => (
-              <p key={s.id} className="text-[11px] text-muted-foreground font-mono truncate">
-                {formatStepDelay(s)} ({previewDateLabel(s)}): "{(s.message_template || "").slice(0, 50)}{s.message_template.length > 50 ? "..." : ""}"
-              </p>
-            ))}
+            {cadence.steps.map((s) => {
+              const cleanText = stripHtmlForPreview(s.message_template || "");
+              const truncated = cleanText.length > 60 ? `${cleanText.slice(0, 60)}…` : cleanText;
+              return (
+                <p key={s.id} className="text-[11px] text-muted-foreground font-mono truncate">
+                  <span className="uppercase tracking-wider text-[9px] text-foreground/60">{s.channel}</span>{" "}
+                  {formatStepDelay(s)} ({previewDateLabel(s)}): "{truncated}"
+                </p>
+              );
+            })}
           </div>
 
           {emailBlocked && (
@@ -176,7 +238,7 @@ export default function StartCadenceDialog({ open, onOpenChange, agentId, cadenc
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={schedule.isPending}>Cancelar</Button>
-          <Button onClick={onConfirm} disabled={schedule.isPending || emailBlocked}>
+          <Button onClick={onConfirm} disabled={schedule.isPending || emailBlocked || manualEmailInvalid}>
             {schedule.isPending ? "Agendando..." : "Iniciar cadência"}
           </Button>
         </DialogFooter>
