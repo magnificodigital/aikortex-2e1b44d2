@@ -67,32 +67,23 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
   const approvedTemplates = waTemplates.filter((t) => t.status === "APPROVED");
   const { data: emailTemplates = [] } = useEmailTemplates();
 
-  // Strip HTML tags pra converter body_html de template em texto plano
-  // (cadence envia text-only via Resend hoje; futura versão pode mandar HTML).
-  const stripHtmlToText = (html: string): string => {
-    if (!html) return "";
-    return html
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/p>/gi, "\n\n")
-      .replace(/<\/h[1-6]>/gi, "\n\n")
-      .replace(/<\/li>/gi, "\n")
-      .replace(/<[^>]*>/g, "")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-  };
-
   const applyEmailTemplate = (idx: number, templateId: string) => {
     const tpl = emailTemplates.find((t) => t.id === templateId);
     if (!tpl) return;
     updateStep(idx, {
       subject_template: tpl.subject,
-      message_template: stripHtmlToText(tpl.body_html),
+      // body_html é HTML rich-text vindo do editor Tiptap. O edge function
+      // send-cadence-step detecta tags e manda como multipart (html + text
+      // fallback), então o email chega formatado no inbox.
+      message_template: tpl.body_html,
     });
-    toast.success(`Template "${tpl.name}" aplicado ao passo ${idx + 1}`);
+    toast.success(`Template "${tpl.name}" aplicado — formatação preservada no envio`);
+  };
+
+  // Detecta se o body do step é HTML (vindo de template) pra ajustar UX da edição.
+  const looksLikeHtml = (text: string | undefined): boolean => {
+    if (!text) return false;
+    return /<\/?[a-z][\s\S]*?>/i.test(text);
   };
 
   // Identidade do remetente vem da integração (Settings → Integrações → Email).
@@ -527,17 +518,31 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                     })()}
 
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Mensagem</Label>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-[10px] text-muted-foreground">Mensagem</Label>
+                        {s.channel === "email" && looksLikeHtml(s.message_template) && (
+                          <Badge variant="outline" className="text-[9px] gap-1 border-emerald-500/40 text-emerald-700 dark:text-emerald-400">
+                            <Mail className="w-2.5 h-2.5" /> HTML formatado
+                          </Badge>
+                        )}
+                      </div>
                       <Textarea
                         value={s.message_template}
                         onChange={(e) => updateStep(idx, { message_template: e.target.value })}
                         placeholder="Olá {nome}! Bem-vindo..."
-                        rows={3}
-                        maxLength={1000}
+                        rows={s.channel === "email" && looksLikeHtml(s.message_template) ? 6 : 3}
+                        maxLength={5000}
+                        className={s.channel === "email" && looksLikeHtml(s.message_template) ? "font-mono text-[11px]" : ""}
                       />
-                      <p className="text-[10px] text-muted-foreground">
-                        Placeholders: <code>{"{nome}"}</code>, <code>{"{telefone}"}</code>, <code>{"{email}"}</code> ou qualquer coluna da tabela do cliente.
-                      </p>
+                      {s.channel === "email" && looksLikeHtml(s.message_template) ? (
+                        <p className="text-[10px] text-muted-foreground">
+                          Conteúdo HTML vindo de template. Edite com cuidado — placeholders <code>{"{nome}"}</code> etc. continuam funcionando dentro das tags.
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground">
+                          Placeholders: <code>{"{nome}"}</code>, <code>{"{telefone}"}</code>, <code>{"{email}"}</code> ou qualquer coluna da tabela do cliente.
+                        </p>
+                      )}
                     </div>
 
                     {s.channel === "email" && (s.message_template?.trim() || s.subject_template?.trim()) && (
@@ -563,13 +568,23 @@ export default function CadenceEditorDialog({ open, onOpenChange, agentId, caden
                           </p>
                         </div>
                         <div className="border-t border-border/50 pt-1.5">
-                          <pre className="whitespace-pre-wrap font-sans text-[11px] text-foreground/90 leading-relaxed">
+                          {looksLikeHtml(s.message_template) ? (
+                            <div
+                              className="prose prose-sm max-w-none text-[11px] text-foreground/90 leading-relaxed dark:prose-invert"
+                              dangerouslySetInnerHTML={{
+                                __html: renderTemplate(s.message_template || "", PREVIEW_CONTACT) +
+                                  `<hr style="border:none;border-top:1px solid var(--border);margin:16px 0 8px" /><p style="font-size:10px;color:var(--muted-foreground);margin:0">Você está recebendo este email porque consta em uma lista de contatos gerenciada por ${senderName}.<br /><span style="color:var(--primary)">Cancelar inscrição</span></p>`,
+                              }}
+                            />
+                          ) : (
+                            <pre className="whitespace-pre-wrap font-sans text-[11px] text-foreground/90 leading-relaxed">
 {renderTemplate(s.message_template || "", PREVIEW_CONTACT)}
 
 — — —
 Você está recebendo este email porque consta em uma lista de contatos gerenciada por {senderName}.
 Para parar de receber, clique aqui: [link gerado automaticamente]
-                          </pre>
+                            </pre>
+                          )}
                         </div>
                         {!emailStatus?.connected && !emailStatus?.from_name && (
                           <p className="text-[10px] text-amber-600 dark:text-amber-400 pt-1 border-t border-amber-500/20">

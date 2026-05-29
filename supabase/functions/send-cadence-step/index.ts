@@ -98,6 +98,43 @@ function appendUnsubscribeFooter(body: string, unsubscribeUrl: string, fromName:
   return `${body}${footer}`;
 }
 
+/** Detecta se o body tem tags HTML — qualquer tag conta como sinal de rich content. */
+function isHtmlBody(body: string): boolean {
+  return /<\/?[a-z][\s\S]*?>/i.test(body);
+}
+
+/** Converte HTML em texto plano pra usar como fallback no payload multipart do Resend.
+ *  Preserva quebras de linha em tags de bloco e decodifica entities básicas. */
+function htmlToPlainText(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li|tr|blockquote)>/gi, '\n\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Append do footer de unsubscribe em HTML — mantém formatação consistente com Resend. */
+function appendUnsubscribeFooterHtml(html: string, unsubscribeUrl: string, fromName: string | null | undefined): string {
+  const sender = (fromName ?? '').trim() || 'este remetente';
+  const footer = `
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0 16px" />
+    <p style="font-size:12px;color:#6b7280;line-height:1.5;margin:0;font-family:Helvetica,Arial,sans-serif">
+      Você está recebendo este email porque consta em uma lista de contatos gerenciada por ${sender}.<br />
+      <a href="${unsubscribeUrl}" style="color:#2563eb;text-decoration:underline">Cancelar inscrição</a>
+    </p>
+  `;
+  return `${html}${footer}`;
+}
+
 const WHATSAPP_GRAPH_BASE = 'https://graph.facebook.com/v21.0';
 
 /**
@@ -261,13 +298,21 @@ async function sendViaEmail(opts: {
 
   const fromHeader = buildFromHeader(fromEmail, fromName);
   const unsubscribeUrl = await buildUnsubscribeUrl(opts.agentId, opts.to);
-  const bodyWithFooter = appendUnsubscribeFooter(opts.body, unsubscribeUrl, fromName);
+
+  // Detecta se o body é HTML (vem de Email Template via Tiptap). Se for, manda
+  // multipart com html + text fallback; senão, só text. Footer de unsubscribe é
+  // adicionado no formato correspondente.
+  const isHtml = isHtmlBody(opts.body);
+  const htmlBody = isHtml ? appendUnsubscribeFooterHtml(opts.body, unsubscribeUrl, fromName) : null;
+  const textBody = isHtml
+    ? appendUnsubscribeFooter(htmlToPlainText(opts.body), unsubscribeUrl, fromName)
+    : appendUnsubscribeFooter(opts.body, unsubscribeUrl, fromName);
 
   const payload: Record<string, unknown> = {
     from: fromHeader,
     to: opts.to,
     subject: opts.subject,
-    text: bodyWithFooter,
+    text: textBody,
     // List-Unsubscribe header (RFC 8058) — clientes de email reconhecem e mostram
     // botão nativo "cancelar inscrição"; melhora reputation e reduz spam-flag.
     headers: {
@@ -275,6 +320,9 @@ async function sendViaEmail(opts: {
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
   };
+  if (htmlBody) {
+    payload.html = htmlBody;
+  }
   if (replyTo) {
     payload.reply_to = replyTo;
   }

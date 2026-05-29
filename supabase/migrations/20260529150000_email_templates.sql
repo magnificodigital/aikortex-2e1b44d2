@@ -1,6 +1,7 @@
 -- Email templates por agência. Espelha o conceito dos WhatsApp templates,
 -- mas sem aprovação externa (Resend não exige). Reusa placeholders {chave}
 -- compatíveis com os steps de cadência (subject_template, message_template).
+-- Idempotente: pode rodar várias vezes sem erro.
 
 CREATE TABLE IF NOT EXISTS public.email_templates (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -36,22 +37,26 @@ CREATE TRIGGER trg_email_templates_updated_at
 -- RLS: isolamento por user_id
 ALTER TABLE public.email_templates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "email_templates_select_own" ON public.email_templates;
 CREATE POLICY "email_templates_select_own"
   ON public.email_templates FOR SELECT
   TO authenticated
   USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "email_templates_insert_own" ON public.email_templates;
 CREATE POLICY "email_templates_insert_own"
   ON public.email_templates FOR INSERT
   TO authenticated
   WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "email_templates_update_own" ON public.email_templates;
 CREATE POLICY "email_templates_update_own"
   ON public.email_templates FOR UPDATE
   TO authenticated
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "email_templates_delete_own" ON public.email_templates;
 CREATE POLICY "email_templates_delete_own"
   ON public.email_templates FOR DELETE
   TO authenticated
