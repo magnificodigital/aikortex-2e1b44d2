@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot, CheckCircle2, Copy, ExternalLink, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Bot, CheckCircle2, ChevronDown, Copy, ExternalLink, Eye, EyeOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
+import MetaEmbeddedSignupButton from "./MetaEmbeddedSignupButton";
 
 interface Props {
   onClose?: () => void;
@@ -53,6 +54,9 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
   const [selectedAgent, setSelectedAgent] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [connectionType, setConnectionType] = useState<"meta_manual" | "meta_embedded" | "">("");
+  const [showManual, setShowManual] = useState(false);
+  const [identity, setIdentity] = useState<{ display_phone_number: string | null; verified_name: string | null } | null>(null);
 
   const webhookUrl = fnUrl("whatsapp-webhook");
 
@@ -68,15 +72,20 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
         .in("provider", [
           ...WABA_FIELDS.map((f) => f.key),
           "whatsapp_agent_id",
+          "whatsapp_connection_type",
         ]);
       const fieldMap: Record<string, string> = {};
       let agentId = "";
+      let connType: "meta_manual" | "meta_embedded" | "" = "";
       (keys ?? []).forEach((row: any) => {
         if (row.provider === "whatsapp_agent_id") agentId = row.api_key ?? "";
+        else if (row.provider === "whatsapp_connection_type") connType = (row.api_key ?? "") as any;
         else fieldMap[row.provider] = row.api_key ?? "";
       });
       setFields(fieldMap);
       setSelectedAgent(agentId);
+      // Se já tem credenciais salvas mas sem connection_type explícito, assume manual (compat retro)
+      setConnectionType(connType || (Object.keys(fieldMap).length > 0 ? "meta_manual" : ""));
 
       const { data: ag } = await supabase
         .from("user_agents")
@@ -109,6 +118,14 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
             .upsert({ user_id: user.id, provider: f.key, api_key: val }, { onConflict: "user_id,provider" });
         }
       }
+      // Marca explicitamente que foi conectado via fluxo manual
+      await supabase
+        .from("user_api_keys")
+        .upsert(
+          { user_id: user.id, provider: "whatsapp_connection_type", api_key: "meta_manual" },
+          { onConflict: "user_id,provider" },
+        );
+      setConnectionType("meta_manual");
       qc.invalidateQueries({ queryKey: ["whatsapp-integration-status"] });
       toast.success("WhatsApp Business conectado");
       onClose?.();
@@ -125,10 +142,14 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
       const providers = [
         ...WABA_FIELDS.map((f) => f.key),
         "whatsapp_agent_id",
+        "whatsapp_connection_type",
       ];
       await supabase.from("user_api_keys").delete().eq("user_id", user.id).in("provider", providers);
       setFields({});
       setSelectedAgent("");
+      setConnectionType("");
+      setIdentity(null);
+      setShowManual(false);
       qc.invalidateQueries({ queryKey: ["whatsapp-integration-status"] });
       toast.success("WhatsApp Business desconectado");
       onClose?.();
@@ -155,6 +176,7 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
   };
 
   const isAnyConfigured = WABA_FIELDS.some((f) => isConfigured(f.key));
+  const isEmbedded = connectionType === "meta_embedded";
 
   return (
     <div className="space-y-4">
@@ -173,7 +195,66 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
         </a>
       </p>
 
-      {WABA_FIELDS.map((f) => (
+      {/* Connected state — mostra identidade */}
+      {isAnyConfigured && (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <p className="text-sm font-medium text-foreground">WhatsApp Business conectado</p>
+            <Badge variant="outline" className="text-[9px]">
+              {isEmbedded ? "via Embedded Signup" : "via configuração manual"}
+            </Badge>
+          </div>
+          {identity?.verified_name && (
+            <p className="text-[11px] text-muted-foreground">
+              <strong>{identity.verified_name}</strong>
+              {identity.display_phone_number && ` · ${identity.display_phone_number}`}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Embedded Signup — sempre visível como caminho recomendado */}
+      {!isAnyConfigured && (
+        <div className="space-y-2">
+          <MetaEmbeddedSignupButton
+            onConnected={(info) => {
+              setIdentity({
+                display_phone_number: info.display_phone_number,
+                verified_name: info.verified_name,
+              });
+              setConnectionType("meta_embedded");
+              // Recarrega fields salvos pela edge function
+              setFields({
+                whatsapp_phone_number_id: info.phone_number_id,
+                whatsapp_business_account_id: info.waba_id,
+                whatsapp_access_token: "•••• (gerenciado via Meta)",
+              });
+              qc.invalidateQueries({ queryKey: ["whatsapp-integration-status"] });
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowManual((s) => !s)}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground mx-auto"
+          >
+            <ChevronDown className={`w-3 h-3 transition-transform ${showManual ? "rotate-180" : ""}`} />
+            {showManual ? "Esconder configuração manual" : "Prefere conectar manualmente?"}
+          </button>
+        </div>
+      )}
+
+      {/* Campos manuais — escondidos por padrão quando nada configurado, sempre visíveis quando já tem manual */}
+      {(isAnyConfigured && !isEmbedded) || showManual ? (
+        <>
+          {!isAnyConfigured && (
+            <div className="border-t border-border pt-3">
+              <p className="text-[11px] text-muted-foreground mb-2">
+                Cole as credenciais manualmente do Meta Business Suite (System User permanente).
+              </p>
+            </div>
+          )}
+          {WABA_FIELDS.map((f) => (
         <div key={f.key} className="space-y-1">
           <div className="flex items-center justify-between gap-2">
             <Label className="text-xs">{f.label}</Label>
@@ -203,7 +284,7 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
         </div>
       ))}
 
-      {/* Webhook URL */}
+      {/* Webhook URL — só relevante em fluxo manual (Embedded Signup inscreve automaticamente) */}
       <div className="space-y-1 pt-2 border-t border-border">
         <Label className="text-xs">Webhook URL</Label>
         <div className="flex items-center gap-2">
@@ -225,6 +306,8 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
           usando o Verify Token acima.
         </p>
       </div>
+        </>
+      ) : null}
 
       {/* Agente padrão (opcional, p/ auto-reply) */}
       <div className="space-y-1 pt-2 border-t border-border">
@@ -264,13 +347,17 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
         )}
         <div className="flex gap-2">
           <Button size="sm" variant="ghost" onClick={onClose}>Fechar</Button>
-          <Button
-            size="sm"
-            onClick={onSave}
-            disabled={saving || !fields.whatsapp_access_token?.trim() || !fields.whatsapp_phone_number_id?.trim()}
-          >
-            {saving ? "Salvando..." : "Salvar conexão"}
-          </Button>
+          {/* Botão "Salvar conexão" só faz sentido no fluxo manual — o Embedded
+              salva automaticamente via edge function. */}
+          {(!isAnyConfigured || !isEmbedded) && (showManual || isAnyConfigured) && (
+            <Button
+              size="sm"
+              onClick={onSave}
+              disabled={saving || !fields.whatsapp_access_token?.trim() || !fields.whatsapp_phone_number_id?.trim() || fields.whatsapp_access_token === "•••• (gerenciado via Meta)"}
+            >
+              {saving ? "Salvando..." : "Salvar conexão"}
+            </Button>
+          )}
         </div>
       </div>
     </div>
