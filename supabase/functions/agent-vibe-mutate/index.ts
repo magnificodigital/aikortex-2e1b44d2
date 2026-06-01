@@ -156,6 +156,56 @@ serve(async (req) => {
         const channels = { ...(newConfig.channels ?? {}), [channel]: enabled };
         newConfig = { ...newConfig, channels };
         logMessage = `Canal "${channel}": ${enabled ? "ativado" : "desativado"}`;
+
+        // Quando ATIVANDO um canal, checa se a integração da agência existe.
+        // Sem isso o agente não consegue operar de verdade — wizard precisa
+        // avisar o usuário pra evitar confiança falsa ("ativei mas não funciona").
+        if (enabled) {
+          let needsIntegration: string | null = null;
+          if (channel === "email") {
+            const { data: secrets } = await admin
+              .from("agency_secrets")
+              .select("resend_api_key, resend_from_email")
+              .eq("agency_user_id", agent.user_id)
+              .maybeSingle();
+            if (!secrets?.resend_api_key || !secrets?.resend_from_email) {
+              needsIntegration = `Email marcado como canal, mas sua conta Resend ainda não está conectada. Pra esse agente enviar emails de verdade, o usuário precisa configurar em Configurações → Canais → Email → Gerenciar.`;
+            }
+          } else if (channel === "whatsapp") {
+            const { data: keys } = await admin
+              .from("user_api_keys")
+              .select("provider")
+              .eq("user_id", agent.user_id)
+              .in("provider", ["whatsapp_access_token", "whatsapp_phone_number_id"]);
+            const hasToken = (keys ?? []).some((k: any) => k.provider === "whatsapp_access_token");
+            const hasPhoneId = (keys ?? []).some((k: any) => k.provider === "whatsapp_phone_number_id");
+            if (!hasToken || !hasPhoneId) {
+              needsIntegration = `WhatsApp marcado como canal, mas a WhatsApp Business API (Meta Cloud) ainda não está conectada. Pra esse agente enviar/receber mensagens reais, o usuário precisa configurar em Configurações → Canais → WhatsApp → Gerenciar.`;
+            }
+          } else if (["instagram", "facebook", "telegram", "tiktok", "linkedin"].includes(channel)) {
+            needsIntegration = `Canal "${channel}" marcado, mas ainda não há integração implementada na plataforma (em breve). O agente vai operar só onde houver canal real ativo.`;
+          } else if (channel === "voice") {
+            const { data: secrets } = await admin
+              .from("agency_secrets")
+              .select("telnyx_api_key, elevenlabs_api_key")
+              .eq("agency_user_id", agent.user_id)
+              .maybeSingle();
+            if (!secrets?.telnyx_api_key && !secrets?.elevenlabs_api_key) {
+              needsIntegration = `Voz marcada como canal, mas nem Telnyx nem ElevenLabs estão conectados. Pra chamadas reais, configure em Configurações → Canais → Voz → Gerenciar.`;
+            }
+          }
+
+          if (needsIntegration) {
+            console.log(`[agent-vibe-mutate] ${agentId} set_channel(${channel}) — integração faltando`);
+            // Aplica a mutation MAS retorna warning pro LLM informar o usuário
+            const { error: updErr } = await admin
+              .from("user_agents")
+              .update({ config: newConfig, draft_updated_at: new Date().toISOString() })
+              .eq("id", agentId);
+            if (updErr) return jsonRes({ error: "UPDATE_FAILED", details: updErr.message }, 500);
+            return jsonRes({ ok: true, action, log: logMessage, warning: needsIntegration });
+          }
+        }
         break;
       }
       case "set_niche": {
