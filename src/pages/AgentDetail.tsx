@@ -221,6 +221,9 @@ const AgentDetail = () => {
   });
   const [agentLoading, setAgentLoading] = useState(!isTemplate && !isFreshNew);
 
+  // Guard contra React Strict Mode rodar useEffect 2x e criar 2 drafts.
+  const autoCreateInFlightRef = useRef(false);
+
   useEffect(() => {
     if (isTemplate) { setAgentLoading(false); return; }
 
@@ -229,29 +232,37 @@ const AgentDetail = () => {
     // Pra IDs new-*, cria draft imediatamente e redireciona pra URL real.
     if (!agentId || agentId === "new" || agentId.startsWith("new-")) {
       setAgentLoading(false);
+      if (autoCreateInFlightRef.current) return; // já criando, evita duplicar
+      autoCreateInFlightRef.current = true;
       (async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data: created, error } = await supabase
-          .from("user_agents")
-          .insert({
-            user_id: user.id,
-            name: "Novo Agente",
-            agent_type: initialType || "Custom",
-            description: "",
-            model: DEFAULT_FREE_MODEL,
-            provider: "auto",
-            status: "configuring",
-            config: { wizard_started_at: new Date().toISOString() },
-          })
-          .select("id")
-          .single();
-        if (error || !created) {
-          console.error("Failed to auto-create draft agent:", error);
-          return;
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          const { data: created, error } = await supabase
+            .from("user_agents")
+            .insert({
+              user_id: user.id,
+              name: "Novo Agente",
+              agent_type: initialType || "Custom",
+              description: "",
+              model: DEFAULT_FREE_MODEL,
+              provider: "auto",
+              status: "configuring",
+              config: { wizard_started_at: new Date().toISOString() },
+            })
+            .select("id")
+            .single();
+          if (error || !created) {
+            console.error("Failed to auto-create draft agent:", error);
+            autoCreateInFlightRef.current = false;
+            return;
+          }
+          // Redireciona pra URL com o ID real — preserva navState (initialPrompt etc.)
+          navigate(`/aikortex/agents/${created.id}`, { replace: true, state: location.state });
+        } catch (e) {
+          console.error("auto-create draft exception:", e);
+          autoCreateInFlightRef.current = false;
         }
-        // Redireciona pra URL com o ID real — preserva navState (initialPrompt etc.)
-        navigate(`/aikortex/agents/${created.id}`, { replace: true, state: location.state });
       })();
       return;
     }
