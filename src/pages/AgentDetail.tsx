@@ -222,7 +222,40 @@ const AgentDetail = () => {
   const [agentLoading, setAgentLoading] = useState(!isTemplate && !isFreshNew);
 
   useEffect(() => {
-    if (isTemplate || !agentId || agentId === "new" || agentId.startsWith("new-")) { setAgentLoading(false); return; }
+    if (isTemplate) { setAgentLoading(false); return; }
+
+    // Master v7.4 §13.16: Modo Vibe Acting precisa do draft existindo no DB
+    // ANTES do wizard começar pra agent-vibe-mutate poder aplicar mutations.
+    // Pra IDs new-*, cria draft imediatamente e redireciona pra URL real.
+    if (!agentId || agentId === "new" || agentId.startsWith("new-")) {
+      setAgentLoading(false);
+      (async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: created, error } = await supabase
+          .from("user_agents")
+          .insert({
+            user_id: user.id,
+            name: "Novo Agente",
+            agent_type: initialType || "Custom",
+            description: "",
+            model: DEFAULT_FREE_MODEL,
+            provider: "auto",
+            status: "configuring",
+            config: { wizard_started_at: new Date().toISOString() },
+          })
+          .select("id")
+          .single();
+        if (error || !created) {
+          console.error("Failed to auto-create draft agent:", error);
+          return;
+        }
+        // Redireciona pra URL com o ID real — preserva navState (initialPrompt etc.)
+        navigate(`/aikortex/agents/${created.id}`, { replace: true, state: location.state });
+      })();
+      return;
+    }
+
     const load = async () => {
       setAgentLoading(true);
       const { data } = await supabase.from("user_agents").select("*").eq("id", agentId).single();
@@ -243,7 +276,7 @@ const AgentDetail = () => {
       setAgentLoading(false);
     };
     load();
-  }, [agentId, isTemplate]);
+  }, [agentId, isTemplate, initialType, navigate, location.state]);
 
   /* ── Wizard state ── */
 
