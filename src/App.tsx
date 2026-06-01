@@ -28,7 +28,6 @@ const AikortexCRM = lazy(() => import("./pages/AikortexCRM"));
 const AikortexAutomations = lazy(() => import("./pages/AikortexAutomations"));
 const AikortexMessages = lazy(() => import("./pages/AikortexMessages"));
 const AikortexBroadcasts = lazy(() => import("./pages/AikortexBroadcasts"));
-const AgentBuilder = lazy(() => import("./pages/AgentBuilder"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const ClientRegistration = lazy(() => import("./pages/ClientRegistration"));
 const AppBuilder = lazy(() => import("./pages/AppBuilder"));
@@ -106,7 +105,9 @@ const App = () => (
               <Route path="/aikortex/automations" element={<AgencyRoute><AikortexAutomations /></AgencyRoute>} />
               <Route path="/aikortex/messages" element={<AgencyRoute><AikortexMessages /></AgencyRoute>} />
               <Route path="/aikortex/broadcasts" element={<AgencyRoute><AikortexBroadcasts /></AgencyRoute>} />
-              <Route path="/agent-builder" element={<AgencyRoute><AgentBuilder /></AgencyRoute>} />
+              {/* Deprecated: caminho legado do wizard. Redireciona pra rota canônica
+                  do Master v7.4 §13.3 (split-screen Modo Vibe em /aikortex/agents/:agentId). */}
+              <Route path="/agent-builder" element={<Navigate to="/aikortex/agents" replace />} />
               <Route path="/ai-setup" element={<AgencyRoute><Credits /></AgencyRoute>} />
               <Route path="/credits" element={<Navigate to="/ai-setup" replace />} />
               <Route path="/settings" element={<AgencyRoute><SettingsPage /></AgencyRoute>} />
