@@ -1056,7 +1056,11 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
             - structure / build / done: chat 40% + config 60% */}
 
         {/* ── LEFT: Chat Panel ── */}
-        <div className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex ${wizardStep === "discover" ? "lg:w-[55%]" : "lg:w-[40%]"} flex-col min-w-0 overflow-hidden transition-all duration-300`}>
+        <div className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex ${
+          wizardStep === "discover"
+            ? (showConfigDuringDiscover ? "lg:w-[40%]" : "lg:w-[55%]")
+            : "lg:w-[40%]"
+        } flex-col min-w-0 overflow-hidden transition-all duration-300`}>
           <AgentChatPanel
             onBack={() => navigate("/aikortex/agents")}
             agentType={loadedAgent.agentType}
@@ -1103,19 +1107,31 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
           />
         </div>
 
-        {/* ── RIGHT: Showcase (discover) ── */}
-        {wizardStep === "discover" && !showConfigDuringDiscover && (
-          <div className={`${mobileTab === "config" ? "flex" : "hidden"} lg:flex lg:w-[45%] flex-col min-w-0 overflow-hidden border-l border-border transition-all duration-300`}>
-            <WizardShowcasePanel
-              savedConfig={loadedAgent.savedConfig}
-              agentName={loadedAgent.name}
-              agentType={loadedAgent.agentType}
-            />
-          </div>
-        )}
-
-        {/* ── RIGHT: Config (structure/build/done OR toggled during discover) ── */}
-        <div className={`${mobileTab === "config" ? "flex" : "hidden"} ${wizardStep === "discover" && !showConfigDuringDiscover ? "lg:hidden" : "lg:flex lg:flex-1"} flex-col min-w-0 overflow-hidden border-l border-border transition-all duration-300`}>
+        {/* ── RIGHT: Showcase ↔ Config crossfade.
+            Durante discover: showcase (default) e config (toggle) ficam
+            empilhados no mesmo slot com opacity transition — swap suave
+            sem cortes. Fora do discover: só config, slot mais largo. */}
+        <div className={`${mobileTab === "config" ? "flex" : "hidden"} lg:flex ${
+          wizardStep === "discover"
+            ? (showConfigDuringDiscover ? "lg:w-[60%]" : "lg:w-[45%]")
+            : "lg:flex-1"
+        } flex-col min-w-0 overflow-hidden border-l border-border transition-all duration-300 relative`}>
+          {/* Showcase layer (visível só em discover sem toggle) */}
+          {wizardStep === "discover" && (
+            <div className={`absolute inset-0 transition-opacity duration-300 ${
+              showConfigDuringDiscover ? "opacity-0 pointer-events-none" : "opacity-100"
+            }`}>
+              <WizardShowcasePanel
+                savedConfig={loadedAgent.savedConfig}
+                agentName={loadedAgent.name}
+                agentType={loadedAgent.agentType}
+              />
+            </div>
+          )}
+          {/* Config layer (sempre montada em structure/build/done; em discover só visível quando toggle ativo) */}
+          <div className={`flex flex-col min-h-0 flex-1 transition-opacity duration-300 ${
+            wizardStep === "discover" && !showConfigDuringDiscover ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}>
           {/* Top bar — model selector · Testar ligação · Publicar */}
           <div className="h-12 border-b border-border flex items-center justify-between px-4 shrink-0 bg-card/30">
             <div className="flex items-center gap-2 min-w-0">
@@ -1181,6 +1197,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
               presetData={presetData}
               savedConfig={loadedAgent.savedConfig}
             />
+          </div>
           </div>
         </div>
       </div>
