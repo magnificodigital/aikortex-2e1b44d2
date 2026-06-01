@@ -480,12 +480,6 @@ const AgentChatPanel = ({
           <ArrowLeft className="w-3.5 h-3.5" />
           Voltar
         </Button>
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-          </div>
-          <span className="text-sm font-semibold tracking-tight">Agente de Texto e Voz</span>
-        </div>
         <span className="flex-1" />
         {showConfigToggle && (
           <button
