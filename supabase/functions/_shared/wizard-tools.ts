@@ -173,6 +173,61 @@ interface RunWizardWithToolsOptions {
   userJwt?: string | null;
 }
 
+/** Parser de narrativa: detecta padrões tipo "Anotei a saudação 'X'"
+ *  e devolve calls inferidas. Safety net pro LLM que narra sem chamar
+ *  tool — frontend ficava com checklist vazio mesmo agente "configurado". */
+interface InferredCall { name: string; params: Record<string, any> }
+
+function inferToolsFromNarrative(content: string, already: Set<string>): InferredCall[] {
+  if (!content) return [];
+  const calls: InferredCall[] = [];
+  // Aceita aspas curvas ou retas em volta dos valores capturados
+  const Q = `["“”'']`;
+
+  // set_greeting_message
+  const greetingPats = [
+    new RegExp(`mensagem\\s+de\\s+saudação\\s+configurada\\s+como\\s+${Q}([^"”'']+)${Q}`, "i"),
+    new RegExp(`(?:anotei|defini|configurei)\\s+(?:a\\s+)?saudação[^"]*${Q}([^"”'']+)${Q}`, "i"),
+    new RegExp(`saudação\\s+(?:inicial\\s+)?(?:configurada|definida)(?:\\s+como)?\\s+${Q}([^"”'']+)${Q}`, "i"),
+  ];
+  if (!already.has("set_greeting_message")) {
+    for (const p of greetingPats) {
+      const m = content.match(p);
+      if (m) { calls.push({ name: "set_greeting_message", params: { message: m[1].trim() } }); break; }
+    }
+  }
+
+  // set_instructions
+  const instructionsPats = [
+    new RegExp(`(?:anotei|registrei|configurei)\\s+(?:a\\s+|as\\s+)?(?:instrução|instruções|critério|critérios)[^"]*${Q}([^"”'']{15,})${Q}`, "i"),
+  ];
+  if (!already.has("set_instructions")) {
+    for (const p of instructionsPats) {
+      const m = content.match(p);
+      if (m) { calls.push({ name: "set_instructions", params: { instructions: m[1].trim() } }); break; }
+    }
+  }
+
+  // set_agent_name
+  const namePats = [
+    /(?:nome\s+do\s+agente\s+(?:anotado|definido|configurado)\s+como\s+)([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ]+)/,
+    /([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ]+)\s+anotad[ao]\s+como\s+(?:o\s+)?nome\s+do\s+agente/,
+  ];
+  if (!already.has("set_agent_name")) {
+    for (const p of namePats) {
+      const m = content.match(p);
+      if (m) { calls.push({ name: "set_agent_name", params: { name: m[1].trim() } }); break; }
+    }
+  }
+
+  // commit_draft — quando bot anuncia que agente foi "criado com sucesso"
+  if (!already.has("commit_draft") && /agente\s+\w+\s+foi\s+criado\s+com\s+sucesso|wizard\s+conclu[íi]do|montei\s+a\s+primeira\s+versão.*concluído/i.test(content)) {
+    calls.push({ name: "commit_draft", params: {} });
+  }
+
+  return calls;
+}
+
 /** Executa loop de tool-calling no Modo Vibe. Cada tool call invoca
  *  agent-vibe-mutate via HTTP pra aplicar a mudança no draft. */
 export async function runWizardWithTools(opts: RunWizardWithToolsOptions): Promise<{
@@ -186,6 +241,37 @@ export async function runWizardWithTools(opts: RunWizardWithToolsOptions): Promi
   const toolsExecuted: Array<{ name: string; log: string }> = [];
 
   const messages = [...opts.messages];
+
+  // Helper: fire tool via agent-vibe-mutate; updates toolsExecuted.
+  const fireTool = async (name: string, params: Record<string, any>): Promise<string> => {
+    try {
+      const resp = await fetch(`${supabaseUrl}/functions/v1/agent-vibe-mutate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${opts.userJwt ?? serviceKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId: opts.agentId, action: name, params }),
+      });
+      const json = await resp.json();
+      if (resp.ok) {
+        const log = json.log || `${name} aplicado`;
+        toolsExecuted.push({ name, log });
+        console.log(`[wizard-tools] ⚡ inferred ${name}: ${log}`);
+        return log;
+      }
+      console.warn(`[wizard-tools] ⚡ inferred ${name} failed: ${json.error}`);
+    } catch (e) {
+      console.error(`[wizard-tools] ⚡ inferred ${name} exception:`, e);
+    }
+    return "";
+  };
+
+  // Roda parser ANTES de retornar: se LLM narrou sem chamar tool, força.
+  const flushInferredTools = async (content: string): Promise<void> => {
+    const already = new Set(toolsExecuted.map((t) => t.name));
+    const inferred = inferToolsFromNarrative(content, already);
+    for (const call of inferred) {
+      await fireTool(call.name, call.params);
+    }
+  };
 
   for (let iter = 0; iter < maxIterations + 1; iter++) {
     const result = await callLLM(
@@ -203,11 +289,13 @@ export async function runWizardWithTools(opts: RunWizardWithToolsOptions): Promi
 
     if (!result.success) {
       console.warn(`[wizard-tools] iter=${iter} failed: ${result.error}`);
+      await flushInferredTools(result.content || "");
       return { content: result.content || "", toolsExecuted };
     }
 
     const toolCalls = (result as any).toolCalls as any[] | undefined;
     if (!toolCalls || toolCalls.length === 0) {
+      await flushInferredTools(result.content || "");
       return { content: result.content || "", toolsExecuted };
     }
 
