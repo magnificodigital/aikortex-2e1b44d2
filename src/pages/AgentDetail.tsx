@@ -965,10 +965,14 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
         </button>
       </div>
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
 
-        {/* ── LEFT: Chat Panel (40% on desktop) ── */}
-        <div className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex lg:w-[40%] flex-col min-w-0 overflow-hidden`}>
+        {/* Layout adaptativo (Master v7.4 §13.3 + UX request):
+            - discover: chat full-width (foco na conversa, sem distração)
+            - structure / build / done: split-screen 40/60 (config visível) */}
+
+        {/* ── LEFT: Chat Panel ── */}
+        <div className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex ${wizardStep === "discover" ? "lg:flex-1" : "lg:w-[40%]"} flex-col min-w-0 overflow-hidden transition-all duration-300`}>
           <AgentChatPanel
             onBack={() => navigate("/aikortex/agents")}
             agentType={loadedAgent.agentType}
@@ -1011,8 +1015,22 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
           />
         </div>
 
-        {/* ── RIGHT: Persistent configuration (60% on desktop) ── */}
-        <div className={`${mobileTab === "config" ? "flex" : "hidden"} lg:flex lg:flex-1 flex-col min-w-0 overflow-hidden border-l border-border`}>
+        {/* FAB "Ver configuração" — só aparece no step discover quando agente já existe no DB,
+            permite espiar painel direito sem mudar de modo. Click → mostra split-screen. */}
+        {wizardStep === "discover" && agentId && !agentId.startsWith("new-") && agentId !== "new" && (
+          <button
+            type="button"
+            className="hidden lg:flex absolute bottom-6 right-6 z-50 items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all text-sm font-medium"
+            onClick={() => setWizardStep("structure")}
+          >
+            <Settings2 className="w-4 h-4" />
+            Ver configuração
+          </button>
+        )}
+
+        {/* ── RIGHT: Persistent configuration — hidden during discover pra foco no chat (UX request).
+            Acessível via botão "Ver configuração" flutuante ou via botão de tab no mobile. */}
+        <div className={`${mobileTab === "config" ? "flex" : "hidden"} ${wizardStep === "discover" ? "lg:hidden" : "lg:flex lg:flex-1"} flex-col min-w-0 overflow-hidden border-l border-border transition-all duration-300`}>
           {/* Top bar — model selector · Testar ligação · Publicar */}
           <div className="h-12 border-b border-border flex items-center justify-between px-4 shrink-0 bg-card/30">
             <div className="flex items-center gap-2 min-w-0">
