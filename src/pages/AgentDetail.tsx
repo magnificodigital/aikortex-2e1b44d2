@@ -1043,6 +1043,17 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
             <div className="flex items-center gap-2 min-w-0">
               <Bot className="w-4 h-4 text-primary shrink-0" />
               <span className="text-sm font-semibold truncate">{loadedAgent.name}</span>
+              {/* Master v7.4 §13.16: feedback visual de tools aplicadas pelo wizard */}
+              {(loadedAgent.savedConfig as any)?.businessContext?.companyName && (
+                <Badge variant="outline" className="text-[10px] gap-0.5 border-blue-500/30 text-blue-700 dark:text-blue-400">
+                  {(loadedAgent.savedConfig as any).businessContext.companyName}
+                </Badge>
+              )}
+              {(loadedAgent.savedConfig as any)?.businessContext?.niche && (
+                <Badge variant="outline" className="text-[10px] gap-0.5 border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+                  {(loadedAgent.savedConfig as any).businessContext.niche}
+                </Badge>
+              )}
               <PublishStateBadge state={publishState} hasDraftChanges={hasDraftChanges} />
               {isSaving && (
                 <span className="text-[10px] text-muted-foreground animate-pulse ml-2">Salvando...</span>

@@ -458,6 +458,42 @@ const AgentRightPanel = ({
   const [agentToneOfVoice,    setAgentToneOfVoice]    = useState(() => resolveInitial("toneOfVoice",    savedConfig?.toneOfVoice,    presetData?.toneOfVoice) || "Profissional e Amigável");
   const [agentGreetingMessage,setAgentGreetingMessage]= useState(() => resolveInitial("greetingMessage",savedConfig?.greetingMessage,presetData?.greetingMessage));
 
+  // Master v7.4 §13.16 (Modo Vibe Acting): quando wizard chama tools que
+  // mutam o draft, savedConfig é atualizado via polling. Sincroniza state
+  // local com prop pra UI refletir mudanças em tempo real. Só atualiza se
+  // o valor do prop é diferente do state atual (evita override de edit
+  // manual em curso pelo usuário).
+  useEffect(() => {
+    if (!savedConfig) return;
+    if (savedConfig.name !== undefined && savedConfig.name !== agentName && savedConfig.name) {
+      setAgentName(savedConfig.name);
+    }
+    if (savedConfig.description !== undefined && savedConfig.description !== agentDesc && savedConfig.description) {
+      setAgentDesc(savedConfig.description);
+    }
+    // Pega objective de profile (onde set_objective salva) ou top-level
+    const cfgObjective = savedConfig?.profile?.primaryGoal || savedConfig?.objective;
+    if (cfgObjective && cfgObjective !== agentObjective) {
+      setAgentObjective(cfgObjective);
+    }
+    // Pega instructions de profile (onde set_instructions salva) ou top-level
+    const cfgInstructions = savedConfig?.profile?.instructions || savedConfig?.instructions;
+    if (cfgInstructions && cfgInstructions !== agentInstructions) {
+      setAgentInstructions(cfgInstructions);
+    }
+    // Pega tone de businessContext (onde set_tone_of_voice salva) ou top-level
+    const cfgTone = savedConfig?.businessContext?.toneOfVoice || savedConfig?.toneOfVoice;
+    if (cfgTone && cfgTone !== agentToneOfVoice) {
+      setAgentToneOfVoice(cfgTone);
+    }
+    // Pega greeting de businessContext ou top-level
+    const cfgGreeting = savedConfig?.businessContext?.greetingMessage || savedConfig?.greetingMessage;
+    if (cfgGreeting && cfgGreeting !== agentGreetingMessage) {
+      setAgentGreetingMessage(cfgGreeting);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedConfig]);
+
   const [knowledgeFiles,    setKnowledgeFiles]    = useState<KnowledgeFileLocal[]>(() => {
     if (savedConfig?.knowledgeFiles?.length)
       return savedConfig.knowledgeFiles.map((n: string, i: number) => ({ id: String(i), name: n, size: 0, type: "" }));
