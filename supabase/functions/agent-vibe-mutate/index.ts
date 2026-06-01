@@ -244,8 +244,6 @@ serve(async (req) => {
         if (!existing.includes(integrationKey)) {
           newConfig = { ...newConfig, externalIntegrations: [...existing, integrationKey] };
         }
-        logMessage = `Integração externa "${intCfg.label}" solicitada`;
-
         // Checa estado real da integração via user_api_keys
         const { data: existingKey } = await admin
           .from("user_api_keys")
@@ -256,9 +254,11 @@ serve(async (req) => {
         let info: string | null = null;
         let warning: string | null = null;
         if (existingKey?.api_key) {
-          info = `${intCfg.label} marcada — sua integração já está conectada, o agente vai poder usar.`;
+          logMessage = `Integração ${intCfg.label}: ✓ conectada`;
+          info = `${intCfg.label} marcada — sua integração JÁ ESTÁ CONECTADA na agência, o agente vai poder usar.`;
         } else {
-          warning = `${intCfg.label} marcada como integração desejada, mas ainda não está conectada na agência. Pra funcionar de verdade, o usuário precisa conectar em ${intCfg.configPath}.`;
+          logMessage = `Integração ${intCfg.label}: ⚠️ não conectada (precisa OAuth)`;
+          warning = `${intCfg.label} foi MARCADA COMO DESEJADA, mas a integração AINDA NÃO ESTÁ CONECTADA. NÃO DIGA "está configurada" ou "está pronta" — diga ao usuário que ele precisa conectar OAuth em ${intCfg.configPath} pra integração funcionar de verdade.`;
         }
 
         const { error: updErr } = await admin

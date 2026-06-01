@@ -220,6 +220,63 @@ function inferToolsFromNarrative(content: string, already: Set<string>): Inferre
     }
   }
 
+  // set_tone_of_voice
+  const tonePats = [
+    new RegExp(`marquei\\s+(?:o\\s+)?tom\\s+(?:de\\s+(?:voz|comunicação)\\s+)?como\\s+${Q}?([\\wÀ-ÿ\\s]+?)${Q}?(?:[.!]|$)`, "i"),
+    new RegExp(`tom\\s+(?:de\\s+(?:voz|comunicação)\\s+)?(?:anotado|definido|configurado)\\s+como\\s+${Q}?([\\wÀ-ÿ\\s]+?)${Q}?(?:[.!]|$)`, "i"),
+    /tom\s+de\s+(?:voz|comunicação)\s*:\s*([\wÀ-ÿ\s]+?)(?:[.!\n]|$)/i,
+  ];
+  if (!already.has("set_tone_of_voice")) {
+    for (const p of tonePats) {
+      const m = content.match(p);
+      if (m && m[1].trim().length > 2 && m[1].trim().length < 60) {
+        calls.push({ name: "set_tone_of_voice", params: { tone: m[1].trim() } });
+        break;
+      }
+    }
+  }
+
+  // set_objective
+  const objectivePats = [
+    new RegExp(`(?:objetivo|propósito)\\s+(?:do\\s+agente\\s+)?(?:anotado|definido|configurado|marcado)\\s+(?:como\\s+)?${Q}([^"”'']{15,})${Q}`, "i"),
+    new RegExp(`(?:marquei|defini)\\s+(?:o\\s+)?objetivo\\s+(?:como\\s+|principal\\s+como\\s+)?${Q}([^"”'']{15,})${Q}`, "i"),
+  ];
+  if (!already.has("set_objective")) {
+    for (const p of objectivePats) {
+      const m = content.match(p);
+      if (m) { calls.push({ name: "set_objective", params: { objective: m[1].trim() } }); break; }
+    }
+  }
+
+  // set_company_name
+  const companyPats = [
+    new RegExp(`(?:empresa|negócio|clínica|escritório|loja)\\s+(?:anotad[ao]|configurad[ao]|definid[ao])\\s+como\\s+${Q}?([\\wÀ-ÿ\\s&-]+?)${Q}?(?:[.!]|$)`, "i"),
+    new RegExp(`marquei\\s+(?:a\\s+)?(?:empresa|negócio)\\s+como\\s+${Q}?([\\wÀ-ÿ\\s&-]+?)${Q}?(?:[.!]|$)`, "i"),
+  ];
+  if (!already.has("set_company_name")) {
+    for (const p of companyPats) {
+      const m = content.match(p);
+      if (m && m[1].trim().length > 1 && m[1].trim().length < 80) {
+        calls.push({ name: "set_company_name", params: { companyName: m[1].trim() } });
+        break;
+      }
+    }
+  }
+
+  // set_channel — varre toda a string buscando canais conhecidos em narrativa
+  // "Marquei WhatsApp e Instagram como canais"
+  const channelKnown = ["whatsapp", "email", "instagram", "facebook", "telegram", "sms", "website", "tiktok", "linkedin", "voice"];
+  const channelClaim = /(?:marquei|habilitei|ativei|liguei|adicionei)\s+([^.!?]*?)(?:\s+como\s+canai?s?|\s+como\s+canal|\s+nos?\s+canai?s?)/i.test(content);
+  if (channelClaim) {
+    for (const ch of channelKnown) {
+      // Match palavra inteira; case-insensitive
+      const re = new RegExp(`\\b${ch}\\b`, "i");
+      if (re.test(content)) {
+        calls.push({ name: "set_channel", params: { channel: ch, enabled: true } });
+      }
+    }
+  }
+
   // commit_draft — quando bot anuncia que agente foi "criado com sucesso"
   if (!already.has("commit_draft") && /agente\s+\w+\s+foi\s+criado\s+com\s+sucesso|wizard\s+conclu[íi]do|montei\s+a\s+primeira\s+versão.*concluído/i.test(content)) {
     calls.push({ name: "commit_draft", params: {} });
