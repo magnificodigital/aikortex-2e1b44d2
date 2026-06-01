@@ -34,6 +34,11 @@ import avatar2 from "@/assets/avatars/avatar-2.png";
 import avatar3 from "@/assets/avatars/avatar-3.png";
 import avatar8 from "@/assets/avatars/avatar-8.png";
 
+/* ── Module-level cache pra blindar criação de draft contra Strict Mode
+   unmount/remount. Quando mount #1 inicia o async, salva a Promise<id> aqui;
+   mount #2 detecta promise existente e aguarda em vez de criar segundo row. */
+const pendingDraftCreation = new Map<string, Promise<string | null>>();
+
 /* ── Constants ── */
 
 const TEMPLATE_MAP: Record<string, { name: string; avatar: string; model: string; agentType: AgentType; autoPrompt: string }> = {
@@ -221,9 +226,6 @@ const AgentDetail = () => {
   });
   const [agentLoading, setAgentLoading] = useState(!isTemplate && !isFreshNew);
 
-  // Guard contra React Strict Mode rodar useEffect 2x e criar 2 drafts.
-  const autoCreateInFlightRef = useRef(false);
-
   useEffect(() => {
     if (isTemplate) { setAgentLoading(false); return; }
 
@@ -232,32 +234,26 @@ const AgentDetail = () => {
     // Pra IDs new-*, cria draft imediatamente e redireciona pra URL real.
     if (!agentId || agentId === "new" || agentId.startsWith("new-")) {
       setAgentLoading(false);
-      if (autoCreateInFlightRef.current) return; // já criando, evita duplicar
-      autoCreateInFlightRef.current = true;
-      (async () => {
+
+      // Chave única deste fluxo de criação. Usa o agentId placeholder
+      // (ex: "new-1234567890") pra distinguir cliques separados em "Novo Agente".
+      const flowKey = agentId || "new";
+
+      // Strict Mode pode unmount/remount o componente, perdendo useRef state.
+      // Mas variável module-level sobrevive: se mount #1 já registrou a Promise,
+      // mount #2 pega ela e navega pro mesmo ID em vez de criar segundo row.
+      const cached = pendingDraftCreation.get(flowKey);
+      if (cached) {
+        cached.then((realId) => {
+          if (realId) navigate(`/aikortex/agents/${realId}`, { replace: true, state: location.state });
+        });
+        return;
+      }
+
+      const createPromise = (async (): Promise<string | null> => {
         try {
           const { data: { user } } = await supabase.auth.getUser();
-          if (!user) { autoCreateInFlightRef.current = false; return; }
-
-          // Defesa adicional contra Strict Mode unmount/remount: se já tem
-          // um draft "Novo Agente" recém-criado (< 3s) pelo mesmo user, reusa.
-          // Cobre o caso onde useRef perde estado por causa do remount.
-          const threeSecAgo = new Date(Date.now() - 3000).toISOString();
-          const { data: existing } = await supabase
-            .from("user_agents")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("name", "Novo Agente")
-            .eq("status", "configuring")
-            .gte("created_at", threeSecAgo)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (existing?.id) {
-            navigate(`/aikortex/agents/${existing.id}`, { replace: true, state: location.state });
-            return;
-          }
+          if (!user) return null;
 
           const { data: created, error } = await supabase
             .from("user_agents")
@@ -275,16 +271,25 @@ const AgentDetail = () => {
             .single();
           if (error || !created) {
             console.error("Failed to auto-create draft agent:", error);
-            autoCreateInFlightRef.current = false;
-            return;
+            return null;
           }
-          // Redireciona pra URL com o ID real — preserva navState (initialPrompt etc.)
-          navigate(`/aikortex/agents/${created.id}`, { replace: true, state: location.state });
+          return created.id;
         } catch (e) {
           console.error("auto-create draft exception:", e);
-          autoCreateInFlightRef.current = false;
+          return null;
         }
       })();
+
+      pendingDraftCreation.set(flowKey, createPromise);
+
+      createPromise.then((realId) => {
+        if (realId) {
+          navigate(`/aikortex/agents/${realId}`, { replace: true, state: location.state });
+        }
+        // Libera cache depois de 10s pra evitar memory leak. Tempo suficiente
+        // pra todos os mounts da mesma sessão de Strict Mode terem sido cobertos.
+        setTimeout(() => pendingDraftCreation.delete(flowKey), 10000);
+      });
       return;
     }
 
