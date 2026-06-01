@@ -237,7 +237,28 @@ const AgentDetail = () => {
       (async () => {
         try {
           const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
+          if (!user) { autoCreateInFlightRef.current = false; return; }
+
+          // Defesa adicional contra Strict Mode unmount/remount: se já tem
+          // um draft "Novo Agente" recém-criado (< 3s) pelo mesmo user, reusa.
+          // Cobre o caso onde useRef perde estado por causa do remount.
+          const threeSecAgo = new Date(Date.now() - 3000).toISOString();
+          const { data: existing } = await supabase
+            .from("user_agents")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("name", "Novo Agente")
+            .eq("status", "configuring")
+            .gte("created_at", threeSecAgo)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (existing?.id) {
+            navigate(`/aikortex/agents/${existing.id}`, { replace: true, state: location.state });
+            return;
+          }
+
           const { data: created, error } = await supabase
             .from("user_agents")
             .insert({
