@@ -138,6 +138,24 @@ export const WIZARD_TOOL_DEFS = [
   {
     type: "function",
     function: {
+      name: "request_external_integration",
+      description: "Marca que o agente vai precisar de uma integração externa (Google Calendar, HubSpot, etc.). USE quando o user mencionar ferramentas tipo 'Google Agenda', 'meu CRM HubSpot', 'planilhas do Google', etc. Integrações válidas: google_calendar, outlook_calendar, calendly, google_sheets, google_drive, gmail, hubspot, piperun, rd_station. Resposta inclui se a integração já está conectada na agência ou se precisa configurar.",
+      parameters: {
+        type: "object",
+        properties: {
+          integration_key: {
+            type: "string",
+            enum: ["google_calendar", "outlook_calendar", "calendly", "google_sheets", "google_drive", "gmail", "hubspot", "piperun", "rd_station"],
+            description: "Chave da integração externa.",
+          },
+        },
+        required: ["integration_key"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "commit_draft",
       description: "Marca o wizard como concluído. CHAME esta tool no final, depois de cobrir os 4 elementos do §13.2 (perfil + integrações + critérios + fluxo) e confirmar com o usuário.",
       parameters: { type: "object", properties: {} },

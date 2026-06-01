@@ -28,6 +28,7 @@ type MutateAction =
   | "remove_tool"
   | "set_channel"
   | "set_niche"
+  | "request_external_integration"
   | "commit_draft";
 
 type MutateRequest = {
@@ -157,11 +158,12 @@ serve(async (req) => {
         newConfig = { ...newConfig, channels };
         logMessage = `Canal "${channel}": ${enabled ? "ativado" : "desativado"}`;
 
-        // Quando ATIVANDO um canal, checa se a integração da agência existe.
-        // Sem isso o agente não consegue operar de verdade — wizard precisa
-        // avisar o usuário pra evitar confiança falsa ("ativei mas não funciona").
+        // Quando ATIVANDO, checa estado da integração da agência e devolve
+        // info (quando OK) OU warning (quando falta). LLM lê e comunica
+        // explicitamente — sem confiança falsa nem silêncio sobre o que existe.
         if (enabled) {
-          let needsIntegration: string | null = null;
+          let warning: string | null = null;
+          let info: string | null = null;
           if (channel === "email") {
             const { data: secrets } = await admin
               .from("agency_secrets")
@@ -169,21 +171,25 @@ serve(async (req) => {
               .eq("agency_user_id", agent.user_id)
               .maybeSingle();
             if (!secrets?.resend_api_key || !secrets?.resend_from_email) {
-              needsIntegration = `Email marcado como canal, mas sua conta Resend ainda não está conectada. Pra esse agente enviar emails de verdade, o usuário precisa configurar em Configurações → Canais → Email → Gerenciar.`;
+              warning = `Email marcado como canal, mas sua conta Resend ainda não está conectada. Pra esse agente enviar emails de verdade, o usuário precisa configurar em Configurações → Canais → Email → Gerenciar.`;
+            } else {
+              info = `Email marcado — sua conta Resend já está conectada (${secrets.resend_from_email}), o agente vai poder enviar emails de verdade.`;
             }
           } else if (channel === "whatsapp") {
             const { data: keys } = await admin
               .from("user_api_keys")
-              .select("provider")
+              .select("provider, api_key")
               .eq("user_id", agent.user_id)
               .in("provider", ["whatsapp_access_token", "whatsapp_phone_number_id"]);
             const hasToken = (keys ?? []).some((k: any) => k.provider === "whatsapp_access_token");
             const hasPhoneId = (keys ?? []).some((k: any) => k.provider === "whatsapp_phone_number_id");
             if (!hasToken || !hasPhoneId) {
-              needsIntegration = `WhatsApp marcado como canal, mas a WhatsApp Business API (Meta Cloud) ainda não está conectada. Pra esse agente enviar/receber mensagens reais, o usuário precisa configurar em Configurações → Canais → WhatsApp → Gerenciar.`;
+              warning = `WhatsApp marcado como canal, mas a WhatsApp Business API (Meta Cloud) ainda não está conectada. Pra esse agente enviar/receber mensagens reais, o usuário precisa configurar em Configurações → Canais → WhatsApp → Gerenciar.`;
+            } else {
+              info = `WhatsApp marcado — sua conta Meta Cloud API já está conectada, o agente vai poder enviar e responder mensagens.`;
             }
           } else if (["instagram", "facebook", "telegram", "tiktok", "linkedin"].includes(channel)) {
-            needsIntegration = `Canal "${channel}" marcado, mas ainda não há integração implementada na plataforma (em breve). O agente vai operar só onde houver canal real ativo.`;
+            warning = `Canal "${channel}" marcado, mas ainda não há integração implementada na plataforma (em breve). O agente vai operar só onde houver canal real ativo.`;
           } else if (channel === "voice") {
             const { data: secrets } = await admin
               .from("agency_secrets")
@@ -191,22 +197,76 @@ serve(async (req) => {
               .eq("agency_user_id", agent.user_id)
               .maybeSingle();
             if (!secrets?.telnyx_api_key && !secrets?.elevenlabs_api_key) {
-              needsIntegration = `Voz marcada como canal, mas nem Telnyx nem ElevenLabs estão conectados. Pra chamadas reais, configure em Configurações → Canais → Voz → Gerenciar.`;
+              warning = `Voz marcada como canal, mas nem Telnyx nem ElevenLabs estão conectados. Pra chamadas reais, configure em Configurações → Canais → Voz → Gerenciar.`;
+            } else {
+              info = `Voz marcada — sua integração de voz (${secrets.telnyx_api_key ? "Telnyx" : ""}${secrets.telnyx_api_key && secrets.elevenlabs_api_key ? " + " : ""}${secrets.elevenlabs_api_key ? "ElevenLabs" : ""}) já está conectada.`;
             }
           }
 
-          if (needsIntegration) {
-            console.log(`[agent-vibe-mutate] ${agentId} set_channel(${channel}) — integração faltando`);
-            // Aplica a mutation MAS retorna warning pro LLM informar o usuário
+          // Aplica mutation e devolve info/warning quando relevante
+          if (warning || info) {
             const { error: updErr } = await admin
               .from("user_agents")
               .update({ config: newConfig, draft_updated_at: new Date().toISOString() })
               .eq("id", agentId);
             if (updErr) return jsonRes({ error: "UPDATE_FAILED", details: updErr.message }, 500);
-            return jsonRes({ ok: true, action, log: logMessage, warning: needsIntegration });
+            return jsonRes({ ok: true, action, log: logMessage, warning, info });
           }
         }
         break;
+      }
+      case "request_external_integration": {
+        // Master v7.4 §13.16: agente reconhece ferramentas externas que o user
+        // pede (Google Calendar, HubSpot, etc.). Marca a intenção no draft e
+        // devolve estado real (conectada ou precisa configurar).
+        const integrationKey = String(params.integration_key ?? "").toLowerCase().replace(/[\s-]/g, "_");
+        const validIntegrations: Record<string, { label: string; provider: string; configPath: string }> = {
+          google_calendar: { label: "Google Calendar", provider: "google_calendar", configPath: "Configurações → Integrações → Google Calendar" },
+          outlook_calendar: { label: "Outlook Calendar", provider: "outlook_calendar", configPath: "Configurações → Integrações → Outlook Calendar" },
+          calendly: { label: "Calendly", provider: "calendly", configPath: "Configurações → Integrações → Calendly" },
+          google_sheets: { label: "Google Sheets", provider: "google_sheets", configPath: "Configurações → Integrações → Google Sheets" },
+          google_drive: { label: "Google Drive", provider: "google_drive", configPath: "Configurações → Integrações → Google Drive" },
+          gmail: { label: "Gmail", provider: "gmail", configPath: "Configurações → Integrações → Gmail" },
+          hubspot: { label: "HubSpot", provider: "hubspot", configPath: "Configurações → Integrações → HubSpot" },
+          piperun: { label: "PipeRun", provider: "piperun", configPath: "Configurações → Integrações → PipeRun" },
+          rd_station: { label: "RD Station", provider: "rd_station", configPath: "Configurações → Integrações → RD Station" },
+        };
+        const intCfg = validIntegrations[integrationKey];
+        if (!intCfg) {
+          return jsonRes({
+            error: "INVALID_INTEGRATION",
+            message: `Integração "${integrationKey}" não reconhecida. Disponíveis: ${Object.keys(validIntegrations).join(", ")}`,
+            validIntegrations: Object.keys(validIntegrations),
+          }, 400);
+        }
+        // Marca no draft que essa integração foi solicitada
+        const existing = (newConfig.externalIntegrations ?? []) as string[];
+        if (!existing.includes(integrationKey)) {
+          newConfig = { ...newConfig, externalIntegrations: [...existing, integrationKey] };
+        }
+        logMessage = `Integração externa "${intCfg.label}" solicitada`;
+
+        // Checa estado real da integração via user_api_keys
+        const { data: existingKey } = await admin
+          .from("user_api_keys")
+          .select("api_key")
+          .eq("user_id", agent.user_id)
+          .eq("provider", intCfg.provider)
+          .maybeSingle();
+        let info: string | null = null;
+        let warning: string | null = null;
+        if (existingKey?.api_key) {
+          info = `${intCfg.label} marcada — sua integração já está conectada, o agente vai poder usar.`;
+        } else {
+          warning = `${intCfg.label} marcada como integração desejada, mas ainda não está conectada na agência. Pra funcionar de verdade, o usuário precisa conectar em ${intCfg.configPath}.`;
+        }
+
+        const { error: updErr } = await admin
+          .from("user_agents")
+          .update({ config: newConfig, draft_updated_at: new Date().toISOString() })
+          .eq("id", agentId);
+        if (updErr) return jsonRes({ error: "UPDATE_FAILED", details: updErr.message }, 500);
+        return jsonRes({ ok: true, action, log: logMessage, info, warning });
       }
       case "set_niche": {
         const niche = String(params.niche ?? "").trim();
