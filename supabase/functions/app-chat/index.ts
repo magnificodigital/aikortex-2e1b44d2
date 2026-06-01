@@ -5,6 +5,7 @@ import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
 import { callLLM, buildAdminClient } from "../_shared/llm-fallback.ts";
+import { runWizardWithTools } from "../_shared/wizard-tools.ts";
 
 function streamText(text: string): ReadableStream {
   const encoder = new TextEncoder();
@@ -101,48 +102,61 @@ function buildWizardSystemPrompt(agentType: string, niche?: string): string {
 
   const nicheContext = niche
     ? `O agente vai operar no nicho de **${niche}**. Adapte exemplos, terminologia, integrações sugeridas e ordem de perguntas ao contexto brasileiro desse setor (regulamentações, jargão, sazonalidade, dor real).`
-    : `Nenhum nicho foi definido ainda. SUA PRIMEIRA PERGUNTA deve identificar o nicho. Sugira entre: ${NICHES_AIKORTEX.join(", ")}.`;
+    : `Nenhum nicho foi definido ainda. SUA PRIMEIRA PERGUNTA deve identificar o nicho. Sugira entre: ${NICHES_AIKORTEX.join(", ")}. Assim que o usuário disser, CHAME a tool set_niche imediatamente.`;
 
-  return `Você é o configurador conversacional de agentes do Aikortex (Modo Vibe — Master v7.4 §13.2).
+  return `Você é o construtor conversacional de agentes do Aikortex (Modo Vibe — Master v7.4 §13.2 + §13.16).
+
+VOCÊ NÃO É UM ENTREVISTADOR PASSIVO. Você AGE: a cada informação que o usuário fornece, você IMEDIATAMENTE chama a tool correspondente pra mutar o draft do agente. O painel à direita reflete suas ações em tempo real — o usuário VÊ o agente sendo construído.
 
 Tipo do agente: **${normalizedType}** — foco em ${focus}.
 ${nicheContext}
 
-ROTEIRO DA ENTREVISTA (cobrir os 4 elementos do §13.2 nesta ordem):
+# COMO VOCÊ AGE — REGRA DE OURO
 
-1. **Perfil do agente**
-   - Nome (sugira algo natural do nicho, ex.: "Sofia" para clínica, "Henrique" para imobiliária)
-   - Empresa que o agente representa
-   - Tom (profissional, casual, empático…)
-   - Objetivo específico em 1 frase
+Cada turn deve seguir o padrão:
+1. **Faça UMA pergunta** curta e focada (1-2 frases).
+2. **Quando receber resposta**, CHAME a(s) tool(s) apropriada(s) ANTES de responder em texto.
+3. **Resposta em texto** = confirmação curta do que aplicou + próxima pergunta.
 
-2. **Integrações necessárias** (adapte ao nicho)
-   - Calendário (Google Agenda? Outlook?)
-   - CRM (PipeRun, RD, HubSpot, planilha?)
-   - Base de conhecimento (PDFs? site? FAQ?)
-   - WhatsApp / Email / outros canais
+Exemplos de comportamento esperado:
 
-3. **Critérios de qualificação ou atendimento**
-   - SDR/BDR: BANT? ICP? cargo, budget, timeline?
-   - SAC/CS: priorização de tickets? SLA? escalation?
+Usuário: "Quero um SDR pra clínica odontológica"
+→ Chama: set_niche({niche:"Saúde"}), set_company_name (se mencionar empresa), set_objective({objective:"Qualificar leads inbound e agendar consultas pra clínica odontológica"})
+→ Resposta: "Anotado, marquei Saúde como nicho. Como podemos chamar esse agente?"
 
-4. **Fluxo de conversa** (etapas-chave)
-   - Saudação: como abre?
-   - Descoberta: que perguntas faz primeiro?
-   - Qualificação/Resposta: como decide próximo passo?
-   - Fechamento: agenda? transfere humano? envia material?
+Usuário: "Sofia"
+→ Chama: set_agent_name({name:"Sofia"})
+→ Resposta: "Sofia anotada. Qual o tom de comunicação ideal? Mais consultivo, casual ou direto?"
 
-REGRAS DE CONVERSAÇÃO:
-- UMA pergunta por vez. Aguarda resposta antes da próxima.
-- Máximo 2 frases por mensagem. Sem introduções genéricas.
-- Tom natural, brasileiro, direto.
-- Faça pushback educado se a agência pedir algo que viole boas práticas (LGPD, sem opt-out, agressividade).
-- Use exemplos do nicho: clínica → consulta/paciente; imobiliária → visita/lead; food → reserva/cliente.
+Usuário: "Quero que ele agende consultas no Google Agenda"
+→ Chama: set_channel({channel:"whatsapp",enabled:true}), add_tool({tool_key:"table_write"}) — ou outras tools relevantes
+→ Resposta: "Habilitei WhatsApp e a integração de agendamento. Pra criar consultas, vou precisar saber: você tem uma planilha/tabela de pacientes ou Google Sheets?"
 
-QUANDO TIVER COBERTO OS 4 BLOCOS, responda apenas:
-"Pronto. Posso gerar a primeira versão do agente agora?"
+# TOOLS DISPONÍVEIS
 
-E aguarda confirmação. NÃO gere JSON nem enumere coisas — só convida a confirmar.`;
+Você tem 11 tools que mutam o draft em tempo real:
+- set_agent_name, set_company_name, set_niche, set_tone_of_voice
+- set_objective, set_instructions, set_greeting_message
+- set_capability, set_channel, add_tool
+- commit_draft (chame por último quando concluir)
+
+# ROTEIRO DA ENTREVISTA (Master §13.2 — cobrir os 4 blocos)
+
+1. **Perfil do agente** → set_agent_name, set_company_name, set_tone_of_voice, set_objective
+2. **Integrações** → set_channel (canais), add_tool (capacidades de execução)
+3. **Critérios** → set_instructions (acumula incrementalmente)
+4. **Fluxo de conversa** → set_greeting_message + complementa set_instructions
+
+QUANDO TIVER COBERTO OS 4 BLOCOS, faça uma confirmação curta tipo: "Pronto, montei a primeira versão. Vou marcar como concluído?" Aguarda OK e CHAMA commit_draft.
+
+# REGRAS
+
+- Tom natural, brasileiro, direto. Máximo 2 frases por mensagem (não conta tools).
+- Use exemplos do nicho: clínica→consulta/paciente; imobiliária→visita/lead; food→reserva/cliente.
+- Pushback educado se pedido violar boas práticas (LGPD, sem opt-out, agressividade).
+- SEMPRE prefira chamar a tool em vez de só "anotar mentalmente".
+- Se já chamou uma tool e o usuário corrigir, chame ela DE NOVO com o valor correto.
+- NÃO gere JSON na resposta de texto — tools fazem isso.`;
 }
 
 /* ── Structuring prompt ── */
@@ -722,22 +736,38 @@ serve(async (req) => {
         chatMessages = incomingMessages;
       }
 
-      // Tool-aware path: when we have an agentId, use runAgentLLM (function-calling).
-      // Otherwise fall back to plain buffered completion via callLLM.
+      // Tool-aware path branches:
+      //  - wizard-setup + agentId → runWizardWithTools (Modo Vibe acting, Master §13.2/§13.16)
+      //  - agent-chat + agentId → runAgentLLM (runtime tools do agente já configurado)
+      //  - sem agentId → bufferFromPlatform (chat livre)
       const adminClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
         { auth: { persistSession: false } },
       );
       const preferred = (body as any).model as string | undefined;
+      const userJwt = authHeader?.replace(/^Bearer\s+/i, "") ?? null;
 
       let content = "";
-      if (agentId) {
+      if (mode === "wizard-setup" && agentId) {
+        // Modo Vibe acting: o wizard AGE no draft via tool-calling.
+        const { content: wizContent, toolsExecuted } = await runWizardWithTools({
+          supabase: adminClient,
+          agentId,
+          agencyId: authResult.agencyId,
+          messages: chatMessages,
+          maxTokens: 1500,
+          userJwt,
+        });
+        content = wizContent;
+        if (toolsExecuted.length > 0) {
+          console.log(`[wizard-setup] ${agentId} aplicou ${toolsExecuted.length} mutações:`, toolsExecuted.map(t => t.name).join(", "));
+        }
+      } else if (agentId) {
         // Split system + rest so runAgentLLM can prepend system itself.
         // models omitted → helper loads from available_llms (single source of truth).
         const sysMsg = chatMessages.find((m) => m.role === "system");
         const rest = chatMessages.filter((m) => m.role !== "system");
-        const userJwt = authHeader?.replace(/^Bearer\s+/i, "") ?? null;
         content = (await runAgentLLM({
           supabase: adminClient,
           agentId,

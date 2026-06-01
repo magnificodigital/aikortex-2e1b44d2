@@ -251,6 +251,11 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
           // Master v7.4 §13.4: tipos contextualizados por nicho. Quando vem,
           // app-chat adapta exemplos/terminologia ao setor brasileiro.
           if (options.niche) payload.niche = options.niche;
+          // Master v7.4 §13.16: Modo Vibe Acting precisa de agentId pra mutar
+          // o draft via tool-calling. Sempre envia mesmo com useGateway=true.
+          if (options.agentContext?.agentId) {
+            payload.agentId = options.agentContext.agentId;
+          }
         }
 
         if (options.useGateway) {

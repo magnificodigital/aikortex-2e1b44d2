@@ -639,10 +639,46 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
       mode: "wizard-setup",
       agentType: wizardAgentTypeKey,
       niche: wizardNiche || undefined,
+      // Master v7.4 §13.16: Modo Vibe Acting precisa do agentId pra agent-vibe-mutate
+      // poder atualizar o draft em tempo real.
+      agentContext: agentId ? { agentId } : undefined,
       disableCrmExtraction: true,
       persistKey: shouldPersistTemplateDraft ? `${storagePrefix}-wizard-messages` : undefined,
     }
   );
+
+  // Master v7.4 §13.3: painel direito reflete configuração em tempo real.
+  // Polling refresca o loadedAgent enquanto wizard ativa tools no draft.
+  useEffect(() => {
+    if (!agentId || agentId === "new" || agentId.startsWith("new-")) return;
+    if (wizardStep !== "discover") return;
+    // Só faz polling enquanto wizard está ativo (streaming OU acabou de processar tools).
+    // Polling de 3s é leve e suficiente pra UX "config evoluindo em tempo real".
+    const interval = setInterval(async () => {
+      const { data } = await supabase.from("user_agents").select("name, description, agent_type, model, config, avatar_url").eq("id", agentId).maybeSingle();
+      if (!data) return;
+      setLoadedAgent((prev) => {
+        const next = {
+          ...prev,
+          name: data.name || prev.name,
+          model: data.model || prev.model,
+          agentType: (data.agent_type as AgentType) || prev.agentType,
+          avatar: data.avatar_url || prev.avatar,
+          savedConfig: {
+            ...(typeof data.config === "object" && data.config !== null ? data.config : {}),
+            name: data.name,
+            description: data.description || "",
+            avatarUrl: data.avatar_url || prev.avatar,
+          } as Record<string, any>,
+        };
+        // Se nicho foi setado pelo wizard, sincroniza estado local
+        const inferredNiche = (data.config as any)?.businessContext?.niche;
+        if (inferredNiche && !wizardNiche) setWizardNiche(inferredNiche);
+        return next;
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [agentId, wizardStep, wizardNiche]);
 
   // Auto-send "start" once when wizard opens (templates AND new custom agents)
   const wizardStartedRef = useRef(false);
