@@ -65,22 +65,104 @@ Responda em português do Brasil.`;
   return applyCapabilityAddons(base, (agentConfig as any)?.capabilities);
 }
 
-function buildWizardSystemPrompt(agentType: string): string {
-  return `Você é um configurador de agentes IA. Configure um agente do tipo "${agentType}". Faça perguntas UMA por vez aguardando a resposta. Máximo 1 frase por mensagem. Sem introduções. Responda em português do Brasil.`;
+// Nichos prioritários do Master v7.4 §15.2 (lançamento) — adapta linguagem,
+// exemplos e ordem de perguntas conforme o setor brasileiro escolhido.
+const NICHES_AIKORTEX = [
+  "Saúde", "Imobiliária", "Advocacia", "Food/Restaurante", "Educação",
+  "Automotivo", "Finanças", "Retail", "SaaS", "Seguros", "Estética", "Pet",
+];
+
+// Foco por tipo conforme Master v7.4 §13.4 (5 tipos válidos)
+const AGENT_TYPE_FOCUS: Record<string, string> = {
+  SDR: "qualificar leads inbound e marcar reuniões com o time comercial",
+  BDR: "prospectar leads outbound e gerar oportunidades novas",
+  SAC: "atender clientes, resolver dúvidas e suporte de pós-venda",
+  CS: "garantir sucesso do cliente, follow-ups e retenção",
+  Custom: "objetivo customizado a ser descoberto na entrevista",
+};
+
+/**
+ * Wizard de criação de agente — Modo Vibe (Master v7.4 §13.2 + §13.4).
+ *
+ * Conduz entrevista conversacional pra cobrir 4 elementos do §13.2:
+ *   1. Identificar perfil (nome, persona, tom, objetivo)
+ *   2. Mapear integrações necessárias (calendário, CRM, KB)
+ *   3. Definir critérios de qualificação/atendimento
+ *   4. Estruturar fluxo de conversa (etapas)
+ *
+ * Sempre contextualizado por nicho (§13.4 + §15.2). Quando nicho não vem,
+ * primeira pergunta identifica o nicho.
+ */
+function buildWizardSystemPrompt(agentType: string, niche?: string): string {
+  const normalizedType = ["SDR", "BDR", "SAC", "CS"].includes(agentType.toUpperCase())
+    ? agentType.toUpperCase()
+    : "Custom";
+  const focus = AGENT_TYPE_FOCUS[normalizedType] || AGENT_TYPE_FOCUS.Custom;
+
+  const nicheContext = niche
+    ? `O agente vai operar no nicho de **${niche}**. Adapte exemplos, terminologia, integrações sugeridas e ordem de perguntas ao contexto brasileiro desse setor (regulamentações, jargão, sazonalidade, dor real).`
+    : `Nenhum nicho foi definido ainda. SUA PRIMEIRA PERGUNTA deve identificar o nicho. Sugira entre: ${NICHES_AIKORTEX.join(", ")}.`;
+
+  return `Você é o configurador conversacional de agentes do Aikortex (Modo Vibe — Master v7.4 §13.2).
+
+Tipo do agente: **${normalizedType}** — foco em ${focus}.
+${nicheContext}
+
+ROTEIRO DA ENTREVISTA (cobrir os 4 elementos do §13.2 nesta ordem):
+
+1. **Perfil do agente**
+   - Nome (sugira algo natural do nicho, ex.: "Sofia" para clínica, "Henrique" para imobiliária)
+   - Empresa que o agente representa
+   - Tom (profissional, casual, empático…)
+   - Objetivo específico em 1 frase
+
+2. **Integrações necessárias** (adapte ao nicho)
+   - Calendário (Google Agenda? Outlook?)
+   - CRM (PipeRun, RD, HubSpot, planilha?)
+   - Base de conhecimento (PDFs? site? FAQ?)
+   - WhatsApp / Email / outros canais
+
+3. **Critérios de qualificação ou atendimento**
+   - SDR/BDR: BANT? ICP? cargo, budget, timeline?
+   - SAC/CS: priorização de tickets? SLA? escalation?
+
+4. **Fluxo de conversa** (etapas-chave)
+   - Saudação: como abre?
+   - Descoberta: que perguntas faz primeiro?
+   - Qualificação/Resposta: como decide próximo passo?
+   - Fechamento: agenda? transfere humano? envia material?
+
+REGRAS DE CONVERSAÇÃO:
+- UMA pergunta por vez. Aguarda resposta antes da próxima.
+- Máximo 2 frases por mensagem. Sem introduções genéricas.
+- Tom natural, brasileiro, direto.
+- Faça pushback educado se a agência pedir algo que viole boas práticas (LGPD, sem opt-out, agressividade).
+- Use exemplos do nicho: clínica → consulta/paciente; imobiliária → visita/lead; food → reserva/cliente.
+
+QUANDO TIVER COBERTO OS 4 BLOCOS, responda apenas:
+"Pronto. Posso gerar a primeira versão do agente agora?"
+
+E aguarda confirmação. NÃO gere JSON nem enumere coisas — só convida a confirmar.`;
 }
 
 /* ── Structuring prompt ── */
 
-function buildStructuringPrompt(appType: string, language: string) {
+function buildStructuringPrompt(appType: string, language: string, niche?: string) {
   if (appType === "agent") {
-    return `Você é um arquiteto especializado em agentes de IA conversacionais.
+    const nicheBlock = niche
+      ? `\nNICHO: ${niche}\nContextualize TODOS os campos pro setor (terminologia BR, exemplos reais do nicho, integrações típicas, etapas plausíveis). Não use placeholders genéricos.\n`
+      : "";
 
-Sua ÚNICA tarefa é analisar a descrição do usuário e retornar um JSON estruturado que define completamente o agente a ser construído.
+    return `Você é um arquiteto especializado em agentes de IA conversacionais (Aikortex Master v7.4 §13.2).
 
+Sua ÚNICA tarefa é analisar a descrição/entrevista do usuário e retornar um JSON estruturado que define completamente o agente a ser construído.
+${nicheBlock}
 REGRAS:
 - Retorne APENAS um bloco JSON válido, sem texto antes ou depois
-- Infira o máximo possível da descrição: nome, tipo, tom, objetivo, instruções, mensagem de saudação
-- Se algo não for mencionado, use valores padrão inteligentes
+- Infira o máximo possível: nome, tipo, tom, objetivo, instruções, mensagem de saudação, etapas
+- Se algo não foi mencionado, use valores padrão inteligentes (não placeholders óbvios)
+- Tipos permitidos (Master §13.4): SDR, BDR, SAC, CS, Custom
+- Idioma fixo: ${language}
 
 O JSON deve seguir EXATAMENTE este formato:
 
@@ -616,9 +698,17 @@ serve(async (req) => {
       // Build messages: sem agentId, o frontend já incluiu o system prompt — usar as mensagens como estão
       const chatMessages: Array<{ role: string; content: string }> = agentId
         ? [
-            { role: "system", content: mode === "wizard-setup"
-              ? buildWizardSystemPrompt(String((body as Record<string, unknown>).agentType || "custom"))
-              : buildAgentSystemPrompt((runtimeAgentConfig || {}) as Record<string, unknown>) },
+            {
+              role: "system",
+              content: mode === "wizard-setup"
+                ? buildWizardSystemPrompt(
+                    String((body as Record<string, unknown>).agentType || "Custom"),
+                    typeof (body as any).niche === "string" && (body as any).niche
+                      ? (body as any).niche
+                      : undefined,
+                  )
+                : buildAgentSystemPrompt((runtimeAgentConfig || {}) as Record<string, unknown>),
+            },
             ...((messages || []) as Array<{ role: string; content: string }>),
           ]
         : ((messages || []) as Array<{ role: string; content: string }>);
@@ -668,7 +758,11 @@ serve(async (req) => {
     const isStructureMode = mode === "structure";
 
     const systemPrompt = isStructureMode
-      ? buildStructuringPrompt(appContext?.app_type || "web", appContext?.language || "pt-BR")
+      ? buildStructuringPrompt(
+          appContext?.app_type || "web",
+          appContext?.language || "pt-BR",
+          appContext?.niche || undefined,
+        )
       : buildAppStatePrompt(appContext);
 
     const structured = await buildStructuredResponse({
