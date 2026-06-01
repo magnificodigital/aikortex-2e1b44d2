@@ -741,7 +741,13 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
   // Frontend só passa agentType + niche; o prompt canônico fica server-side
   // pra garantir consistência entre §13.2 (perfil/integrações/critérios/fluxo).
   const wizardChat = useAgentChat(
-    [{ role: "agent" as const, text: `Olá! 👋 Vou te ajudar a configurar seu agente ${loadedAgent.agentType}. Para começar: qual é o nome do seu negócio e o que ele faz?` }],
+    [{
+      role: "agent" as const,
+      // Master v7.4 §13.2: ponto de partida do Modo Vibe é uma descrição
+      // livre em linguagem natural. Exemplo do próprio doc:
+      // "Crie um SDR para clínicas médicas integrado ao Google Calendar e WhatsApp"
+      text: `Olá! 👋 Vamos montar seu agente juntos. Descreva em uma frase o que ele deve fazer — pode ser algo como:\n\n*"Um SDR para clínica odontológica que qualifica leads e agenda consultas via WhatsApp"*\n\nQuanto mais específico, melhor.`,
+    }],
     {
       useGateway: true,
       gatewayModel: setupModel,
@@ -1098,7 +1104,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
         {wizardStep === "discover" && agentId && !agentId.startsWith("new-") && agentId !== "new" && (
           <button
             type="button"
-            className="hidden lg:flex absolute bottom-6 right-6 z-50 items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all text-sm font-medium"
+            className="hidden lg:flex absolute bottom-6 right-24 z-50 items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all text-sm font-medium"
             onClick={() => setShowConfigDuringDiscover((s) => !s)}
           >
             <Settings2 className="w-4 h-4" />
