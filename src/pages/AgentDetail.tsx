@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ConversationProvider } from "@elevenlabs/react";
 import AgentRightPanel, { type AgentConfig } from "@/components/aikortex/AgentRightPanel";
 import AgentChatPanel, { type StructuredAgentConfig } from "@/components/aikortex/AgentChatPanel";
+import WizardShowcasePanel from "@/components/aikortex/WizardShowcasePanel";
 import VoiceCallPanel from "@/components/aikortex/VoiceCallPanel";
 import OutboundCallDialog from "@/components/aikortex/OutboundCallDialog";
 import BrowserCallWidget from "@/components/aikortex/BrowserCallWidget";
@@ -1050,13 +1051,12 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
 
         {/* Layout adaptativo (Master v7.4 §13.3 + UX request):
-            - discover (sem toggle): chat full-width (foco na conversa, sem distração)
-            - discover (com toggle): split 40/60 — user pediu espiar config
-            - structure / build / done: split-screen 40/60 (config visível) */}
-        {(() => null)() /* split = step !== "discover" || showConfigDuringDiscover */}
+            - discover: chat 55% + showcase 45% (preview do agente sendo construído)
+              toggle "Ver configuração" → swap showcase ↔ config real
+            - structure / build / done: chat 40% + config 60% */}
 
         {/* ── LEFT: Chat Panel ── */}
-        <div className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex ${wizardStep === "discover" && !showConfigDuringDiscover ? "lg:flex-1" : "lg:w-[40%]"} flex-col min-w-0 overflow-hidden transition-all duration-300`}>
+        <div className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex ${wizardStep === "discover" ? "lg:w-[55%]" : "lg:w-[40%]"} flex-col min-w-0 overflow-hidden transition-all duration-300`}>
           <AgentChatPanel
             onBack={() => navigate("/aikortex/agents")}
             agentType={loadedAgent.agentType}
@@ -1103,8 +1103,18 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
           />
         </div>
 
-        {/* ── RIGHT: Persistent configuration.
-            Visível quando step != discover OU quando user clica o FAB durante discover. */}
+        {/* ── RIGHT: Showcase (discover) ── */}
+        {wizardStep === "discover" && !showConfigDuringDiscover && (
+          <div className={`${mobileTab === "config" ? "flex" : "hidden"} lg:flex lg:w-[45%] flex-col min-w-0 overflow-hidden border-l border-border transition-all duration-300`}>
+            <WizardShowcasePanel
+              savedConfig={loadedAgent.savedConfig}
+              agentName={loadedAgent.name}
+              agentType={loadedAgent.agentType}
+            />
+          </div>
+        )}
+
+        {/* ── RIGHT: Config (structure/build/done OR toggled during discover) ── */}
         <div className={`${mobileTab === "config" ? "flex" : "hidden"} ${wizardStep === "discover" && !showConfigDuringDiscover ? "lg:hidden" : "lg:flex lg:flex-1"} flex-col min-w-0 overflow-hidden border-l border-border transition-all duration-300`}>
           {/* Top bar — model selector · Testar ligação · Publicar */}
           <div className="h-12 border-b border-border flex items-center justify-between px-4 shrink-0 bg-card/30">

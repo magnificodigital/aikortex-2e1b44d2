@@ -497,7 +497,9 @@ const AgentChatPanel = ({
         </span>
       </div>
 
-      {/* Wizard checklist (Master v7.4 §13.2 — 4 blocos) */}
+      {/* Wizard checklist (Master v7.4 §13.2 — 4 blocos). Em desktop o
+          WizardShowcasePanel à direita já mostra o progresso com mais
+          destaque; aqui esconde no lg+ pra evitar redundância. */}
       {wizardStep === "discover" && (() => {
         const cfg = savedConfig || {};
         const ctx = (cfg as any).businessContext || {};
@@ -511,7 +513,7 @@ const AgentChatPanel = ({
         const doneCount = checkpoints.filter(c => c.done).length;
         const pct = Math.round((doneCount / checkpoints.length) * 100);
         return (
-          <div className="px-4 py-3 border-b border-border bg-gradient-to-b from-card/40 to-card/10">
+          <div className="lg:hidden px-4 py-3 border-b border-border bg-gradient-to-b from-card/40 to-card/10">
             <div className="max-w-3xl mx-auto w-full space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-medium text-muted-foreground">
