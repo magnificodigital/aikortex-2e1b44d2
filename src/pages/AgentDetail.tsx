@@ -309,6 +309,14 @@ const AgentDetail = () => {
             avatarUrl: data.avatar_url || AVATAR_BY_TYPE[data.agent_type] || avatar1,
           } as Record<string, any>,
         });
+
+        // Master v7.4 §13.16: detecta wizard em andamento DIRETAMENTE no load
+        // (não via useEffect derivado pra evitar race com outros effects).
+        // Se started_at existe e wizard_completed é falso, continua o discover.
+        const cfg = (data.config as any) ?? {};
+        if (cfg.wizard_started_at && !cfg.wizard_completed) {
+          setWizardStep("discover");
+        }
       }
       setAgentLoading(false);
     };
