@@ -292,6 +292,11 @@ const AgentDetail = () => {
   // Master v7.4 §13.4 + §15.2: nicho do agente contextualiza o wizard.
   // Quando nulo, primeira pergunta do backend identifica o nicho.
   const [wizardNiche, setWizardNiche] = useState<string | null>(null);
+
+  // Toggle independente do step pra mostrar/esconder painel direito durante
+  // discover (UX request: chat full-width por padrão, mas user pode espiar
+  // a configuração sendo construída em tempo real pelas tools do wizard).
+  const [showConfigDuringDiscover, setShowConfigDuringDiscover] = useState(false);
   const [structuredConfig, setStructuredConfig] = useState<StructuredAgentConfig | null>(null);
   const [isStructuring, setIsStructuring] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -968,11 +973,13 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
 
         {/* Layout adaptativo (Master v7.4 §13.3 + UX request):
-            - discover: chat full-width (foco na conversa, sem distração)
+            - discover (sem toggle): chat full-width (foco na conversa, sem distração)
+            - discover (com toggle): split 40/60 — user pediu espiar config
             - structure / build / done: split-screen 40/60 (config visível) */}
+        {(() => null)() /* split = step !== "discover" || showConfigDuringDiscover */}
 
         {/* ── LEFT: Chat Panel ── */}
-        <div className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex ${wizardStep === "discover" ? "lg:flex-1" : "lg:w-[40%]"} flex-col min-w-0 overflow-hidden transition-all duration-300`}>
+        <div className={`${mobileTab === "chat" ? "flex" : "hidden"} lg:flex ${wizardStep === "discover" && !showConfigDuringDiscover ? "lg:flex-1" : "lg:w-[40%]"} flex-col min-w-0 overflow-hidden transition-all duration-300`}>
           <AgentChatPanel
             onBack={() => navigate("/aikortex/agents")}
             agentType={loadedAgent.agentType}
@@ -1015,22 +1022,22 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
           />
         </div>
 
-        {/* FAB "Ver configuração" — só aparece no step discover quando agente já existe no DB,
-            permite espiar painel direito sem mudar de modo. Click → mostra split-screen. */}
+        {/* FAB "Ver configuração" / "Voltar ao chat" — toggle do painel direito durante discover.
+            Mantém wizardStep="discover" intacto (chat preserva contexto, não muda de modo). */}
         {wizardStep === "discover" && agentId && !agentId.startsWith("new-") && agentId !== "new" && (
           <button
             type="button"
             className="hidden lg:flex absolute bottom-6 right-6 z-50 items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all text-sm font-medium"
-            onClick={() => setWizardStep("structure")}
+            onClick={() => setShowConfigDuringDiscover((s) => !s)}
           >
             <Settings2 className="w-4 h-4" />
-            Ver configuração
+            {showConfigDuringDiscover ? "Esconder configuração" : "Ver configuração"}
           </button>
         )}
 
-        {/* ── RIGHT: Persistent configuration — hidden during discover pra foco no chat (UX request).
-            Acessível via botão "Ver configuração" flutuante ou via botão de tab no mobile. */}
-        <div className={`${mobileTab === "config" ? "flex" : "hidden"} ${wizardStep === "discover" ? "lg:hidden" : "lg:flex lg:flex-1"} flex-col min-w-0 overflow-hidden border-l border-border transition-all duration-300`}>
+        {/* ── RIGHT: Persistent configuration.
+            Visível quando step != discover OU quando user clica o FAB durante discover. */}
+        <div className={`${mobileTab === "config" ? "flex" : "hidden"} ${wizardStep === "discover" && !showConfigDuringDiscover ? "lg:hidden" : "lg:flex lg:flex-1"} flex-col min-w-0 overflow-hidden border-l border-border transition-all duration-300`}>
           {/* Top bar — model selector · Testar ligação · Publicar */}
           <div className="h-12 border-b border-border flex items-center justify-between px-4 shrink-0 bg-card/30">
             <div className="flex items-center gap-2 min-w-0">
