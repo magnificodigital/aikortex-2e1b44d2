@@ -1099,6 +1099,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
             showConfigToggle={wizardStep === "discover" && !!agentId && !agentId.startsWith("new-") && agentId !== "new"}
             configPanelVisible={showConfigDuringDiscover}
             onToggleConfigPanel={() => setShowConfigDuringDiscover((s) => !s)}
+            savedConfig={loadedAgent.savedConfig}
           />
         </div>
 

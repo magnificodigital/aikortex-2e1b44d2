@@ -785,6 +785,10 @@ serve(async (req) => {
         content = wizContent;
         if (toolsExecuted.length > 0) {
           console.log(`[wizard-setup] ${agentId} aplicou ${toolsExecuted.length} mutações:`, toolsExecuted.map(t => t.name).join(", "));
+          // Anexa marker invisível com tools executadas pra o frontend renderizar
+          // cards inline ("✓ Nicho: Saúde", "✓ Canal: WhatsApp") abaixo da mensagem.
+          // HTML comment não renderiza no ReactMarkdown; o frontend extrai via regex.
+          content = `${content}\n\n<!--tools:${JSON.stringify(toolsExecuted)}-->`;
         }
       } else if (agentId) {
         // Split system + rest so runAgentLLM can prepend system itself.

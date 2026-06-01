@@ -73,6 +73,8 @@ interface AgentChatPanelProps {
   showConfigToggle?: boolean;
   configPanelVisible?: boolean;
   onToggleConfigPanel?: () => void;
+  /** Saved config (live polling) for derived progress checklist. */
+  savedConfig?: Record<string, any> | null;
 }
 
 const AGENT_SUGGESTIONS: Record<string, string[]> = {
@@ -127,6 +129,35 @@ const typeLabel: Record<string, string> = {
   SDR: "SDR", BDR: "BDR", SAC: "SAC", CS: "Customer Success", Custom: "personalizado",
 };
 
+// Master v7.4 §13.16 — mapping de tool name → label visível em cards inline
+const TOOL_LABELS: Record<string, string> = {
+  set_niche: "Nicho",
+  set_company_name: "Empresa",
+  set_agent_name: "Nome",
+  set_tone_of_voice: "Tom",
+  set_objective: "Objetivo",
+  set_instructions: "Instruções",
+  set_greeting_message: "Saudação",
+  set_capability: "Capacidade",
+  set_channel: "Canal",
+  add_tool: "Tool",
+  request_external_integration: "Integração",
+  commit_draft: "Concluído",
+};
+
+interface ToolExecuted { name: string; log: string }
+
+const extractToolsMarker = (text: string): { clean: string; tools: ToolExecuted[] } => {
+  const match = text.match(/<!--tools:(\[.*?\])-->/s);
+  if (!match) return { clean: text, tools: [] };
+  try {
+    const tools = JSON.parse(match[1]) as ToolExecuted[];
+    return { clean: text.replace(/\n*<!--tools:\[.*?\]-->/s, "").trim(), tools };
+  } catch {
+    return { clean: text, tools: [] };
+  }
+};
+
 const AgentChatPanel = ({
   onBack,
   agentType,
@@ -169,6 +200,7 @@ const AgentChatPanel = ({
   showConfigToggle,
   configPanelVisible,
   onToggleConfigPanel,
+  savedConfig,
 }: AgentChatPanelProps) => {
   const [input, setInput] = useState("");
   const [editingConfig, setEditingConfig] = useState(false);
@@ -274,7 +306,13 @@ const AgentChatPanel = ({
   const isSelectedModelFree = selectedModelInfo?.badge === "free";
   const isSelectedModelLocked = selectedModelInfo?.locked === true;
   const canSendTest = chatMode === "test" ? (isSelectedModelFree || !isSelectedModelLocked) : true;
-  const isDiscoverEmpty = wizardStep === "discover" && (wizardChatMessages?.length ?? 0) === 0 && !wizardIsStreaming;
+  // Hero state: usuário ainda não respondeu (só existe a saudação inicial ou nada)
+  const userHasResponded = (wizardChatMessages || []).some((m: any) => {
+    const role = "text" in m ? m.role : m.role;
+    const txt = ("text" in m ? m.text : m.content) || "";
+    return role === "user" && txt.trim().toLowerCase() !== "start";
+  });
+  const isDiscoverEmpty = wizardStep === "discover" && !wizardIsStreaming && !userHasResponded;
   const suggestions = AGENT_SUGGESTIONS[agentType] || AGENT_SUGGESTIONS.Custom;
 
   // Quick-reply chips — detecta contexto na última pergunta do bot durante discover
@@ -407,13 +445,17 @@ const AgentChatPanel = ({
 
   // Which messages to show based on wizard state
   // During discover, show the wizard Q&A chat — hide the initial "start" trigger message
+  // Quando hero está visível (isDiscoverEmpty), também esconde a saudação inicial
+  // do bot pra não duplicar conteúdo com o hero.
   const displayMessages: any[] = wizardStep === "done"
     ? messages
     : wizardStep === "discover"
       ? (wizardChatMessages || []).filter((m, i) => {
           const text = "text" in m ? (m as any).text : (m as any).content;
           const role = "text" in m ? (m as any).role : (m as any).role;
-          return !(i === 0 && role === "user" && typeof text === "string" && text.trim().toLowerCase() === "start");
+          if (i === 0 && role === "user" && typeof text === "string" && text.trim().toLowerCase() === "start") return false;
+          if (isDiscoverEmpty) return false;
+          return true;
         })
       : wizardMessages;
 
@@ -449,8 +491,56 @@ const AgentChatPanel = ({
         </span>
       </div>
 
-      {/* Wizard Stepper */}
-      {wizardStep !== "done" && (
+      {/* Wizard checklist (Master v7.4 §13.2 — 4 blocos) */}
+      {wizardStep === "discover" && (() => {
+        const cfg = savedConfig || {};
+        const ctx = (cfg as any).businessContext || {};
+        const checkpoints = [
+          { id: "profile", label: "Perfil", done: !!(ctx.companyName && ctx.niche && cfg.name && cfg.name !== "Novo Agente") },
+          { id: "tone", label: "Tom & objetivo", done: !!(cfg.toneOfVoice && cfg.objective) },
+          { id: "channels", label: "Canais", done: Array.isArray(cfg.channels) && cfg.channels.length > 0 },
+          { id: "criteria", label: "Critérios", done: !!(cfg.instructions && cfg.instructions.length > 80) },
+          { id: "flow", label: "Saudação", done: !!cfg.greetingMessage },
+        ];
+        const doneCount = checkpoints.filter(c => c.done).length;
+        const pct = Math.round((doneCount / checkpoints.length) * 100);
+        return (
+          <div className="px-4 py-3 border-b border-border bg-gradient-to-b from-card/40 to-card/10">
+            <div className="max-w-3xl mx-auto w-full space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  Construindo agente · <span className="text-foreground">{doneCount}/{checkpoints.length}</span>
+                </span>
+                <span className="text-[11px] font-semibold text-primary">{pct}%</span>
+              </div>
+              <div className="h-1 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {checkpoints.map((c) => (
+                  <span
+                    key={c.id}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
+                      c.done
+                        ? "bg-primary/15 text-primary border border-primary/30"
+                        : "bg-muted/40 text-muted-foreground border border-border/50"
+                    }`}
+                  >
+                    {c.done ? <Check className="w-2.5 h-2.5" /> : <span className="w-2.5 h-2.5 rounded-full border border-current opacity-50" />}
+                    {c.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Stepper antigo só pra structure/build (já validados, simples) */}
+      {(wizardStep === "structure" || wizardStep === "build") && (
         <div className="px-4 py-2.5 border-b border-border bg-card/30">
           <div className="flex items-center gap-1 max-w-3xl mx-auto w-full">
             {stepLabels.map((s, i) => {
@@ -516,24 +606,43 @@ const AgentChatPanel = ({
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
         <div className="max-w-3xl mx-auto w-full space-y-4">
 
-        {/* ══ Step 1: Discover — empty state (waiting for backend first question) ══ */}
+        {/* ══ Step 1: Discover — hero empty state with starter prompts ══ */}
         {isDiscoverEmpty && (
-          <div className="flex flex-col items-center justify-center h-full pt-12">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-              <Sparkles className="w-6 h-6 text-primary" />
+          <div className="flex flex-col items-center justify-center min-h-full pt-8 pb-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/5 ring-1 ring-primary/30 flex items-center justify-center mb-4 shadow-lg shadow-primary/10">
+              <Sparkles className="w-7 h-7 text-primary" />
             </div>
-            <h2 className="text-base font-semibold text-foreground mb-1">Configurando seu agente</h2>
-            <p className="text-xs text-muted-foreground text-center max-w-[280px]">
-              Vou te fazer algumas perguntas para criar o seu agente {typeLabel[agentType] || ""} sob medida.
+            <h2 className="text-lg font-semibold text-foreground mb-1">Vamos montar seu agente</h2>
+            <p className="text-xs text-muted-foreground text-center max-w-[360px] mb-6">
+              Descreva em uma frase o que ele deve fazer. Posso começar com um destes exemplos:
             </p>
-            <Loader2 className="w-4 h-4 text-primary animate-spin mt-4" />
+            <div className="w-full max-w-md space-y-2">
+              {(suggestions || []).slice(0, 3).map((suggestion, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => wizardSendMessage?.(suggestion)}
+                  disabled={!!wizardIsStreaming}
+                  className="w-full text-left px-4 py-3 rounded-xl bg-card/50 hover:bg-card border border-border/60 hover:border-primary/40 transition-all group disabled:opacity-50"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-md bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+                      <Sparkles className="w-3 h-3 text-primary" />
+                    </span>
+                    <span className="text-xs text-foreground/90 leading-relaxed">{suggestion}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-4">ou digite sua própria descrição abaixo ↓</p>
           </div>
         )}
 
         {/* Chat / wizard messages */}
         {displayMessages.map((msg, i) => {
-          const text = "text" in msg ? msg.text : msg.content;
+          const rawText = "text" in msg ? msg.text : msg.content;
           const role = "text" in msg ? msg.role : msg.role === "user" ? "user" : "agent";
+          const { clean: text, tools } = role === "agent" ? extractToolsMarker(rawText || "") : { clean: rawText, tools: [] };
           return (
             <div key={i}>
               {role === "user" ? (
@@ -551,10 +660,27 @@ const AgentChatPanel = ({
                   ) : (
                     <img src={agentAvatar} alt={agentName} className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5 ring-1 ring-border" />
                   )}
-                  <div className="text-sm leading-relaxed text-foreground flex-1 min-w-0 bg-card/30 border border-border/50 rounded-2xl rounded-tl-sm px-4 py-2.5">
-                    <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:mb-0.5 [&_strong]:text-foreground">
-                      <ReactMarkdown rehypePlugins={getRehypePlugins()}>{text}</ReactMarkdown>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="text-sm leading-relaxed text-foreground bg-card/30 border border-border/50 rounded-2xl rounded-tl-sm px-4 py-2.5">
+                      <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:mb-0.5 [&_strong]:text-foreground">
+                        <ReactMarkdown rehypePlugins={getRehypePlugins()}>{text}</ReactMarkdown>
+                      </div>
                     </div>
+                    {/* Master v7.4 §13.16: cards inline de tools aplicadas */}
+                    {tools.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 ml-1">
+                        {tools.map((t, idx) => (
+                          <div
+                            key={`${i}-${idx}`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium"
+                          >
+                            <Check className="w-3 h-3 shrink-0" />
+                            <span className="text-muted-foreground/80">{TOOL_LABELS[t.name] || t.name}:</span>
+                            <span className="truncate max-w-[180px]">{t.log.replace(/^.*?:\s*/, "")}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
