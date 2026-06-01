@@ -1,6 +1,6 @@
-import { Sparkles, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { computeWizardProgress } from "@/lib/wizard-progress";
-import aikortexIcon from "@/assets/aikortex-icon-dark.png";
+import aikortexIcon from "@/assets/aikortex-icon-white.png";
 
 interface WizardShowcasePanelProps {
   savedConfig?: Record<string, any> | null;
@@ -34,10 +34,9 @@ export default function WizardShowcasePanel({
       {/* Ambient glow */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[420px] h-[420px] rounded-full bg-primary/10 blur-[120px] pointer-events-none" />
 
-      {/* Aikortex brand subtle */}
-      <div className="absolute top-4 right-4 flex items-center gap-1.5 opacity-40">
-        <img src={aikortexIcon} alt="Aikortex" className="w-5 h-5" />
-        <span className="text-[10px] font-medium text-muted-foreground tracking-wide">MODO VIBE</span>
+      {/* MODO VIBE label */}
+      <div className="absolute top-4 right-4 opacity-40">
+        <span className="text-[10px] font-medium text-muted-foreground tracking-widest">MODO VIBE</span>
       </div>
 
       <div className="relative z-10 flex flex-col items-center max-w-sm px-6 w-full">
@@ -64,9 +63,14 @@ export default function WizardShowcasePanel({
               </linearGradient>
             </defs>
           </svg>
-          {/* Avatar in center */}
+          {/* Aikortex icon in center */}
           <div className="absolute inset-3 rounded-full bg-gradient-to-br from-primary/25 to-primary/5 ring-1 ring-primary/30 flex items-center justify-center shadow-lg shadow-primary/10">
-            <Sparkles className="w-12 h-12 text-primary animate-pulse" style={{ animationDuration: "3s" }} />
+            <img
+              src={aikortexIcon}
+              alt="Aikortex"
+              className="w-14 h-14 object-contain animate-pulse"
+              style={{ animationDuration: "3s" }}
+            />
           </div>
           {/* % indicator */}
           {pct > 0 && (

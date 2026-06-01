@@ -617,9 +617,6 @@ const AgentChatPanel = ({
         {/* ══ Step 1: Discover — hero empty state with starter prompts ══ */}
         {isDiscoverEmpty && (
           <div className="flex flex-col items-center justify-center min-h-full pt-8 pb-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/5 ring-1 ring-primary/30 flex items-center justify-center mb-4 shadow-lg shadow-primary/10">
-              <Sparkles className="w-7 h-7 text-primary" />
-            </div>
             <h2 className="text-lg font-semibold text-foreground mb-1">Vamos montar seu agente</h2>
             <p className="text-xs text-muted-foreground text-center max-w-[360px] mb-6">
               Descreva em uma frase o que ele deve fazer. Posso começar com um destes exemplos:
