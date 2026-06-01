@@ -1,6 +1,8 @@
-import { Check } from "lucide-react";
+import { Check, Sun, Moon } from "lucide-react";
 import { computeWizardProgress } from "@/lib/wizard-progress";
+import { useTheme } from "@/hooks/use-theme";
 import aikortexIcon from "@/assets/aikortex-icon-white.png";
+import aikortexIconDark from "@/assets/aikortex-icon-black.png";
 
 interface WizardShowcasePanelProps {
   savedConfig?: Record<string, any> | null;
@@ -20,6 +22,8 @@ export default function WizardShowcasePanel({
   agentName,
   agentType,
 }: WizardShowcasePanelProps) {
+  const { theme, toggle } = useTheme();
+  const isDark = theme === "dark";
   const { checkpoints, doneCount, totalCount, pct } = computeWizardProgress(savedConfig);
   const ctx = (savedConfig as any)?.businessContext || {};
   const displayName = agentName && agentName !== "Novo Agente" && agentName !== "Carregando..." ? agentName : null;
@@ -34,10 +38,15 @@ export default function WizardShowcasePanel({
       {/* Ambient glow */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[420px] h-[420px] rounded-full bg-primary/10 blur-[120px] pointer-events-none" />
 
-      {/* MODO VIBE label */}
-      <div className="absolute top-4 right-4 opacity-40">
-        <span className="text-[10px] font-medium text-muted-foreground tracking-widest">MODO VIBE</span>
-      </div>
+      {/* Theme toggle (substitui label MODO VIBE) */}
+      <button
+        type="button"
+        onClick={toggle}
+        title={isDark ? "Modo claro" : "Modo escuro"}
+        className="absolute top-4 right-4 z-20 flex items-center justify-center w-9 h-9 rounded-full bg-card/60 hover:bg-card border border-border hover:border-primary/40 text-muted-foreground hover:text-foreground transition-all"
+      >
+        {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+      </button>
 
       <div className="relative z-10 flex flex-col items-center max-w-sm px-6 w-full">
         {/* Progress ring + animated avatar */}
@@ -63,10 +72,10 @@ export default function WizardShowcasePanel({
               </linearGradient>
             </defs>
           </svg>
-          {/* Aikortex icon in center */}
+          {/* Aikortex icon in center (adapta ao tema) */}
           <div className="absolute inset-3 rounded-full bg-gradient-to-br from-primary/25 to-primary/5 ring-1 ring-primary/30 flex items-center justify-center shadow-lg shadow-primary/10">
             <img
-              src={aikortexIcon}
+              src={isDark ? aikortexIcon : aikortexIconDark}
               alt="Aikortex"
               className="w-14 h-14 object-contain animate-pulse"
               style={{ animationDuration: "3s" }}

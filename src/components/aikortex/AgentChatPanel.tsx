@@ -470,8 +470,15 @@ const AgentChatPanel = ({
     <div className="w-full h-full flex flex-col bg-background min-w-0">
       {/* Header */}
       <div className="h-12 border-b border-border flex items-center px-3 gap-2 shrink-0">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 px-2.5 text-xs font-medium border-border hover:border-primary/40 hover:bg-card"
+          onClick={onBack}
+          title="Voltar para a lista de agentes"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Voltar
         </Button>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center">
