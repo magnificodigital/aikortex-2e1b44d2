@@ -326,6 +326,22 @@ const AgentDetail = () => {
     return "done";
   });
 
+  // Master v7.4 §13.16: depois que loadedAgent carrega, detecta se o wizard
+  // ainda estava em andamento (config.wizard_started_at sem wizard_completed)
+  // e força wizardStep="discover" pra continuar a configuração de onde parou.
+  // Sem isso, voltar pro agente recém-criado pula direto pra "done" e some
+  // o chat do wizard.
+  useEffect(() => {
+    const cfg = loadedAgent.savedConfig as any;
+    if (!cfg) return;
+    const wizardStarted = !!cfg.wizard_started_at;
+    const wizardCompleted = !!cfg.wizard_completed;
+    if (wizardStarted && !wizardCompleted && wizardStep !== "discover") {
+      setWizardStep("discover");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadedAgent.savedConfig]);
+
   // Master v7.4 §13.4 + §15.2: nicho do agente contextualiza o wizard.
   // Quando nulo, primeira pergunta do backend identifica o nicho.
   const [wizardNiche, setWizardNiche] = useState<string | null>(null);
