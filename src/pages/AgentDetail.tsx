@@ -500,12 +500,22 @@ const AgentDetail = () => {
   const agentTypeRef = useRef(loadedAgent.agentType);
   agentTypeRef.current = loadedAgent.agentType;
 
+  // Ref pra ler wizardStep dentro do timer (evita stale closure).
+  const wizardStepRef = useRef(wizardStep);
+  wizardStepRef.current = wizardStep;
+
   const handleConfigChange = useCallback((config: AgentConfig) => {
     setAgentConfig(config);
 
     // Auto-save with debounce
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
+      // Master v7.4 §13.16: durante discover, o wizard mutaciona via tools
+      // (agent-vibe-mutate). Auto-save do painel direito daqui criaria
+      // segundo INSERT competindo com o auto-create draft → 2 agentes.
+      // Pula auto-save no discover; quando passar pra structure/done,
+      // os edits manuais do user voltam a auto-salvar normalmente.
+      if (wizardStepRef.current === "discover") return;
       if (config.name?.trim()) {
         saveAgentRef.current({ ...config, model: agentModelRef.current, agentType: agentTypeRef.current });
       }
