@@ -1104,7 +1104,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
         {wizardStep === "discover" && agentId && !agentId.startsWith("new-") && agentId !== "new" && (
           <button
             type="button"
-            className="hidden lg:flex absolute bottom-6 right-24 z-50 items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all text-sm font-medium"
+            className="hidden lg:flex absolute bottom-32 right-6 z-50 items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all text-sm font-medium"
             onClick={() => setShowConfigDuringDiscover((s) => !s)}
           >
             <Settings2 className="w-4 h-4" />

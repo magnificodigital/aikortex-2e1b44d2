@@ -7,7 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import HelpBubble from "@/components/help/HelpBubble";
+// HelpBubble removido a pedido — conflitava visualmente com botões flutuantes
+// (ex: FAB "Ver configuração" no Modo Vibe).
 
 // Lazy-loaded pages
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -124,7 +125,6 @@ const App = () => (
               <Route path="/tutorials" element={<Navigate to="/home" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            <HelpBubble />
           </Suspense>
         </BrowserRouter>
       </TooltipProvider>
