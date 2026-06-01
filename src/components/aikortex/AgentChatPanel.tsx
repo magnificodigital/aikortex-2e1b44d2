@@ -277,6 +277,36 @@ const AgentChatPanel = ({
   const isDiscoverEmpty = wizardStep === "discover" && (wizardChatMessages?.length ?? 0) === 0 && !wizardIsStreaming;
   const suggestions = AGENT_SUGGESTIONS[agentType] || AGENT_SUGGESTIONS.Custom;
 
+  // Quick-reply chips — detecta contexto na última pergunta do bot durante discover
+  // (Master v7.4 §13.2: campos com domínio fechado vêm de presets fixos).
+  const lastAgentText = (() => {
+    const msgs = (wizardChatMessages || []) as any[];
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i];
+      const role = "text" in m ? m.role : m.role === "user" ? "user" : "agent";
+      if (role === "agent") return ("text" in m ? m.text : m.content) as string;
+    }
+    return "";
+  })();
+
+  const quickReplies: string[] = (() => {
+    if (wizardStep !== "discover" || wizardIsStreaming || !lastAgentText) return [];
+    const t = lastAgentText.toLowerCase();
+    if (/nicho|setor|segmento|área de atuação|ramo|tipo de negócio/.test(t)) {
+      return ["Saúde", "Imobiliária", "Advocacia", "Educação", "Food", "Estética", "Pet", "Finanças", "SaaS"];
+    }
+    if (/tom de (voz|comunicação)|consultivo, casual|tom (consultivo|casual|amigável|empático|profissional|direto)/.test(t)) {
+      return ["Consultivo", "Casual e amigável", "Empático", "Direto e objetivo"];
+    }
+    if (/quais canais|canais? (de )?(comunicaç|ativ)|canal de atendimento/.test(t)) {
+      return ["WhatsApp", "Email", "Instagram", "Website", "SMS"];
+    }
+    if (/integração|integraç|google agenda|google calendar|calendly|crm|planilha|hubspot/.test(t)) {
+      return ["Google Agenda", "Calendly", "HubSpot", "Google Sheets", "RD Station", "Nenhuma"];
+    }
+    return [];
+  })();
+
   /* ── Discover → Structure ── */
   const handleDiscover = useCallback(async (text: string) => {
     if (text.length < 10) {
@@ -422,7 +452,7 @@ const AgentChatPanel = ({
       {/* Wizard Stepper */}
       {wizardStep !== "done" && (
         <div className="px-4 py-2.5 border-b border-border bg-card/30">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 max-w-3xl mx-auto w-full">
             {stepLabels.map((s, i) => {
               const stepOrder = ["discover", "structure", "build"];
               const currentIdx = stepOrder.indexOf(wizardStep);
@@ -508,17 +538,21 @@ const AgentChatPanel = ({
             <div key={i}>
               {role === "user" ? (
                 <div className="flex justify-end">
-                  <div className="bg-primary/10 border border-primary/20 rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[90%] text-sm">
+                  <div className="bg-primary/10 border border-primary/20 rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[85%] text-sm">
                     <p className="whitespace-pre-wrap text-foreground">{text}</p>
                   </div>
                 </div>
               ) : (
-                <div className="flex gap-2.5">
-                  <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Bot className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                  <div className="text-sm leading-relaxed text-foreground flex-1 min-w-0">
-                    <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-2 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:mb-0.5 [&_strong]:text-foreground">
+                <div className="flex gap-3">
+                  {wizardStep === "discover" ? (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center shrink-0 mt-0.5 ring-1 ring-primary/20">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                  ) : (
+                    <img src={agentAvatar} alt={agentName} className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5 ring-1 ring-border" />
+                  )}
+                  <div className="text-sm leading-relaxed text-foreground flex-1 min-w-0 bg-card/30 border border-border/50 rounded-2xl rounded-tl-sm px-4 py-2.5">
+                    <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:mb-0.5 [&_strong]:text-foreground">
                       <ReactMarkdown rehypePlugins={getRehypePlugins()}>{text}</ReactMarkdown>
                     </div>
                   </div>
@@ -732,6 +766,25 @@ const AgentChatPanel = ({
         )}
         </div>
       </div>
+
+      {/* Quick-reply chips (Master v7.4 §13.2: campos com domínio fechado) */}
+      {quickReplies.length > 0 && wizardSendMessage && (
+        <div className="px-4 pb-2 shrink-0">
+          <div className="max-w-3xl mx-auto w-full flex flex-wrap gap-1.5">
+            {quickReplies.map((reply) => (
+              <button
+                key={reply}
+                type="button"
+                onClick={() => wizardSendMessage(reply)}
+                disabled={wizardIsStreaming}
+                className="px-3 py-1.5 rounded-full text-xs font-medium bg-primary/5 hover:bg-primary/15 border border-primary/20 hover:border-primary/40 text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Input area */}
       <div className="p-3 border-t border-border shrink-0">
