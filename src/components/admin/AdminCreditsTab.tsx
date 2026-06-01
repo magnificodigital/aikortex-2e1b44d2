@@ -46,9 +46,10 @@ const AdminCreditsTab = () => {
 
       return agencyProfiles.map((p) => {
         const sub = subMap.get(p.user_id);
-        const planSlug = (sub?.plans as any)?.slug || "starter";
-        const planName = (sub?.plans as any)?.name || "Starter";
-        const monthlyLimit = limitMap.get(planSlug) ?? 500;
+        // Master v7.4 §3.2: tier default = "start"
+        const planSlug = (sub?.plans as any)?.slug || "start";
+        const planName = (sub?.plans as any)?.name || "Start";
+        const monthlyLimit = limitMap.get(planSlug) ?? 100;
         const messageCount = usageMap.get(p.user_id) ?? 0;
         const byokProviders = byokMap.get(p.user_id) ?? [];
 

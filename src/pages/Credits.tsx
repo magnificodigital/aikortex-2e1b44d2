@@ -166,7 +166,7 @@ const Credits = () => {
                 )}
               </div>
 
-              {!hasByok && planSlug === "starter" && (
+              {!hasByok && planSlug === "start" && (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
                   <p className="text-sm text-foreground">
                     Quer mais mensagens? Configure uma chave de API própria ou faça upgrade.

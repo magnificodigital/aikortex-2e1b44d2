@@ -6,10 +6,11 @@ import { applyToolsHints } from "./agent-runtime.ts";
 
 export type ToolKey = "web_search" | "image_gen" | "knowledge_search" | "table_read" | "table_write";
 
+// Alinhado ao Master v7.4 §3.2
 export interface ToolQuota {
-  starter: number;
-  explorer: number;
+  start: number;
   hack: number;
+  growth: number;
 }
 
 export interface ToolDefinition {
@@ -34,7 +35,7 @@ export const TOOL_CATALOG: Record<ToolKey, ToolDefinition> = {
       },
       required: ["query"],
     },
-    quotas: { starter: 50, explorer: 200, hack: 1000 },
+    quotas: { start: 50, hack: 200, growth: 1000 },
   },
   image_gen: {
     key: "image_gen",
@@ -54,7 +55,7 @@ export const TOOL_CATALOG: Record<ToolKey, ToolDefinition> = {
       },
       required: ["prompt"],
     },
-    quotas: { starter: 50, explorer: 100, hack: 500 },
+    quotas: { start: 50, hack: 100, growth: 500 },
   },
   knowledge_search: {
     key: "knowledge_search",
@@ -76,7 +77,7 @@ export const TOOL_CATALOG: Record<ToolKey, ToolDefinition> = {
       },
       required: ["query"],
     },
-    quotas: { starter: -1, explorer: -1, hack: -1 },
+    quotas: { start: -1, hack: -1, growth: -1 },
   },
   table_read: {
     key: "table_read",
@@ -104,7 +105,7 @@ Example:
       },
       required: ["table_name"],
     },
-    quotas: { starter: -1, explorer: -1, hack: -1 },
+    quotas: { start: -1, hack: -1, growth: -1 },
   },
   table_write: {
     key: "table_write",
@@ -149,7 +150,7 @@ Example DELETE:
       },
       required: ["table_name", "action"],
     },
-    quotas: { starter: -1, explorer: -1, hack: -1 },
+    quotas: { start: -1, hack: -1, growth: -1 },
   },
 };
 
@@ -186,7 +187,7 @@ interface ExecuteOptions {
   supabase: any;
   agencyId: string | null;
   agentId: string | null;
-  tier: "starter" | "explorer" | "hack";
+  tier: "start" | "hack" | "growth";
   yearMonth: string;
   supabaseUrl: string;
   serviceKey: string;
@@ -290,7 +291,7 @@ export interface RunWithToolsOptions {
   agencyId: string | null;
   /** Required for knowledge_search and any tool that scopes data per-agent. */
   agentId?: string | null;
-  tier?: "starter" | "explorer" | "hack";
+  tier?: "start" | "hack" | "growth";
   maxTokens?: number;
   /** Hard cap on tool-loop iterations to avoid runaway calls. */
   maxIterations?: number;
@@ -310,7 +311,8 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
   const yearMonth = new Date().toISOString().slice(0, 7);
   const maxIterations = opts.maxIterations ?? 3;
   const maxTokens = opts.maxTokens ?? 2048;
-  let tier: "starter" | "explorer" | "hack" = opts.tier ?? "starter";
+  // Alinhado ao Master v7.4 §3.2: tiers válidos = start / hack / growth
+  let tier: "start" | "hack" | "growth" = opts.tier ?? "start";
   if (!opts.tier && opts.agencyId) {
     try {
       const { data } = await opts.supabase
@@ -318,7 +320,7 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
         .select("tier")
         .eq("id", opts.agencyId)
         .maybeSingle();
-      if (data?.tier === "starter" || data?.tier === "explorer" || data?.tier === "hack") {
+      if (data?.tier === "start" || data?.tier === "hack" || data?.tier === "growth") {
         tier = data.tier;
       }
     } catch { /* keep default */ }

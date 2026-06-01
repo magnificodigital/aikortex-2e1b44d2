@@ -65,7 +65,7 @@ const PermissionsManager = () => {
   const [permissions, setPermissions] = useState<Record<SystemRole, RolePermissionMap>>(
     () => ({ ...DEFAULT_ROLE_PERMISSIONS })
   );
-  const [selectedTier, setSelectedTier] = useState<PartnerTier>("starter");
+  const [selectedTier, setSelectedTier] = useState<PartnerTier>("start");
   const [tierFeatures, setTierFeatures] = useState<Record<PartnerTier, FeatureFlag[]>>(() => {
     const initial: Record<string, FeatureFlag[]> = {};
     for (const t of Object.keys(TIER_FEATURE_CONFIG) as PartnerTier[]) {

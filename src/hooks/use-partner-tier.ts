@@ -5,7 +5,8 @@ import { type FeatureFlag, type PartnerTier, TIER_FEATURE_CONFIG } from "@/types
 import { TIER_CONFIG } from "@/types/partner";
 import type { Tables } from "@/integrations/supabase/types";
 
-const TIERS: PartnerTier[] = ["starter", "explorer", "hack"];
+// Alinhado ao Master v7.4 §3.2
+const TIERS: PartnerTier[] = ["start", "hack", "growth"];
 
 // Map FeatureFlag keys to tier_module_access module_key values in DB
 const FEATURE_TO_MODULE_KEY: Record<string, string> = {
@@ -65,10 +66,10 @@ export function usePartnerTier() {
 
       if (existing) return existing as PartnerTierData;
 
-      // Auto-create starter tier on first access
+      // Auto-create start tier on first access (Master v7.4 §3.2)
       const { data: created, error: insertError } = await supabase
         .from("partner_tiers")
-        .insert({ user_id: user!.id, tier: "starter" })
+        .insert({ user_id: user!.id, tier: "start" })
         .select()
         .single();
 
@@ -77,7 +78,7 @@ export function usePartnerTier() {
     },
   });
 
-  const tier: PartnerTier = (data?.tier as PartnerTier) ?? "starter";
+  const tier: PartnerTier = (data?.tier as PartnerTier) ?? "start";
   const tierIdx = TIERS.indexOf(tier);
   const nextTier = tierIdx < TIERS.length - 1 ? TIERS[tierIdx + 1] : null;
 

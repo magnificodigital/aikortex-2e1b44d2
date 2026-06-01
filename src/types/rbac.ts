@@ -63,7 +63,8 @@ export type FeatureFlag =
   | "module.team"
   | "module.tasks";
 
-export type PartnerTier = "starter" | "explorer" | "hack";
+// Alinhado ao Master v7.4 §3.2: Start (gratuito) → Hack (R$197) → Growth (R$397)
+export type PartnerTier = "start" | "hack" | "growth";
 
 export interface TierFeatureConfig {
   label: string;
@@ -178,8 +179,8 @@ export const ROLE_CONFIG: Record<SystemRole, { label: string; level: "platform" 
 };
 
 export const TIER_FEATURE_CONFIG: Record<PartnerTier, TierFeatureConfig> = {
-  starter: {
-    label: "Starter",
+  start: {
+    label: "Start",
     color: "text-amber-700",
     bg: "bg-amber-500/10",
     icon: "🥉",
@@ -193,8 +194,8 @@ export const TIER_FEATURE_CONFIG: Record<PartnerTier, TierFeatureConfig> = {
       "module.tasks",
     ],
   },
-  explorer: {
-    label: "Explorer",
+  hack: {
+    label: "Hack",
     color: "text-gray-400",
     bg: "bg-gray-500/10",
     icon: "🥈",
@@ -216,8 +217,8 @@ export const TIER_FEATURE_CONFIG: Record<PartnerTier, TierFeatureConfig> = {
       "feature.custom_reports",
     ],
   },
-  hack: {
-    label: "Hack",
+  growth: {
+    label: "Growth",
     color: "text-yellow-500",
     bg: "bg-yellow-500/10",
     icon: "🥇",

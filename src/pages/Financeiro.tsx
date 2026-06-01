@@ -21,10 +21,11 @@ import {
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+// Alinhado ao Master v7.4 §3.2 + §3.4 (Start→Hack precisa 10 clientes, Hack→Growth precisa 30)
 const tierInfo: Record<string, { label: string; color: string; next: string | null; threshold: number; icon: typeof Star }> = {
-  starter: { label: "Starter", color: "text-muted-foreground", next: "explorer", threshold: 5, icon: Star },
-  explorer: { label: "Explorer", color: "text-[hsl(var(--warning))]", next: "hack", threshold: 15, icon: Zap },
-  hack: { label: "Hack", color: "text-primary", next: null, threshold: 999, icon: Trophy },
+  start: { label: "Start", color: "text-muted-foreground", next: "hack", threshold: 10, icon: Star },
+  hack: { label: "Hack", color: "text-[hsl(var(--warning))]", next: "growth", threshold: 30, icon: Zap },
+  growth: { label: "Growth", color: "text-primary", next: null, threshold: 999, icon: Trophy },
 };
 
 const hackBenefits = [
@@ -141,16 +142,16 @@ const Financeiro = () => {
     });
   }, [receitaBruta, lucro, custoPlataforma]);
 
-  // Tier progress
-  const tier = agency?.tier || "starter";
-  const info = tierInfo[tier] || tierInfo.starter;
+  // Tier progress (Master v7.4 §3.2 + §3.4)
+  const tier = agency?.tier || "start";
+  const info = tierInfo[tier] || tierInfo.start;
   const nextInfo = info.next ? tierInfo[info.next] : null;
   const progress = nextInfo ? (activeClients / nextInfo.threshold) * 100 : 100;
   const remaining = nextInfo ? nextInfo.threshold - activeClients : 0;
 
   // Projection
   const projRevenue = useMemo(() => {
-    if (!templates.length) return { revenue: 0, cost: 0, profit: 0, tier: "starter" };
+    if (!templates.length) return { revenue: 0, cost: 0, profit: 0, tier: "start" };
     const avgPrice = activeSubs.length > 0
       ? receitaBruta / activeSubs.length
       : templates.reduce((s: number, t: any) => s + Number(t.platform_price_monthly) * 2, 0) / templates.length;
@@ -159,7 +160,8 @@ const Financeiro = () => {
       : templates.reduce((s: number, t: any) => s + Number(t.platform_price_monthly), 0) / templates.length;
     const revenue = avgPrice * projClients;
     const cost = avgCost * projClients;
-    const projTier = projClients >= 15 ? "hack" : projClients >= 5 ? "explorer" : "starter";
+    // Master §3.4: 30+ clientes → Growth, 10+ → Hack, senão → Start
+    const projTier = projClients >= 30 ? "growth" : projClients >= 10 ? "hack" : "start";
     return { revenue, cost, profit: revenue - cost, tier: projTier };
   }, [projClients, templates, activeSubs, receitaBruta, custoPlataforma]);
 

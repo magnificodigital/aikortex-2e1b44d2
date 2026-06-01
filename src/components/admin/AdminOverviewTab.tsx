@@ -19,7 +19,7 @@ const AdminOverviewTab = ({ onNavigate }: OverviewProps) => {
     newThisMonth: 0,
     churnRate: 0,
     avgTicket: 0,
-    tierBreakdown: { starter: { agencies: 0, clients: 0, mrr: 0 }, explorer: { agencies: 0, clients: 0, mrr: 0 }, hack: { agencies: 0, clients: 0, mrr: 0 } },
+    tierBreakdown: { start: { agencies: 0, clients: 0, mrr: 0 }, hack: { agencies: 0, clients: 0, mrr: 0 }, growth: { agencies: 0, clients: 0, mrr: 0 } },
   });
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
 
@@ -60,9 +60,9 @@ const AdminOverviewTab = ({ onNavigate }: OverviewProps) => {
       // Tier breakdown with clients and MRR
       const agencyTierMap = new Map(agencies.map(a => [a.id, a.tier]));
       const tierBreakdown = {
-        starter: { agencies: 0, clients: 0, mrr: 0 },
-        explorer: { agencies: 0, clients: 0, mrr: 0 },
+        start: { agencies: 0, clients: 0, mrr: 0 },
         hack: { agencies: 0, clients: 0, mrr: 0 },
+        growth: { agencies: 0, clients: 0, mrr: 0 },
       };
       agencies.forEach(a => {
         const t = a.tier as keyof typeof tierBreakdown;
@@ -131,9 +131,9 @@ const AdminOverviewTab = ({ onNavigate }: OverviewProps) => {
   }
 
   const tierRows = [
-    { key: "starter" as const, label: "Starter", cls: "bg-muted", textCls: "text-muted-foreground" },
-    { key: "explorer" as const, label: "Explorer", cls: "bg-blue-500/10", textCls: "text-blue-600" },
-    { key: "hack" as const, label: "Hack", cls: "bg-purple-500/10", textCls: "text-purple-600" },
+    { key: "start" as const, label: "Start", cls: "bg-muted", textCls: "text-muted-foreground" },
+    { key: "hack" as const, label: "Hack", cls: "bg-blue-500/10", textCls: "text-blue-600" },
+    { key: "growth" as const, label: "Growth", cls: "bg-purple-500/10", textCls: "text-purple-600" },
   ];
 
   return (

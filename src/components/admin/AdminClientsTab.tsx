@@ -129,7 +129,7 @@ const AdminClientsTab = ({ initialAgencyFilter, initialClientId, onNavigateToAge
         return {
           ...c,
           agency_name: agency?.agency_name || "—",
-          agency_tier: agency?.tier || "starter",
+          agency_tier: agency?.tier || "start",
           templates: [...(templateNames.get(c.id) || [])],
           templates_count: templateCount.get(c.id) || 0,
           mrr: mrrMap.get(c.id) || 0,
@@ -194,9 +194,9 @@ const AdminClientsTab = ({ initialAgencyFilter, initialClientId, onNavigateToAge
             <SelectTrigger className="w-36"><SelectValue placeholder="Tier" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos tiers</SelectItem>
-              <SelectItem value="starter">Starter</SelectItem>
-              <SelectItem value="explorer">Explorer</SelectItem>
+              <SelectItem value="start">Start</SelectItem>
               <SelectItem value="hack">Hack</SelectItem>
+              <SelectItem value="growth">Growth</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>

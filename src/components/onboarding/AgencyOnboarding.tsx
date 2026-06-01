@@ -42,7 +42,7 @@ const AgencyOnboarding = ({ onComplete }: Props) => {
 
   useEffect(() => {
     supabase.from("platform_templates").select("id, name, slug, platform_price_monthly, min_tier")
-      .eq("is_active", true).eq("min_tier", "starter")
+      .eq("is_active", true).eq("min_tier", "start")
       .then(({ data }) => {
         if (data) {
           setTemplates(data as Template[]);

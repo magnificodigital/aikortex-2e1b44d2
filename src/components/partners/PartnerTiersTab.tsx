@@ -12,7 +12,8 @@ import { usePartnerTier } from "@/hooks/use-partner-tier";
 import { Award, Check, Lock, ChevronRight, Users, DollarSign, Package, GraduationCap, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-const tiers: PartnerTier[] = ["starter", "explorer", "hack"];
+// Alinhado ao Master v7.4 §3.2: Start (gratuito) → Hack (R$197) → Growth (R$397)
+const tiers: PartnerTier[] = ["start", "hack", "growth"];
 const allFeatures = Object.keys(FEATURE_FLAG_LABELS) as FeatureFlag[];
 
 const PartnerTiersTab = () => {

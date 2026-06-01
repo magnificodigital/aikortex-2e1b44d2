@@ -42,16 +42,18 @@ interface AdminAgenciesProps {
   onOpenClient?: (clientId: string) => void;
 }
 
+// Alinhado ao Master v7.4 §3.2
 const TIER_BADGES: Record<string, { label: string; className: string }> = {
-  starter: { label: "Starter", className: "bg-muted text-muted-foreground" },
-  explorer: { label: "Explorer", className: "bg-blue-500/10 text-blue-600" },
-  hack: { label: "Hack", className: "bg-purple-500/10 text-purple-600" },
+  start: { label: "Start", className: "bg-muted text-muted-foreground" },
+  hack: { label: "Hack", className: "bg-blue-500/10 text-blue-600" },
+  growth: { label: "Growth", className: "bg-purple-500/10 text-purple-600" },
 };
 
+// Critérios alinhados ao Master v7.4 §3.4
 const getTierProgress = (tier: string, clients: number) => {
-  if (tier === "hack") return { target: 15, pct: 100, next: null };
-  if (tier === "explorer") return { target: 15, pct: Math.min(100, (clients / 15) * 100), next: "Hack" };
-  return { target: 5, pct: Math.min(100, (clients / 5) * 100), next: "Explorer" };
+  if (tier === "growth") return { target: 30, pct: 100, next: null };
+  if (tier === "hack") return { target: 30, pct: Math.min(100, (clients / 30) * 100), next: "Growth" };
+  return { target: 10, pct: Math.min(100, (clients / 10) * 100), next: "Hack" };
 };
 
 const relativeDate = (d: string | null) => {
@@ -178,9 +180,9 @@ const AdminAgenciesTab = ({ initialTierFilter, initialAgencyId, onOpenClient }: 
             <SelectTrigger className="w-36"><SelectValue placeholder="Tier" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os tiers</SelectItem>
-              <SelectItem value="starter">Starter</SelectItem>
-              <SelectItem value="explorer">Explorer</SelectItem>
+              <SelectItem value="start">Start</SelectItem>
               <SelectItem value="hack">Hack</SelectItem>
+              <SelectItem value="growth">Growth</SelectItem>
             </SelectContent>
           </Select>
           <Select value={asaasFilter} onValueChange={setAsaasFilter}>
@@ -230,7 +232,7 @@ const AdminAgenciesTab = ({ initialTierFilter, initialAgencyId, onOpenClient }: 
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma agência encontrada</TableCell></TableRow>
               ) : filtered.map(a => {
-                const tier = TIER_BADGES[a.tier] || TIER_BADGES.starter;
+                const tier = TIER_BADGES[a.tier] || TIER_BADGES.start;
                 const progress = getTierProgress(a.tier, a.active_clients_count || 0);
                 const isExpanded = expandedId === a.id;
 

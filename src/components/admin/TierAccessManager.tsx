@@ -13,13 +13,14 @@ import {
   Loader2, RotateCcw, ShieldCheck, ChevronDown, ChevronRight, Settings2,
 } from "lucide-react";
 
-const TIERS = ["starter", "explorer", "hack"] as const;
+// Alinhado ao Master v7.4 §3.2: Start (gratuito) → Hack (R$197) → Growth (R$397)
+const TIERS = ["start", "hack", "growth"] as const;
 type Tier = (typeof TIERS)[number];
 
 const TIER_COLORS: Record<Tier, string> = {
-  starter: "bg-amber-700/10 text-amber-700 border-amber-700/20",
-  explorer: "bg-slate-400/10 text-slate-500 border-slate-400/20",
-  hack: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+  start: "bg-amber-700/10 text-amber-700 border-amber-700/20",
+  hack: "bg-slate-400/10 text-slate-500 border-slate-400/20",
+  growth: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
 };
 
 interface SubFeatureDef {
@@ -119,21 +120,21 @@ const ALL_MODULE_KEYS = MODULE_GROUPS.flatMap((g) => g.modules.map((m) => m.key)
 const TOTAL_MODULES = ALL_MODULE_KEYS.length;
 
 const DEFAULT_ACCESS: Record<string, Record<string, boolean>> = {
-  starter: {
+  start: {
     "aikortex.agentes": true, "aikortex.flows": false, "aikortex.apps": false,
     "aikortex.templates": true, "aikortex.mensagens": true, "aikortex.disparos": false,
     "gestao.clientes": true, "gestao.contratos": false, "gestao.vendas": true,
     "gestao.crm": false, "gestao.reunioes": false, "gestao.financeiro": false,
     "gestao.equipe": true, "gestao.tarefas": true,
   },
-  explorer: {
+  hack: {
     "aikortex.agentes": true, "aikortex.flows": true, "aikortex.apps": false,
     "aikortex.templates": true, "aikortex.mensagens": true, "aikortex.disparos": true,
     "gestao.clientes": true, "gestao.contratos": true, "gestao.vendas": true,
     "gestao.crm": true, "gestao.reunioes": false, "gestao.financeiro": true,
     "gestao.equipe": true, "gestao.tarefas": true,
   },
-  hack: Object.fromEntries(ALL_MODULE_KEYS.map((k) => [k, true])),
+  growth: Object.fromEntries(ALL_MODULE_KEYS.map((k) => [k, true])),
 };
 
 interface AccessRow {

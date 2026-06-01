@@ -253,12 +253,13 @@ serve(async (req) => {
     ]);
 
     const hasByok = (byokRes.data?.length ?? 0) > 0;
-    const planSlug = (subRes.data?.plans as any)?.slug || "starter";
+    // Master v7.4 §3.2: tier default = "start" (100 msg/mês)
+    const planSlug = (subRes.data?.plans as any)?.slug || "start";
     const currentUsage = usageRes.data?.message_count ?? 0;
 
     if (!hasByok) {
       const { data: limitData } = await supabase.from("plan_message_limits").select("monthly_limit").eq("plan_slug", planSlug).maybeSingle();
-      const monthlyLimit = limitData?.monthly_limit ?? 500;
+      const monthlyLimit = limitData?.monthly_limit ?? 100;
       if (monthlyLimit !== -1 && (currentUsage + estimatedMsgs) > monthlyLimit) {
         return new Response(JSON.stringify({
           error: "Limite mensal de mensagens insuficiente",

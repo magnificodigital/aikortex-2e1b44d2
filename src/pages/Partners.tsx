@@ -21,7 +21,7 @@ const DEFAULT_PROFILE: PartnerProfile = {
   description: "Agência especializada em soluções de inteligência artificial para negócios.",
   specializations: ["Automação IA", "Agentes de IA", "CRM"],
   certifications: ["AI Automation Specialist", "CRM Implementation Expert"],
-  tier: "explorer",
+  tier: "hack",
   clientsServed: 12,
   revenue: 35000,
   solutionsPublished: 3,
@@ -45,7 +45,7 @@ const normalizePartnerProfile = (value: unknown): PartnerProfile => {
     certifications: Array.isArray(saved.certifications)
       ? saved.certifications.filter((item): item is string => typeof item === "string")
       : DEFAULT_PROFILE.certifications,
-    tier: saved.tier === "starter" || saved.tier === "explorer" || saved.tier === "hack"
+    tier: saved.tier === "start" || saved.tier === "hack" || saved.tier === "growth"
       ? saved.tier
       : DEFAULT_PROFILE.tier,
     clientsServed: typeof saved.clientsServed === "number" ? saved.clientsServed : DEFAULT_PROFILE.clientsServed,

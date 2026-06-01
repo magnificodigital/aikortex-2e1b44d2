@@ -67,7 +67,7 @@ const emptyForm: TemplateForm = {
   slug: "",
   description: "",
   category: "agent",
-  min_tier: "starter",
+  min_tier: "start",
   platform_price_monthly: 0,
   features: [],
   demo_url: "",
@@ -82,10 +82,11 @@ const CATEGORY_LABELS: Record<string, string> = {
   app: "Aplicativo",
 };
 
+// Alinhado ao Master v7.4 §3.2: Start (gratuito) → Hack (R$197) → Growth (R$397)
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
-  starter: { label: "Starter", color: "bg-amber-700/10 text-amber-700" },
-  explorer: { label: "Explorer", color: "bg-slate-400/10 text-slate-500" },
-  hack: { label: "Hack", color: "bg-yellow-500/10 text-yellow-600" },
+  start: { label: "Start", color: "bg-amber-700/10 text-amber-700" },
+  hack: { label: "Hack", color: "bg-slate-400/10 text-slate-500" },
+  growth: { label: "Growth", color: "bg-yellow-500/10 text-yellow-600" },
 };
 
 const slugify = (text: string) =>
@@ -290,7 +291,7 @@ const AdminTemplatesTab = () => {
                 </TableRow>
               ) : (
                 templates.map((t) => {
-                  const tierCfg = TIER_LABELS[t.min_tier] ?? TIER_LABELS.starter;
+                  const tierCfg = TIER_LABELS[t.min_tier] ?? TIER_LABELS.start;
                   return (
                     <TableRow key={t.id}>
                       <TableCell className="font-medium text-sm">{t.name}</TableCell>
@@ -437,9 +438,9 @@ const AdminTemplatesTab = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="starter">Starter</SelectItem>
-                    <SelectItem value="explorer">Explorer</SelectItem>
+                    <SelectItem value="start">Start</SelectItem>
                     <SelectItem value="hack">Hack</SelectItem>
+                    <SelectItem value="growth">Growth</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

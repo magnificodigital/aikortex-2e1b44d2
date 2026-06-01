@@ -13,12 +13,12 @@ interface Props {
 }
 
 const TIER_LABEL: Record<Tier, string> = {
-  starter: "Starter",
-  explorer: "Explorer",
+  start: "Start",
   hack: "Hack",
+  growth: "Growth",
 };
 
-const AgentToolsSection = ({ agentId, tier = "starter" }: Props) => {
+const AgentToolsSection = ({ agentId, tier = "start" }: Props) => {
   const { isEnabled, setEnabled, usage, activeCount } = useAgentTools(agentId);
 
   if (!agentId) {

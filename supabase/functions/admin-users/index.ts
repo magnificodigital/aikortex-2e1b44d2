@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
           await supabase.from("agency_profiles").insert({
             user_id: newUser.user.id,
             agency_name: agency_name || full_name || email,
-            tier: tier || "starter",
+            tier: tier || "start",
           });
         }
 

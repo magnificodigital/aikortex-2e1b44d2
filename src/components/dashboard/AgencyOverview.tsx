@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Users, DollarSign, LayoutTemplate, Trophy } from "lucide-react";
 
-const TIER_LABELS: Record<string, string> = { starter: "Starter", explorer: "Explorer", hack: "Hack" };
+// Alinhado ao Master v7.4 §3.2: Start (gratuito) → Hack (R$197) → Growth (R$397)
+const TIER_LABELS: Record<string, string> = { start: "Start", hack: "Hack", growth: "Growth" };
 
 const AgencyOverview = () => {
   const { user } = useAuth();
@@ -36,10 +37,11 @@ const AgencyOverview = () => {
 
   if (!agency) return null;
 
-  const tier = agency.tier ?? "starter";
+  const tier = agency.tier ?? "start";
   const ac = agency.active_clients_count ?? 0;
-  const tierPct = tier === "hack" ? 100 : tier === "explorer" ? Math.min(100, (ac / 15) * 100) : Math.min(100, (ac / 5) * 100);
-  const tierLabel = tier === "hack" ? "Nível máximo 🏆" : tier === "explorer" ? `${ac}/15 → Hack` : `${ac}/5 → Explorer`;
+  // Master v7.4 §3.4: Start→Hack precisa 10 clientes, Hack→Growth precisa 30
+  const tierPct = tier === "growth" ? 100 : tier === "hack" ? Math.min(100, (ac / 30) * 100) : Math.min(100, (ac / 10) * 100);
+  const tierLabel = tier === "growth" ? "Nível máximo 🏆" : tier === "hack" ? `${ac}/30 → Growth` : `${ac}/10 → Hack`;
 
   return (
     <div className="space-y-3">

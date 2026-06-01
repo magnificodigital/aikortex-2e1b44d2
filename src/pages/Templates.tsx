@@ -39,12 +39,13 @@ type AgencyProfile = {
   custom_pricing: Record<string, number> | null;
 };
 
-const TIER_ORDER: Record<string, number> = { starter: 0, explorer: 1, hack: 2 };
-const TIER_LABELS: Record<string, string> = { starter: "Starter", explorer: "Explorer", hack: "Hack" };
+// Alinhado ao Master v7.4 §3.2: Start → Hack → Growth
+const TIER_ORDER: Record<string, number> = { start: 0, hack: 1, growth: 2 };
+const TIER_LABELS: Record<string, string> = { start: "Start", hack: "Hack", growth: "Growth" };
 const TIER_COLORS: Record<string, string> = {
-  starter: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  explorer: "bg-orange-500/10 text-orange-600 border-orange-500/20",
-  hack: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+  start: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  hack: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+  growth: "bg-purple-500/10 text-purple-600 border-purple-500/20",
 };
 const CATEGORY_ICONS: Record<string, typeof Bot> = { agent: Bot, automation: Workflow, app: AppWindow };
 const CATEGORY_LABELS: Record<string, string> = { agent: "Agente", automation: "Automação", app: "Aplicativo" };
@@ -79,13 +80,14 @@ export const TemplatesMarketplaceView = () => {
     load();
   }, [user]);
 
-  const agencyTier = agency?.tier ?? "starter";
+  const agencyTier = agency?.tier ?? "start";
   const activeClients = agency?.active_clients_count ?? 0;
 
+  // Master v7.4 §3.4: Start→Hack precisa 10 clientes, Hack→Growth precisa 30
   const tierProgress = useMemo(() => {
-    if (agencyTier === "hack") return { label: "Nível máximo atingido 🏆", percent: 100, target: 0 };
-    if (agencyTier === "explorer") return { label: `${activeClients}/15 clientes para Hack`, percent: Math.min(100, (activeClients / 15) * 100), target: 15 };
-    return { label: `${activeClients}/5 clientes para Explorer`, percent: Math.min(100, (activeClients / 5) * 100), target: 5 };
+    if (agencyTier === "growth") return { label: "Nível máximo atingido 🏆", percent: 100, target: 0 };
+    if (agencyTier === "hack") return { label: `${activeClients}/30 clientes para Growth`, percent: Math.min(100, (activeClients / 30) * 100), target: 30 };
+    return { label: `${activeClients}/10 clientes para Hack`, percent: Math.min(100, (activeClients / 10) * 100), target: 10 };
   }, [agencyTier, activeClients]);
 
   const filtered = templates.filter((t) => {
@@ -115,7 +117,7 @@ export const TemplatesMarketplaceView = () => {
     if (!currentAgency) {
       const { data: created, error: createErr } = await supabase
         .from("agency_profiles")
-        .insert({ user_id: user.id, tier: "starter", custom_pricing: {} })
+        .insert({ user_id: user.id, tier: "start", custom_pricing: {} })
         .select()
         .single();
       if (createErr || !created) {
@@ -215,7 +217,7 @@ export const TemplatesMarketplaceView = () => {
                       <CatIcon className="w-3 h-3" />
                       {CATEGORY_LABELS[t.category]}
                     </Badge>
-                    {t.min_tier !== "starter" && (
+                    {t.min_tier !== "start" && (
                       <Badge className={`text-[10px] border ${TIER_COLORS[t.min_tier]}`}>
                         Requer {TIER_LABELS[t.min_tier]}
                       </Badge>

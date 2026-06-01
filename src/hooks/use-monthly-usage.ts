@@ -35,7 +35,7 @@ export const useMonthlyUsage = () => {
       ]);
 
       const messageCount = usageRes.data?.message_count ?? 0;
-      const planSlug = (subRes.data?.plans as any)?.slug || "starter";
+      const planSlug = (subRes.data?.plans as any)?.slug || "start";
 
       // Fetch limit for the plan
       const { data: limitData } = await supabase
@@ -44,7 +44,7 @@ export const useMonthlyUsage = () => {
         .eq("plan_slug", planSlug)
         .maybeSingle();
 
-      const monthlyLimit = limitData?.monthly_limit ?? 500;
+      const monthlyLimit = limitData?.monthly_limit ?? 100;
       const hasByok = (keysRes.data?.length ?? 0) > 0;
 
       return { messageCount, monthlyLimit, planSlug, hasByok };
@@ -52,10 +52,10 @@ export const useMonthlyUsage = () => {
   });
 
   const messageCount = data?.messageCount ?? 0;
-  const monthlyLimit = data?.monthlyLimit ?? 500;
+  const monthlyLimit = data?.monthlyLimit ?? 100;
   const isUnlimited = monthlyLimit === -1;
   const hasByok = data?.hasByok ?? false;
-  const planSlug = data?.planSlug ?? "starter";
+  const planSlug = data?.planSlug ?? "start";
 
   return {
     messageCount,

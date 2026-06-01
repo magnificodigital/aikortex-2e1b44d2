@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import { TIER_CONFIG, type PartnerTier } from "@/types/partner";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TIERS: PartnerTier[] = ["starter", "explorer", "hack"];
+// Alinhado ao Master v7.4 §3.2
+const TIERS: PartnerTier[] = ["start", "hack", "growth"];
 
 const tierBadge = (tier: string) => {
   const cfg = TIER_CONFIG[tier as PartnerTier];
@@ -41,7 +42,7 @@ const AdminPartnersTab = () => {
   const [search, setSearch] = useState("");
   const [filterTier, setFilterTier] = useState("all");
   const [editPartner, setEditPartner] = useState<PartnerRow | null>(null);
-  const [newTier, setNewTier] = useState<PartnerTier>("starter");
+  const [newTier, setNewTier] = useState<PartnerTier>("start");
   const [note, setNote] = useState("");
 
   const { data: partners = [], isLoading } = useQuery({

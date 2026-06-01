@@ -140,16 +140,17 @@ Deno.serve(async (req) => {
         await supabaseAdmin.from("agency_profiles").insert({
           user_id: newUser.user!.id,
           agency_name: full_name,
-          tier: "starter",
+          tier: "start",
         });
       }
     }
 
     // If creating an agency owner, create partner_tiers entry
+    // Alinhado ao Master v7.4 §3.2: tier inicial = "start"
     if (role === "agency_owner") {
       await supabaseAdmin.from("partner_tiers").insert({
         user_id: newUser.user!.id,
-        tier: "starter",
+        tier: "start",
       });
     }
 

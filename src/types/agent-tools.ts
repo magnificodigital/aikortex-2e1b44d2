@@ -2,7 +2,8 @@ import { BookOpen, Database, DatabaseZap, Globe, Image as ImageIcon, type Lucide
 
 export type ToolKey = "web_search" | "image_gen" | "knowledge_search" | "table_read" | "table_write";
 
-export type Tier = "starter" | "explorer" | "hack";
+// Alinhado ao Master v7.4 §3.2: Start (gratuito) → Hack (R$197) → Growth (R$397)
+export type Tier = "start" | "hack" | "growth";
 
 export interface ToolCatalogEntry {
   key: ToolKey;
@@ -25,7 +26,7 @@ export const AGENT_TOOLS_CATALOG: Record<ToolKey, ToolCatalogEntry> = {
     icon: Globe,
     requiredSecret: "BRAVE_SEARCH_API_KEY",
     secretHelpUrl: "https://api.search.brave.com/app/keys",
-    quotas: { starter: 50, explorer: 200, hack: 1000 },
+    quotas: { start: 50, hack: 200, growth: 1000 },
   },
   image_gen: {
     key: "image_gen",
@@ -36,7 +37,7 @@ export const AGENT_TOOLS_CATALOG: Record<ToolKey, ToolCatalogEntry> = {
     icon: ImageIcon,
     requiredSecret: "OPENROUTER_API_KEY",
     secretHelpUrl: "https://openrouter.ai/keys",
-    quotas: { starter: 50, explorer: 100, hack: 500 },
+    quotas: { start: 50, hack: 100, growth: 500 },
   },
   knowledge_search: {
     key: "knowledge_search",
@@ -47,7 +48,7 @@ export const AGENT_TOOLS_CATALOG: Record<ToolKey, ToolCatalogEntry> = {
     icon: BookOpen,
     requiredSecret: "OPENAI_API_KEY",
     secretHelpUrl: "https://platform.openai.com/api-keys",
-    quotas: { starter: -1, explorer: -1, hack: -1 },
+    quotas: { start: -1, hack: -1, growth: -1 },
   },
   table_read: {
     key: "table_read",
@@ -58,7 +59,7 @@ export const AGENT_TOOLS_CATALOG: Record<ToolKey, ToolCatalogEntry> = {
     icon: Database,
     requiredSecret: "—",
     secretHelpUrl: "https://docs.lovable.dev/",
-    quotas: { starter: -1, explorer: -1, hack: -1 },
+    quotas: { start: -1, hack: -1, growth: -1 },
   },
   table_write: {
     key: "table_write",
@@ -69,7 +70,7 @@ export const AGENT_TOOLS_CATALOG: Record<ToolKey, ToolCatalogEntry> = {
     icon: DatabaseZap,
     requiredSecret: "—",
     secretHelpUrl: "https://docs.lovable.dev/",
-    quotas: { starter: -1, explorer: -1, hack: -1 },
+    quotas: { start: -1, hack: -1, growth: -1 },
   },
 };
 

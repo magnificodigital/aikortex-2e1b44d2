@@ -32,7 +32,8 @@ type Template = {
   min_tier: string;
 };
 
-const TIER_ORDER: Record<string, number> = { starter: 0, explorer: 1, hack: 2 };
+// Alinhado ao Master v7.4 §3.2: Start (0) → Hack (1) → Growth (2)
+const TIER_ORDER: Record<string, number> = { start: 0, hack: 1, growth: 2 };
 
 const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTier, onSuccess }: Props) => {
   const navigate = useNavigate();

@@ -58,10 +58,11 @@ interface SubscriptionDetail {
 
 /* ────────────────────── helpers ────────────────────── */
 
+// Alinhado ao Master v7.4 §3.2: Start (gratuito) → Hack (R$197) → Growth (R$397)
 const TIER_BADGES: Record<string, { label: string; className: string }> = {
-  starter: { label: "Starter", className: "bg-muted text-muted-foreground" },
-  explorer: { label: "Explorer", className: "bg-blue-500/10 text-blue-600" },
-  hack: { label: "Hack", className: "bg-purple-500/10 text-purple-600" },
+  start: { label: "Start", className: "bg-muted text-muted-foreground" },
+  hack: { label: "Hack", className: "bg-blue-500/10 text-blue-600" },
+  growth: { label: "Growth", className: "bg-purple-500/10 text-purple-600" },
 };
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
@@ -84,10 +85,13 @@ const relativeDate = (d: string | null) => {
   return new Date(d).toLocaleDateString("pt-BR");
 };
 
+// Critérios alinhados ao Master v7.4 §3.4 (2 dos 3 critérios pra evolução):
+//   Start → Hack:   10+ clientes ativos
+//   Hack  → Growth: 30+ clientes ativos
 const getTierProgress = (tier: string, clients: number) => {
-  if (tier === "hack") return { target: 15, pct: 100, next: null };
-  if (tier === "explorer") return { target: 15, pct: Math.min(100, (clients / 15) * 100), next: "Hack" };
-  return { target: 5, pct: Math.min(100, (clients / 5) * 100), next: "Explorer" };
+  if (tier === "growth") return { target: 30, pct: 100, next: null };
+  if (tier === "hack") return { target: 30, pct: Math.min(100, (clients / 30) * 100), next: "Growth" };
+  return { target: 10, pct: Math.min(100, (clients / 10) * 100), next: "Hack" };
 };
 
 const generatePassword = () => {
@@ -179,7 +183,7 @@ const CreateAgencyModal = ({ open, onClose, onSuccess }: { open: boolean; onClos
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState(generatePassword());
-  const [tier, setTier] = useState("starter");
+  const [tier, setTier] = useState("start");
   const [saving, setSaving] = useState(false);
   const [created, setCreated] = useState(false);
 
@@ -195,7 +199,7 @@ const CreateAgencyModal = ({ open, onClose, onSuccess }: { open: boolean; onClos
     setSaving(false);
   };
 
-  const handleClose = () => { setCreated(false); setName(""); setEmail(""); setPassword(generatePassword()); setTier("starter"); onClose(); };
+  const handleClose = () => { setCreated(false); setName(""); setEmail(""); setPassword(generatePassword()); setTier("start"); onClose(); };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -228,7 +232,7 @@ const CreateAgencyModal = ({ open, onClose, onSuccess }: { open: boolean; onClos
             </div>
             <div><Label>Tier inicial</Label>
               <Select value={tier} onValueChange={setTier}><SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="starter">Starter</SelectItem><SelectItem value="explorer">Explorer</SelectItem><SelectItem value="hack">Hack</SelectItem></SelectContent>
+                <SelectContent><SelectItem value="start">Start</SelectItem><SelectItem value="hack">Hack</SelectItem><SelectItem value="growth">Growth</SelectItem></SelectContent>
               </Select>
             </div>
           </div>
@@ -247,7 +251,7 @@ const CreateAgencyModal = ({ open, onClose, onSuccess }: { open: boolean; onClos
 
 const EditAgencyModal = ({ open, onClose, agency, onSuccess }: { open: boolean; onClose: () => void; agency: AgencyRow | null; onSuccess: (updated: AgencyRow) => void }) => {
   const [name, setName] = useState("");
-  const [tier, setTier] = useState("starter");
+  const [tier, setTier] = useState("start");
   const [override, setOverride] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -289,7 +293,7 @@ const EditAgencyModal = ({ open, onClose, agency, onSuccess }: { open: boolean; 
             <Label>Tier</Label>
             <Select value={tier} onValueChange={v => { setTier(v); setOverride(true); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="starter">Starter</SelectItem><SelectItem value="explorer">Explorer</SelectItem><SelectItem value="hack">Hack</SelectItem></SelectContent>
+              <SelectContent><SelectItem value="start">Start</SelectItem><SelectItem value="hack">Hack</SelectItem><SelectItem value="growth">Growth</SelectItem></SelectContent>
             </Select>
             {override && <p className="text-xs text-yellow-600 mt-1">⚠ Override manual — ignora contagem de clientes</p>}
             {override && <Button variant="link" size="sm" className="text-xs p-0 h-auto" onClick={handleRemoveOverride}>Remover override</Button>}
@@ -538,7 +542,7 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState(initialTier || "all");
   const [showCreate, setShowCreate] = useState(false);
-  const [stats, setStats] = useState({ totalAgencies: 0, totalClients: 0, platformMRR: 0, templatesSold: 0, tierBreakdown: { starter: { agencies: 0, clients: 0, mrr: 0 }, explorer: { agencies: 0, clients: 0, mrr: 0 }, hack: { agencies: 0, clients: 0, mrr: 0 } } });
+  const [stats, setStats] = useState({ totalAgencies: 0, totalClients: 0, platformMRR: 0, templatesSold: 0, tierBreakdown: { start: { agencies: 0, clients: 0, mrr: 0 }, hack: { agencies: 0, clients: 0, mrr: 0 }, growth: { agencies: 0, clients: 0, mrr: 0 } } });
 
   useEffect(() => { fetchData(); }, []);
   useEffect(() => { if (initialTier) setTierFilter(initialTier); }, [initialTier]);
@@ -589,7 +593,7 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
       const activeSubs = subsRes.data || [];
       const platformMRR = activeSubs.reduce((sum: number, s: any) => sum + (s.platform_price_monthly || 0), 0);
 
-      const tb = { starter: { agencies: 0, clients: 0, mrr: 0 }, explorer: { agencies: 0, clients: 0, mrr: 0 }, hack: { agencies: 0, clients: 0, mrr: 0 } };
+      const tb = { start: { agencies: 0, clients: 0, mrr: 0 }, hack: { agencies: 0, clients: 0, mrr: 0 }, growth: { agencies: 0, clients: 0, mrr: 0 } };
       agenciesData.forEach(a => { const t = a.tier as keyof typeof tb; if (tb[t]) { tb[t].agencies++; tb[t].clients += a.active_clients_count || 0; } });
       activeSubs.forEach((s: any) => {
         const agTier = agenciesData.find(a => a.id === s.agency_id)?.tier as keyof typeof tb;
@@ -608,9 +612,9 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
   });
 
   const tierRows = [
-    { key: "starter" as const, label: "Starter", cls: "bg-muted", textCls: "text-muted-foreground" },
-    { key: "explorer" as const, label: "Explorer", cls: "bg-blue-500/10", textCls: "text-blue-600" },
-    { key: "hack" as const, label: "Hack", cls: "bg-purple-500/10", textCls: "text-purple-600" },
+    { key: "start" as const, label: "Start", cls: "bg-muted", textCls: "text-muted-foreground" },
+    { key: "hack" as const, label: "Hack", cls: "bg-blue-500/10", textCls: "text-blue-600" },
+    { key: "growth" as const, label: "Growth", cls: "bg-purple-500/10", textCls: "text-purple-600" },
   ];
 
   if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -670,7 +674,7 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
           </div>
           <Select value={tierFilter} onValueChange={setTierFilter}>
             <SelectTrigger className="w-36"><SelectValue placeholder="Tier" /></SelectTrigger>
-            <SelectContent><SelectItem value="all">Todos os tiers</SelectItem><SelectItem value="starter">Starter</SelectItem><SelectItem value="explorer">Explorer</SelectItem><SelectItem value="hack">Hack</SelectItem></SelectContent>
+            <SelectContent><SelectItem value="all">Todos os tiers</SelectItem><SelectItem value="start">Start</SelectItem><SelectItem value="hack">Hack</SelectItem><SelectItem value="growth">Growth</SelectItem></SelectContent>
           </Select>
           <Button size="sm" variant="outline" onClick={fetchData}><RefreshCw className="w-4 h-4 mr-1.5" /> Atualizar</Button>
           <Button size="sm" onClick={() => setShowCreate(true)}><Plus className="w-4 h-4 mr-1.5" /> Criar agência</Button>
@@ -691,7 +695,7 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
                 {filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma agência encontrada</TableCell></TableRow>
                 ) : filtered.map(a => {
-                  const tier = TIER_BADGES[a.tier] || TIER_BADGES.starter;
+                  const tier = TIER_BADGES[a.tier] || TIER_BADGES.start;
                   return (
                     <TableRow key={a.id} className="cursor-pointer hover:bg-accent/50" onClick={() => onSelectAgency(a)}>
                       <TableCell>
@@ -814,7 +818,7 @@ const Level2 = ({ agency, onSelectClient, onAgencyUpdated }: { agency: AgencyRow
     setActionLoading(false);
   };
 
-  const tier = TIER_BADGES[agency.tier] || TIER_BADGES.starter;
+  const tier = TIER_BADGES[agency.tier] || TIER_BADGES.start;
   const progress = getTierProgress(agency.tier, agency.active_clients_count || 0);
 
   if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
