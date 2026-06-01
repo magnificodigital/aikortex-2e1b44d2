@@ -847,10 +847,11 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     await handleBuildAgent(finalConfig);
   }, [handleStructureRequest, handleConfigStructured, handleBuildAgent, setWizardStep, wizardChat.messages, loadedAgent]);
 
-  // Auto-advance: dispara apenas quando o wizard chamou commit_draft via tool
-  // (sinal explícito de "terminei") ou quando praticamente todos os blocos
-  // do §13.2 estão preenchidos (≥7/8). Substitui a heurística antiga de
-  // "≥6 mensagens do user" que disparava no meio do fluxo.
+  // Auto-advance — só dispara se a checklist §13.2 tem coverage real.
+  // Aceita commit_draft (sinal explícito do wizard) mas EXIGE ≥6/8 blocos
+  // preenchidos. Caso o LLM chame commit_draft no meio do fluxo, ignora.
+  // Sem commit_draft: só pula se ≥7/8 (quase tudo) — segurança contra
+  // wizard travado por algum bug.
   useEffect(() => {
     if (wizardCompletedRef.current) return;
     if (wizardChat.isStreaming) return;
@@ -861,8 +862,12 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
       return /<!--tools:[^>]*commit_draft/.test(txt);
     });
     const { doneCount, totalCount } = computeWizardProgress(loadedAgent.savedConfig);
-    const almostDone = doneCount >= Math.max(7, totalCount - 1);
-    if (!commitFired && !almostDone) return;
+
+    const enoughForCommit = doneCount >= 6;
+    const everythingDone = doneCount >= totalCount - 1; // ≥7/8
+
+    const shouldBuild = (commitFired && enoughForCommit) || everythingDone;
+    if (!shouldBuild) return;
 
     const summary = wizardChat.messages
       .map(m => m.role === "user" ? `Usuário: ${m.text}` : `Assistente: ${m.text}`)
@@ -871,7 +876,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     void runWizardBuild(summary);
   }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, loadedAgent.savedConfig, runWizardBuild]);
 
-  // Primary trigger: AI says the closing phrase
+  // Primary trigger: AI says the closing phrase (com guard de checkpoints)
   useEffect(() => {
     if (wizardCompletedRef.current) return;
     if (wizardChat.isStreaming) return;
@@ -881,12 +886,17 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     if (!lastAgentMsg?.text) return;
     if (!lastAgentMsg.text.includes("Vou configurar seu agente agora")) return;
 
+    // Guard: só dispara se ≥6/8 blocos preenchidos — evita LLM saindo
+    // do script e fechando o wizard sem ter coberto §13.2 inteiro.
+    const { doneCount } = computeWizardProgress(loadedAgent.savedConfig);
+    if (doneCount < 6) return;
+
     const summary = wizardChat.messages
       .map(m => m.role === "user" ? `Usuário: ${m.text}` : `Assistente: ${m.text}`)
       .join("\n");
 
     void runWizardBuild(summary);
-  }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, runWizardBuild]);
+  }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, loadedAgent.savedConfig, runWizardBuild]);
 
   // Fallback: detect explicit ```agent-config``` block if AI generates one
   useEffect(() => {
@@ -898,6 +908,10 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     if (!lastAgentMsg) return;
     const match = lastAgentMsg.text.match(/```agent-config\s*([\s\S]*?)```/);
     if (!match) return;
+
+    // Guard: só dispara se ≥6/8 blocos preenchidos
+    const { doneCount } = computeWizardProgress(loadedAgent.savedConfig);
+    if (doneCount < 6) return;
 
     try {
       const parsed = JSON.parse(match[1].trim().replace(/^```json\s*/i, "").replace(/```$/i, "").trim());
@@ -914,7 +928,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     } catch {
       // malformed block — wait for auto-advance by message count
     }
-  }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, runWizardBuild]);
+  }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, loadedAgent.savedConfig, runWizardBuild]);
 
 
   const testSystemPrompt = useMemo(() => {
