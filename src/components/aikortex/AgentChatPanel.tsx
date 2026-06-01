@@ -329,17 +329,23 @@ const AgentChatPanel = ({
 
   const quickReplies: string[] = (() => {
     if (wizardStep !== "discover" || wizardIsStreaming || !lastAgentText) return [];
-    const t = lastAgentText.toLowerCase();
-    if (/nicho|setor|segmento|área de atuação|ramo|tipo de negócio/.test(t)) {
+    // Analisa só a ÚLTIMA pergunta (segmento terminando em "?") pra evitar
+    // que palavras-chave em contexto (ex: "Anotado o nicho. Qual o nome?")
+    // disparem chips errados.
+    const sentences = lastAgentText.split(/(?<=[.?!])\s+/);
+    const lastQuestion = (sentences.reverse().find((s: string) => s.includes("?")) || lastAgentText).toLowerCase();
+
+    // Detecção por INTENÇÃO (interrogativo + termo), não keywords soltas
+    if (/(qual|que|escolha|defina)[^?]*\b(nicho|setor|segmento|ramo|área de atuação)\b/.test(lastQuestion)) {
       return ["Saúde", "Imobiliária", "Advocacia", "Educação", "Food", "Estética", "Pet", "Finanças", "SaaS"];
     }
-    if (/tom de (voz|comunicação)|consultivo, casual|tom (consultivo|casual|amigável|empático|profissional|direto)/.test(t)) {
+    if (/(qual|que|escolha)[^?]*\btom\b|consultivo, casual|consultivo ou casual/.test(lastQuestion)) {
       return ["Consultivo", "Casual e amigável", "Empático", "Direto e objetivo"];
     }
-    if (/quais canais|canais? (de )?(comunicaç|ativ)|canal de atendimento/.test(t)) {
+    if (/(quais|que)[^?]*\bcanai?s?\b|canal de atendimento|canais? de comunicaç/.test(lastQuestion)) {
       return ["WhatsApp", "Email", "Instagram", "Website", "SMS"];
     }
-    if (/integração|integraç|google agenda|google calendar|calendly|crm|planilha|hubspot/.test(t)) {
+    if (/(qual|quais|que)[^?]*\bintegraç|google agenda|google calendar|calendly|usa.*crm/.test(lastQuestion)) {
       return ["Google Agenda", "Calendly", "HubSpot", "Google Sheets", "RD Station", "Nenhuma"];
     }
     return [];
