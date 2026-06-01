@@ -8,6 +8,7 @@ import { ConversationProvider } from "@elevenlabs/react";
 import AgentRightPanel, { type AgentConfig } from "@/components/aikortex/AgentRightPanel";
 import AgentChatPanel, { type StructuredAgentConfig } from "@/components/aikortex/AgentChatPanel";
 import WizardShowcasePanel from "@/components/aikortex/WizardShowcasePanel";
+import { computeWizardProgress } from "@/lib/wizard-progress";
 import VoiceCallPanel from "@/components/aikortex/VoiceCallPanel";
 import OutboundCallDialog from "@/components/aikortex/OutboundCallDialog";
 import BrowserCallWidget from "@/components/aikortex/BrowserCallWidget";
@@ -807,11 +808,6 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     void wizardChat.sendMessage("start");
   }, [agentLoading, wizardStep, wizardChat]);
 
-  // Safety guard: min user messages before auto-build (closing phrase is the primary trigger)
-  const WIZARD_MIN_QUESTIONS: Record<string, number> = {
-    sdr: 6, sac: 4,
-  };
-
   const wizardCompletedRef = useRef(false);
 
   const runWizardBuild = useCallback(async (conversationSummary: string) => {
@@ -851,23 +847,29 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     await handleBuildAgent(finalConfig);
   }, [handleStructureRequest, handleConfigStructured, handleBuildAgent, setWizardStep, wizardChat.messages, loadedAgent]);
 
-  // Auto-advance: trigger when user has answered all required questions
+  // Auto-advance: dispara apenas quando o wizard chamou commit_draft via tool
+  // (sinal explícito de "terminei") ou quando praticamente todos os blocos
+  // do §13.2 estão preenchidos (≥7/8). Substitui a heurística antiga de
+  // "≥6 mensagens do user" que disparava no meio do fluxo.
   useEffect(() => {
     if (wizardCompletedRef.current) return;
     if (wizardChat.isStreaming) return;
     if (wizardStep !== "discover") return;
 
-    const minRequired = WIZARD_MIN_QUESTIONS[wizardAgentTypeKey] ?? 6;
-    const userMessages = wizardChat.messages.filter(m => m.role === "user");
-    if (userMessages.length < minRequired) return;
+    const commitFired = wizardChat.messages.some((m: any) => {
+      const txt = (m.text || m.content || "") as string;
+      return /<!--tools:[^>]*commit_draft/.test(txt);
+    });
+    const { doneCount, totalCount } = computeWizardProgress(loadedAgent.savedConfig);
+    const almostDone = doneCount >= Math.max(7, totalCount - 1);
+    if (!commitFired && !almostDone) return;
 
-    // Build a conversation summary from Q&A pairs
     const summary = wizardChat.messages
       .map(m => m.role === "user" ? `Usuário: ${m.text}` : `Assistente: ${m.text}`)
       .join("\n");
 
     void runWizardBuild(summary);
-  }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, wizardAgentTypeKey, runWizardBuild]);
+  }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, loadedAgent.savedConfig, runWizardBuild]);
 
   // Primary trigger: AI says the closing phrase
   useEffect(() => {
