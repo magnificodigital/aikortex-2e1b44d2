@@ -116,6 +116,8 @@ interface UseAgentChatOptions {
   mode?: "agent-chat" | "wizard-setup";
   /** Agent type (sdr/sac/...) — required by the wizard-setup prompt builder. */
   agentType?: string;
+  /** Nicho do agente (Master v7.4 §13.4 + §15.2). Contextualiza o wizard. */
+  niche?: string;
   /** Disable CRM lead extraction post-processing (e.g. during wizard). */
   disableCrmExtraction?: boolean;
 }
@@ -245,7 +247,10 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
         };
 
         if (options.mode === "wizard-setup") {
-          payload.agentType = options.agentType || "custom";
+          payload.agentType = options.agentType || "Custom";
+          // Master v7.4 §13.4: tipos contextualizados por nicho. Quando vem,
+          // app-chat adapta exemplos/terminologia ao setor brasileiro.
+          if (options.niche) payload.niche = options.niche;
         }
 
         if (options.useGateway) {

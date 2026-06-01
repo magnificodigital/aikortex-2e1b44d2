@@ -255,6 +255,10 @@ const AgentDetail = () => {
     // Existing saved agent
     return "done";
   });
+
+  // Master v7.4 §13.4 + §15.2: nicho do agente contextualiza o wizard.
+  // Quando nulo, primeira pergunta do backend identifica o nicho.
+  const [wizardNiche, setWizardNiche] = useState<string | null>(null);
   const [structuredConfig, setStructuredConfig] = useState<StructuredAgentConfig | null>(null);
   const [isStructuring, setIsStructuring] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -623,46 +627,18 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
 
   const wizardAgentTypeKey = (loadedAgent.agentType || "Custom").toLowerCase();
 
-  const wizardSystemPrompt = wizardAgentTypeKey === "sdr"
-    ? `Você é um assistente de configuração da plataforma Aikortex. Configure um agente SDR (qualificação de leads).
-
-O usuário já recebeu a primeira pergunta: "Qual é o nome do seu negócio e o que ele faz?" (esta conta como Q1).
-
-Continue com mais 5 perguntas, UMA por vez, nesta ordem:
-Q2: Quem é o cliente ideal? (cargo, segmento, tamanho de empresa)
-Q3: Qual é o principal diferencial ou proposta de valor?
-Q4: Quais são as principais objeções de venda que o agente deve superar?
-Q5: Qual tom de comunicação? (consultivo, direto, informal)
-Q6: Qual é o principal objetivo do agente? (agendar reunião, qualificar lead, coletar dados)
-
-Regras obrigatórias:
-- Faça UMA pergunta por mensagem, máximo 2 linhas.
-- Após receber resposta das 6 perguntas (incluindo Q1 já respondida), diga EXATAMENTE: "Perfeito! Vou configurar seu agente agora."
-- NÃO faça mais perguntas após a frase de encerramento.
-- Responda em português do Brasil.`
-    : `Você é um assistente de configuração da plataforma Aikortex. Configure um agente SAC (atendimento ao cliente).
-
-O usuário já recebeu a primeira pergunta: "Qual é o nome do seu negócio e o que ele faz?" (esta conta como Q1).
-
-Continue com mais 3 perguntas, UMA por vez, nesta ordem:
-Q2: Quem são os clientes atendidos? (perfil e necessidades)
-Q3: Quais são os principais problemas ou reclamações que o agente deve resolver?
-Q4: Qual tom de comunicação? (empático, formal, casual)
-
-Regras obrigatórias:
-- Faça UMA pergunta por mensagem, máximo 2 linhas.
-- Após receber resposta das 4 perguntas (incluindo Q1 já respondida), diga EXATAMENTE: "Perfeito! Vou configurar seu agente agora."
-- NÃO faça mais perguntas após a frase de encerramento.
-- Responda em português do Brasil.`;
-
+  // Master v7.4 §13.2 + §13.4: system prompt do wizard é montado no backend
+  // (app-chat → buildWizardSystemPrompt) com contextualização por nicho.
+  // Frontend só passa agentType + niche; o prompt canônico fica server-side
+  // pra garantir consistência entre §13.2 (perfil/integrações/critérios/fluxo).
   const wizardChat = useAgentChat(
     [{ role: "agent" as const, text: `Olá! 👋 Vou te ajudar a configurar seu agente ${loadedAgent.agentType}. Para começar: qual é o nome do seu negócio e o que ele faz?` }],
     {
       useGateway: true,
       gatewayModel: setupModel,
-      systemPrompt: wizardSystemPrompt,
       mode: "wizard-setup",
       agentType: wizardAgentTypeKey,
+      niche: wizardNiche || undefined,
       disableCrmExtraction: true,
       persistKey: shouldPersistTemplateDraft ? `${storagePrefix}-wizard-messages` : undefined,
     }

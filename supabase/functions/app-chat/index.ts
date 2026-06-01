@@ -695,23 +695,32 @@ serve(async (req) => {
         }
       }
 
-      // Build messages: sem agentId, o frontend já incluiu o system prompt — usar as mensagens como estão
-      const chatMessages: Array<{ role: string; content: string }> = agentId
-        ? [
-            {
-              role: "system",
-              content: mode === "wizard-setup"
-                ? buildWizardSystemPrompt(
-                    String((body as Record<string, unknown>).agentType || "Custom"),
-                    typeof (body as any).niche === "string" && (body as any).niche
-                      ? (body as any).niche
-                      : undefined,
-                  )
-                : buildAgentSystemPrompt((runtimeAgentConfig || {}) as Record<string, unknown>),
-            },
-            ...((messages || []) as Array<{ role: string; content: string }>),
-          ]
-        : ((messages || []) as Array<{ role: string; content: string }>);
+      // Build messages:
+      // - wizard-setup: SEMPRE usa buildWizardSystemPrompt do backend (Master v7.4 §13.2),
+      //   independente de agentId. Strippa qualquer system message do frontend pra evitar
+      //   override do prompt canônico.
+      // - agent-chat com agentId: usa buildAgentSystemPrompt
+      // - agent-chat sem agentId: frontend manda o system na própria lista de messages
+      const incomingMessages = (messages || []) as Array<{ role: string; content: string }>;
+      let chatMessages: Array<{ role: string; content: string }>;
+      if (mode === "wizard-setup") {
+        const wizardSystem = buildWizardSystemPrompt(
+          String((body as Record<string, unknown>).agentType || "Custom"),
+          typeof (body as any).niche === "string" && (body as any).niche
+            ? (body as any).niche
+            : undefined,
+        );
+        // Remove qualquer system anterior do frontend — backend é fonte de verdade
+        const nonSystem = incomingMessages.filter((m) => m.role !== "system");
+        chatMessages = [{ role: "system", content: wizardSystem }, ...nonSystem];
+      } else if (agentId) {
+        chatMessages = [
+          { role: "system", content: buildAgentSystemPrompt((runtimeAgentConfig || {}) as Record<string, unknown>) },
+          ...incomingMessages,
+        ];
+      } else {
+        chatMessages = incomingMessages;
+      }
 
       // Tool-aware path: when we have an agentId, use runAgentLLM (function-calling).
       // Otherwise fall back to plain buffered completion via callLLM.
