@@ -1096,21 +1096,11 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
             wizardMessages={wizardChat.messages}
             wizardSendMessage={wizardChat.sendMessage}
             wizardIsStreaming={wizardChat.isStreaming}
+            showConfigToggle={wizardStep === "discover" && !!agentId && !agentId.startsWith("new-") && agentId !== "new"}
+            configPanelVisible={showConfigDuringDiscover}
+            onToggleConfigPanel={() => setShowConfigDuringDiscover((s) => !s)}
           />
         </div>
-
-        {/* FAB "Ver configuração" / "Voltar ao chat" — toggle do painel direito durante discover.
-            Mantém wizardStep="discover" intacto (chat preserva contexto, não muda de modo). */}
-        {wizardStep === "discover" && agentId && !agentId.startsWith("new-") && agentId !== "new" && (
-          <button
-            type="button"
-            className="hidden lg:flex absolute bottom-32 right-6 z-50 items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all text-sm font-medium"
-            onClick={() => setShowConfigDuringDiscover((s) => !s)}
-          >
-            <Settings2 className="w-4 h-4" />
-            {showConfigDuringDiscover ? "Esconder configuração" : "Ver configuração"}
-          </button>
-        )}
 
         {/* ── RIGHT: Persistent configuration.
             Visível quando step != discover OU quando user clica o FAB durante discover. */}
