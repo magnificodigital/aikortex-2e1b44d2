@@ -742,23 +742,37 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     }
   }, [pendingSetupRestore, setupChat.setMessages]);
 
-  // Quando o wizard transita pra "done" (one-shot acabou), substitui a
-  // mensagem inicial do setupChat pelo greeting com o nome REAL do agente
-  // (em vez de "Novo Agente" que era o placeholder no momento da inicialização
-  // do useAgentChat). Roda uma única vez por transição.
+  // Quando o wizard transita pra "done", preserva a MENSAGEM RICA do wizard
+  // (com warnings + próximos passos + convite) como entrada do setupChat,
+  // em vez de descartar e mostrar saudação genérica. User não perde contexto.
   const setupGreetingInjectedRef = useRef(false);
   useEffect(() => {
     if (wizardStep !== "done") return;
     if (setupGreetingInjectedRef.current) return;
     if (!loadedAgent.name || loadedAgent.name === "Novo Agente" || loadedAgent.name === "Carregando...") return;
     setupGreetingInjectedRef.current = true;
-    // Apenas substitui se setupChat ainda só tem a mensagem inicial placeholder
-    // (não pisa em conversa já existente que o user iniciou)
+
+    // Pega a ÚLTIMA mensagem do bot no wizardChat (a que tem warnings + próximos
+    // passos). Strip do marker <!--tools:...--> pra ficar só o texto visível.
+    let lastWizardText = "";
+    const wizMsgs = wizardChat.messages || [];
+    for (let i = wizMsgs.length - 1; i >= 0; i--) {
+      const m = wizMsgs[i] as any;
+      if (m.role === "agent" && m.text) {
+        lastWizardText = String(m.text).replace(/\n*<!--tools:\[[\s\S]*?\]-->/g, "").trim();
+        break;
+      }
+    }
+
+    // Fallback se não tiver mensagem do wizard (edge case)
+    const finalMessage = lastWizardText || setupInitialMessage;
+
+    // Só pisa na conversa se ainda for o placeholder (1 mensagem inicial)
     const cur = setupChat.messages;
     if (cur.length <= 1) {
-      setupChat.setMessages([{ role: "agent", text: setupInitialMessage }] as any);
+      setupChat.setMessages([{ role: "agent", text: finalMessage }] as any);
     }
-  }, [wizardStep, loadedAgent.name, setupInitialMessage, setupChat]);
+  }, [wizardStep, loadedAgent.name, setupInitialMessage, setupChat, wizardChat.messages]);
 
   /* ── Chat (wizard-setup mode — guided Q&A to fill agent config) ── */
 

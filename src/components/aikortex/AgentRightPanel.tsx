@@ -491,6 +491,19 @@ const AgentRightPanel = ({
     if (cfgGreeting && cfgGreeting !== agentGreetingMessage) {
       setAgentGreetingMessage(cfgGreeting);
     }
+    // Channels: aceita array ou objeto {whatsapp:true,email:true} (vibe-mutate)
+    const ch = (savedConfig as any)?.channels;
+    let normalized: string[] = [];
+    if (Array.isArray(ch)) normalized = ch;
+    else if (ch && typeof ch === "object") {
+      normalized = Object.entries(ch).filter(([, v]) => v === true).map(([k]) => k);
+    }
+    if (normalized.length > 0) {
+      setConnectedChannels(prev => {
+        const merged = Array.from(new Set([...prev, ...normalized]));
+        return merged.length === prev.length && prev.every(c => merged.includes(c)) ? prev : merged;
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedConfig]);
 
@@ -511,7 +524,16 @@ const AgentRightPanel = ({
   const [customTexts,       setCustomTexts]        = useState<string[]>([]);
   const [customTextInput,   setCustomTextInput]    = useState("");
   const [knowledgeSection,  setKnowledgeSection]   = useState<string | null>("web");
-  const [connectedChannels, setConnectedChannels] = useState<string[]>(() => savedConfig?.channels?.length ? savedConfig.channels : []);
+  const [connectedChannels, setConnectedChannels] = useState<string[]>(() => {
+    // agent-vibe-mutate salva como objeto {whatsapp:true,email:true};
+    // legado/UI manual salva como array. Aceita ambos.
+    const ch = savedConfig?.channels as any;
+    if (Array.isArray(ch)) return ch;
+    if (ch && typeof ch === "object") {
+      return Object.entries(ch).filter(([, v]) => v === true).map(([k]) => k);
+    }
+    return [];
+  });
   const [savedIntegrations, setSavedIntegrations] = useState<string[]>(() => savedConfig?.integrations?.length ? savedConfig.integrations : []);
   const [integrationConfigs, setIntegrationConfigs] = useState<Record<string, ProviderConfig>>(() => savedConfig?.integrationConfigs || {});
   const [apiConfig,         setApiConfig]         = useState<ApiConfig>(() =>
