@@ -12,6 +12,7 @@ import { getRehypePlugins } from "@/lib/safe-rehype";
 import { toast } from "sonner";
 import type { ChatMessage } from "@/hooks/use-agent-chat";
 import type { AgentType } from "@/types/agent-builder";
+import WizardThinkingCard from "@/components/aikortex/WizardThinkingCard";
 
 export interface StructuredAgentConfig {
   agent_name: string;
@@ -827,9 +828,13 @@ const AgentChatPanel = ({
           </div>
         )}
 
-        {/* Streaming indicator (post-wizard or during wizard Q&A) */}
-        {((wizardStep === "done" && isStreaming && messages[messages.length - 1]?.role !== "agent") ||
-          (wizardStep === "discover" && wizardIsStreaming && (wizardChatMessages?.[wizardChatMessages.length - 1]?.role !== "agent"))) && (
+        {/* Wizard thinking card durante discover — mostra o processo */}
+        {wizardStep === "discover" && wizardIsStreaming && (wizardChatMessages?.[wizardChatMessages.length - 1]?.role !== "agent") && (
+          <WizardThinkingCard />
+        )}
+
+        {/* Streaming dots simples pra modo Testar/Configurar (pós-wizard) */}
+        {wizardStep === "done" && isStreaming && messages[messages.length - 1]?.role !== "agent" && (
           <div className="flex gap-2.5">
             <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
               <Bot className="w-3.5 h-3.5 text-primary animate-pulse" />
