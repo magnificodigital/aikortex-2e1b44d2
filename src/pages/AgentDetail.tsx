@@ -765,11 +765,12 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
 
   // Master v7.4 §13.3: painel direito reflete configuração em tempo real.
   // Polling refresca o loadedAgent enquanto wizard ativa tools no draft.
+  // Rápido (1s) durante streaming pro thinking card refletir cada tool
+  // que dispara; mais lento (3s) quando inativo pra economizar.
   useEffect(() => {
     if (!agentId || agentId === "new" || agentId.startsWith("new-")) return;
     if (wizardStep !== "discover") return;
-    // Só faz polling enquanto wizard está ativo (streaming OU acabou de processar tools).
-    // Polling de 3s é leve e suficiente pra UX "config evoluindo em tempo real".
+    const intervalMs = wizardChat.isStreaming ? 1000 : 3000;
     const interval = setInterval(async () => {
       const { data } = await supabase.from("user_agents").select("name, description, agent_type, model, config, avatar_url").eq("id", agentId).maybeSingle();
       if (!data) return;
@@ -792,9 +793,9 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
         if (inferredNiche && !wizardNiche) setWizardNiche(inferredNiche);
         return next;
       });
-    }, 3000);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [agentId, wizardStep, wizardNiche]);
+  }, [agentId, wizardStep, wizardNiche, wizardChat.isStreaming]);
 
   // Auto-send "start" once when wizard opens (templates AND new custom agents)
   const wizardStartedRef = useRef(false);

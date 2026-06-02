@@ -828,9 +828,10 @@ const AgentChatPanel = ({
           </div>
         )}
 
-        {/* Wizard thinking card durante discover — mostra o processo */}
+        {/* Wizard thinking card durante discover — mostra o processo REAL
+            baseado em savedConfig atualizado por polling rápido. */}
         {wizardStep === "discover" && wizardIsStreaming && (wizardChatMessages?.[wizardChatMessages.length - 1]?.role !== "agent") && (
-          <WizardThinkingCard />
+          <WizardThinkingCard savedConfig={savedConfig} />
         )}
 
         {/* Streaming dots simples pra modo Testar/Configurar (pós-wizard) */}

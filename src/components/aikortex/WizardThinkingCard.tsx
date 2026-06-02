@@ -1,61 +1,68 @@
-import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import aikortexIconWhite from "@/assets/aikortex-icon-white.png";
 import aikortexIconBlack from "@/assets/aikortex-icon-black.png";
 
-// Master v7.4 §13.2 — processo ONE-SHOT dividido em 3 fases mentais,
-// com labels que soam como pensamento ("Pensando sobre…", "Planejando…",
-// "Desenvolvendo…") em vez de imperativos secos ("Aplicar X").
-const PHASES = [
-  {
-    id: "thinking",
-    label: "Pensando",
-    steps: [
-      "Pensando sobre o que você descreveu",
-      "Identificando o tipo de agente ideal",
-    ],
-  },
-  {
-    id: "planning",
-    label: "Planejando",
-    steps: [
-      "Planejando o perfil do agente",
-      "Pensando nos canais e integrações necessárias",
-      "Pensando nos critérios certos",
-      "Pensando no fluxo de conversa",
-    ],
-  },
-  {
-    id: "building",
-    label: "Desenvolvendo",
-    steps: [
-      "Desenvolvendo o agente",
-      "Finalizando os últimos ajustes",
-    ],
-  },
-] as const;
+interface WizardThinkingCardProps {
+  /** Estado vivo do draft via polling — usado pra marcar steps reais. */
+  savedConfig?: Record<string, any> | null;
+}
 
-const TOTAL_STEPS = PHASES.reduce((acc, p) => acc + p.steps.length, 0);
-const STEP_INTERVAL_MS = 1300;
+// Master v7.4 §13.2 + §13.5 — cada step corresponde a um CAMPO REAL do
+// agente sendo configurado por uma tool específica. NÃO é animação fake:
+// step só vira ✓ quando o respectivo campo já foi salvo no draft via polling.
+interface ThinkingStep {
+  id: string;
+  label: string;
+  done: (cfg: any) => boolean;
+}
 
-export default function WizardThinkingCard() {
+const STEPS: ThinkingStep[] = [
+  // ── PENSANDO — entendimento da descrição ──
+  { id: "analyze",   label: "Analisando sua descrição",          done: () => true /* primeiro step sempre marcado */ },
+  { id: "niche",     label: "Identificando o nicho do negócio",  done: (cfg) => !!cfg?.businessContext?.niche },
+  { id: "company",   label: "Reconhecendo a empresa",            done: (cfg) => !!cfg?.businessContext?.companyName },
+
+  // ── PLANEJANDO — desenho do agente ──
+  { id: "name",      label: "Nomeando o agente",                 done: (cfg) => !!cfg?.name && cfg.name !== "Novo Agente" && cfg.name !== "Carregando..." },
+  { id: "tone",      label: "Definindo o tom de voz",            done: (cfg) => !!(cfg?.businessContext?.toneOfVoice || cfg?.toneOfVoice) },
+  { id: "objective", label: "Estruturando o objetivo principal", done: (cfg) => !!(cfg?.profile?.primaryGoal || cfg?.objective) },
+  { id: "channels",  label: "Selecionando canais de comunicação", done: (cfg) => {
+      const ch = cfg?.channels;
+      if (Array.isArray(ch)) return ch.length > 0;
+      if (ch && typeof ch === "object") return Object.values(ch).some((v) => v === true);
+      return false;
+    },
+  },
+  { id: "integrations", label: "Mapeando integrações externas",  done: (cfg) => Array.isArray(cfg?.externalIntegrations) && cfg.externalIntegrations.length > 0 },
+
+  // ── DESENVOLVENDO — escrita do agente ──
+  { id: "instructions", label: "Escrevendo as instruções operacionais", done: (cfg) => !!cfg?.instructions && cfg.instructions.length > 80 },
+  { id: "greeting",     label: "Criando a mensagem de saudação",        done: (cfg) => !!cfg?.greetingMessage },
+  { id: "finalize",     label: "Finalizando o agente",                  done: (cfg) => !!cfg?.wizard_completed },
+];
+
+const PHASE_BREAKPOINTS = [3, 8]; // step indexes onde fases mudam
+
+function phaseLabel(stepIdx: number): string {
+  if (stepIdx < PHASE_BREAKPOINTS[0]) return "Pensando";
+  if (stepIdx < PHASE_BREAKPOINTS[1]) return "Planejando";
+  return "Desenvolvendo";
+}
+
+export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const [globalStep, setGlobalStep] = useState(1);
 
-  useEffect(() => {
-    setGlobalStep(1);
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 1; i < TOTAL_STEPS; i++) {
-      timers.push(setTimeout(() => setGlobalStep(i + 1), i * STEP_INTERVAL_MS));
-    }
-    return () => timers.forEach((t) => clearTimeout(t));
-  }, []);
+  // Calcula status real de cada step a partir do savedConfig vivo
+  const statuses = STEPS.map((s) => s.done(savedConfig));
+  // Primeiro step ainda não feito = o atual em andamento
+  const currentIdx = statuses.findIndex((d) => !d);
+  const currentPhase = currentIdx === -1 ? "Desenvolvendo" : phaseLabel(currentIdx);
 
   return (
     <div className="flex gap-3">
-      {/* Ícone Aikortex pulsante (cor adapta ao tema) */}
+      {/* Ícone Aikortex pulsante (theme-aware) */}
       <div className="relative w-9 h-9 shrink-0 mt-0.5">
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/5 ring-1 ring-primary/30 animate-pulse" />
         <div className="absolute inset-0 rounded-full bg-primary/15 blur-md animate-pulse" />
@@ -69,35 +76,55 @@ export default function WizardThinkingCard() {
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground mb-3">Construindo seu agente...</p>
+        <p className="text-sm font-semibold text-foreground mb-3">
+          {currentIdx === -1 ? "Agente quase pronto..." : `${currentPhase}...`}
+        </p>
 
-        {/* Lista de phases + sub-steps inline */}
+        {/* Lista agrupada por fase. Steps só aparecem após sua fase ser alcançada. */}
         {(() => {
-          let cursor = 0;
-          return PHASES.map((phase) => {
-            const phaseStart = cursor + 1;
-            const phaseEnd = cursor + phase.steps.length;
-            cursor += phase.steps.length;
-            if (globalStep < phaseStart) return null;
+          // Agrupa steps por fase
+          const phases: { label: string; steps: { step: ThinkingStep; idx: number; done: boolean }[] }[] = [];
+          let buf: { step: ThinkingStep; idx: number; done: boolean }[] = [];
+          let lastPhase = "";
+          STEPS.forEach((step, idx) => {
+            const p = phaseLabel(idx);
+            if (p !== lastPhase) {
+              if (buf.length) phases.push({ label: lastPhase, steps: buf });
+              buf = [];
+              lastPhase = p;
+            }
+            buf.push({ step, idx, done: statuses[idx] });
+          });
+          if (buf.length) phases.push({ label: lastPhase, steps: buf });
 
-            const phaseDone = globalStep > phaseEnd;
+          return phases.map((phase) => {
+            // Mostra a fase se algum step dela está sendo trabalhado ou já passou
+            const reached = phase.steps.some((s) => s.done) || phase.steps.some((s) => s.idx === currentIdx);
+            if (!reached) return null;
+            const phaseDone = phase.steps.every((s) => s.done);
+            const phaseActive = phase.label === currentPhase && !phaseDone;
 
             return (
-              <div key={phase.id} className="mb-3 last:mb-0">
+              <div key={phase.label} className="mb-3 last:mb-0">
                 <p className={`text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${
-                  phaseDone ? "text-emerald-600 dark:text-emerald-500" : "text-primary"
+                  phaseDone
+                    ? "text-emerald-600 dark:text-emerald-500"
+                    : phaseActive
+                      ? "text-primary"
+                      : "text-muted-foreground"
                 }`}>
                   {phase.label}
                   {phaseDone && <Check className="inline-block w-3 h-3 ml-1" />}
                 </p>
                 <ul className="space-y-1 ml-0.5 border-l border-border/40 pl-3">
-                  {phase.steps.map((step, stepIdx) => {
-                    const stepGlobal = phaseStart + stepIdx;
-                    if (globalStep < stepGlobal) return null;
-                    const isCurrent = globalStep === stepGlobal;
+                  {phase.steps.map(({ step, idx, done }) => {
+                    // Step não aparece até ser alcançado (ou já estar feito)
+                    const reachedStep = done || idx === currentIdx || idx < currentIdx;
+                    if (!reachedStep) return null;
+                    const isCurrent = idx === currentIdx;
                     return (
                       <li
-                        key={step}
+                        key={step.id}
                         className={`flex items-center gap-2 text-xs transition-all duration-300 ${
                           isCurrent ? "text-foreground" : "text-muted-foreground/70"
                         }`}
@@ -110,7 +137,7 @@ export default function WizardThinkingCard() {
                           )}
                         </span>
                         <span>
-                          {step}
+                          {step.label}
                           {isCurrent ? "..." : "."}
                         </span>
                       </li>
