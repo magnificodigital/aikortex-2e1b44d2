@@ -87,7 +87,7 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground mb-3">
-          {currentIdx === -1 ? "Agente quase pronto..." : `${currentPhase}...`}
+          {currentIdx === -1 ? "Agente quase pronto..." : "Construindo seu agente..."}
         </p>
 
         {/* Lista agrupada por fase. Steps só aparecem após sua fase ser alcançada. */}
