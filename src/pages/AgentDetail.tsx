@@ -814,18 +814,40 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
   // Fast-track ONE-SHOT: quando wizard chamou commit_draft com tudo configurado,
   // pula structure/build (LLM extra desnecessário) e vai direto pra "done".
   // Master v7.4 §13.2: agente já está montado no DB via tools; só transita estado.
+  // CRUCIAL: refresh final do savedConfig ANTES de transitar pra "done" — sem
+  // isso o polling para no meio e os últimos campos (instructions/greeting)
+  // não aparecem na checklist.
   const fastTrackComplete = useCallback(async () => {
     if (wizardCompletedRef.current) return;
     wizardCompletedRef.current = true;
 
     if (agentId && agentId !== "new" && !agentId.startsWith("new-")) {
       try {
-        await supabase
+        const { data } = await supabase
           .from("user_agents")
           .update({ status: "active" })
-          .eq("id", agentId);
+          .eq("id", agentId)
+          .select("*")
+          .single();
+
+        if (data) {
+          setLoadedAgent((prev) => ({
+            ...prev,
+            name: data.name || prev.name,
+            model: data.model || prev.model,
+            agentType: (data.agent_type as AgentType) || prev.agentType,
+            avatar: data.avatar_url || prev.avatar,
+            savedConfig: {
+              ...(typeof data.config === "object" && data.config !== null ? data.config : {}),
+              name: data.name,
+              description: data.description || "",
+              avatarUrl: data.avatar_url || prev.avatar,
+              agentType: data.agent_type,
+            } as Record<string, any>,
+          }));
+        }
       } catch (e) {
-        console.warn("[wizard] fast-track status update failed:", e);
+        console.warn("[wizard] fast-track refresh failed:", e);
       }
     }
 
