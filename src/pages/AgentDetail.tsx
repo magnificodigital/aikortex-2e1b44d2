@@ -742,37 +742,9 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     }
   }, [pendingSetupRestore, setupChat.setMessages]);
 
-  // Quando o wizard transita pra "done", preserva a MENSAGEM RICA do wizard
-  // (com warnings + próximos passos + convite) como entrada do setupChat,
-  // em vez de descartar e mostrar saudação genérica. User não perde contexto.
+  // Placeholder do ref — useEffect que usa wizardChat foi MOVIDO pra
+  // depois da declaração de wizardChat (evita ReferenceError de TDZ).
   const setupGreetingInjectedRef = useRef(false);
-  useEffect(() => {
-    if (wizardStep !== "done") return;
-    if (setupGreetingInjectedRef.current) return;
-    if (!loadedAgent.name || loadedAgent.name === "Novo Agente" || loadedAgent.name === "Carregando...") return;
-    setupGreetingInjectedRef.current = true;
-
-    // Pega a ÚLTIMA mensagem do bot no wizardChat (a que tem warnings + próximos
-    // passos). Strip do marker <!--tools:...--> pra ficar só o texto visível.
-    let lastWizardText = "";
-    const wizMsgs = wizardChat.messages || [];
-    for (let i = wizMsgs.length - 1; i >= 0; i--) {
-      const m = wizMsgs[i] as any;
-      if (m.role === "agent" && m.text) {
-        lastWizardText = String(m.text).replace(/\n*<!--tools:\[[\s\S]*?\]-->/g, "").trim();
-        break;
-      }
-    }
-
-    // Fallback se não tiver mensagem do wizard (edge case)
-    const finalMessage = lastWizardText || setupInitialMessage;
-
-    // Só pisa na conversa se ainda for o placeholder (1 mensagem inicial)
-    const cur = setupChat.messages;
-    if (cur.length <= 1) {
-      setupChat.setMessages([{ role: "agent", text: finalMessage }] as any);
-    }
-  }, [wizardStep, loadedAgent.name, setupInitialMessage, setupChat, wizardChat.messages]);
 
   /* ── Chat (wizard-setup mode — guided Q&A to fill agent config) ── */
 
@@ -815,6 +787,35 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
       persistKey: shouldPersistTemplateDraft ? `${storagePrefix}-wizard-messages` : undefined,
     }
   );
+
+  // Quando o wizard transita pra "done", preserva a MENSAGEM RICA do wizard
+  // (com warnings + próximos passos + convite) como entrada do setupChat,
+  // em vez de descartar e mostrar saudação genérica. User não perde contexto.
+  // IMPORTANTE: este effect TEM QUE estar APÓS a declaração de wizardChat
+  // (TDZ — const não é hoisted). Antes estava ANTES e quebrava com tela preta.
+  useEffect(() => {
+    if (wizardStep !== "done") return;
+    if (setupGreetingInjectedRef.current) return;
+    if (!loadedAgent.name || loadedAgent.name === "Novo Agente" || loadedAgent.name === "Carregando...") return;
+    setupGreetingInjectedRef.current = true;
+
+    let lastWizardText = "";
+    const wizMsgs = wizardChat.messages || [];
+    for (let i = wizMsgs.length - 1; i >= 0; i--) {
+      const m = wizMsgs[i] as any;
+      if (m.role === "agent" && m.text) {
+        lastWizardText = String(m.text).replace(/\n*<!--tools:\[[\s\S]*?\]-->/g, "").trim();
+        break;
+      }
+    }
+
+    const finalMessage = lastWizardText || setupInitialMessage;
+    const cur = setupChat.messages;
+    if (cur.length <= 1) {
+      setupChat.setMessages([{ role: "agent", text: finalMessage }] as any);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wizardStep, loadedAgent.name, wizardChat.messages]);
 
   // Master v7.4 §13.3: painel direito reflete configuração em tempo real.
   // Polling refresca o loadedAgent enquanto wizard ativa tools no draft.
