@@ -32,7 +32,7 @@ export default function InlineOAuthButton({ scope, agentId, onConnected }: Inlin
   const watcherRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const info = SCOPE_LABELS[scope];
 
-  // Escuta postMessage da popup
+  // Escuta postMessage da popup (caminho preferencial — mais rápido)
   useEffect(() => {
     const onMsg = (ev: MessageEvent) => {
       const data = ev.data;
@@ -57,6 +57,36 @@ export default function InlineOAuthButton({ scope, agentId, onConnected }: Inlin
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [scope, onConnected]);
+
+  // FALLBACK: poll user_api_keys enquanto loading. Caso postMessage falhe
+  // (Google OAuth redirect às vezes quebra opener cross-origin), polling
+  // detecta a conexão olhando o DB direto. Tempo de detecção: até 3s.
+  useEffect(() => {
+    if (state !== "loading") return;
+    const poll = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const { data } = await supabase
+          .from("user_api_keys")
+          .select("api_key")
+          .eq("provider", scope)
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        if (data?.api_key) {
+          // Conectou! Fecha popup, marca como connected
+          setState("connected");
+          try { popupRef.current?.close(); } catch { /* ignore */ }
+          onConnected?.(scope);
+        }
+      } catch (e) {
+        // Silencioso — polling é fallback, não bloqueia
+        console.debug("[oauth poll]", e);
+      }
+    };
+    const interval = setInterval(poll, 1500);
+    return () => clearInterval(interval);
+  }, [state, scope, onConnected]);
 
   // Limpa watcher ao desmontar
   useEffect(() => () => {

@@ -75,7 +75,11 @@ serve(async (req) => {
   const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_OAUTH_CLIENT_ID");
   const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_OAUTH_CLIENT_SECRET");
   const STATE_SECRET = Deno.env.get("OAUTH_STATE_SECRET") || SUPABASE_SERVICE_ROLE_KEY;
-  const POST_ORIGIN = Deno.env.get("APP_URL") || "*"; // production: travar pro domínio real
+  // Origin "*" — frontend valida via shape do payload (data.success + data.scope).
+  // Restringir aqui quebra quando o user testa em URLs diferentes (preview Lovable,
+  // localhost, custom domain) e o ganho de segurança é marginal: postMessage não
+  // entrega segredos, só o boolean success + scope, e o token real já está no DB.
+  const POST_ORIGIN = "*";
 
   if (errorParam) {
     return htmlResponse(popupCloseHtml({ success: false, error: errorParam }, POST_ORIGIN));
