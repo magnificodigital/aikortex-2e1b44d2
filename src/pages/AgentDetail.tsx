@@ -786,6 +786,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
             name: data.name,
             description: data.description || "",
             avatarUrl: data.avatar_url || prev.avatar,
+            agentType: data.agent_type, // expõe pro thinking card detectar set_agent_type
           } as Record<string, any>,
         };
         // Se nicho foi setado pelo wizard, sincroniza estado local

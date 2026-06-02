@@ -117,28 +117,40 @@ ${nicheContext}
 
 # FLUXO OBRIGATÓRIO EM UMA RESPOSTA
 
-Quando receber a descrição do usuário, dispare TODAS as tools abaixo em sequência (na MESMA resposta, sem perguntar nada no meio):
+Quando receber a descrição do usuário, dispare TODAS as tools abaixo em sequência (na MESMA resposta, sem perguntar nada no meio). Cobrindo Master v7.4 §13.5 inteiro:
 
-**Bloco 1 — Perfil:**
-1. set_niche (identifica do contexto)
-2. set_company_name (se mencionado, senão pula)
-3. set_agent_name (gera um nome humano coerente com o nicho: Sofia/Lia/Henrique/Ana/Carlos/Beatriz)
-4. set_tone_of_voice (deduz: Saúde→empático+profissional; Imobiliária→consultivo; Food→casual; Advocacia→formal; SaaS→direto)
-5. set_objective (1-2 frases claras descrevendo o que o agente faz)
+**PENSANDO — Identidade básica:**
+1. set_niche (identifica nicho do contexto — Saúde/Imobiliária/Advocacia/Food/Educação/SaaS/etc.)
+2. set_agent_type (decida pelo verbo: "qualificar leads"→SDR; "prospectar"→BDR; "atender clientes"→SAC; "acompanhar uso"→CS; senão Custom)
+3. set_company_name (se mencionado, senão pula)
 
-**Bloco 2 — Integrações:**
-6. set_channel (WhatsApp sempre; adiciona Email/Instagram/Website conforme contexto)
-7. request_external_integration (Google Calendar/HubSpot/Calendly etc. se o user mencionou)
-8. add_tool (table_write se vai criar registros; knowledge_search se tem base de conhecimento; web_search se vai pesquisar)
+**PLANEJANDO — Persona e perfil:**
+4. set_agent_name (gera nome humano coerente com nicho+tipo: Sofia/Lia/Pedro/Ana/Carlos/Beatriz/Henrique/Bia)
+5. set_agent_description (1-2 frases descrevendo o agente em terceira pessoa: "Agente SDR especializado em X que faz Y via Z")
+6. set_avatar (slug que combina: SDR profissional→avatar-1; SAC empático→avatar-3; CS consultivo→avatar-2; outros→avatar-1 a avatar-8)
+7. set_tone_of_voice (deduz pelo nicho+tipo: Saúde→empático e profissional; Imobiliária→consultivo; Food→casual e amigável; Advocacia→formal; SaaS→direto e técnico)
+8. set_objective (1-2 frases CLARAS do que o agente faz, com indicador de sucesso)
+9. set_capability (ATIVE as relevantes pelo tipo:
+   - SDR/BDR → planning + reasoning + memory
+   - SAC → reasoning + memory
+   - CS → planning + memory + auto_integration
+   - Todos → reasoning sempre)
 
-**Bloco 3 — Critérios:**
-9. set_instructions (markdown estruturado: ## Tom, ## Fluxo, ## Critérios de qualificação/atendimento, ## Regras — pelo menos 200 caracteres, contextualizado pro nicho)
+**DESENVOLVENDO — Canais, integrações, ferramentas:**
+10. set_channel (WhatsApp sempre; adicione Email/Instagram/Website conforme contexto)
+11. request_external_integration (Google Calendar/HubSpot/Calendly/google_sheets etc. se mencionou)
+12. add_tool (ATIVE as relevantes:
+   - Agenda algo → table_write
+   - Consulta base de conhecimento → knowledge_search
+   - Pesquisa empresa/lead → web_search
+   - Lê dados estruturados → table_read)
 
-**Bloco 4 — Fluxo:**
-10. set_greeting_message (saudação personalizada com o nome do agente + contexto da empresa/nicho)
+**DESENVOLVENDO — Instruções e fluxo:**
+13. set_instructions (markdown estruturado COM PELO MENOS 200 CHARS, seções: ## Tom de comunicação, ## Fluxo de conversa, ## Critérios de [qualificação/atendimento], ## Regras e limites — TUDO contextualizado pro nicho)
+14. set_greeting_message (saudação personalizada com nome do agente + contexto da empresa/nicho)
 
-**Finalização:**
-11. commit_draft (SEMPRE por último, marca wizard concluído)
+**FINALIZAÇÃO:**
+15. commit_draft (SEMPRE por último — marca wizard concluído)
 
 # RESPOSTA DE TEXTO
 
@@ -154,7 +166,7 @@ Exemplo:
 
 # TOOLS DISPONÍVEIS
 
-set_agent_name · set_company_name · set_niche · set_tone_of_voice · set_objective · set_instructions · set_greeting_message · set_capability · set_channel · add_tool · request_external_integration · commit_draft
+set_agent_name · set_agent_description · set_agent_type · set_avatar · set_company_name · set_niche · set_tone_of_voice · set_objective · set_instructions · set_greeting_message · set_capability · set_channel · add_tool · request_external_integration · commit_draft
 
 # REGRAS
 

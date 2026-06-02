@@ -22,6 +22,44 @@ export const WIZARD_TOOL_DEFS = [
   {
     type: "function",
     function: {
+      name: "set_agent_description",
+      description: "Define a descrição em 1-2 frases do que o agente faz. Exemplo: 'Agente SDR especializado em clínicas odontológicas que qualifica leads via WhatsApp e agenda consultas no Google Agenda.'",
+      parameters: {
+        type: "object",
+        properties: { description: { type: "string", description: "Descrição clara em 1-2 frases" } },
+        required: ["description"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_agent_type",
+      description: "Categoriza o tipo do agente (Master v7.4). VALUES: SDR (qualificação inbound de leads), BDR (prospecção outbound), SAC (atendimento ao cliente), CS (Customer Success/pós-venda), Custom (genérico). Decida com base na descrição do usuário.",
+      parameters: {
+        type: "object",
+        properties: {
+          agent_type: { type: "string", enum: ["SDR", "BDR", "SAC", "CS", "Custom"], description: "Tipo do agente" },
+        },
+        required: ["agent_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_avatar",
+      description: "Define o avatar do agente. Use slug entre: avatar-1, avatar-2, avatar-3, avatar-4, avatar-5, avatar-6, avatar-7, avatar-8. Escolha que mais combina com o tipo+nicho (ex: avatar-3 pra atendimento empático em SAC; avatar-1 pra SDR profissional).",
+      parameters: {
+        type: "object",
+        properties: { avatar: { type: "string", description: "Slug do avatar (avatar-1 a avatar-8)" } },
+        required: ["avatar"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "set_company_name",
       description: "Define o nome da empresa que o agente representa. USE assim que o usuário mencionar o nome do negócio dele.",
       parameters: {

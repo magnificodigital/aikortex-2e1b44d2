@@ -18,6 +18,8 @@ const corsHeaders = {
 type MutateAction =
   | "set_agent_name"
   | "set_agent_description"
+  | "set_agent_type"
+  | "set_avatar"
   | "set_company_name"
   | "set_tone_of_voice"
   | "set_objective"
@@ -102,7 +104,29 @@ serve(async (req) => {
       case "set_agent_description": {
         const description = String(params.description ?? "").trim();
         updates.description = description;
+        newConfig = { ...newConfig, descriptionConfigured: true };
         logMessage = `Descrição atualizada`;
+        break;
+      }
+      case "set_agent_type": {
+        const validTypes = ["SDR", "BDR", "SAC", "CS", "Custom"];
+        const rawType = String(params.agent_type ?? params.type ?? "").trim();
+        const normalized = rawType.toUpperCase();
+        const agent_type = validTypes.includes(normalized) ? normalized : (validTypes.includes(rawType) ? rawType : "Custom");
+        updates.agent_type = agent_type;
+        newConfig = { ...newConfig, agentTypeConfigured: true };
+        logMessage = `Tipo do agente: ${agent_type}`;
+        break;
+      }
+      case "set_avatar": {
+        const raw = String(params.avatar ?? params.avatar_slug ?? params.avatar_url ?? "").trim();
+        if (!raw) return jsonRes({ error: "INVALID_PARAMS", message: "avatar obrigatório" }, 400);
+        const avatar_url = raw.startsWith("http") || raw.startsWith("/")
+          ? raw
+          : `/src/assets/avatars/${raw}.png`;
+        updates.avatar_url = avatar_url;
+        newConfig = { ...newConfig, avatarConfigured: true };
+        logMessage = `Avatar definido`;
         break;
       }
       case "set_company_name": {
@@ -284,9 +308,15 @@ serve(async (req) => {
           { agent_id: agentId, tool_key, enabled: true, config: params.config ?? {} },
           { onConflict: "agent_id,tool_key" },
         );
+        // Denormaliza em config.enabledTools[] pra ser visível no polling do frontend
+        // (agent_tools é tabela separada que o polling não lê).
+        const enabledTools: string[] = Array.isArray(newConfig.enabledTools) ? newConfig.enabledTools : [];
+        if (!enabledTools.includes(tool_key)) {
+          newConfig = { ...newConfig, enabledTools: [...enabledTools, tool_key] };
+        }
         logMessage = `Tool "${tool_key}" adicionada`;
-        // Não precisa de update no user_agents — agent_tools tem RLS por agent
-        return jsonRes({ ok: true, action, log: logMessage });
+        // Cai no update final do switch (faz update no user_agents também)
+        break;
       }
       case "remove_tool": {
         const tool_key = String(params.tool_key ?? "");
@@ -294,8 +324,11 @@ serve(async (req) => {
           .update({ enabled: false })
           .eq("agent_id", agentId)
           .eq("tool_key", tool_key);
+        // Remove de config.enabledTools[] também
+        const enabledTools: string[] = Array.isArray(newConfig.enabledTools) ? newConfig.enabledTools : [];
+        newConfig = { ...newConfig, enabledTools: enabledTools.filter((t) => t !== tool_key) };
         logMessage = `Tool "${tool_key}" removida`;
-        return jsonRes({ ok: true, action, log: logMessage });
+        break;
       }
       case "commit_draft": {
         // Marca o agente como pronto pra revisão final do usuário. O status

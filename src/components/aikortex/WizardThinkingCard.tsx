@@ -18,15 +18,25 @@ interface ThinkingStep {
 }
 
 const STEPS: ThinkingStep[] = [
-  // ── PENSANDO — entendimento da descrição ──
-  { id: "analyze",   label: "Analisando sua descrição",          done: () => true /* primeiro step sempre marcado */ },
+  // ── 🧠 PENSANDO (3 steps) — entendimento + categorização ──
+  { id: "analyze",   label: "Analisando sua descrição",          done: () => true },
   { id: "niche",     label: "Identificando o nicho do negócio",  done: (cfg) => !!cfg?.businessContext?.niche },
-  { id: "company",   label: "Reconhecendo a empresa",            done: (cfg) => !!cfg?.businessContext?.companyName },
+  { id: "type",      label: "Categorizando o tipo do agente",    done: (cfg) => !!cfg?.agentTypeConfigured },
 
-  // ── PLANEJANDO — desenho do agente ──
-  { id: "name",      label: "Nomeando o agente",                 done: (cfg) => !!cfg?.name && cfg.name !== "Novo Agente" && cfg.name !== "Carregando..." },
-  { id: "tone",      label: "Definindo o tom de voz",            done: (cfg) => !!(cfg?.businessContext?.toneOfVoice || cfg?.toneOfVoice) },
-  { id: "objective", label: "Estruturando o objetivo principal", done: (cfg) => !!(cfg?.profile?.primaryGoal || cfg?.objective) },
+  // ── 📋 PLANEJANDO (7 steps) — persona + perfil + capacidades ──
+  { id: "company",   label: "Reconhecendo a empresa",                  done: (cfg) => !!cfg?.businessContext?.companyName },
+  { id: "name",      label: "Nomeando o agente",                       done: (cfg) => !!cfg?.name && cfg.name !== "Novo Agente" && cfg.name !== "Carregando..." },
+  { id: "description", label: "Escrevendo a descrição do agente",      done: (cfg) => !!cfg?.descriptionConfigured },
+  { id: "avatar",    label: "Selecionando o avatar",                   done: (cfg) => !!cfg?.avatarConfigured },
+  { id: "tone",      label: "Definindo o tom de voz",                  done: (cfg) => !!(cfg?.businessContext?.toneOfVoice || cfg?.toneOfVoice) },
+  { id: "objective", label: "Estruturando o objetivo principal",       done: (cfg) => !!(cfg?.profile?.primaryGoal || cfg?.objective) },
+  { id: "capabilities", label: "Ativando capacidades cognitivas",       done: (cfg) => {
+      const caps = cfg?.capabilities ?? {};
+      return Object.values(caps).some((c: any) => c?.enabled === true);
+    },
+  },
+
+  // ── 🔨 DESENVOLVENDO (6 steps) — canais + integrações + tools + texto ──
   { id: "channels",  label: "Selecionando canais de comunicação", done: (cfg) => {
       const ch = cfg?.channels;
       if (Array.isArray(ch)) return ch.length > 0;
@@ -34,15 +44,15 @@ const STEPS: ThinkingStep[] = [
       return false;
     },
   },
-  { id: "integrations", label: "Mapeando integrações externas",  done: (cfg) => Array.isArray(cfg?.externalIntegrations) && cfg.externalIntegrations.length > 0 },
-
-  // ── DESENVOLVENDO — escrita do agente ──
-  { id: "instructions", label: "Escrevendo as instruções operacionais", done: (cfg) => !!cfg?.instructions && cfg.instructions.length > 80 },
+  { id: "integrations", label: "Mapeando integrações externas",       done: (cfg) => Array.isArray(cfg?.externalIntegrations) && cfg.externalIntegrations.length > 0 },
+  { id: "tools",        label: "Habilitando ferramentas runtime",     done: (cfg) => Array.isArray(cfg?.enabledTools) && cfg.enabledTools.length > 0 },
+  { id: "instructions", label: "Escrevendo as instruções operacionais", done: (cfg) => !!cfg?.instructions && cfg.instructions.length > 200 },
   { id: "greeting",     label: "Criando a mensagem de saudação",        done: (cfg) => !!cfg?.greetingMessage },
   { id: "finalize",     label: "Finalizando o agente",                  done: (cfg) => !!cfg?.wizard_completed },
 ];
 
-const PHASE_BREAKPOINTS = [3, 8]; // step indexes onde fases mudam
+// 3 fases: PENSANDO (0-2) · PLANEJANDO (3-9) · DESENVOLVENDO (10-15)
+const PHASE_BREAKPOINTS = [3, 10];
 
 function phaseLabel(stepIdx: number): string {
   if (stepIdx < PHASE_BREAKPOINTS[0]) return "Pensando";
