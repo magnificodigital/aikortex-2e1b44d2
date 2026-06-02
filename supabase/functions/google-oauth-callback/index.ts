@@ -48,18 +48,52 @@ function htmlResponse(html: string, status = 200): Response {
 function popupCloseHtml(message: { success: boolean; scope?: string; error?: string }, postOrigin: string): string {
   const payload = JSON.stringify(message);
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${message.success ? "Conectado" : "Erro"}</title></head>
-<body style="font-family: -apple-system, sans-serif; padding: 40px; text-align: center; background: #0a0a0a; color: #fff;">
-  <div style="font-size: 48px; margin-bottom: 16px;">${message.success ? "✅" : "❌"}</div>
-  <h1 style="font-size: 18px; margin: 0 0 8px;">${message.success ? "Conta conectada!" : "Erro na conexão"}</h1>
-  <p style="color: #999; font-size: 14px;">${message.success ? "Pode fechar esta janela." : (message.error || "Tente novamente.")}</p>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>${message.success ? "Conectado" : "Erro"}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 40px 20px; text-align: center; background: #0a0a0a; color: #fff; margin: 0; }
+  .icon { font-size: 48px; margin-bottom: 16px; }
+  h1 { font-size: 18px; margin: 0 0 8px; font-weight: 600; }
+  p { color: #999; font-size: 14px; margin: 0 0 24px; }
+  button { background: ${message.success ? "#10b981" : "#3b82f6"}; color: white; border: 0; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  button:hover { opacity: 0.9; }
+  .small { font-size: 11px; color: #666; margin-top: 16px; }
+</style>
+</head>
+<body>
+  <div class="icon">${message.success ? "✅" : "❌"}</div>
+  <h1>${message.success ? "Conta conectada!" : "Erro na conexão"}</h1>
+  <p>${message.success ? "Voltando ao chat..." : (message.error || "Tente novamente.")}</p>
+  <button onclick="window.close()">Fechar janela</button>
+  <p class="small">Se essa janela não fechar sozinha, clique no botão acima.</p>
   <script>
-    try {
-      if (window.opener) {
-        window.opener.postMessage(${payload}, "${postOrigin}");
+    (function() {
+      var payload = ${payload};
+      // Tenta avisar o opener via postMessage (caminho preferencial)
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(payload, "${postOrigin}");
+        }
+      } catch (e) { console.error("postMessage falhou:", e); }
+      // Também tenta BroadcastChannel (cross-tab dentro do mesmo origin)
+      try {
+        var bc = new BroadcastChannel("aikortex_oauth");
+        bc.postMessage(payload);
+        setTimeout(function() { try { bc.close(); } catch (e) {} }, 500);
+      } catch (e) { /* BroadcastChannel não suportado */ }
+      // Auto-close mais agressivo
+      var closed = false;
+      function tryClose() {
+        if (closed) return;
+        closed = true;
+        try { window.close(); } catch (e) {}
       }
-    } catch (e) { console.error(e); }
-    setTimeout(function() { window.close(); }, 1500);
+      setTimeout(tryClose, 800);
+      setTimeout(tryClose, 2500);
+    })();
   </script>
 </body></html>`;
 }

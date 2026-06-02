@@ -32,10 +32,10 @@ export default function InlineOAuthButton({ scope, agentId, onConnected }: Inlin
   const watcherRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const info = SCOPE_LABELS[scope];
 
-  // Escuta postMessage da popup (caminho preferencial — mais rápido)
+  // Escuta postMessage da popup + BroadcastChannel (cross-tab) — 3 caminhos
+  // independentes pra detectar conexão (postMessage / broadcast / polling).
   useEffect(() => {
-    const onMsg = (ev: MessageEvent) => {
-      const data = ev.data;
+    const handlePayload = (data: any) => {
       if (!data || typeof data !== "object") return;
       if (typeof data.success !== "boolean") return;
       if (data.scope && data.scope !== scope) return;
@@ -54,8 +54,21 @@ export default function InlineOAuthButton({ scope, agentId, onConnected }: Inlin
         setErrorMsg(data.error || "Erro ao conectar");
       }
     };
+
+    const onMsg = (ev: MessageEvent) => handlePayload(ev.data);
     window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
+
+    // BroadcastChannel — funciona mesmo se opener foi destruído pelo OAuth flow
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("aikortex_oauth");
+      bc.onmessage = (ev) => handlePayload(ev.data);
+    } catch { /* não suportado em browsers antigos */ }
+
+    return () => {
+      window.removeEventListener("message", onMsg);
+      try { bc?.close(); } catch { /* ignore */ }
+    };
   }, [scope, onConnected]);
 
   // FALLBACK: poll user_api_keys enquanto loading. Caso postMessage falhe
