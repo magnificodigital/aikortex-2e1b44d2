@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  ArrowLeft, ArrowUp, Send, AlertTriangle,
+  ArrowLeft, ArrowUp, Send, AlertTriangle, Square,
   Sparkles, Bot, Mic, MicOff, Check, Loader2, Pencil, RotateCw, Brain, Lock, ChevronDown,
   Settings2, EyeOff,
 } from "lucide-react";
@@ -70,6 +70,9 @@ interface AgentChatPanelProps {
   wizardMessages?: ChatMessage[];
   wizardSendMessage?: (text: string) => void;
   wizardIsStreaming?: boolean;
+  /** Interromper geração — clicar no botão stop enquanto IA está respondendo */
+  stopStreaming?: () => void;
+  wizardStopStreaming?: () => void;
   /** Toggle for "Ver/Esconder configuração" during discover (replaces FAB). */
   showConfigToggle?: boolean;
   configPanelVisible?: boolean;
@@ -173,6 +176,8 @@ const AgentChatPanel = ({
   wizardMessages: wizardChatMessages,
   wizardSendMessage,
   wizardIsStreaming,
+  stopStreaming,
+  wizardStopStreaming,
   showConfigToggle,
   configPanelVisible,
   onToggleConfigPanel,
@@ -938,21 +943,38 @@ const AgentChatPanel = ({
                 {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
               </button>
             </div>
-            <Button
-              size="icon"
-              onClick={wizardStep === "discover" ? handleWizardSend : handleSend}
-              disabled={
-                !input.trim() ||
-                isStructuring || isBuilding ||
-                (wizardStep === "discover" && !!wizardIsStreaming) ||
-                (wizardStep === "done" && isStreaming) ||
-                (wizardStep === "done" && chatMode === "test" && !canSendTest) ||
-                (wizardStep !== "done" && wizardStep !== "discover")
+            {(() => {
+              // Botão de stop quando IA está streamando, send quando ocioso
+              const streaming = wizardStep === "discover" ? !!wizardIsStreaming : isStreaming;
+              const canStop = streaming && (wizardStep === "discover" ? !!wizardStopStreaming : !!stopStreaming);
+              if (canStop) {
+                return (
+                  <Button
+                    size="icon"
+                    onClick={() => (wizardStep === "discover" ? wizardStopStreaming?.() : stopStreaming?.())}
+                    className="h-8 w-8 rounded-full bg-destructive hover:bg-destructive/90"
+                    title="Interromper geração"
+                  >
+                    <Square className="w-3.5 h-3.5 fill-current" />
+                  </Button>
+                );
               }
-              className="h-8 w-8 rounded-full bg-primary hover:bg-primary/90"
-            >
-              <ArrowUp className="w-3.5 h-3.5" />
-            </Button>
+              return (
+                <Button
+                  size="icon"
+                  onClick={wizardStep === "discover" ? handleWizardSend : handleSend}
+                  disabled={
+                    !input.trim() ||
+                    isStructuring || isBuilding ||
+                    (wizardStep === "done" && chatMode === "test" && !canSendTest) ||
+                    (wizardStep !== "done" && wizardStep !== "discover")
+                  }
+                  className="h-8 w-8 rounded-full bg-primary hover:bg-primary/90"
+                >
+                  <ArrowUp className="w-3.5 h-3.5" />
+                </Button>
+              );
+            })()}
           </div>
         </div>
         </div>

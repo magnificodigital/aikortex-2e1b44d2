@@ -3,8 +3,8 @@
 // as tools rodam — vê o agente sendo montado peça por peça.
 
 export type WizardCheckpointId =
-  | "niche" | "company" | "name" | "tone" | "objective"
-  | "channels" | "criteria" | "greeting";
+  | "niche" | "name" | "description" | "tone" | "objective"
+  | "capabilities" | "channels" | "criteria" | "greeting";
 
 export interface WizardCheckpoint {
   id: WizardCheckpointId;
@@ -23,8 +23,8 @@ export interface WizardPhase {
 }
 
 const PHASES: WizardPhase[] = [
-  { id: "profile",      label: "Perfil",      index: 1, checkpointIds: ["niche", "company", "name", "tone"] },
-  { id: "integrations", label: "Integrações", index: 2, checkpointIds: ["channels"] },
+  { id: "profile",      label: "Perfil",      index: 1, checkpointIds: ["niche", "name", "description", "tone"] },
+  { id: "integrations", label: "Integrações", index: 2, checkpointIds: ["channels", "capabilities"] },
   { id: "criteria",     label: "Critérios",   index: 3, checkpointIds: ["objective", "criteria"] },
   { id: "flow",         label: "Fluxo",       index: 4, checkpointIds: ["greeting"] },
 ];
@@ -48,23 +48,27 @@ export function computeWizardProgress(savedConfig: Record<string, any> | null | 
   const channelsActive = Array.isArray(channelsAny)
     ? channelsAny.length > 0
     : !!channelsAny && typeof channelsAny === "object" && Object.values(channelsAny).some((v) => v === true);
+  // Capabilities: vibe-mutate salva como boolean direto (capabilities[key] = true)
+  const capsActive = (() => {
+    const caps = (cfg as any)?.capabilities ?? {};
+    return Object.values(caps).some((c: any) => c === true || c?.enabled === true);
+  })();
   const checkpoints: WizardCheckpoint[] = [
-    { id: "niche",     label: "Nicho",      done: !!ctx.niche },
-    { id: "company",   label: "Empresa",    done: !!ctx.companyName },
-    { id: "name",      label: "Nome",       done: !!(cfg.name && cfg.name !== "Novo Agente" && cfg.name !== "Carregando...") },
-    // Tom: agent-vibe-mutate grava em businessContext.toneOfVoice; legado em cfg.toneOfVoice
-    { id: "tone",      label: "Tom de voz", done: !!(ctx.toneOfVoice || cfg.toneOfVoice) },
-    // Objetivo: agent-vibe-mutate grava em profile.primaryGoal; legado em cfg.objective
-    { id: "objective", label: "Objetivo",   done: !!(profile.primaryGoal || cfg.objective) },
-    { id: "channels",  label: "Canais",     done: channelsActive },
+    { id: "niche",       label: "Nicho",        done: !!ctx.niche },
+    { id: "name",        label: "Nome",         done: !!(cfg.name && cfg.name !== "Novo Agente" && cfg.name !== "Carregando...") },
+    { id: "description", label: "Descrição",    done: !!(cfg as any)?.descriptionConfigured },
+    { id: "tone",        label: "Tom de voz",   done: !!(ctx.toneOfVoice || cfg.toneOfVoice) },
+    { id: "objective",   label: "Objetivo",     done: !!(profile.primaryGoal || cfg.objective) },
+    { id: "capabilities", label: "Capacidades", done: capsActive },
+    { id: "channels",    label: "Canais",       done: channelsActive },
     // Instructions: agent-vibe-mutate grava em profile.instructions; legacy raiz
-    { id: "criteria",  label: "Critérios",  done: (() => {
+    { id: "criteria",    label: "Critérios",    done: (() => {
         const instr = (cfg as any)?.profile?.instructions ?? cfg.instructions;
         return !!(typeof instr === "string" && instr.length > 80);
       })(),
     },
     // Greeting: vibe-mutate grava em businessContext.greetingMessage; legacy raiz
-    { id: "greeting",  label: "Saudação",   done: !!((cfg as any)?.businessContext?.greetingMessage || cfg.greetingMessage) },
+    { id: "greeting",    label: "Saudação",     done: !!((cfg as any)?.businessContext?.greetingMessage || cfg.greetingMessage) },
   ];
   const doneCount = checkpoints.filter((c) => c.done).length;
   const totalCount = checkpoints.length;

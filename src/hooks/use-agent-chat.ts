@@ -148,6 +148,7 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
     return initialMessages;
   });
   const [isStreaming, setIsStreaming] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const messagesRef = useRef(messages);
   const pendingTextRef = useRef("");
@@ -219,6 +220,10 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
     setMessages(nextMessages);
     setIsStreaming(true);
 
+    // AbortController pra permitir stop pela UI
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     const apiMessages: Array<{ role: string; content: string }> = nextMessages.map((m) => ({
       role: m.role === "agent" ? "assistant" : m.role,
       content: m.text,
@@ -284,6 +289,7 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
             Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify(payload),
+          signal: abortController.signal,
         });
         if (resp.status !== 429 || attempt === maxRetries) break;
         const waitMs = (attempt + 1) * 2000;
@@ -309,6 +315,7 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
       let buffer = "";
 
       while (true) {
+        if (abortController.signal.aborted) { reader.cancel(); break; }
         const { done, value } = await reader.read();
         if (done) break;
         if (!mountedRef.current) { reader.cancel(); return; }
@@ -371,19 +378,43 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
         }
       }
     } catch (e: any) {
-      console.error("Agent chat error:", e);
-      if (mountedRef.current) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "agent", text: `⚠️ ${e.message || "Erro ao conectar com a IA."}` },
-        ]);
+      // AbortError = user clicou no botão de stop, não é erro real
+      if (e?.name === "AbortError") {
+        if (mountedRef.current) {
+          setMessages((prev) => {
+            if (!prev.length) return prev;
+            const last = prev[prev.length - 1];
+            if (last.role !== "agent") return prev;
+            const next = prev.slice();
+            // Anexa marcador de cancelamento à última mensagem
+            next[next.length - 1] = {
+              role: "agent",
+              text: (last.text || "") + (last.text ? "\n\n" : "") + "_⏹ Geração interrompida pelo usuário._",
+            };
+            return next;
+          });
+        }
+      } else {
+        console.error("Agent chat error:", e);
+        if (mountedRef.current) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "agent", text: `⚠️ ${e.message || "Erro ao conectar com a IA."}` },
+          ]);
+        }
       }
     } finally {
       if (mountedRef.current) {
         setIsStreaming(false);
       }
+      abortControllerRef.current = null;
     }
   }, [isStreaming, options.provider, options.model, options.useGateway, options.gatewayModel, options.systemPrompt, options.apiConfig, options.agentContext, options.mode, options.agentType, options.disableCrmExtraction, flushPendingText]);
 
-  return { messages, setMessages, sendMessage, isStreaming };
+  // Permite UI interromper a geração (botão de stop)
+  const stopStreaming = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
+
+  return { messages, setMessages, sendMessage, isStreaming, stopStreaming };
 }

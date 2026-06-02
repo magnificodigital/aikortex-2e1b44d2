@@ -57,15 +57,6 @@ const STEPS: ThinkingStep[] = [
   { id: "finalize",     label: "Finalizando o agente",                  done: (cfg) => !!cfg?.wizard_completed },
 ];
 
-// 3 fases: PENSANDO (0-1) · PLANEJANDO (2-8) · DESENVOLVENDO (9-14)
-const PHASE_BREAKPOINTS = [2, 9];
-
-function phaseLabel(stepIdx: number): string {
-  if (stepIdx < PHASE_BREAKPOINTS[0]) return "Pensando";
-  if (stepIdx < PHASE_BREAKPOINTS[1]) return "Planejando";
-  return "Desenvolvendo";
-}
-
 export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -74,7 +65,6 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
   const statuses = STEPS.map((s) => s.done(savedConfig));
   // Primeiro step ainda não feito = o atual em andamento
   const currentIdx = statuses.findIndex((d) => !d);
-  const currentPhase = currentIdx === -1 ? "Desenvolvendo" : phaseLabel(currentIdx);
 
   return (
     <div className="flex gap-3">
@@ -96,74 +86,35 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
           {currentIdx === -1 ? "Agente quase pronto..." : "Construindo seu agente..."}
         </p>
 
-        {/* Lista agrupada por fase. Steps só aparecem após sua fase ser alcançada. */}
-        {(() => {
-          // Agrupa steps por fase
-          const phases: { label: string; steps: { step: ThinkingStep; idx: number; done: boolean }[] }[] = [];
-          let buf: { step: ThinkingStep; idx: number; done: boolean }[] = [];
-          let lastPhase = "";
-          STEPS.forEach((step, idx) => {
-            const p = phaseLabel(idx);
-            if (p !== lastPhase) {
-              if (buf.length) phases.push({ label: lastPhase, steps: buf });
-              buf = [];
-              lastPhase = p;
-            }
-            buf.push({ step, idx, done: statuses[idx] });
-          });
-          if (buf.length) phases.push({ label: lastPhase, steps: buf });
-
-          return phases.map((phase) => {
-            // Mostra a fase se algum step dela está sendo trabalhado ou já passou
-            const reached = phase.steps.some((s) => s.done) || phase.steps.some((s) => s.idx === currentIdx);
+        {/* Lista flat de steps (sem labels de fase pra não duplicar "PENSANDO/PLANEJANDO") */}
+        <ul className="space-y-1 ml-0.5 border-l border-border/40 pl-3">
+          {STEPS.map((step, idx) => {
+            const done = statuses[idx];
+            const reached = done || idx === currentIdx || idx < currentIdx;
             if (!reached) return null;
-            const phaseDone = phase.steps.every((s) => s.done);
-            const phaseActive = phase.label === currentPhase && !phaseDone;
-
+            const isCurrent = idx === currentIdx;
             return (
-              <div key={phase.label} className="mb-3 last:mb-0">
-                <p className={`text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${
-                  phaseDone
-                    ? "text-emerald-600 dark:text-emerald-500"
-                    : phaseActive
-                      ? "text-primary"
-                      : "text-muted-foreground"
-                }`}>
-                  {phase.label}
-                  {phaseDone && <Check className="inline-block w-3 h-3 ml-1" />}
-                </p>
-                <ul className="space-y-1 ml-0.5 border-l border-border/40 pl-3">
-                  {phase.steps.map(({ step, idx, done }) => {
-                    // Step não aparece até ser alcançado (ou já estar feito)
-                    const reachedStep = done || idx === currentIdx || idx < currentIdx;
-                    if (!reachedStep) return null;
-                    const isCurrent = idx === currentIdx;
-                    return (
-                      <li
-                        key={step.id}
-                        className={`flex items-center gap-2 text-xs transition-all duration-300 ${
-                          isCurrent ? "text-foreground" : "text-muted-foreground/70"
-                        }`}
-                      >
-                        <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
-                          {isCurrent ? (
-                            <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                          ) : (
-                            <Check className="w-3 h-3 text-emerald-500" />
-                          )}
-                        </span>
-                        <span>
-                          {step.label}
-                          {isCurrent ? "..." : "."}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+              <li
+                key={step.id}
+                className={`flex items-center gap-2 text-xs transition-all duration-300 ${
+                  isCurrent ? "text-foreground" : "text-muted-foreground/70"
+                }`}
+              >
+                <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
+                  {isCurrent ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                  ) : (
+                    <Check className="w-3 h-3 text-emerald-500" />
+                  )}
+                </span>
+                <span>
+                  {step.label}
+                  {isCurrent ? "..." : "."}
+                </span>
+              </li>
             );
-          });
-        })()}
+          })}
+        </ul>
       </div>
     </div>
   );

@@ -1187,6 +1187,8 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
             wizardMessages={wizardChat.messages}
             wizardSendMessage={wizardChat.sendMessage}
             wizardIsStreaming={wizardChat.isStreaming}
+            wizardStopStreaming={wizardChat.stopStreaming}
+            stopStreaming={activeChat.stopStreaming}
             showConfigToggle={wizardStep === "discover" && !!agentId && !agentId.startsWith("new-") && agentId !== "new"}
             configPanelVisible={showConfigDuringDiscover}
             onToggleConfigPanel={() => setShowConfigDuringDiscover((s) => !s)}
