@@ -61,10 +61,12 @@ export function computeWizardProgress(savedConfig: Record<string, any> | null | 
     { id: "objective",   label: "Objetivo",     done: !!(profile.primaryGoal || cfg.objective) },
     { id: "capabilities", label: "Capacidades", done: capsActive },
     { id: "channels",    label: "Canais",       done: channelsActive },
-    // Instructions: agent-vibe-mutate grava em profile.instructions; legacy raiz
+    // Instructions: vibe grava em profile.instructions; legacy raiz.
+    // Exige ≥1200 chars pra refletir as 7 seções obrigatórias (identidade, tom,
+    // fluxo, critérios, regras, exceções, exemplos) — abaixo disso é raso.
     { id: "criteria",    label: "Critérios",    done: (() => {
         const instr = (cfg as any)?.profile?.instructions ?? cfg.instructions;
-        return !!(typeof instr === "string" && instr.length > 80);
+        return !!(typeof instr === "string" && instr.length > 1200);
       })(),
     },
     // Greeting: vibe-mutate grava em businessContext.greetingMessage; legacy raiz

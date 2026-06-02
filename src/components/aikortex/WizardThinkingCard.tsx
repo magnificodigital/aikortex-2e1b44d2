@@ -47,9 +47,11 @@ const STEPS: ThinkingStep[] = [
   { id: "integrations", label: "Mapeando integrações externas",         done: (cfg) => Array.isArray(cfg?.externalIntegrations) && cfg.externalIntegrations.length > 0 },
   { id: "tools",        label: "Habilitando ferramentas runtime",       done: (cfg) => Array.isArray(cfg?.enabledTools) && cfg.enabledTools.length > 0 },
   { id: "instructions", label: "Escrevendo as instruções operacionais", done: (cfg) => {
-      // vibe-mutate salva em profile.instructions; legacy raiz
+      // vibe-mutate salva em profile.instructions; legacy raiz.
+      // Exige ≥1200 chars pra cobrir as 7 seções do prompt (identidade, tom,
+      // fluxo, critérios, regras, exceções, exemplos) com profundidade.
       const instr = cfg?.profile?.instructions ?? cfg?.instructions;
-      return !!(typeof instr === "string" && instr.length > 200);
+      return !!(typeof instr === "string" && instr.length > 1200);
     },
   },
   { id: "greeting",     label: "Criando a mensagem de saudação",        done: (cfg) => !!(cfg?.businessContext?.greetingMessage || cfg?.greetingMessage) },

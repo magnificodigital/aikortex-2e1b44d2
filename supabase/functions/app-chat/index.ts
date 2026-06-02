@@ -165,8 +165,58 @@ Quando receber a descrição do usuário, dispare TODAS as tools abaixo em sequ�
    - Lê dados estruturados → table_read)
 
 **DESENVOLVENDO — Instruções e fluxo:**
-13. set_instructions (markdown estruturado COM PELO MENOS 200 CHARS, seções: ## Tom de comunicação, ## Fluxo de conversa, ## Critérios de [qualificação/atendimento], ## Regras e limites — TUDO contextualizado pro nicho)
-14. set_greeting_message (saudação personalizada com nome do agente + contexto da empresa/nicho)
+13. set_instructions — **OBRIGATORIAMENTE ≥1200 caracteres**, markdown estruturado com TODAS estas seções preenchidas com profundidade (não placeholders):
+
+   **## 1. Identidade e propósito** (3-5 linhas)
+   Quem o agente é (nome + papel), pra que serve, qual o ROI pra agência.
+
+   **## 2. Tom e estilo de comunicação** (3-5 linhas)
+   Tom (formal/casual/empático/direto), uso de emojis, comprimento típico, formalidade.
+
+   **## 3. Fluxo de conversa** (numerado, mínimo 5 etapas)
+   Cada etapa com: gatilho, ação do agente, dado coletado, transição. Inclui:
+   - Saudação e identificação
+   - Descoberta de necessidade (perguntas específicas)
+   - Coleta de dados estruturados (nome, email, etc.)
+   - Avaliação/triagem (critérios contextualizados ao nicho)
+   - Próximo passo claro (agendamento / proposta / encerramento)
+
+   **## 4. Critérios de [qualificação/atendimento/criação]** (lista detalhada)
+   Quais sinais classificam o lead/cliente como bom-fit. Inclui regras tipo BANT
+   (se SDR-like), SLA (se SAC-like), health score (se CS-like), brief (se conteúdo).
+
+   **## 5. Regras inegociáveis e limites** (lista numerada, 5+ itens)
+   O que NUNCA fazer (LGPD, sem opt-out, sem promessa de prazo, sem inventar preço).
+   Quando ESCALAR pra humano (sinais de frustração, complexidade técnica).
+
+   **## 6. Tratamento de exceções** (3-4 cenários)
+   Cliente reclama / pede pra parar / faz pergunta fora do escopo / tenta enganar.
+
+   **## 7. Mensagens de exemplo** (2-3 trechos)
+   Frases reais que o agente deve usar — em português brasileiro, com nicho aplicado.
+
+14. set_greeting_message — saudação curta (2 frases máx) com nome do agente + contexto da empresa/nicho. Convida o user a continuar.
+
+# REFERÊNCIA — PADRÕES DE INSTRUÇÕES POR INTENTO
+
+Use o padrão MAIS PRÓXIMO do que o user descreveu como BASE pras instruções (personalizando pro contexto):
+
+**Agente que qualifica leads / agenda reuniões** (intento SDR/BDR-like):
+Etapas obrigatórias: Saudação → Identificação (nome, email, telefone, empresa, cargo) → Descoberta (2 perguntas abertas sobre dor) → Qualificação BANT (Budget/Authority/Need/Timeline) → Apresentação de valor → Agendamento (oferece 2-3 janelas, confirma fuso e duração) → Confirmação. CRM: registra resultado em bloco \`<<<CRM_LEAD>>>...<<<END>>>\` ao final (stage agendado/perdido/qualificado, temperature quente/morno/frio).
+
+**Agente de atendimento / suporte** (intento SAC-like):
+Etapas: Saudação empática + identificação → Diagnóstico (perguntas claras sobre o problema) → Tentativa de resolução (consulta knowledge base) → Escalonamento se necessário → Confirmação de resolução → CSAT (1-5). Nunca culpar o cliente. Nunca prometer SLA que não pode cumprir.
+
+**Agente de Customer Success** (intento CS-like):
+Etapas: Check-in proativo → Avaliação de adoção/uso → Identificação de sinais de churn → Sugestão de próximo passo (treinamento/recurso/agendamento) → Registro de health score. Tom amigável e consultivo.
+
+**Agente de criação de conteúdo** (intento conteúdo):
+Etapas: Brief (objetivo do post, público, plataforma, formato) → Pesquisa de contexto (tendências, hashtags atuais) → Geração de 2-3 variações → Apresentação pro user revisar → Refinamento iterativo. Nunca publica direto — sempre entrega pra aprovação.
+
+**Agente operacional / interno** (intento ops):
+Etapas: Recebe trigger (calendário, email, planilha) → Executa task (consulta dados, gera relatório, envia notificação) → Loga resultado → Notifica humano se exceção.
+
+ADAPTE o padrão pro NICHO específico (clínica usa "consulta/paciente"; imobiliária usa "visita/proposta"; food usa "reserva/cliente"; etc.).
 
 **FINALIZAÇÃO:**
 15. commit_draft (SEMPRE por último — marca wizard concluído)
@@ -839,7 +889,7 @@ serve(async (req) => {
           agentId,
           agencyId: authResult.agencyId,
           messages: chatMessages,
-          maxTokens: 3000,
+          maxTokens: 5000, // Instructions ≥1200 chars + outras tools + resposta
           maxIterations: 8,
           userJwt,
         });
