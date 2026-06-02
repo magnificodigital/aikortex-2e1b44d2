@@ -36,8 +36,9 @@ import avatar2 from "@/assets/avatars/avatar-2.png";
 import avatar3 from "@/assets/avatars/avatar-3.png";
 import avatar8 from "@/assets/avatars/avatar-8.png";
 // Master v7.4: ícone Aikortex é o avatar PADRÃO de todo agente.
-// User pode trocar pra um avatar humano (avatar1..8) ou foto própria via painel.
-import aikortexAvatar from "@/assets/aikortex-icon-light.png";
+// Path estável em /public/ pra que valores salvos no DB sobrevivam entre builds
+// (assets importados via ESM têm hash que muda — não persistir no DB).
+const aikortexAvatar = "/aikortex-icon.png";
 
 /* ── Module-level cache pra blindar criação de draft contra Strict Mode
    unmount/remount. Quando mount #1 inicia o async, salva a Promise<id> aqui;
@@ -270,6 +271,7 @@ const AgentDetail = () => {
               name: "Novo Agente",
               agent_type: initialType || "Custom",
               description: "",
+              avatar_url: aikortexAvatar, // brand padrão; user pode trocar depois
               model: DEFAULT_FREE_MODEL,
               provider: "auto",
               status: "configuring",

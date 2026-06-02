@@ -101,8 +101,20 @@ function buildWizardSystemPrompt(agentType: string, niche?: string): string {
   const focus = AGENT_TYPE_FOCUS[normalizedType] || AGENT_TYPE_FOCUS.Custom;
 
   const nicheContext = niche
-    ? `O agente vai operar no nicho de **${niche}**. Adapte exemplos, terminologia, integrações sugeridas e ordem de perguntas ao contexto brasileiro desse setor (regulamentações, jargão, sazonalidade, dor real).`
-    : `Nenhum nicho foi definido ainda. SUA PRIMEIRA PERGUNTA deve identificar o nicho. Sugira entre: ${NICHES_AIKORTEX.join(", ")}. Assim que o usuário disser, CHAME a tool set_niche imediatamente.`;
+    ? `O agente vai operar no nicho de **${niche}**. Adapte exemplos, terminologia e integrações ao contexto brasileiro desse setor.`
+    : `Nicho não foi pré-definido. **INFIRA do contexto** da descrição do user — NUNCA pergunte. Exemplos:
+- "agente contábil/financeiro" → Finanças
+- "agente pra clínica/médico/dentista" → Saúde
+- "agente pra petshop/animal" → Pet
+- "agente pra imobiliária/aluguel/imóveis" → Imobiliária
+- "agente pra restaurante/delivery/food" → Food/Restaurante
+- "agente pra advogado/jurídico" → Advocacia
+- "agente pra escola/curso/aluno" → Educação
+- "agente pra ecommerce/loja online" → Retail
+- "agente pra SaaS/software" → SaaS
+- "agente pra estética/salão" → Estética
+- "agente pra seguros" → Seguros
+Se realmente NÃO houver pista (ex: "agente que organiza minha agenda"), use "Outros". Catálogo válido: ${NICHES_AIKORTEX.join(", ")}, Outros.`;
 
   return `Você é o construtor ONE-SHOT de agentes do Aikortex (Modo Vibe — Master v7.4 §13.2).
 
