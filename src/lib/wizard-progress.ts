@@ -2,9 +2,16 @@
 // Cada campo individual vira sua pílula pra feedback imediato conforme
 // as tools rodam — vê o agente sendo montado peça por peça.
 
+// Master v7.4 §13.2 — checklist user-centric, agrupado por intenção
+// (não por campo técnico). Cada item responde uma pergunta do user:
+// "quem é meu agente?", "o que ele resolve?", etc.
 export type WizardCheckpointId =
-  | "niche" | "name" | "description" | "tone" | "objective"
-  | "capabilities" | "channels" | "criteria" | "greeting";
+  | "identity"      // Quem é (nome + descrição)
+  | "expertise"     // Especialidade (nicho + objetivo)
+  | "personality"   // Personalidade (tom + saudação)
+  | "skills"        // Habilidades (capacidades + tools)
+  | "presence"      // Onde atua (canais)
+  | "behavior";     // Comportamento (instruções)
 
 export interface WizardCheckpoint {
   id: WizardCheckpointId;
@@ -23,10 +30,10 @@ export interface WizardPhase {
 }
 
 const PHASES: WizardPhase[] = [
-  { id: "profile",      label: "Perfil",      index: 1, checkpointIds: ["niche", "name", "description", "tone"] },
-  { id: "integrations", label: "Integrações", index: 2, checkpointIds: ["channels", "capabilities"] },
-  { id: "criteria",     label: "Critérios",   index: 3, checkpointIds: ["objective", "criteria"] },
-  { id: "flow",         label: "Fluxo",       index: 4, checkpointIds: ["greeting"] },
+  { id: "profile",      label: "Perfil",      index: 1, checkpointIds: ["identity", "expertise", "personality"] },
+  { id: "integrations", label: "Integrações", index: 2, checkpointIds: ["skills", "presence"] },
+  { id: "criteria",     label: "Critérios",   index: 3, checkpointIds: ["behavior"] },
+  { id: "flow",         label: "Fluxo",       index: 4, checkpointIds: [] },
 ];
 
 const TOTAL_PHASES = PHASES.length;
@@ -48,29 +55,55 @@ export function computeWizardProgress(savedConfig: Record<string, any> | null | 
   const channelsActive = Array.isArray(channelsAny)
     ? channelsAny.length > 0
     : !!channelsAny && typeof channelsAny === "object" && Object.values(channelsAny).some((v) => v === true);
-  // Capabilities: vibe-mutate salva como boolean direto (capabilities[key] = true)
+  // Capabilities: vibe-mutate salva {enabled: bool} OU bool direto (legacy)
   const capsActive = (() => {
     const caps = (cfg as any)?.capabilities ?? {};
     return Object.values(caps).some((c: any) => c === true || c?.enabled === true);
   })();
+  // Tools runtime habilitadas (web_search, table_write, etc.)
+  const toolsActive = Array.isArray((cfg as any)?.enabledTools) && (cfg as any).enabledTools.length > 0;
+  // Instructions: vibe grava em profile.instructions; legacy raiz
+  const instructions = (cfg as any)?.profile?.instructions ?? cfg.instructions;
+  const instrLen = typeof instructions === "string" ? instructions.length : 0;
+  // Greeting: vibe grava em businessContext.greetingMessage; legacy raiz
+  const greeting = (cfg as any)?.businessContext?.greetingMessage || cfg.greetingMessage;
+
+  const nameFilled = !!(cfg.name && cfg.name !== "Novo Agente" && cfg.name !== "Carregando...");
+  const descFilled = !!(cfg as any)?.descriptionConfigured || !!(cfg as any)?.description;
+
+  // Checklist USER-CENTRIC: cada item responde uma pergunta do user, não
+  // um campo técnico. Agrupa fields relacionados (ex: tom+saudação = personalidade).
   const checkpoints: WizardCheckpoint[] = [
-    { id: "niche",       label: "Nicho",        done: !!ctx.niche },
-    { id: "name",        label: "Nome",         done: !!(cfg.name && cfg.name !== "Novo Agente" && cfg.name !== "Carregando...") },
-    { id: "description", label: "Descrição",    done: !!(cfg as any)?.descriptionConfigured },
-    { id: "tone",        label: "Tom de voz",   done: !!(ctx.toneOfVoice || cfg.toneOfVoice) },
-    { id: "objective",   label: "Objetivo",     done: !!(profile.primaryGoal || cfg.objective) },
-    { id: "capabilities", label: "Capacidades", done: capsActive },
-    { id: "channels",    label: "Canais",       done: channelsActive },
-    // Instructions: vibe grava em profile.instructions; legacy raiz.
-    // Exige ≥1200 chars pra refletir as 7 seções obrigatórias (identidade, tom,
-    // fluxo, critérios, regras, exceções, exemplos) — abaixo disso é raso.
-    { id: "criteria",    label: "Critérios",    done: (() => {
-        const instr = (cfg as any)?.profile?.instructions ?? cfg.instructions;
-        return !!(typeof instr === "string" && instr.length > 1200);
-      })(),
+    {
+      id: "identity",
+      label: "Quem é o agente",
+      done: nameFilled && descFilled,
     },
-    // Greeting: vibe-mutate grava em businessContext.greetingMessage; legacy raiz
-    { id: "greeting",    label: "Saudação",     done: !!((cfg as any)?.businessContext?.greetingMessage || cfg.greetingMessage) },
+    {
+      id: "expertise",
+      label: "Especialidade",
+      done: !!ctx.niche && !!(profile.primaryGoal || cfg.objective),
+    },
+    {
+      id: "personality",
+      label: "Personalidade",
+      done: !!(ctx.toneOfVoice || cfg.toneOfVoice) && !!greeting,
+    },
+    {
+      id: "skills",
+      label: "Habilidades",
+      done: capsActive || toolsActive,
+    },
+    {
+      id: "presence",
+      label: "Onde atua",
+      done: channelsActive,
+    },
+    {
+      id: "behavior",
+      label: "Comportamento",
+      done: instrLen > 1200,
+    },
   ];
   const doneCount = checkpoints.filter((c) => c.done).length;
   const totalCount = checkpoints.length;
