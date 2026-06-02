@@ -809,7 +809,24 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
       }
     }
 
-    const finalMessage = lastWizardText || setupInitialMessage;
+    // GUIDANCE DETERMINÍSTICA: se o LLM esqueceu de mencionar passos críticos,
+    // append fixa pra garantir que user sempre vê (LLM Qwen 3 às vezes pula).
+    const mentionsLLMs = /Integraç(ões|ão)\s*→\s*LLMs|Aikortex.*LLM|chave LLM/i.test(lastWizardText);
+    const mentionsKB = /Conhecimento|Knowledge|FAQ.*Conhec/i.test(lastWizardText);
+    const mentionsTables = /Tabela|Tables\b/i.test(lastWizardText);
+    const mentionsCadences = /Cadência|Cadências|Automaç(ões|ão)/i.test(lastWizardText);
+
+    const missing: string[] = [];
+    if (!mentionsLLMs) missing.push("- ⚠️ Pra **publicar**, conecte sua chave LLM (OpenAI/Anthropic/Gemini) em **Integrações → LLMs**. O modelo Aikortex é só pra criação/testes.");
+    if (!mentionsKB) missing.push("- 📚 Adicione FAQ, políticas e documentos da empresa em **Conhecimento** pra respostas mais precisas.");
+    if (!mentionsTables) missing.push("- 🗃️ Cadastre dados (pacientes, produtos, agendamentos) em **Tabelas** pro agente consultar/atualizar.");
+    if (!mentionsCadences) missing.push("- ⏱️ Pra lembretes automáticos e follow-ups, configure em **Automações → Cadências**.");
+
+    let finalMessage = lastWizardText || setupInitialMessage;
+    if (missing.length > 0) {
+      finalMessage += `\n\n**Próximos passos importantes:**\n${missing.join("\n")}`;
+    }
+
     const cur = setupChat.messages;
     if (cur.length <= 1) {
       setupChat.setMessages([{ role: "agent", text: finalMessage }] as any);
@@ -868,21 +885,39 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
   // Fast-track ONE-SHOT: quando wizard chamou commit_draft com tudo configurado,
   // pula structure/build (LLM extra desnecessário) e vai direto pra "done".
   // Master v7.4 §13.2: agente já está montado no DB via tools; só transita estado.
-  // CRUCIAL: setWizardStep("done") PRIMEIRO (transição eager, evita race com
-  // próxima mensagem do user). Refresh do savedConfig em paralelo.
+  // FALLBACK DETERMINÍSTICO: garante reasoning ON mesmo se LLM esqueceu de
+  // chamar set_capability(reasoning). Outras capabilities por propósito.
   const fastTrackComplete = useCallback(async () => {
     if (wizardCompletedRef.current) return;
     wizardCompletedRef.current = true;
 
-    // Transição imediata pra "done" — bloqueia wizard de rodar em mensagens
-    // subsequentes do user. Side effect: setupChat assume.
+    // Transição imediata pra "done"
     setWizardStep("done");
 
     if (agentId && agentId !== "new" && !agentId.startsWith("new-")) {
       try {
+        // Lê estado atual pra garantir reasoning ON
+        const { data: current } = await supabase
+          .from("user_agents")
+          .select("config")
+          .eq("id", agentId)
+          .single();
+
+        const currentConfig = (current?.config as any) || {};
+        const currentCaps = currentConfig.capabilities || {};
+        const reasoningOn = currentCaps.reasoning === true || currentCaps.reasoning?.enabled === true;
+
+        const patchedConfig = reasoningOn ? currentConfig : {
+          ...currentConfig,
+          capabilities: {
+            ...currentCaps,
+            reasoning: { enabled: true },
+          },
+        };
+
         const { data } = await supabase
           .from("user_agents")
-          .update({ status: "active" })
+          .update({ status: "active", config: patchedConfig })
           .eq("id", agentId)
           .select("*")
           .single();

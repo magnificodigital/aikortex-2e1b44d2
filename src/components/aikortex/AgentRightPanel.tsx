@@ -709,13 +709,16 @@ const AgentRightPanel = ({
             if (i.indent) return true;
             if (!i.key.startsWith("channels.")) return true;
             const channelKey = i.key.replace("channels.", "");
-            return enabledSet.has(channelKey as ChannelKey);
+            // Canal aparece se a agência habilitou OU se o agente específico
+            // ativou (via wizard) — mesmo que a agência ainda não tenha habilitado
+            // o canal globalmente, o user vê pra poder configurar.
+            return enabledSet.has(channelKey as ChannelKey) || connectedChannels.includes(channelKey);
           });
         }
         return { ...g, items };
       })
       .filter(g => g.items.length > 0);
-  }, [showAdvanced, enabledSet, activeSection]);
+  }, [showAdvanced, enabledSet, activeSection, connectedChannels]);
 
   /* ── Status badges nos itens do menu ── */
   const { data: cadencesForBadge = [] } = useAgentCadences(agentId);
