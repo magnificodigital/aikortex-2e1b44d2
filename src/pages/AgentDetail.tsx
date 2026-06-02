@@ -35,6 +35,9 @@ import avatar1 from "@/assets/avatars/avatar-1.png";
 import avatar2 from "@/assets/avatars/avatar-2.png";
 import avatar3 from "@/assets/avatars/avatar-3.png";
 import avatar8 from "@/assets/avatars/avatar-8.png";
+// Master v7.4: ícone Aikortex é o avatar PADRÃO de todo agente.
+// User pode trocar pra um avatar humano (avatar1..8) ou foto própria via painel.
+import aikortexAvatar from "@/assets/aikortex-icon-light.png";
 
 /* ── Module-level cache pra blindar criação de draft contra Strict Mode
    unmount/remount. Quando mount #1 inicia o async, salva a Promise<id> aqui;
@@ -99,8 +102,11 @@ Regras:
   },
 };
 
+// Master v7.4: avatar default = ícone Aikortex pra TODOS os tipos.
+// Mantemos a estrutura pra futura customização (templates podem trazer
+// avatares humanos próprios), mas o padrão é o brand do Aikortex.
 const AVATAR_BY_TYPE: Record<string, string> = {
-  SDR: avatar1, SAC: avatar3, Custom: avatar1,
+  SDR: aikortexAvatar, SAC: aikortexAvatar, Custom: aikortexAvatar,
 };
 
 const LLM_MODELS = ALL_LLM_MODELS.map(m => ({
@@ -224,7 +230,7 @@ const AgentDetail = () => {
     }
     // Fresh new agent (no DB record yet) → show "Novo Agente" instead of "Carregando..."
     const initialName = isFreshNew ? "Novo Agente" : "Carregando...";
-    return { name: initialName, avatar: avatar1, model: DEFAULT_FREE_MODEL, agentType: initialType, savedConfig: null };
+    return { name: initialName, avatar: aikortexAvatar, model: DEFAULT_FREE_MODEL, agentType: initialType, savedConfig: null };
   });
   const [agentLoading, setAgentLoading] = useState(!isTemplate && !isFreshNew);
 
@@ -301,14 +307,14 @@ const AgentDetail = () => {
       if (data) {
         setLoadedAgent({
           name:        data.name,
-          avatar:      data.avatar_url || AVATAR_BY_TYPE[data.agent_type] || avatar1,
+          avatar:      data.avatar_url || AVATAR_BY_TYPE[data.agent_type] || aikortexAvatar,
           model:       data.model || "gemini-2.5-flash",
           agentType:   (data.agent_type as AgentType) || "Custom",
           savedConfig: {
             ...(typeof data.config === "object" && data.config !== null ? data.config : {}),
             name: data.name,
             description: data.description || "",
-            avatarUrl: data.avatar_url || AVATAR_BY_TYPE[data.agent_type] || avatar1,
+            avatarUrl: data.avatar_url || AVATAR_BY_TYPE[data.agent_type] || aikortexAvatar,
           } as Record<string, any>,
         });
 
@@ -487,7 +493,7 @@ const AgentDetail = () => {
       if (result) {
         setLoadedAgent({
           name: config.name,
-          avatar: config.avatarUrl || AVATAR_BY_TYPE[config.agentType] || avatar1,
+          avatar: config.avatarUrl || AVATAR_BY_TYPE[config.agentType] || aikortexAvatar,
           model: config.model,
           agentType: (config.agentType as AgentType) || "Custom",
           savedConfig: buildSavedConfig(config, config.agentType),
@@ -626,7 +632,7 @@ const AgentDetail = () => {
         name:        config.agent_name,
         agent_type:  resolvedType,
         description: config.description,
-        avatar_url:  AVATAR_BY_TYPE[resolvedType] || avatar1,
+        avatar_url:  AVATAR_BY_TYPE[resolvedType] || aikortexAvatar,
         model:       agentModel,
         provider:    getProviderForModel(agentModel),
         status:      "active",
@@ -647,7 +653,7 @@ const AgentDetail = () => {
         toast.success(`✅ ${config.agent_name} criado com sucesso!`);
         setLoadedAgent({
           name: config.agent_name,
-          avatar: AVATAR_BY_TYPE[resolvedType] || avatar1,
+          avatar: AVATAR_BY_TYPE[resolvedType] || aikortexAvatar,
           model: agentModel,
           agentType: resolvedType,
           savedConfig: {
@@ -657,7 +663,7 @@ const AgentDetail = () => {
             instructions: config.instructions,
             toneOfVoice: config.tone,
             greetingMessage: config.greeting_message,
-            avatarUrl: AVATAR_BY_TYPE[resolvedType] || avatar1,
+            avatarUrl: AVATAR_BY_TYPE[resolvedType] || aikortexAvatar,
             channels: config.channels,
             integrations: [],
             integrationConfigs: {},

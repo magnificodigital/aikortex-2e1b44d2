@@ -45,18 +45,8 @@ export const WIZARD_TOOL_DEFS = [
       },
     },
   },
-  {
-    type: "function",
-    function: {
-      name: "set_avatar",
-      description: "Define o avatar do agente. Use slug entre: avatar-1, avatar-2, avatar-3, avatar-4, avatar-5, avatar-6, avatar-7, avatar-8. Escolha que mais combina com o tipo+nicho (ex: avatar-3 pra atendimento empático em SAC; avatar-1 pra SDR profissional).",
-      parameters: {
-        type: "object",
-        properties: { avatar: { type: "string", description: "Slug do avatar (avatar-1 a avatar-8)" } },
-        required: ["avatar"],
-      },
-    },
-  },
+  // set_avatar removida do wizard — avatar padrão é o ícone Aikortex.
+  // User troca depois via painel (Identidade → Avatar → Enviar foto).
   {
     type: "function",
     function: {

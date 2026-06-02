@@ -26,7 +26,6 @@ const STEPS: ThinkingStep[] = [
   { id: "company",      label: "Reconhecendo a empresa",                done: (cfg) => !!cfg?.businessContext?.companyName },
   { id: "name",         label: "Nomeando o agente",                     done: (cfg) => !!cfg?.name && cfg.name !== "Novo Agente" && cfg.name !== "Carregando..." },
   { id: "description",  label: "Escrevendo a descrição do agente",      done: (cfg) => !!cfg?.descriptionConfigured },
-  { id: "avatar",       label: "Selecionando o avatar",                 done: (cfg) => !!cfg?.avatarConfigured },
   { id: "tone",         label: "Definindo o tom de voz",                done: (cfg) => !!(cfg?.businessContext?.toneOfVoice || cfg?.toneOfVoice) },
   { id: "objective",    label: "Estruturando o objetivo principal",     done: (cfg) => !!(cfg?.profile?.primaryGoal || cfg?.objective) },
   { id: "capabilities", label: "Ativando capacidades cognitivas",       done: (cfg) => {

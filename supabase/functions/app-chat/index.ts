@@ -126,16 +126,17 @@ Quando receber a descrição do usuário, dispare TODAS as tools abaixo em sequ�
 (NOTA: NÃO chame set_agent_type no one-shot. agent_type fica como "Custom" — só Templates definem SDR/BDR/SAC/CS.)
 
 **PLANEJANDO — Persona e perfil:**
-4. set_agent_name (gera nome humano coerente com nicho+tipo: Sofia/Lia/Pedro/Ana/Carlos/Beatriz/Henrique/Bia)
-5. set_agent_description (1-2 frases descrevendo o agente em terceira pessoa: "Agente SDR especializado em X que faz Y via Z")
-6. set_avatar (slug que combina: SDR profissional→avatar-1; SAC empático→avatar-3; CS consultivo→avatar-2; outros→avatar-1 a avatar-8)
-7. set_tone_of_voice (deduz pelo nicho+tipo: Saúde→empático e profissional; Imobiliária→consultivo; Food→casual e amigável; Advocacia→formal; SaaS→direto e técnico)
-8. set_objective (1-2 frases CLARAS do que o agente faz, com indicador de sucesso)
-9. set_capability (ATIVE pelo PROPÓSITO do agente:
+4. set_agent_name (gera nome humano coerente com nicho: Sofia/Lia/Pedro/Ana/Carlos/Beatriz/Henrique/Bia)
+5. set_agent_description (1-2 frases descrevendo o agente em terceira pessoa: "Agente especializado em X que faz Y via Z")
+6. set_tone_of_voice (deduz pelo nicho: Saúde→empático e profissional; Imobiliária→consultivo; Food→casual e amigável; Advocacia→formal; SaaS→direto e técnico)
+7. set_objective (1-2 frases CLARAS do que o agente faz, com indicador de sucesso)
+8. set_capability (ATIVE pelo PROPÓSITO do agente:
    - Conversa com cliente (atende/qualifica/suporta) → reasoning + memory
    - Cria conteúdo (posts/copy/scripts) → reasoning + auto_integration (busca contexto atual)
    - Operação multi-step (workflow, prospecção, follow-up) → planning + reasoning + memory
    - Sempre ative reasoning)
+
+(NOTA: NÃO chame set_avatar. Avatar padrão é o ícone Aikortex; user altera depois se quiser.)
 
 **DESENVOLVENDO — Canais, integrações, ferramentas:**
 10. set_channel — **CANAL DEPENDE DO PROPÓSITO**, não de default cego:
