@@ -745,10 +745,10 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
   const wizardChat = useAgentChat(
     [{
       role: "agent" as const,
-      // Master v7.4 §13.2: ponto de partida do Modo Vibe é uma descrição
-      // livre em linguagem natural. Exemplo do próprio doc:
-      // "Crie um SDR para clínicas médicas integrado ao Google Calendar e WhatsApp"
-      text: `Olá! 👋 Vamos montar seu agente juntos. Descreva em uma frase o que ele deve fazer — pode ser algo como:\n\n*"Um SDR para clínica odontológica que qualifica leads e agenda consultas via WhatsApp"*\n\nQuanto mais específico, melhor.`,
+      // Master v7.4 §13.2: Modo Vibe começa com pergunta aberta convidando
+      // o user a descrever o agente em linguagem natural. Tom de conversa,
+      // não de formulário — bot ASSUME a liderança da entrevista.
+      text: `Olá! 👋 Vou te ajudar a criar seu agente. Pra começar, me conta: **o que ele precisa fazer?** Em qual negócio vai atuar e qual a função principal — pode descrever com suas palavras.`,
     }],
     {
       useGateway: true,

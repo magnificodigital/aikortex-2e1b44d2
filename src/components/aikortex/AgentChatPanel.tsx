@@ -77,34 +77,6 @@ interface AgentChatPanelProps {
   savedConfig?: Record<string, any> | null;
 }
 
-const AGENT_SUGGESTIONS: Record<string, string[]> = {
-  SDR: [
-    "Agente SDR para qualificação de leads B2B via WhatsApp",
-    "SDR que coleta nome, email e interesse e agenda reunião",
-    "Qualificador BANT automático com encaminhamento para closers",
-  ],
-  BDR: [
-    "Agente BDR para prospecção outbound de empresas SaaS",
-    "Prospectador que pesquisa empresas e personaliza abordagem",
-    "BDR que identifica decisores e agenda reuniões qualificadas",
-  ],
-  SAC: [
-    "Agente de suporte ao cliente para e-commerce",
-    "SAC que resolve dúvidas e escala para humanos quando necessário",
-    "Suporte técnico com diagnóstico e abertura de chamados",
-  ],
-  CS: [
-    "Agente de Customer Success para onboarding de clientes",
-    "CS que acompanha uso do produto e previne churn",
-    "Consultor de sucesso com health check periódico",
-  ],
-  Custom: [
-    "Agente de qualificação de leads",
-    "Agente criador de conteúdo para redes sociais",
-    "Agente de atendimento ao cliente",
-  ],
-};
-
 const stepLabels = [
   { id: "discover" as const, label: "Descobrir", num: 1 },
   { id: "structure" as const, label: "Estruturar", num: 2 },
@@ -306,14 +278,7 @@ const AgentChatPanel = ({
   const isSelectedModelFree = selectedModelInfo?.badge === "free";
   const isSelectedModelLocked = selectedModelInfo?.locked === true;
   const canSendTest = chatMode === "test" ? (isSelectedModelFree || !isSelectedModelLocked) : true;
-  // Hero state: usuário ainda não respondeu (só existe a saudação inicial ou nada)
-  const userHasResponded = (wizardChatMessages || []).some((m: any) => {
-    const role = "text" in m ? m.role : m.role;
-    const txt = ("text" in m ? m.text : m.content) || "";
-    return role === "user" && txt.trim().toLowerCase() !== "start";
-  });
-  const isDiscoverEmpty = wizardStep === "discover" && !wizardIsStreaming && !userHasResponded;
-  const suggestions = AGENT_SUGGESTIONS[agentType] || AGENT_SUGGESTIONS.Custom;
+  // Hero state removido — saudação inicial do bot já é o ponto de entrada.
 
   // Quick-reply chips — detecta contexto na última pergunta do bot durante discover
   // (Master v7.4 §13.2: campos com domínio fechado vêm de presets fixos).
@@ -449,19 +414,16 @@ const AgentChatPanel = ({
     }
   };
 
-  // Which messages to show based on wizard state
-  // During discover, show the wizard Q&A chat — hide the initial "start" trigger message
-  // Quando hero está visível (isDiscoverEmpty), também esconde a saudação inicial
-  // do bot pra não duplicar conteúdo com o hero.
+  // Which messages to show based on wizard state.
+  // During discover, mostra a conversa wizard inteira — só esconde a mensagem
+  // "start" sintética que o frontend manda pra disparar o backend.
   const displayMessages: any[] = wizardStep === "done"
     ? messages
     : wizardStep === "discover"
       ? (wizardChatMessages || []).filter((m, i) => {
           const text = "text" in m ? (m as any).text : (m as any).content;
           const role = "text" in m ? (m as any).role : (m as any).role;
-          if (i === 0 && role === "user" && typeof text === "string" && text.trim().toLowerCase() === "start") return false;
-          if (isDiscoverEmpty) return false;
-          return true;
+          return !(i === 0 && role === "user" && typeof text === "string" && text.trim().toLowerCase() === "start");
         })
       : wizardMessages;
 
@@ -627,34 +589,8 @@ const AgentChatPanel = ({
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
         <div className="max-w-3xl mx-auto w-full space-y-4">
 
-        {/* ══ Step 1: Discover — hero empty state with starter prompts ══ */}
-        {isDiscoverEmpty && (
-          <div className="flex flex-col items-center justify-center min-h-full pt-8 pb-4">
-            <h2 className="text-lg font-semibold text-foreground mb-1">Vamos montar seu agente</h2>
-            <p className="text-xs text-muted-foreground text-center max-w-[360px] mb-6">
-              Descreva em uma frase o que ele deve fazer. Posso começar com um destes exemplos:
-            </p>
-            <div className="w-full max-w-md space-y-2">
-              {(suggestions || []).slice(0, 3).map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => wizardSendMessage?.(suggestion)}
-                  disabled={!!wizardIsStreaming}
-                  className="w-full text-left px-4 py-3 rounded-xl bg-card/50 hover:bg-card border border-border/60 hover:border-primary/40 transition-all group disabled:opacity-50"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-md bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
-                      <Sparkles className="w-3 h-3 text-primary" />
-                    </span>
-                    <span className="text-xs text-foreground/90 leading-relaxed">{suggestion}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-4">ou digite sua própria descrição abaixo ↓</p>
-          </div>
-        )}
+        {/* Hero state removido — fluxo agora é puramente conversacional desde
+            a primeira mensagem do bot, como na Master v7.4 §13.2 (Modo Vibe). */}
 
         {/* Chat / wizard messages */}
         {displayMessages.map((msg, i) => {
