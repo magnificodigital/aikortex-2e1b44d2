@@ -734,6 +734,24 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     }
   }, [pendingSetupRestore, setupChat.setMessages]);
 
+  // Quando o wizard transita pra "done" (one-shot acabou), substitui a
+  // mensagem inicial do setupChat pelo greeting com o nome REAL do agente
+  // (em vez de "Novo Agente" que era o placeholder no momento da inicialização
+  // do useAgentChat). Roda uma única vez por transição.
+  const setupGreetingInjectedRef = useRef(false);
+  useEffect(() => {
+    if (wizardStep !== "done") return;
+    if (setupGreetingInjectedRef.current) return;
+    if (!loadedAgent.name || loadedAgent.name === "Novo Agente" || loadedAgent.name === "Carregando...") return;
+    setupGreetingInjectedRef.current = true;
+    // Apenas substitui se setupChat ainda só tem a mensagem inicial placeholder
+    // (não pisa em conversa já existente que o user iniciou)
+    const cur = setupChat.messages;
+    if (cur.length <= 1) {
+      setupChat.setMessages([{ role: "agent", text: setupInitialMessage }] as any);
+    }
+  }, [wizardStep, loadedAgent.name, setupInitialMessage, setupChat]);
+
   /* ── Chat (wizard-setup mode — guided Q&A to fill agent config) ── */
 
   const wizardAgentTypeKey = (loadedAgent.agentType || "Custom").toLowerCase();
@@ -814,12 +832,15 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
   // Fast-track ONE-SHOT: quando wizard chamou commit_draft com tudo configurado,
   // pula structure/build (LLM extra desnecessário) e vai direto pra "done".
   // Master v7.4 §13.2: agente já está montado no DB via tools; só transita estado.
-  // CRUCIAL: refresh final do savedConfig ANTES de transitar pra "done" — sem
-  // isso o polling para no meio e os últimos campos (instructions/greeting)
-  // não aparecem na checklist.
+  // CRUCIAL: setWizardStep("done") PRIMEIRO (transição eager, evita race com
+  // próxima mensagem do user). Refresh do savedConfig em paralelo.
   const fastTrackComplete = useCallback(async () => {
     if (wizardCompletedRef.current) return;
     wizardCompletedRef.current = true;
+
+    // Transição imediata pra "done" — bloqueia wizard de rodar em mensagens
+    // subsequentes do user. Side effect: setupChat assume.
+    setWizardStep("done");
 
     if (agentId && agentId !== "new" && !agentId.startsWith("new-")) {
       try {
@@ -850,8 +871,6 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
         console.warn("[wizard] fast-track refresh failed:", e);
       }
     }
-
-    setWizardStep("done");
   }, [agentId]);
 
   const runWizardBuild = useCallback(async (conversationSummary: string) => {
