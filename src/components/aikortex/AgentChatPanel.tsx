@@ -284,41 +284,9 @@ const AgentChatPanel = ({
   const canSendTest = chatMode === "test" ? (isSelectedModelFree || !isSelectedModelLocked) : true;
   // Hero state removido — saudação inicial do bot já é o ponto de entrada.
 
-  // Quick-reply chips — detecta contexto na última pergunta do bot durante discover
-  // (Master v7.4 §13.2: campos com domínio fechado vêm de presets fixos).
-  const lastAgentText = (() => {
-    const msgs = (wizardChatMessages || []) as any[];
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      const m = msgs[i];
-      const role = "text" in m ? m.role : m.role === "user" ? "user" : "agent";
-      if (role === "agent") return ("text" in m ? m.text : m.content) as string;
-    }
-    return "";
-  })();
-
-  const quickReplies: string[] = (() => {
-    if (wizardStep !== "discover" || wizardIsStreaming || !lastAgentText) return [];
-    // Analisa só a ÚLTIMA pergunta (segmento terminando em "?") pra evitar
-    // que palavras-chave em contexto (ex: "Anotado o nicho. Qual o nome?")
-    // disparem chips errados.
-    const sentences = lastAgentText.split(/(?<=[.?!])\s+/);
-    const lastQuestion = (sentences.reverse().find((s: string) => s.includes("?")) || lastAgentText).toLowerCase();
-
-    // Detecção por INTENÇÃO (interrogativo + termo), não keywords soltas
-    if (/(qual|que|escolha|defina)[^?]*\b(nicho|setor|segmento|ramo|área de atuação)\b/.test(lastQuestion)) {
-      return ["Saúde", "Imobiliária", "Advocacia", "Educação", "Food", "Estética", "Pet", "Finanças", "SaaS"];
-    }
-    if (/(qual|que|escolha)[^?]*\btom\b|consultivo, casual|consultivo ou casual/.test(lastQuestion)) {
-      return ["Consultivo", "Casual e amigável", "Empático", "Direto e objetivo"];
-    }
-    if (/(quais|que)[^?]*\bcanai?s?\b|canal de atendimento|canais? de comunicaç/.test(lastQuestion)) {
-      return ["WhatsApp", "Email", "Instagram", "Website", "SMS"];
-    }
-    if (/(qual|quais|que)[^?]*\bintegraç|google agenda|google calendar|calendly|usa.*crm/.test(lastQuestion)) {
-      return ["Google Agenda", "Calendly", "HubSpot", "Google Sheets", "RD Station", "Nenhuma"];
-    }
-    return [];
-  })();
+  // Modo Vibe ONE-SHOT: user dá UMA descrição livre, não há Q&A.
+  // Quick-replies só fariam sentido em fluxo de entrevista — desativadas.
+  const quickReplies: string[] = [];
 
   /* ── Discover → Structure ── */
   const handleDiscover = useCallback(async (text: string) => {

@@ -30,8 +30,10 @@ const STEPS: ThinkingStep[] = [
   { id: "tone",         label: "Definindo o tom de voz",                done: (cfg) => !!(cfg?.businessContext?.toneOfVoice || cfg?.toneOfVoice) },
   { id: "objective",    label: "Estruturando o objetivo principal",     done: (cfg) => !!(cfg?.profile?.primaryGoal || cfg?.objective) },
   { id: "capabilities", label: "Ativando capacidades cognitivas",       done: (cfg) => {
+      // agent-vibe-mutate salva capabilities como boolean direto: { planning: true }
+      // (NÃO como { planning: { enabled: true } })
       const caps = cfg?.capabilities ?? {};
-      return Object.values(caps).some((c: any) => c?.enabled === true);
+      return Object.values(caps).some((c: any) => c === true || c?.enabled === true);
     },
   },
 
@@ -45,8 +47,13 @@ const STEPS: ThinkingStep[] = [
   },
   { id: "integrations", label: "Mapeando integrações externas",         done: (cfg) => Array.isArray(cfg?.externalIntegrations) && cfg.externalIntegrations.length > 0 },
   { id: "tools",        label: "Habilitando ferramentas runtime",       done: (cfg) => Array.isArray(cfg?.enabledTools) && cfg.enabledTools.length > 0 },
-  { id: "instructions", label: "Escrevendo as instruções operacionais", done: (cfg) => !!cfg?.instructions && cfg.instructions.length > 200 },
-  { id: "greeting",     label: "Criando a mensagem de saudação",        done: (cfg) => !!cfg?.greetingMessage },
+  { id: "instructions", label: "Escrevendo as instruções operacionais", done: (cfg) => {
+      // vibe-mutate salva em profile.instructions; legacy raiz
+      const instr = cfg?.profile?.instructions ?? cfg?.instructions;
+      return !!(typeof instr === "string" && instr.length > 200);
+    },
+  },
+  { id: "greeting",     label: "Criando a mensagem de saudação",        done: (cfg) => !!(cfg?.businessContext?.greetingMessage || cfg?.greetingMessage) },
   { id: "finalize",     label: "Finalizando o agente",                  done: (cfg) => !!cfg?.wizard_completed },
 ];
 

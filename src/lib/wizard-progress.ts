@@ -57,8 +57,14 @@ export function computeWizardProgress(savedConfig: Record<string, any> | null | 
     // Objetivo: agent-vibe-mutate grava em profile.primaryGoal; legado em cfg.objective
     { id: "objective", label: "Objetivo",   done: !!(profile.primaryGoal || cfg.objective) },
     { id: "channels",  label: "Canais",     done: channelsActive },
-    { id: "criteria",  label: "Critérios",  done: !!(cfg.instructions && cfg.instructions.length > 80) },
-    { id: "greeting",  label: "Saudação",   done: !!cfg.greetingMessage },
+    // Instructions: agent-vibe-mutate grava em profile.instructions; legacy raiz
+    { id: "criteria",  label: "Critérios",  done: (() => {
+        const instr = (cfg as any)?.profile?.instructions ?? cfg.instructions;
+        return !!(typeof instr === "string" && instr.length > 80);
+      })(),
+    },
+    // Greeting: vibe-mutate grava em businessContext.greetingMessage; legacy raiz
+    { id: "greeting",  label: "Saudação",   done: !!((cfg as any)?.businessContext?.greetingMessage || cfg.greetingMessage) },
   ];
   const doneCount = checkpoints.filter((c) => c.done).length;
   const totalCount = checkpoints.length;
