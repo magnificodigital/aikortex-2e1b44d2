@@ -745,10 +745,9 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
   const wizardChat = useAgentChat(
     [{
       role: "agent" as const,
-      // Master v7.4 §13.2: Modo Vibe começa com pergunta aberta convidando
-      // o user a descrever o agente em linguagem natural. Tom de conversa,
-      // não de formulário — bot ASSUME a liderança da entrevista.
-      text: `Olá! 👋 Vou te ajudar a criar seu agente. Pra começar, me conta: **o que ele precisa fazer?** Em qual negócio vai atuar e qual a função principal — pode descrever com suas palavras.`,
+      // Master v7.4 §13.2: Modo Vibe ONE-SHOT — user dá descrição inicial,
+      // sistema cria o agente INTEIRO em uma resposta e apresenta pronto pra iterar.
+      text: `Olá! 👋 Sou o construtor de agentes do Aikortex. Me conta em uma frase o que seu agente precisa fazer — em qual negócio vai atuar, qual a função principal e (se quiser) integrações que ele vai usar.\n\n*Exemplo:* "SDR pra clínica odontológica que qualifica leads via WhatsApp e agenda no Google Agenda".\n\nCom essa descrição eu monto o agente completo em poucos segundos. ✨`,
     }],
     {
       useGateway: true,

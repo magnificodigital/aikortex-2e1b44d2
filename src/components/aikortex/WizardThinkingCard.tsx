@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 
+// Steps que cobrem o processo COMPLETO de criação ONE-SHOT (Master v7.4 §13.2).
+// LLM faz tudo de uma vez; card mostra cada bloco do processo conforme passa.
 const THINKING_STEPS = [
-  "Modo Vibe iniciado",
-  "Analisando sua resposta",
-  "Identificando contexto do agente",
-  "Aplicando configurações no draft",
-  "Preparando próxima pergunta",
+  "Analisando descrição",
+  "Identificando perfil do agente",
+  "Mapeando integrações necessárias",
+  "Configurando tom e comportamento",
+  "Estruturando critérios operacionais",
+  "Definindo fluxo de conversa",
+  "Finalizando agente",
 ] as const;
 
 /**
@@ -19,10 +23,11 @@ export default function WizardThinkingCard() {
 
   useEffect(() => {
     setVisibleCount(1);
-    // Revela os steps sequencialmente. Se a resposta chegar antes do
-    // último step ser revelado, o card simplesmente desmonta.
+    // Revela os steps sequencialmente espaçados ~1.5s — alinhado com a
+    // duração real do one-shot (10-20s típico). Se a resposta chega
+    // antes do último step ser revelado, o card desmonta naturalmente.
     const timers = THINKING_STEPS.map((_, i) =>
-      setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), i * 650)
+      setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), i * 1500)
     );
     return () => timers.forEach((t) => clearTimeout(t));
   }, []);

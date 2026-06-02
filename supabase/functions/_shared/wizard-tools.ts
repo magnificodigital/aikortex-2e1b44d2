@@ -339,7 +339,8 @@ export async function runWizardWithTools(opts: RunWizardWithToolsOptions): Promi
         tools: iter < maxIterations ? (WIZARD_TOOL_DEFS as unknown as any[]) : undefined,
         toolChoice: iter < maxIterations ? "auto" : undefined,
         maxTokens,
-        timeoutMs: 25000,
+        // Bumped from 25s → 45s pra acomodar one-shot com 10+ tool calls
+        timeoutMs: 45000,
       },
       opts.supabase,
     );
