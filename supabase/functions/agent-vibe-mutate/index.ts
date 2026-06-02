@@ -166,7 +166,15 @@ serve(async (req) => {
         if (!validKeys.includes(key)) {
           return jsonRes({ error: "INVALID_CAPABILITY", validKeys }, 400);
         }
-        const caps = { ...(newConfig.capabilities ?? {}), [key]: enabled };
+        // Formato {enabled: bool} pra alinhar com AgentRightPanel — antes salvava
+        // bool direto e os toggles do painel não detectavam o estado.
+        // Preserva qualquer config existente (max_steps, etc.) se já houver.
+        const existing = (newConfig.capabilities ?? {}) as Record<string, any>;
+        const existingForKey = existing[key];
+        const normalizedExisting = typeof existingForKey === "object" && existingForKey !== null
+          ? existingForKey
+          : {};
+        const caps = { ...existing, [key]: { ...normalizedExisting, enabled } };
         newConfig = { ...newConfig, capabilities: caps };
         logMessage = `Capacidade "${key}": ${enabled ? "ativada" : "desativada"}`;
         break;
