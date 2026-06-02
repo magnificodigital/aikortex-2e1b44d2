@@ -322,7 +322,7 @@ export default function AgentOverviewPanel({
             { label: "WhatsApp", icon: MessageSquare, key: "channels.whatsapp" },
             { label: "Templates WhatsApp", icon: MessageSquare, key: "resources.wa_templates" },
             { label: "LLMs", icon: Plug, key: "integrations.llms" },
-            { label: "MCPs & APIs", icon: Plug, key: "integrations.apis" },
+            { label: "Conectores", icon: Plug, key: "integrations.apis" },
             { label: "Ferramentas", icon: Wrench, key: "resources.tools" },
             { label: "Tabelas", icon: Database, key: "resources.tables" },
           ].map((s) => {

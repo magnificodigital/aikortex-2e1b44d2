@@ -160,7 +160,7 @@ const RIGHT_NAV: NavGroup[] = [
   { group: "Integrações", items: [
     { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
     { key: "integrations.llms",      label: "LLMs",                 icon: Sparkles },
-    { key: "integrations.apis",      label: "MCPs & APIs",          icon: Plug },
+    { key: "integrations.apis",      label: "Conectores",           icon: Plug },
   ]},
   { group: "Automações", items: [
     { key: "behavior.cadences",      label: "Cadências",            icon: Clock,           masterRef: "13.5.13" },
@@ -1339,13 +1339,13 @@ const AgentRightPanel = ({
               </div>
             )}
 
-            {/* ── Integrações → MCPs & APIs ── */}
+            {/* ── Integrações → Conectores ── */}
             {activeSection === "integrations.apis" && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">MCPs & APIs</h2>
+                  <h2 className="text-lg font-bold text-foreground">Conectores</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Conecte MCPs, APIs de serviços externos (Gmail, Calendar, Drive, CRMs) e webhooks que o agente pode usar.
+                    Conecte contas e serviços externos (Google, CRMs, agenda) que o agente pode usar durante a conversa.
                   </p>
                 </div>
 
@@ -1358,18 +1358,8 @@ const AgentRightPanel = ({
                   storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
                 />
 
-                <EmptyIntegrationSection
-                  icon={Blocks}
-                  title="MCPs"
-                  description="Conecte servidores MCP (Model Context Protocol) para estender o contexto do agente com fontes externas (filesystem, DB, search, etc)."
-                  actionLabel="Adicionar MCP"
-                />
-                <EmptyIntegrationSection
-                  icon={Webhook}
-                  title="Webhooks"
-                  description="Configure webhooks pra receber e enviar eventos em tempo real entre o Aikortex e sistemas externos."
-                  actionLabel="Adicionar Webhook"
-                />
+                {/* MCPs e Webhooks escondidos por enquanto — não implementados.
+                    Quando entrarem no roadmap, reabilitar EmptyIntegrationSection. */}
               </div>
             )}
 
