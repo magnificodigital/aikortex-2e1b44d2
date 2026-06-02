@@ -6,6 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Check, Eye, EyeOff, ExternalLink, KeyRound, Settings, Trash2, Sparkles, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { fnUrl } from "@/lib/supabase-url";
+
+// Providers que usam OAuth (não API key). Clicar abre popup Google em vez do dialog.
+const OAUTH_PROVIDERS = new Set(["google_calendar", "google_sheets", "google_drive", "gmail"]);
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -270,6 +274,13 @@ export function IntegrationsGrid({
   const connectedCount = displayProviders.filter(p => p.native || connectorKeys[p.provider]?.configured).length;
 
   const openDialog = (provider: IntegrationProvider) => {
+    // Providers Google usam OAuth, não API key. Intercepta o click pra
+    // abrir popup do Google e fazer o fluxo OAuth completo. Após conectar,
+    // recarrega o status pra atualizar a UI.
+    if (OAUTH_PROVIDERS.has(provider.provider)) {
+      void startOAuthFlow(provider.provider);
+      return;
+    }
     setKeyInput("");
     setPublicKeyInput("");
     setShowKey(false);
@@ -280,6 +291,95 @@ export function IntegrationsGrid({
       topP: 1,
     });
     setDialogProvider(provider);
+  };
+
+  // OAuth flow pra providers Google. Abre popup, escuta postMessage +
+  // BroadcastChannel + polling. Quando completa, recarrega connectorKeys.
+  const startOAuthFlow = async (providerKey: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        toast.error("Sessão expirada — faça login novamente.");
+        return;
+      }
+      const resp = await fetch(fnUrl("google-oauth-start"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ scope: providerKey }),
+      });
+      const json = await resp.json();
+      if (!resp.ok || !json.authUrl) {
+        toast.error(json.message || "Erro ao iniciar OAuth");
+        return;
+      }
+      const w = 500, h = 700;
+      const left = (screen.width - w) / 2;
+      const top = (screen.height - h) / 2;
+      const popup = window.open(json.authUrl, "google_oauth", `width=${w},height=${h},left=${left},top=${top}`);
+      if (!popup) {
+        toast.error("Popup bloqueado — permita popups pra esse site.");
+        return;
+      }
+      toast.info("Autorize a conexão na janela do Google...");
+
+      const finish = (success: boolean, err?: string) => {
+        try { popup.close(); } catch { /* ignore */ }
+        if (success) {
+          toast.success("Conectado com sucesso!");
+          void load(); // recarrega status
+        } else if (err) {
+          toast.error(`Erro na conexão: ${err}`);
+        }
+      };
+
+      const onMsg = (ev: MessageEvent) => {
+        const d = ev.data;
+        if (!d || typeof d !== "object" || typeof d.success !== "boolean") return;
+        if (d.scope && d.scope !== providerKey) return;
+        window.removeEventListener("message", onMsg);
+        if (interval) clearInterval(interval);
+        try { bc?.close(); } catch { /* ignore */ }
+        finish(d.success, d.error);
+      };
+      window.addEventListener("message", onMsg);
+
+      let bc: BroadcastChannel | null = null;
+      try {
+        bc = new BroadcastChannel("aikortex_oauth");
+        bc.onmessage = (ev) => onMsg(ev as any);
+      } catch { /* ignore */ }
+
+      // Polling fallback — verifica DB cada 1.5s
+      const interval = setInterval(async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          const { data } = await supabase
+            .from("user_api_keys")
+            .select("api_key")
+            .eq("provider", providerKey)
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (data?.api_key) {
+            clearInterval(interval);
+            window.removeEventListener("message", onMsg);
+            try { bc?.close(); } catch { /* ignore */ }
+            finish(true);
+          }
+        } catch { /* ignore */ }
+      }, 1500);
+
+      // Watcher pra fechar polling se user fechar popup manual
+      const popupWatcher = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(popupWatcher);
+          setTimeout(() => clearInterval(interval), 3000); // grace period
+        }
+      }, 500);
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao abrir OAuth");
+    }
   };
 
   const handleSave = async (keyOnly = false) => {
