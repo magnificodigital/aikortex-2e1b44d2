@@ -1,35 +1,38 @@
 import { useEffect, useState } from "react";
-import { Check, Loader2, Brain, ListChecks, Hammer } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
+import aikortexIconWhite from "@/assets/aikortex-icon-white.png";
+import aikortexIconBlack from "@/assets/aikortex-icon-black.png";
 
-// Master v7.4 §13.2 — processo ONE-SHOT divido em 3 fases mentais:
-// pensar (entender) → planejar (decidir) → construir (aplicar).
-// Cada fase tem sub-steps que revelam sequencialmente.
+// Master v7.4 §13.2 — processo ONE-SHOT dividido em 3 fases mentais,
+// com labels que soam como pensamento ("Pensando sobre…", "Planejando…",
+// "Desenvolvendo…") em vez de imperativos secos ("Aplicar X").
 const PHASES = [
   {
     id: "thinking",
     label: "Pensando",
-    icon: Brain,
-    color: "from-violet-400 via-purple-500 to-fuchsia-500",
-    steps: ["Analisando descrição", "Identificando intenção do agente"],
+    steps: [
+      "Pensando sobre o que você descreveu",
+      "Identificando o tipo de agente ideal",
+    ],
   },
   {
     id: "planning",
     label: "Planejando",
-    icon: ListChecks,
-    color: "from-sky-400 via-blue-500 to-indigo-500",
     steps: [
-      "Mapeando perfil do agente",
-      "Selecionando canais e integrações",
-      "Estruturando critérios operacionais",
-      "Definindo fluxo de conversa",
+      "Planejando o perfil do agente",
+      "Pensando nos canais e integrações necessárias",
+      "Pensando nos critérios certos",
+      "Pensando no fluxo de conversa",
     ],
   },
   {
     id: "building",
-    label: "Construindo",
-    icon: Hammer,
-    color: "from-amber-400 via-orange-500 to-rose-500",
-    steps: ["Aplicando configurações no draft", "Finalizando agente"],
+    label: "Desenvolvendo",
+    steps: [
+      "Desenvolvendo o agente",
+      "Finalizando os últimos ajustes",
+    ],
   },
 ] as const;
 
@@ -37,6 +40,8 @@ const TOTAL_STEPS = PHASES.reduce((acc, p) => acc + p.steps.length, 0);
 const STEP_INTERVAL_MS = 1300;
 
 export default function WizardThinkingCard() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [globalStep, setGlobalStep] = useState(1);
 
   useEffect(() => {
@@ -48,74 +53,75 @@ export default function WizardThinkingCard() {
     return () => timers.forEach((t) => clearTimeout(t));
   }, []);
 
-  // Calcula quais sub-steps estão visíveis em cada fase
-  let cursor = 0;
   return (
-    <div className="space-y-4">
-      {PHASES.map((phase, phaseIdx) => {
-        const phaseStartGlobal = cursor + 1;
-        const phaseEndGlobal = cursor + phase.steps.length;
-        cursor += phase.steps.length;
+    <div className="flex gap-3">
+      {/* Ícone Aikortex pulsante (cor adapta ao tema) */}
+      <div className="relative w-9 h-9 shrink-0 mt-0.5">
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/5 ring-1 ring-primary/30 animate-pulse" />
+        <div className="absolute inset-0 rounded-full bg-primary/15 blur-md animate-pulse" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <img
+            src={isDark ? aikortexIconWhite : aikortexIconBlack}
+            alt="Aikortex"
+            className="w-5 h-5 object-contain"
+          />
+        </div>
+      </div>
 
-        // Esta fase ainda não começou? Não renderiza.
-        if (globalStep < phaseStartGlobal) return null;
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground mb-3">Construindo seu agente...</p>
 
-        const isActive = globalStep <= phaseEndGlobal;
-        const isComplete = globalStep > phaseEndGlobal;
-        const PhaseIcon = phase.icon;
+        {/* Lista de phases + sub-steps inline */}
+        {(() => {
+          let cursor = 0;
+          return PHASES.map((phase) => {
+            const phaseStart = cursor + 1;
+            const phaseEnd = cursor + phase.steps.length;
+            cursor += phase.steps.length;
+            if (globalStep < phaseStart) return null;
 
-        return (
-          <div key={phase.id} className="flex gap-3">
-            {/* Ícone da fase com gradient */}
-            <div className="relative w-8 h-8 shrink-0 mt-0.5">
-              <div
-                className={`absolute inset-0 rounded-full bg-gradient-to-br ${phase.color} ${
-                  isActive ? "animate-pulse" : ""
-                }`}
-              />
-              <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${phase.color} opacity-30 blur-md ${isActive ? "animate-pulse" : ""}`} />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <PhaseIcon className="w-4 h-4 text-white drop-shadow" />
+            const phaseDone = globalStep > phaseEnd;
+
+            return (
+              <div key={phase.id} className="mb-3 last:mb-0">
+                <p className={`text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${
+                  phaseDone ? "text-emerald-600 dark:text-emerald-500" : "text-primary"
+                }`}>
+                  {phase.label}
+                  {phaseDone && <Check className="inline-block w-3 h-3 ml-1" />}
+                </p>
+                <ul className="space-y-1 ml-0.5 border-l border-border/40 pl-3">
+                  {phase.steps.map((step, stepIdx) => {
+                    const stepGlobal = phaseStart + stepIdx;
+                    if (globalStep < stepGlobal) return null;
+                    const isCurrent = globalStep === stepGlobal;
+                    return (
+                      <li
+                        key={step}
+                        className={`flex items-center gap-2 text-xs transition-all duration-300 ${
+                          isCurrent ? "text-foreground" : "text-muted-foreground/70"
+                        }`}
+                      >
+                        <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
+                          {isCurrent ? (
+                            <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                          ) : (
+                            <Check className="w-3 h-3 text-emerald-500" />
+                          )}
+                        </span>
+                        <span>
+                          {step}
+                          {isCurrent ? "..." : "."}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-semibold mb-2 ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-                {phase.label}
-                {isActive && <span className="text-muted-foreground font-normal">...</span>}
-                {isComplete && <Check className="inline-block w-3.5 h-3.5 ml-1.5 text-emerald-500" />}
-              </p>
-              <ul className="space-y-1.5 ml-0.5 border-l border-border/40 pl-3">
-                {phase.steps.map((step, stepIdx) => {
-                  const stepGlobal = phaseStartGlobal + stepIdx;
-                  if (globalStep < stepGlobal) return null;
-                  const isCurrentStep = globalStep === stepGlobal && isActive;
-                  return (
-                    <li
-                      key={step}
-                      className={`flex items-center gap-2 text-xs transition-all duration-300 ${
-                        isCurrentStep ? "text-foreground" : "text-muted-foreground/70"
-                      }`}
-                    >
-                      <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
-                        {isCurrentStep ? (
-                          <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                        ) : (
-                          <Check className="w-3 h-3 text-emerald-500" />
-                        )}
-                      </span>
-                      <span>
-                        {step}
-                        {isCurrentStep ? "..." : "."}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </div>
-        );
-      })}
+            );
+          });
+        })()}
+      </div>
     </div>
   );
 }
