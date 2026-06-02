@@ -274,11 +274,20 @@ export function IntegrationsGrid({
   const connectedCount = displayProviders.filter(p => p.native || connectorKeys[p.provider]?.configured).length;
 
   const openDialog = (provider: IntegrationProvider) => {
-    // Providers Google usam OAuth, não API key. Intercepta o click pra
-    // abrir popup do Google e fazer o fluxo OAuth completo. Após conectar,
-    // recarrega o status pra atualizar a UI.
+    // Providers Google usam OAuth, não API key.
+    // - NÃO conectado: dispara popup OAuth direto (sem dialog)
+    // - JÁ conectado: abre dialog enxuto com botão "Desconectar"
     if (OAUTH_PROVIDERS.has(provider.provider)) {
-      void startOAuthFlow(provider.provider);
+      const isConnectedNow = !!connectorKeys[provider.provider]?.configured;
+      if (!isConnectedNow) {
+        void startOAuthFlow(provider.provider);
+        return;
+      }
+      // Connected: abre dialog só pra mostrar status + permitir desconectar.
+      setKeyInput("");
+      setPublicKeyInput("");
+      setShowKey(false);
+      setDialogProvider(provider);
       return;
     }
     setKeyInput("");
@@ -562,7 +571,47 @@ export function IntegrationsGrid({
           </DialogHeader>
           <ScrollArea className="max-h-[60vh] pr-2">
           <div className="space-y-5 pt-2">
-            {/* API Key Section */}
+            {/* OAuth Section — Google providers usam OAuth, não API key */}
+            {dialogProvider && OAUTH_PROVIDERS.has(dialogProvider.provider) && (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 flex items-start gap-3">
+                  <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-semibold text-foreground">Conectado via OAuth do Google</p>
+                    <p className="text-xs text-muted-foreground">
+                      O Aikortex usa sua autorização do Google pra acessar {dialogProvider.label}. Sua senha nunca é compartilhada.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDialogProvider(null);
+                      void startOAuthFlow(dialogProvider.provider);
+                    }}
+                    disabled={saving}
+                    className="flex-1"
+                  >
+                    Reconectar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDisconnect}
+                    disabled={saving}
+                    className="flex-1 gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Desconectar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* API Key Section — só pra providers que NÃO são OAuth */}
+            {dialogProvider && !OAUTH_PROVIDERS.has(dialogProvider.provider) && (
             <div className="space-y-2.5">
               <label className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <KeyRound className="w-3.5 h-3.5 text-primary" /> API Key
@@ -592,6 +641,7 @@ export function IntegrationsGrid({
                 <p className="text-[11px] text-muted-foreground">Cole a chave de API fornecida pelo serviço.</p>
               )}
             </div>
+            )}
 
             {/* Telnyx Public Key */}
             {dialogProvider?.provider === "telnyx" && (
@@ -711,17 +761,27 @@ export function IntegrationsGrid({
             <Separator />
 
             <div className="flex items-center justify-between">
-              {dialogIsConnected ? (
-                <Button variant="destructive" size="sm" className="text-xs gap-1.5 h-8" onClick={handleDisconnect} disabled={saving}>
-                  <Trash2 className="w-3 h-3" /> Desconectar
-                </Button>
-              ) : <div />}
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="h-8" onClick={() => { setDialogProvider(null); setKeyInput(""); setPublicKeyInput(""); setDialogConfig({}); }}>Cancelar</Button>
-                <Button size="sm" className="h-8" onClick={() => handleSave()} disabled={(!keyInput.trim() && !dialogIsConnected) || saving}>
-                  {dialogIsConnected ? "Salvar" : "Conectar"}
-                </Button>
-              </div>
+              {/* OAuth: já tem Reconectar/Desconectar no topo, footer só mostra Fechar */}
+              {dialogProvider && OAUTH_PROVIDERS.has(dialogProvider.provider) ? (
+                <>
+                  <div />
+                  <Button variant="outline" size="sm" className="h-8" onClick={() => setDialogProvider(null)}>Fechar</Button>
+                </>
+              ) : (
+                <>
+                  {dialogIsConnected ? (
+                    <Button variant="destructive" size="sm" className="text-xs gap-1.5 h-8" onClick={handleDisconnect} disabled={saving}>
+                      <Trash2 className="w-3 h-3" /> Desconectar
+                    </Button>
+                  ) : <div />}
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="h-8" onClick={() => { setDialogProvider(null); setKeyInput(""); setPublicKeyInput(""); setDialogConfig({}); }}>Cancelar</Button>
+                    <Button size="sm" className="h-8" onClick={() => handleSave()} disabled={(!keyInput.trim() && !dialogIsConnected) || saving}>
+                      {dialogIsConnected ? "Salvar" : "Conectar"}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           </ScrollArea>
