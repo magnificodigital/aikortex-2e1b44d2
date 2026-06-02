@@ -6,6 +6,7 @@ import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
 import { callLLM, buildAdminClient } from "../_shared/llm-fallback.ts";
 import { runWizardWithTools } from "../_shared/wizard-tools.ts";
+import { detectIntegrationsInText, getIntegrationStatuses, buildIntegrationStatusBlock } from "../_shared/integration-detector.ts";
 
 function streamText(text: string): ReadableStream {
   const encoder = new TextEncoder();
@@ -885,12 +886,39 @@ serve(async (req) => {
       const incomingMessages = (messages || []) as Array<{ role: string; content: string }>;
       let chatMessages: Array<{ role: string; content: string }>;
       if (mode === "wizard-setup") {
-        const wizardSystem = buildWizardSystemPrompt(
+        let wizardSystem = buildWizardSystemPrompt(
           String((body as Record<string, unknown>).agentType || "Custom"),
           typeof (body as any).niche === "string" && (body as any).niche
             ? (body as any).niche
             : undefined,
         );
+
+        // Detector de bloqueios pré-criação (Zaia Solutions Architect pattern):
+        // analisa a última mensagem do user, detecta integrações mencionadas e
+        // consulta o status real. Injeta no prompt — LLM pausa se houver bloqueador.
+        try {
+          const lastUserMsg = [...incomingMessages].reverse().find((m) => m.role === "user");
+          const uid = (authResult as any).user?.id;
+          if (lastUserMsg?.content && uid) {
+            const adminTmp = createClient(
+              Deno.env.get("SUPABASE_URL")!,
+              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+              { auth: { persistSession: false } },
+            );
+            const detected = detectIntegrationsInText(lastUserMsg.content);
+            if (detected.length > 0) {
+              const statuses = await getIntegrationStatuses(adminTmp, uid, detected);
+              const block = buildIntegrationStatusBlock(statuses);
+              if (block) {
+                wizardSystem += "\n\n" + block;
+                console.log(`[wizard-setup] integrações detectadas:`, statuses.map((s) => `${s.label}:${s.connected ? "ON" : "OFF"}`).join(", "));
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("[wizard-setup] blocker pre-check failed (non-fatal):", e);
+        }
+
         // Remove qualquer system anterior do frontend — backend é fonte de verdade
         const nonSystem = incomingMessages.filter((m) => m.role !== "system");
         chatMessages = [{ role: "system", content: wizardSystem }, ...nonSystem];
