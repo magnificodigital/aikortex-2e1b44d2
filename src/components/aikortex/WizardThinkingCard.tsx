@@ -1,75 +1,121 @@
 import { useEffect, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Brain, ListChecks, Hammer } from "lucide-react";
 
-// Steps que cobrem o processo COMPLETO de criação ONE-SHOT (Master v7.4 §13.2).
-// LLM faz tudo de uma vez; card mostra cada bloco do processo conforme passa.
-const THINKING_STEPS = [
-  "Analisando descrição",
-  "Identificando perfil do agente",
-  "Mapeando integrações necessárias",
-  "Configurando tom e comportamento",
-  "Estruturando critérios operacionais",
-  "Definindo fluxo de conversa",
-  "Finalizando agente",
+// Master v7.4 §13.2 — processo ONE-SHOT divido em 3 fases mentais:
+// pensar (entender) → planejar (decidir) → construir (aplicar).
+// Cada fase tem sub-steps que revelam sequencialmente.
+const PHASES = [
+  {
+    id: "thinking",
+    label: "Pensando",
+    icon: Brain,
+    color: "from-violet-400 via-purple-500 to-fuchsia-500",
+    steps: ["Analisando descrição", "Identificando intenção do agente"],
+  },
+  {
+    id: "planning",
+    label: "Planejando",
+    icon: ListChecks,
+    color: "from-sky-400 via-blue-500 to-indigo-500",
+    steps: [
+      "Mapeando perfil do agente",
+      "Selecionando canais e integrações",
+      "Estruturando critérios operacionais",
+      "Definindo fluxo de conversa",
+    ],
+  },
+  {
+    id: "building",
+    label: "Construindo",
+    icon: Hammer,
+    color: "from-amber-400 via-orange-500 to-rose-500",
+    steps: ["Aplicando configurações no draft", "Finalizando agente"],
+  },
 ] as const;
 
-/**
- * Card de "thinking" visível enquanto o wizard processa a resposta do user.
- * Master v7.4 §13.2 — torna o "Modo Vibe acting" tangível: o user VÊ
- * o que a IA está fazendo enquanto pensa, não só um spinner genérico.
- */
+const TOTAL_STEPS = PHASES.reduce((acc, p) => acc + p.steps.length, 0);
+const STEP_INTERVAL_MS = 1300;
+
 export default function WizardThinkingCard() {
-  const [visibleCount, setVisibleCount] = useState(1);
+  const [globalStep, setGlobalStep] = useState(1);
 
   useEffect(() => {
-    setVisibleCount(1);
-    // Revela os steps sequencialmente espaçados ~1.5s — alinhado com a
-    // duração real do one-shot (10-20s típico). Se a resposta chega
-    // antes do último step ser revelado, o card desmonta naturalmente.
-    const timers = THINKING_STEPS.map((_, i) =>
-      setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), i * 1500)
-    );
+    setGlobalStep(1);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i < TOTAL_STEPS; i++) {
+      timers.push(setTimeout(() => setGlobalStep(i + 1), i * STEP_INTERVAL_MS));
+    }
     return () => timers.forEach((t) => clearTimeout(t));
   }, []);
 
+  // Calcula quais sub-steps estão visíveis em cada fase
+  let cursor = 0;
   return (
-    <div className="flex gap-3">
-      {/* Gradient ball pulsante */}
-      <div className="relative w-7 h-7 shrink-0 mt-0.5">
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-400 via-purple-500 to-fuchsia-500 animate-pulse" />
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-400/30 via-purple-500/30 to-fuchsia-500/30 blur-md" />
-      </div>
+    <div className="space-y-4">
+      {PHASES.map((phase, phaseIdx) => {
+        const phaseStartGlobal = cursor + 1;
+        const phaseEndGlobal = cursor + phase.steps.length;
+        cursor += phase.steps.length;
 
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground mb-2">Respondendo...</p>
-        <ul className="space-y-1.5 ml-0.5 border-l border-border/40 pl-3">
-          {THINKING_STEPS.map((step, i) => {
-            const isVisible = i < visibleCount;
-            const isCurrent = i === visibleCount - 1;
-            if (!isVisible) return null;
-            return (
-              <li
-                key={step}
-                className={`flex items-center gap-2 text-xs transition-all duration-300 ${
-                  isCurrent ? "text-foreground" : "text-muted-foreground/70"
+        // Esta fase ainda não começou? Não renderiza.
+        if (globalStep < phaseStartGlobal) return null;
+
+        const isActive = globalStep <= phaseEndGlobal;
+        const isComplete = globalStep > phaseEndGlobal;
+        const PhaseIcon = phase.icon;
+
+        return (
+          <div key={phase.id} className="flex gap-3">
+            {/* Ícone da fase com gradient */}
+            <div className="relative w-8 h-8 shrink-0 mt-0.5">
+              <div
+                className={`absolute inset-0 rounded-full bg-gradient-to-br ${phase.color} ${
+                  isActive ? "animate-pulse" : ""
                 }`}
-              >
-                <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
-                  {isCurrent ? (
-                    <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                  ) : (
-                    <Check className="w-3 h-3 text-emerald-500" />
-                  )}
-                </span>
-                <span>
-                  {step}
-                  {isCurrent ? "..." : "."}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+              />
+              <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${phase.color} opacity-30 blur-md ${isActive ? "animate-pulse" : ""}`} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <PhaseIcon className="w-4 h-4 text-white drop-shadow" />
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-semibold mb-2 ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                {phase.label}
+                {isActive && <span className="text-muted-foreground font-normal">...</span>}
+                {isComplete && <Check className="inline-block w-3.5 h-3.5 ml-1.5 text-emerald-500" />}
+              </p>
+              <ul className="space-y-1.5 ml-0.5 border-l border-border/40 pl-3">
+                {phase.steps.map((step, stepIdx) => {
+                  const stepGlobal = phaseStartGlobal + stepIdx;
+                  if (globalStep < stepGlobal) return null;
+                  const isCurrentStep = globalStep === stepGlobal && isActive;
+                  return (
+                    <li
+                      key={step}
+                      className={`flex items-center gap-2 text-xs transition-all duration-300 ${
+                        isCurrentStep ? "text-foreground" : "text-muted-foreground/70"
+                      }`}
+                    >
+                      <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
+                        {isCurrentStep ? (
+                          <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                        ) : (
+                          <Check className="w-3 h-3 text-emerald-500" />
+                        )}
+                      </span>
+                      <span>
+                        {step}
+                        {isCurrentStep ? "..." : "."}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

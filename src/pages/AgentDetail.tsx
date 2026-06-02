@@ -714,7 +714,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
   }, [agentConfig, loadedAgent.agentType]);
 
   const setupInitialMessage = useMemo(() => {
-    return `Olá! 👋 Sou o assistente de configuração do **${loadedAgent.name}**. O que gostaria de ajustar?`;
+    return `🎉 Pronto! **${loadedAgent.name}** está criado e pronto pra uso.\n\nPra refinar o agente, você tem duas opções:\n\n- ✏️ **Edita direto nos campos** do painel à direita (nome, instruções, canais, etc.)\n- 💬 **Ou me diz aqui o que mudar** — ex: *"muda o nome pra Sofia"*, *"adiciona Instagram como canal"*, *"deixa o tom mais formal"*\n\nO que quer ajustar?`;
   }, [loadedAgent.name]);
 
   const setupChat = useAgentChat(
@@ -809,6 +809,27 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
 
   const wizardCompletedRef = useRef(false);
 
+  // Fast-track ONE-SHOT: quando wizard chamou commit_draft com tudo configurado,
+  // pula structure/build (LLM extra desnecessário) e vai direto pra "done".
+  // Master v7.4 §13.2: agente já está montado no DB via tools; só transita estado.
+  const fastTrackComplete = useCallback(async () => {
+    if (wizardCompletedRef.current) return;
+    wizardCompletedRef.current = true;
+
+    if (agentId && agentId !== "new" && !agentId.startsWith("new-")) {
+      try {
+        await supabase
+          .from("user_agents")
+          .update({ status: "active" })
+          .eq("id", agentId);
+      } catch (e) {
+        console.warn("[wizard] fast-track status update failed:", e);
+      }
+    }
+
+    setWizardStep("done");
+  }, [agentId]);
+
   const runWizardBuild = useCallback(async (conversationSummary: string) => {
     if (wizardCompletedRef.current) return;
     wizardCompletedRef.current = true;
@@ -868,12 +889,20 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     const shouldBuild = (commitFired && enoughForCommit) || everythingDone;
     if (!shouldBuild) return;
 
+    // ONE-SHOT path: se commit_draft veio, agente já está montado via tools.
+    // Pula structure/build (LLM extra) e fast-track direto pra "done".
+    if (commitFired) {
+      void fastTrackComplete();
+      return;
+    }
+
+    // Fallback (sem commit_draft mas tudo preenchido): build tradicional
     const summary = wizardChat.messages
       .map(m => m.role === "user" ? `Usuário: ${m.text}` : `Assistente: ${m.text}`)
       .join("\n");
 
     void runWizardBuild(summary);
-  }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, loadedAgent.savedConfig, runWizardBuild]);
+  }, [wizardChat.messages, wizardChat.isStreaming, wizardStep, loadedAgent.savedConfig, runWizardBuild, fastTrackComplete]);
 
   // Primary trigger: AI says the closing phrase (com guard de checkpoints)
   useEffect(() => {
