@@ -1,4 +1,5 @@
-import { Check, Sun, Moon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Sun, Moon, Sparkles } from "lucide-react";
 import { computeWizardProgress } from "@/lib/wizard-progress";
 import { useTheme } from "@/hooks/use-theme";
 import aikortexIcon from "@/assets/aikortex-icon-white.png";
@@ -24,7 +25,7 @@ export default function WizardShowcasePanel({
 }: WizardShowcasePanelProps) {
   const { theme, toggle } = useTheme();
   const isDark = theme === "dark";
-  const { checkpoints, doneCount, totalCount, pct } = computeWizardProgress(savedConfig);
+  const { checkpoints, doneCount, totalCount, pct, currentPhase, totalPhases } = computeWizardProgress(savedConfig);
   const ctx = (savedConfig as any)?.businessContext || {};
   const displayName = agentName && agentName !== "Novo Agente" && agentName !== "Carregando..." ? agentName : null;
   const channels: string[] = Array.isArray((savedConfig as any)?.channels) ? (savedConfig as any).channels : [];
@@ -32,6 +33,19 @@ export default function WizardShowcasePanel({
 
   const circumference = 2 * Math.PI * 44;
   const dashOffset = circumference - (pct / 100) * circumference;
+
+  // Pulse na mudança de fase — chama atenção pra transição sem ser intrusivo
+  const phaseId = currentPhase?.id ?? "done";
+  const lastPhaseRef = useRef(phaseId);
+  const [phasePulse, setPhasePulse] = useState(false);
+  useEffect(() => {
+    if (lastPhaseRef.current !== phaseId) {
+      lastPhaseRef.current = phaseId;
+      setPhasePulse(true);
+      const t = setTimeout(() => setPhasePulse(false), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [phaseId]);
 
   return (
     <div className="h-full flex flex-col items-center justify-center bg-gradient-to-br from-background via-card/20 to-background relative overflow-hidden">
@@ -49,6 +63,25 @@ export default function WizardShowcasePanel({
       </button>
 
       <div className="relative z-10 flex flex-col items-center max-w-sm px-6 w-full">
+        {/* Fase atual (§13.2) — pulse na transição */}
+        <div className={`mb-5 px-3 py-1.5 rounded-full border text-[11px] font-medium tracking-wide transition-all duration-500 ${
+          currentPhase
+            ? `bg-primary/10 border-primary/30 text-primary ${phasePulse ? "ring-2 ring-primary/40 scale-105" : ""}`
+            : "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-400"
+        }`}>
+          {currentPhase ? (
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3" />
+              Fase {currentPhase.index} de {totalPhases} · {currentPhase.label}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3 h-3" />
+              Agente pronto
+            </span>
+          )}
+        </div>
+
         {/* Progress ring + animated avatar */}
         <div className="relative w-36 h-36 mb-6">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -93,8 +126,8 @@ export default function WizardShowcasePanel({
         <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-1 text-center min-h-[2rem]">
           {displayName || <span className="text-muted-foreground/40 italic font-normal">Seu agente</span>}
         </h2>
-        <p className="text-xs text-muted-foreground mb-5 capitalize">
-          {agentType ? `Agente ${agentType}` : "Em construção"}
+        <p className="text-xs text-muted-foreground mb-5">
+          {agentType && agentType !== "Custom" ? `Agente ${agentType}` : "Em construção"}
         </p>
 
         {/* Live badges from tools */}

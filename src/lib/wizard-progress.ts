@@ -12,11 +12,32 @@ export interface WizardCheckpoint {
   done: boolean;
 }
 
+// Master v7.4 §13.2 — 4 blocos canônicos do Modo Vibe
+export type WizardPhaseId = "profile" | "integrations" | "criteria" | "flow" | "done";
+
+export interface WizardPhase {
+  id: WizardPhaseId;
+  label: string;
+  index: number; // 1-based pra UI ("Fase 1 de 4")
+  checkpointIds: WizardCheckpointId[];
+}
+
+const PHASES: WizardPhase[] = [
+  { id: "profile",      label: "Perfil",      index: 1, checkpointIds: ["niche", "company", "name", "tone"] },
+  { id: "integrations", label: "Integrações", index: 2, checkpointIds: ["channels"] },
+  { id: "criteria",     label: "Critérios",   index: 3, checkpointIds: ["objective", "criteria"] },
+  { id: "flow",         label: "Fluxo",       index: 4, checkpointIds: ["greeting"] },
+];
+
+const TOTAL_PHASES = PHASES.length;
+
 export function computeWizardProgress(savedConfig: Record<string, any> | null | undefined): {
   checkpoints: WizardCheckpoint[];
   doneCount: number;
   totalCount: number;
   pct: number;
+  currentPhase: WizardPhase | null; // null quando tudo done
+  totalPhases: number;
 } {
   const cfg = savedConfig || {};
   const ctx = (cfg as any).businessContext || {};
@@ -33,5 +54,13 @@ export function computeWizardProgress(savedConfig: Record<string, any> | null | 
   const doneCount = checkpoints.filter((c) => c.done).length;
   const totalCount = checkpoints.length;
   const pct = Math.round((doneCount / totalCount) * 100);
-  return { checkpoints, doneCount, totalCount, pct };
+
+  // Fase atual = primeira fase que ainda tem checkpoint pendente.
+  // Quando todas as fases tão completas, currentPhase = null (Concluído).
+  const doneById = new Map(checkpoints.map((c) => [c.id, c.done]));
+  const currentPhase = PHASES.find((phase) =>
+    phase.checkpointIds.some((id) => !doneById.get(id))
+  ) ?? null;
+
+  return { checkpoints, doneCount, totalCount, pct, currentPhase, totalPhases: TOTAL_PHASES };
 }

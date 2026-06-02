@@ -582,11 +582,23 @@ const AgentChatPanel = ({
         </div>
       )}
 
-      {/* Agent info bar — only after wizard is done */}
+      {/* Agent info bar — only after wizard is done.
+          Em modo Testar, vira ambiente de staging: badge persistente +
+          background levemente tonalizado pra deixar claro que é simulação. */}
       {wizardStep === "done" && (
-        <div className="h-10 border-b border-border flex items-center px-3 gap-2 shrink-0">
+        <div className={`h-10 border-b flex items-center px-3 gap-2 shrink-0 transition-colors duration-300 ${
+          chatMode === "test"
+            ? "border-amber-500/30 bg-amber-500/5"
+            : "border-border"
+        }`}>
           <img src={agentAvatar} className="w-6 h-6 rounded-full object-cover" alt="" />
           <span className="text-xs font-medium truncate">{agentName}</span>
+          {chatMode === "test" && (
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-400" title="Ambiente de simulação — mensagens não são enviadas a clientes reais">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[9px] font-bold tracking-widest">STAGING</span>
+            </span>
+          )}
           {hasMemoryActive && (
             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-primary/10 text-primary" title="Este agente lembra conversas anteriores">
               <Brain className="w-3 h-3" />
