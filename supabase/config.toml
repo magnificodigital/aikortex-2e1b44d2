@@ -18,5 +18,3 @@ verify_jwt = false
 [functions.whatsapp-embedded-signup]
 verify_jwt = true
 
-[functions.google-oauth-callback]
-verify_jwt = false

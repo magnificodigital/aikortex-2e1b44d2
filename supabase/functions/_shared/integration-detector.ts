@@ -91,6 +91,24 @@ const INTEGRATION_PATTERNS: Array<{ regex: RegExp; integration: IntegrationMenti
       configPath: "Configurações → Integrações → RD Station",
     },
   },
+  {
+    regex: /\bnotion\b/i,
+    integration: {
+      key: "notion",
+      label: "Notion",
+      provider: "notion",
+      configPath: "Configurações → Integrações → Notion",
+    },
+  },
+  {
+    regex: /\bslack\b/i,
+    integration: {
+      key: "slack",
+      label: "Slack",
+      provider: "slack",
+      configPath: "Configurações → Integrações → Slack",
+    },
+  },
 ];
 
 export function detectIntegrationsInText(text: string): IntegrationMention[] {
@@ -162,12 +180,12 @@ Exemplo de resposta correta (com botão OAuth INLINE):
 >
 > Ou, se preferir continuar mesmo sem conectar, me responda 'continua' e eu crio o agente marcando que a integração precisa ser conectada depois."
 
-⚠️ MUITO IMPORTANTE — para CADA integração Google NÃO conectada (google_calendar, google_sheets, google_drive, gmail), INCLUA o marker:
+⚠️ MUITO IMPORTANTE — para CADA integração NÃO conectada que tem botão inline (google_calendar, google_sheets, google_drive, gmail, hubspot, calendly, notion, slack), INCLUA o marker:
 \`<!--oauth:google_calendar-->\` (ou o key correspondente)
 
-O frontend renderiza esse marker como BOTÃO clicável "Conectar Google Calendar". Sem o marker, o user não tem como conectar inline.
+O frontend renderiza esse marker como BOTÃO clicável "Conectar Google Calendar" (ou equivalente). Sem o marker, o user não tem como conectar inline. Todas as conexões agora passam por Composio (OAuth gerenciado).
 
-Pra integrações NÃO-Google (HubSpot, Calendly, PipeRun, RD Station), apenas mencione o caminho de Configurações → Integrações (não tem botão inline ainda).
+Pra integrações ainda sem botão inline (PipeRun, RD Station, outlook_calendar), apenas mencione o caminho de Configurações → Integrações.
 
 NÃO crie o agente. NÃO chame tools de mutação. SÓ responda com o questionamento + marker(s) OAuth quando aplicável.` : `## ✅ Todas as integrações mencionadas estão CONECTADAS
 

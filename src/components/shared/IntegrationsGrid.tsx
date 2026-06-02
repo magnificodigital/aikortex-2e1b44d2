@@ -8,8 +8,14 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
 
-// Providers que usam OAuth (não API key). Clicar abre popup Google em vez do dialog.
-const OAUTH_PROVIDERS = new Set(["google_calendar", "google_sheets", "google_drive", "gmail"]);
+// Providers que usam OAuth gerenciado via Composio (não API key local).
+// Clicar abre popup do Composio que redireciona pro provider — Composio faz
+// todo o OAuth, retorna ACTIVE quando user autoriza. Polling em composio-status
+// detecta a conexão.
+const OAUTH_PROVIDERS = new Set([
+  "google_calendar", "google_sheets", "google_drive", "gmail",
+  "hubspot", "calendly", "notion", "slack",
+]);
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -79,7 +85,9 @@ export const SERVICE_PROVIDERS: IntegrationProvider[] = [
   { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly" },
   { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets" },
   { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: "https://cdn.simpleicons.org/googledrive" },
-
+  { label: "HubSpot", provider: "hubspot", description: "CRM, contatos, deals e pipelines.", logo: "https://cdn.simpleicons.org/hubspot" },
+  { label: "Notion", provider: "notion", description: "Páginas, databases e blocos.", logo: "https://cdn.simpleicons.org/notion" },
+  { label: "Slack", provider: "slack", description: "Mensagens e canais de equipe.", logo: "https://cdn.simpleicons.org/slack" },
 ];
 
 export const ALL_PROVIDERS = [...LLM_PROVIDERS, ...SERVICE_PROVIDERS];
@@ -302,8 +310,8 @@ export function IntegrationsGrid({
     setDialogProvider(provider);
   };
 
-  // OAuth flow pra providers Google. Abre popup, escuta postMessage +
-  // BroadcastChannel + polling. Quando completa, recarrega connectorKeys.
+  // OAuth flow via Composio (managed). Backend chama composio-connect → retorna
+  // redirectUrl. Abrimos popup; polling em composio-status detecta ACTIVE.
   const startOAuthFlow = async (providerKey: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -312,82 +320,63 @@ export function IntegrationsGrid({
         toast.error("Sessão expirada — faça login novamente.");
         return;
       }
-      const resp = await fetch(fnUrl("google-oauth-start"), {
+      const resp = await fetch(fnUrl("composio-connect"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ scope: providerKey }),
+        body: JSON.stringify({ provider: providerKey }),
       });
       const json = await resp.json();
-      if (!resp.ok || !json.authUrl) {
-        toast.error(json.message || "Erro ao iniciar OAuth");
+      if (!resp.ok || !json.redirectUrl) {
+        toast.error(json.message || "Erro ao iniciar conexão");
         return;
       }
       const w = 500, h = 700;
       const left = (screen.width - w) / 2;
       const top = (screen.height - h) / 2;
-      const popup = window.open(json.authUrl, "google_oauth", `width=${w},height=${h},left=${left},top=${top}`);
+      const popup = window.open(json.redirectUrl, "composio_oauth", `width=${w},height=${h},left=${left},top=${top}`);
       if (!popup) {
         toast.error("Popup bloqueado — permita popups pra esse site.");
         return;
       }
-      toast.info("Autorize a conexão na janela do Google...");
+      toast.info("Autorize a conexão na janela aberta...");
 
       const finish = (success: boolean, err?: string) => {
         try { popup.close(); } catch { /* ignore */ }
         if (success) {
           toast.success("Conectado com sucesso!");
-          void load(); // recarrega status
+          void load();
         } else if (err) {
           toast.error(`Erro na conexão: ${err}`);
         }
       };
 
-      const onMsg = (ev: MessageEvent) => {
-        const d = ev.data;
-        if (!d || typeof d !== "object" || typeof d.success !== "boolean") return;
-        if (d.scope && d.scope !== providerKey) return;
-        window.removeEventListener("message", onMsg);
-        if (interval) clearInterval(interval);
-        try { bc?.close(); } catch { /* ignore */ }
-        finish(d.success, d.error);
-      };
-      window.addEventListener("message", onMsg);
-
-      let bc: BroadcastChannel | null = null;
-      try {
-        bc = new BroadcastChannel("aikortex_oauth");
-        bc.onmessage = (ev) => onMsg(ev as any);
-      } catch { /* ignore */ }
-
-      // Polling fallback — verifica DB cada 1.5s
+      // Polling em composio-status — único caminho confiável.
+      // Composio não posta mensagem pra nós (popup pousa em página deles).
       const interval = setInterval(async () => {
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-          const { data } = await supabase
-            .from("user_api_keys")
-            .select("api_key")
-            .eq("provider", providerKey)
-            .eq("user_id", user.id)
-            .maybeSingle();
-          if (data?.api_key) {
+          const statusResp = await fetch(fnUrl("composio-status"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ provider: providerKey }),
+          });
+          const statusJson = await statusResp.json();
+          if (statusJson?.connected) {
             clearInterval(interval);
-            window.removeEventListener("message", onMsg);
-            try { bc?.close(); } catch { /* ignore */ }
             finish(true);
           }
         } catch { /* ignore */ }
-      }, 1500);
+      }, 2000);
 
       // Watcher pra fechar polling se user fechar popup manual
       const popupWatcher = setInterval(() => {
         if (popup.closed) {
           clearInterval(popupWatcher);
-          setTimeout(() => clearInterval(interval), 3000); // grace period
+          setTimeout(() => clearInterval(interval), 4000);
         }
       }, 500);
-    } catch (e: any) {
-      toast.error(e?.message || "Erro ao abrir OAuth");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erro ao abrir OAuth";
+      toast.error(msg);
     }
   };
 
@@ -457,9 +446,23 @@ export function IntegrationsGrid({
     if (!dialogProvider) return;
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("user_api_keys").delete().eq("user_id", user.id).eq("provider", dialogProvider.provider);
+      // OAuth providers (Composio): chama composio-disconnect pra remover do
+      // Composio também (não só do DB local). Outros: delete direto.
+      if (OAUTH_PROVIDERS.has(dialogProvider.provider)) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (token) {
+          await fetch(fnUrl("composio-disconnect"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ provider: dialogProvider.provider }),
+          });
+        }
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase.from("user_api_keys").delete().eq("user_id", user.id).eq("provider", dialogProvider.provider);
+      }
       setConnectorKeys(prev => { const next = { ...prev }; delete next[dialogProvider.provider]; return next; });
       setDialogProvider(null);
       setKeyInput("");
@@ -577,9 +580,9 @@ export function IntegrationsGrid({
                 <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 flex items-start gap-3">
                   <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
                   <div className="flex-1 space-y-1">
-                    <p className="text-sm font-semibold text-foreground">Conectado via OAuth do Google</p>
+                    <p className="text-sm font-semibold text-foreground">Conectado via Composio</p>
                     <p className="text-xs text-muted-foreground">
-                      O Aikortex usa sua autorização do Google pra acessar {dialogProvider.label}. Sua senha nunca é compartilhada.
+                      O Aikortex usa OAuth gerenciado pelo Composio pra acessar {dialogProvider.label}. Sua senha nunca é compartilhada.
                     </p>
                   </div>
                 </div>

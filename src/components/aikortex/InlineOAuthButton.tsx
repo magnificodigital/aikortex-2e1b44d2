@@ -4,13 +4,17 @@ import { Button } from "@/components/ui/button";
 import { fnUrl } from "@/lib/supabase-url";
 import { supabase } from "@/integrations/supabase/client";
 
-type Scope = "google_calendar" | "google_sheets" | "google_drive" | "gmail";
+type Scope = "google_calendar" | "google_sheets" | "google_drive" | "gmail" | "hubspot" | "calendly" | "notion" | "slack";
 
 const SCOPE_LABELS: Record<Scope, { label: string; icon: string }> = {
   google_calendar: { label: "Conectar Google Calendar", icon: "📅" },
   google_sheets: { label: "Conectar Google Sheets", icon: "📊" },
   google_drive: { label: "Conectar Google Drive", icon: "💾" },
   gmail: { label: "Conectar Gmail", icon: "✉️" },
+  hubspot: { label: "Conectar HubSpot", icon: "🟧" },
+  calendly: { label: "Conectar Calendly", icon: "🗓️" },
+  notion: { label: "Conectar Notion", icon: "📝" },
+  slack: { label: "Conectar Slack", icon: "💬" },
 };
 
 interface InlineOAuthButtonProps {
@@ -21,9 +25,9 @@ interface InlineOAuthButtonProps {
 }
 
 /**
- * Botão inline no chat pra conectar conta Google sem sair do fluxo.
- * Abre popup, escuta postMessage da callback page, fecha popup quando
- * recebe sucesso e dispara onConnected pro wizard prosseguir.
+ * Botão inline no chat pra conectar conta via Composio (managed OAuth pra ~250 providers).
+ * Fluxo: clica → backend chama Composio → recebe redirectUrl → abre popup →
+ * polling em composio-status detecta ACTIVE → fecha popup → dispara onConnected.
  */
 export default function InlineOAuthButton({ scope, agentId, onConnected }: InlineOAuthButtonProps) {
   const [state, setState] = useState<"idle" | "loading" | "connected" | "error">("idle");
@@ -32,76 +36,34 @@ export default function InlineOAuthButton({ scope, agentId, onConnected }: Inlin
   const watcherRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const info = SCOPE_LABELS[scope];
 
-  // Escuta postMessage da popup + BroadcastChannel (cross-tab) — 3 caminhos
-  // independentes pra detectar conexão (postMessage / broadcast / polling).
-  useEffect(() => {
-    const handlePayload = (data: any) => {
-      if (!data || typeof data !== "object") return;
-      if (typeof data.success !== "boolean") return;
-      if (data.scope && data.scope !== scope) return;
-
-      if (watcherRef.current) {
-        clearInterval(watcherRef.current);
-        watcherRef.current = null;
-      }
-      try { popupRef.current?.close(); } catch { /* ignore */ }
-
-      if (data.success) {
-        setState("connected");
-        onConnected?.(scope);
-      } else {
-        setState("error");
-        setErrorMsg(data.error || "Erro ao conectar");
-      }
-    };
-
-    const onMsg = (ev: MessageEvent) => handlePayload(ev.data);
-    window.addEventListener("message", onMsg);
-
-    // BroadcastChannel — funciona mesmo se opener foi destruído pelo OAuth flow
-    let bc: BroadcastChannel | null = null;
-    try {
-      bc = new BroadcastChannel("aikortex_oauth");
-      bc.onmessage = (ev) => handlePayload(ev.data);
-    } catch { /* não suportado em browsers antigos */ }
-
-    return () => {
-      window.removeEventListener("message", onMsg);
-      try { bc?.close(); } catch { /* ignore */ }
-    };
-  }, [scope, onConnected]);
-
-  // FALLBACK: poll user_api_keys enquanto loading. Caso postMessage falhe
-  // (Google OAuth redirect às vezes quebra opener cross-origin), polling
-  // detecta a conexão olhando o DB direto. Tempo de detecção: até 3s.
+  // Polling em composio-status enquanto em loading. Quando ACTIVE → fecha popup,
+  // marca connected, dispara onConnected. Composio não posta mensagem pra nós,
+  // então polling é o único caminho confiável de detecção.
   useEffect(() => {
     if (state !== "loading") return;
     const poll = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
-        const { data } = await supabase
-          .from("user_api_keys")
-          .select("api_key")
-          .eq("provider", scope)
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-        if (data?.api_key) {
-          // Conectou! Fecha popup, marca como connected
+        const resp = await fetch(fnUrl("composio-status"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ provider: scope }),
+        });
+        const json = await resp.json();
+        if (json?.connected) {
           setState("connected");
           try { popupRef.current?.close(); } catch { /* ignore */ }
           onConnected?.(scope);
         }
       } catch (e) {
-        // Silencioso — polling é fallback, não bloqueia
-        console.debug("[oauth poll]", e);
+        console.debug("[composio poll]", e);
       }
     };
-    const interval = setInterval(poll, 1500);
+    const interval = setInterval(poll, 2000);
     return () => clearInterval(interval);
   }, [state, scope, onConnected]);
 
-  // Limpa watcher ao desmontar
   useEffect(() => () => {
     if (watcherRef.current) clearInterval(watcherRef.current);
   }, []);
@@ -114,23 +76,22 @@ export default function InlineOAuthButton({ scope, agentId, onConnected }: Inlin
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error("Sessão expirada — faça login novamente");
 
-      const resp = await fetch(fnUrl("google-oauth-start"), {
+      const resp = await fetch(fnUrl("composio-connect"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ scope, agentId }),
+        body: JSON.stringify({ provider: scope, agentId }),
       });
       const json = await resp.json();
-      if (!resp.ok || !json.authUrl) {
-        throw new Error(json.message || json.error || "Erro ao iniciar OAuth");
+      if (!resp.ok || !json.redirectUrl) {
+        throw new Error(json.message || json.error || "Erro ao iniciar conexão");
       }
 
-      // Abre popup 500x700 centralizada
       const w = 500, h = 700;
       const left = (screen.width - w) / 2;
       const top = (screen.height - h) / 2;
       const popup = window.open(
-        json.authUrl,
-        "google_oauth",
+        json.redirectUrl,
+        "composio_oauth",
         `width=${w},height=${h},left=${left},top=${top}`,
       );
       if (!popup) {
@@ -138,18 +99,18 @@ export default function InlineOAuthButton({ scope, agentId, onConnected }: Inlin
       }
       popupRef.current = popup;
 
-      // Vigia se o user fechou a popup sem completar
+      // Vigia popup fechada sem completar (user cancelou)
       watcherRef.current = setInterval(() => {
         if (popup.closed) {
           if (watcherRef.current) clearInterval(watcherRef.current);
           watcherRef.current = null;
-          // Se ainda estamos em loading, user cancelou
           setState((s) => (s === "loading" ? "idle" : s));
         }
       }, 500);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erro inesperado";
       setState("error");
-      setErrorMsg(e?.message || "Erro inesperado");
+      setErrorMsg(msg);
     }
   };
 
@@ -175,7 +136,7 @@ export default function InlineOAuthButton({ scope, agentId, onConnected }: Inlin
         ) : (
           <span>{info.icon}</span>
         )}
-        {state === "loading" ? "Abrindo Google..." : info.label}
+        {state === "loading" ? "Abrindo conexão..." : info.label}
       </Button>
       {state === "error" && errorMsg && (
         <p className="flex items-center gap-1 text-[11px] text-destructive">

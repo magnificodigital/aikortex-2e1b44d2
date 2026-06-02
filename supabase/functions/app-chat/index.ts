@@ -962,15 +962,18 @@ serve(async (req) => {
         });
         content = wizContent;
 
-        // Injeção determinística do marker OAuth: se houve bloqueador Google e o
-        // LLM não incluiu o marker (Qwen 3 ignora às vezes), backend força aqui.
-        // Garante que o botão OAuth sempre apareça quando há integração Google
-        // não conectada — não depende de o LLM colaborar.
-        const googleBlockers = wizardDetectedStatuses.filter((s: any) =>
-          s.provider?.startsWith("google_") || s.provider === "gmail",
-        ).filter((s: any) => !s.connected);
-        if (googleBlockers.length > 0) {
-          const markers = googleBlockers
+        // Injeção determinística do marker OAuth: se houve bloqueador com botão
+        // inline disponível e o LLM não incluiu o marker (Qwen 3 ignora às vezes),
+        // backend força aqui. Cobre todos os providers Composio que têm inline button.
+        const INLINE_OAUTH_PROVIDERS = new Set([
+          "google_calendar", "google_sheets", "google_drive", "gmail",
+          "hubspot", "calendly", "notion", "slack",
+        ]);
+        const oauthBlockers = wizardDetectedStatuses
+          .filter((s: any) => INLINE_OAUTH_PROVIDERS.has(s.provider))
+          .filter((s: any) => !s.connected);
+        if (oauthBlockers.length > 0) {
+          const markers = oauthBlockers
             .filter((s: any) => !content.includes(`<!--oauth:${s.provider}-->`))
             .map((s: any) => `<!--oauth:${s.provider}-->`);
           if (markers.length > 0) {
