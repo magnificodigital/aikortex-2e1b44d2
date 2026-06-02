@@ -41,13 +41,22 @@ export function computeWizardProgress(savedConfig: Record<string, any> | null | 
 } {
   const cfg = savedConfig || {};
   const ctx = (cfg as any).businessContext || {};
+  const profile = (cfg as any).profile || {};
+  // Channels pode vir como array OU como objeto {whatsapp:true,email:false}
+  // (agent-vibe-mutate salva como objeto; UI manual salva como array).
+  const channelsAny = (cfg as any).channels;
+  const channelsActive = Array.isArray(channelsAny)
+    ? channelsAny.length > 0
+    : !!channelsAny && typeof channelsAny === "object" && Object.values(channelsAny).some((v) => v === true);
   const checkpoints: WizardCheckpoint[] = [
     { id: "niche",     label: "Nicho",      done: !!ctx.niche },
     { id: "company",   label: "Empresa",    done: !!ctx.companyName },
     { id: "name",      label: "Nome",       done: !!(cfg.name && cfg.name !== "Novo Agente" && cfg.name !== "Carregando...") },
-    { id: "tone",      label: "Tom de voz", done: !!cfg.toneOfVoice },
-    { id: "objective", label: "Objetivo",   done: !!cfg.objective },
-    { id: "channels",  label: "Canais",     done: Array.isArray(cfg.channels) && cfg.channels.length > 0 },
+    // Tom: agent-vibe-mutate grava em businessContext.toneOfVoice; legado em cfg.toneOfVoice
+    { id: "tone",      label: "Tom de voz", done: !!(ctx.toneOfVoice || cfg.toneOfVoice) },
+    // Objetivo: agent-vibe-mutate grava em profile.primaryGoal; legado em cfg.objective
+    { id: "objective", label: "Objetivo",   done: !!(profile.primaryGoal || cfg.objective) },
+    { id: "channels",  label: "Canais",     done: channelsActive },
     { id: "criteria",  label: "Critérios",  done: !!(cfg.instructions && cfg.instructions.length > 80) },
     { id: "greeting",  label: "Saudação",   done: !!cfg.greetingMessage },
   ];

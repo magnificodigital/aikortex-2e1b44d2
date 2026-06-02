@@ -28,8 +28,15 @@ export default function WizardShowcasePanel({
   const { checkpoints, doneCount, totalCount, pct, currentPhase, totalPhases } = computeWizardProgress(savedConfig);
   const ctx = (savedConfig as any)?.businessContext || {};
   const displayName = agentName && agentName !== "Novo Agente" && agentName !== "Carregando..." ? agentName : null;
-  const channels: string[] = Array.isArray((savedConfig as any)?.channels) ? (savedConfig as any).channels : [];
-  const tone = (savedConfig as any)?.toneOfVoice as string | undefined;
+  // Channels: aceita array (legacy/UI manual) OU objeto {whatsapp:true} (vibe-mutate)
+  const channelsAny = (savedConfig as any)?.channels;
+  const channels: string[] = Array.isArray(channelsAny)
+    ? channelsAny
+    : (channelsAny && typeof channelsAny === "object"
+        ? Object.entries(channelsAny).filter(([, v]) => v === true).map(([k]) => k)
+        : []);
+  // Tom: vibe-mutate grava em businessContext.toneOfVoice; legacy em cfg.toneOfVoice
+  const tone = (ctx.toneOfVoice || (savedConfig as any)?.toneOfVoice) as string | undefined;
 
   const circumference = 2 * Math.PI * 44;
   const dashOffset = circumference - (pct / 100) * circumference;
