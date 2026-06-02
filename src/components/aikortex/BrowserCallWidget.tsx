@@ -281,7 +281,15 @@ const BrowserCallWidget = ({
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           {agentAvatar && (
-            <img src={agentAvatar} alt="" className="w-7 h-7 rounded-full object-cover" />
+            <div className="w-7 h-7 rounded-full overflow-hidden">
+              <img
+                src={agentAvatar}
+                alt=""
+                className={agentAvatar.includes("aikortex-icon")
+                  ? "w-full h-full object-contain p-1 bg-gradient-to-br from-primary/15 to-primary/5"
+                  : "w-full h-full object-cover"}
+              />
+            </div>
           )}
           <div>
             <p className="text-xs font-semibold text-foreground">{agentName}</p>

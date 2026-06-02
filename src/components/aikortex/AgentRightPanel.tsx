@@ -1100,13 +1100,14 @@ const AgentRightPanel = ({
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-muted border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors overflow-hidden"
                           onClick={() => avatarInputRef.current?.click()}>
-                          {avatarPreview ? (
-                            <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                          ) : agent.avatar ? (
-                            <img src={agent.avatar} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <Camera className="w-6 h-6 text-muted-foreground" />
-                          )}
+                          {(() => {
+                            const url = avatarPreview || agent.avatar;
+                            if (!url) return <Camera className="w-6 h-6 text-muted-foreground" />;
+                            const isIcon = url.includes("aikortex-icon");
+                            return isIcon
+                              ? <img src={url} alt="Avatar" className="w-full h-full object-contain p-3 bg-gradient-to-br from-primary/15 to-primary/5" />
+                              : <img src={url} alt="Avatar" className="w-full h-full object-cover" />;
+                          })()}
                         </div>
                         <div>
                           <Button variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()} className="text-xs">Enviar foto</Button>

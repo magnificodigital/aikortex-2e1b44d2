@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import type { ChatMessage } from "@/hooks/use-agent-chat";
 import type { AgentType } from "@/types/agent-builder";
 import WizardThinkingCard from "@/components/aikortex/WizardThinkingCard";
+import { avatarImgClass } from "@/lib/agent-avatar";
 
 export interface StructuredAgentConfig {
   agent_name: string;
@@ -530,7 +531,9 @@ const AgentChatPanel = ({
             ? "border-amber-500/30 bg-amber-500/5"
             : "border-border"
         }`}>
-          <img src={agentAvatar} className="w-6 h-6 rounded-full object-cover" alt="" />
+          <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
+            <img src={agentAvatar} className={avatarImgClass(agentAvatar)} alt="" />
+          </div>
           <span className="text-xs font-medium truncate">{agentName}</span>
           {chatMode === "test" && (
             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-400" title="Ambiente de simulação — mensagens não são enviadas a clientes reais">
@@ -589,7 +592,9 @@ const AgentChatPanel = ({
                       <Sparkles className="w-4 h-4 text-primary" />
                     </div>
                   ) : (
-                    <img src={agentAvatar} alt={agentName} className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5 ring-1 ring-border" />
+                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 mt-0.5 ring-1 ring-border">
+                      <img src={agentAvatar} alt={agentName} className={avatarImgClass(agentAvatar)} />
+                    </div>
                   )}
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="text-sm leading-relaxed text-foreground bg-card/30 border border-border/50 rounded-2xl rounded-tl-sm px-4 py-2.5">
