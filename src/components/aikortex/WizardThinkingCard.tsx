@@ -64,8 +64,22 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
 
   // Calcula status real de cada step a partir do savedConfig vivo
   const statuses = STEPS.map((s) => s.done(savedConfig));
-  // Primeiro step ainda não feito = o atual em andamento
-  const currentIdx = statuses.findIndex((d) => !d);
+  // Lógica de "current" robusta: se step N não foi feito mas step N+1 SIM,
+  // significa que o LLM PULOU N (ex: agente sem empresa específica). Não
+  // travar nele — current = primeiro pendente APÓS o último feito.
+  const lastDoneIdx = statuses.lastIndexOf(true);
+  const currentIdx = (() => {
+    if (lastDoneIdx === -1) return statuses.findIndex((d) => !d);
+    for (let i = lastDoneIdx + 1; i < statuses.length; i++) {
+      if (!statuses[i]) return i;
+    }
+    return -1;
+  })();
+  // Steps "skipped" = anteriores ao lastDoneIdx mas não feitos (LLM pulou)
+  const skippedSet = new Set<number>();
+  for (let i = 0; i < lastDoneIdx; i++) {
+    if (!statuses[i]) skippedSet.add(i);
+  }
 
   return (
     <div className="flex gap-3">
@@ -91,26 +105,29 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
         <ul className="space-y-1 ml-0.5 border-l border-border/40 pl-3">
           {STEPS.map((step, idx) => {
             const done = statuses[idx];
-            const reached = done || idx === currentIdx || idx < currentIdx;
+            const isSkipped = skippedSet.has(idx);
+            const reached = done || isSkipped || idx === currentIdx || idx < currentIdx;
             if (!reached) return null;
             const isCurrent = idx === currentIdx;
             return (
               <li
                 key={step.id}
                 className={`flex items-center gap-2 text-xs transition-all duration-300 ${
-                  isCurrent ? "text-foreground" : "text-muted-foreground/70"
+                  isCurrent ? "text-foreground" : isSkipped ? "text-muted-foreground/40" : "text-muted-foreground/70"
                 }`}
               >
                 <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
                   {isCurrent ? (
                     <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                  ) : isSkipped ? (
+                    <span className="text-muted-foreground/40 text-[10px] leading-none">—</span>
                   ) : (
                     <Check className="w-3 h-3 text-emerald-500" />
                   )}
                 </span>
-                <span>
+                <span className={isSkipped ? "line-through" : ""}>
                   {step.label}
-                  {isCurrent ? "..." : "."}
+                  {isCurrent ? "..." : isSkipped ? " (pulado)" : "."}
                 </span>
               </li>
             );
