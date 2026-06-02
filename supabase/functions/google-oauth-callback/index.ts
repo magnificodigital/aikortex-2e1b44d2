@@ -128,10 +128,11 @@ serve(async (req) => {
     token_type: tokenJson.token_type || "Bearer",
   });
 
+  // Schema: api_key não-nulo = configured. Sem coluna `configured` separada.
   const { error: upErr } = await admin
     .from("user_api_keys")
     .upsert(
-      { user_id: userId, provider: scopeKey, api_key: tokenBlob, configured: true },
+      { user_id: userId, provider: scopeKey, api_key: tokenBlob },
       { onConflict: "user_id,provider" },
     );
 
