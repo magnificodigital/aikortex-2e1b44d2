@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import type { ChatMessage } from "@/hooks/use-agent-chat";
 import type { AgentType } from "@/types/agent-builder";
 import WizardThinkingCard from "@/components/aikortex/WizardThinkingCard";
+import InlineOAuthButton from "@/components/aikortex/InlineOAuthButton";
 import { avatarImgClass } from "@/lib/agent-avatar";
 
 export interface StructuredAgentConfig {
@@ -136,6 +137,17 @@ const extractToolsMarker = (text: string): { clean: string; tools: ToolExecuted[
   } catch {
     return { clean: text, tools: [] };
   }
+};
+
+// Extrai marcadores OAuth do texto (ex: <!--oauth:google_calendar-->) pra
+// renderizar inline o botão Solutions Architect. Suporta múltiplos no mesmo balão.
+const extractOAuthMarkers = (text: string): { clean: string; oauths: string[] } => {
+  const oauths: string[] = [];
+  const clean = text.replace(/<!--oauth:([a-z_]+)-->/g, (_, key) => {
+    oauths.push(key);
+    return "";
+  }).trim();
+  return { clean, oauths };
 };
 
 const AgentChatPanel = ({
@@ -576,7 +588,10 @@ const AgentChatPanel = ({
         {displayMessages.map((msg, i) => {
           const rawText = "text" in msg ? msg.text : msg.content;
           const role = "text" in msg ? msg.role : msg.role === "user" ? "user" : "agent";
-          const { clean: text, tools } = role === "agent" ? extractToolsMarker(rawText || "") : { clean: rawText, tools: [] };
+          // Extrai 2 tipos de markers: tools (já existia) + oauths (novo) pro
+          // bot pedir conexão Google inline no chat (Solutions Architect).
+          const { clean: textWithOauths, tools } = role === "agent" ? extractToolsMarker(rawText || "") : { clean: rawText, tools: [] };
+          const { clean: text, oauths } = role === "agent" ? extractOAuthMarkers(textWithOauths) : { clean: textWithOauths, oauths: [] };
           return (
             <div key={i}>
               {role === "user" ? (
@@ -614,6 +629,24 @@ const AgentChatPanel = ({
                             <span className="text-muted-foreground/80">{TOOL_LABELS[t.name] || t.name}:</span>
                             <span className="truncate max-w-[180px]">{t.log.replace(/^.*?:\s*/, "")}</span>
                           </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Botões OAuth inline (Solutions Architect) — quando o bot
+                        detecta integração faltando, marker <!--oauth:X--> dispara o botão. */}
+                    {oauths.length > 0 && (
+                      <div className="flex flex-wrap gap-2 ml-1 mt-1">
+                        {oauths.map((scope) => (
+                          <InlineOAuthButton
+                            key={`${i}-oauth-${scope}`}
+                            scope={scope as any}
+                            onConnected={() => {
+                              // User conectou! Avisa o wizard pra prosseguir
+                              if (wizardSendMessage) {
+                                setTimeout(() => wizardSendMessage("pronto, conectei agora"), 600);
+                              }
+                            }}
+                          />
                         ))}
                       </div>
                     )}

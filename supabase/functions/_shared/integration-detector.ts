@@ -151,16 +151,25 @@ VOCÊ NÃO PODE CHAMAR commit_draft AGORA. O agente depende dessas integrações
 2. APONTAR o(s) bloqueador(es) ao user — seja específico sobre QUAL integração e POR QUE é crítica.
 3. PERGUNTAR claramente: "Você consegue conectar agora? Quando estiver conectado, me responda 'pronto' que eu continuo. Se preferir continuar mesmo sem a integração (o agente vai funcionar parcialmente), responda 'continua'."
 
-Exemplo de resposta correta:
-> "Antes de criar o agente, preciso confirmar: você quer que ele agende no **Google Calendar**, mas a conexão OAuth com o Google ainda não foi feita.
+Exemplo de resposta correta (com botão OAuth INLINE):
+> "Antes de criar o agente, preciso confirmar: você quer que ele agende no **Google Calendar**, mas a conexão com o Google ainda não foi feita.
 >
 > Sem isso, o agente vai conseguir COLETAR a preferência de horário do paciente mas NÃO consegue criar o evento no calendário real.
 >
-> Você tem duas opções:
-> - 🔧 **Conectar agora**: vá em Configurações → Integrações → Google Calendar e faça o login. Quando conectar, me responda 'pronto' que eu finalizo o agente.
-> - ⏩ **Continuar mesmo assim**: respondo 'continua' e crio o agente. Ele vai marcar a intenção de agendar mas você precisa conectar depois pra funcionar de verdade."
+> Clique abaixo pra conectar agora — vai abrir uma janela do Google. Quando autorizar, eu continuo a criação automaticamente.
+>
+> <!--oauth:google_calendar-->
+>
+> Ou, se preferir continuar mesmo sem conectar, me responda 'continua' e eu crio o agente marcando que a integração precisa ser conectada depois."
 
-NÃO crie o agente. NÃO chame tools de mutação. SÓ responda com o questionamento acima adaptado ao caso.` : `## ✅ Todas as integrações mencionadas estão CONECTADAS
+⚠️ MUITO IMPORTANTE — para CADA integração Google NÃO conectada (google_calendar, google_sheets, google_drive, gmail), INCLUA o marker:
+\`<!--oauth:google_calendar-->\` (ou o key correspondente)
+
+O frontend renderiza esse marker como BOTÃO clicável "Conectar Google Calendar". Sem o marker, o user não tem como conectar inline.
+
+Pra integrações NÃO-Google (HubSpot, Calendly, PipeRun, RD Station), apenas mencione o caminho de Configurações → Integrações (não tem botão inline ainda).
+
+NÃO crie o agente. NÃO chame tools de mutação. SÓ responda com o questionamento + marker(s) OAuth quando aplicável.` : `## ✅ Todas as integrações mencionadas estão CONECTADAS
 
 Pode prosseguir com a criação do agente normalmente. As tools de request_external_integration vão retornar info positivo (conectado).`}
 `;
