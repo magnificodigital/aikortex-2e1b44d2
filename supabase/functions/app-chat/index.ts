@@ -885,6 +885,7 @@ serve(async (req) => {
       // - agent-chat sem agentId: frontend manda o system na própria lista de messages
       const incomingMessages = (messages || []) as Array<{ role: string; content: string }>;
       let chatMessages: Array<{ role: string; content: string }>;
+      let wizardDetectedStatuses: any[] = [];
       if (mode === "wizard-setup") {
         let wizardSystem = buildWizardSystemPrompt(
           String((body as Record<string, unknown>).agentType || "Custom"),
@@ -896,6 +897,8 @@ serve(async (req) => {
         // Detector de bloqueios pré-criação (Zaia Solutions Architect pattern):
         // analisa a última mensagem do user, detecta integrações mencionadas e
         // consulta o status real. Injeta no prompt — LLM pausa se houver bloqueador.
+        // Statuses ficam disponíveis no escopo pra injeção determinística do marker
+        // OAuth depois (Qwen 3 ignora a instrução de incluir o marker às vezes).
         try {
           const lastUserMsg = [...incomingMessages].reverse().find((m) => m.role === "user");
           const uid = (authResult as any).user?.id;
@@ -907,11 +910,11 @@ serve(async (req) => {
             );
             const detected = detectIntegrationsInText(lastUserMsg.content);
             if (detected.length > 0) {
-              const statuses = await getIntegrationStatuses(adminTmp, uid, detected);
-              const block = buildIntegrationStatusBlock(statuses);
+              wizardDetectedStatuses = await getIntegrationStatuses(adminTmp, uid, detected);
+              const block = buildIntegrationStatusBlock(wizardDetectedStatuses);
               if (block) {
                 wizardSystem += "\n\n" + block;
-                console.log(`[wizard-setup] integrações detectadas:`, statuses.map((s) => `${s.label}:${s.connected ? "ON" : "OFF"}`).join(", "));
+                console.log(`[wizard-setup] integrações detectadas:`, wizardDetectedStatuses.map((s) => `${s.label}:${s.connected ? "ON" : "OFF"}`).join(", "));
               }
             }
           }
@@ -958,6 +961,24 @@ serve(async (req) => {
           userJwt,
         });
         content = wizContent;
+
+        // Injeção determinística do marker OAuth: se houve bloqueador Google e o
+        // LLM não incluiu o marker (Qwen 3 ignora às vezes), backend força aqui.
+        // Garante que o botão OAuth sempre apareça quando há integração Google
+        // não conectada — não depende de o LLM colaborar.
+        const googleBlockers = wizardDetectedStatuses.filter((s: any) =>
+          s.provider?.startsWith("google_") || s.provider === "gmail",
+        ).filter((s: any) => !s.connected);
+        if (googleBlockers.length > 0) {
+          const markers = googleBlockers
+            .filter((s: any) => !content.includes(`<!--oauth:${s.provider}-->`))
+            .map((s: any) => `<!--oauth:${s.provider}-->`);
+          if (markers.length > 0) {
+            content = `${content}\n\n${markers.join("\n")}`;
+            console.log(`[wizard-setup] injetado(s) marker(s) OAuth determinístico(s):`, markers.join(", "));
+          }
+        }
+
         if (toolsExecuted.length > 0) {
           console.log(`[wizard-setup] ${agentId} aplicou ${toolsExecuted.length} mutações:`, toolsExecuted.map(t => t.name).join(", "));
           // Anexa marker invisível com tools executadas pra o frontend renderizar
