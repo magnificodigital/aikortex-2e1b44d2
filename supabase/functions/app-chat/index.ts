@@ -1270,26 +1270,27 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
         if (!executedNames.has("set_channel")) {
           deterministicCalls.push({ action: "set_channel", params: { channel: "whatsapp", enabled: true } });
         }
-        if (!executedNames.has("set_greeting_message")) {
-          // Busca nome do agente do DB pra montar saudação coerente
-          try {
-            const { data: ag } = await adminClient
-              .from("user_agents")
-              .select("draft_config, name")
-              .eq("id", agentId)
-              .maybeSingle();
-            const agentName = (ag as any)?.name || (ag as any)?.draft_config?.name || "Assistente";
-            deterministicCalls.push({
-              action: "set_greeting_message",
-              params: { message: `Olá! Sou ${agentName}, posso te ajudar?` },
-            });
-          } catch {
-            deterministicCalls.push({
-              action: "set_greeting_message",
-              params: { message: "Olá! Como posso te ajudar hoje?" },
-            });
-          }
+        // SEMPRE re-aplica greeting — LLM frequentemente seta com "Assistente"
+        // (placeholder do template) antes do set_agent_name persistir. Aqui
+        // buscamos o nome ATUAL e sobrescrevemos.
+        try {
+          const { data: ag } = await adminClient
+            .from("user_agents")
+            .select("name, config")
+            .eq("id", agentId)
+            .maybeSingle();
+          const rawName = (ag as { name?: string; config?: { name?: string } } | null)?.name ?? "";
+          const agentName = (rawName && !["Novo Agente", "Assistente", "Carregando...", ""].includes(rawName))
+            ? rawName
+            : ((ag as { config?: { name?: string } } | null)?.config?.name ?? "Assistente");
+          deterministicCalls.push({
+            action: "set_greeting_message",
+            params: { message: `Olá! Sou ${agentName}, posso te ajudar?` },
+          });
+        } catch (e) {
+          console.warn("[wizard-setup] greeting name fetch failed:", e);
         }
+        console.log(`[wizard-setup] dispatch ${deterministicCalls.length} chamadas determinísticas:`, deterministicCalls.map((c) => `${c.action}(${JSON.stringify(c.params).slice(0, 60)})`).join(" | "));
         for (const call of deterministicCalls) {
           try {
             const resp = await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/agent-vibe-mutate`, {
@@ -1297,13 +1298,17 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
               headers: { Authorization: `Bearer ${userJwt ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`, "Content-Type": "application/json" },
               body: JSON.stringify({ agentId, action: call.action, params: call.params }),
             });
+            const text = await resp.text();
             if (resp.ok) {
-              const json = await resp.json();
-              toolsExecuted.push({ name: call.action, log: json.log || `${call.action} aplicado (default)` });
-              console.log(`[wizard-setup] determinístico ${call.action} aplicado`);
+              let log = `${call.action} aplicado (default)`;
+              try { log = JSON.parse(text).log || log; } catch { /* not JSON */ }
+              toolsExecuted.push({ name: call.action, log });
+              console.log(`[wizard-setup] ✓ determinístico ${call.action} aplicado`);
+            } else {
+              console.warn(`[wizard-setup] ✗ determinístico ${call.action} HTTP ${resp.status}: ${text.slice(0, 200)}`);
             }
           } catch (e) {
-            console.warn(`[wizard-setup] falha no fallback ${call.action}:`, e);
+            console.warn(`[wizard-setup] EXCEPTION no fallback ${call.action}:`, e);
           }
         }
 
@@ -1332,17 +1337,17 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
         if (!hasLlmWarning || !hasNextSteps) {
           const nextSteps = detectedSpec
             ? buildNextStepsBlock(detectedSpec)
-            : `📋 **Próximos passos sugeridos:**
-- Adicione FAQ, políticas e documentos da empresa em **Conhecimento**.
-- Cadastre dados em **Tabelas** pro agente consultar/atualizar.
-- Pra lembretes automáticos, configure em **Automações → Cadências**.
-
-Quer ajustar algo? Edita no painel ou me diga aqui.`;
+            : "📚 Adicione FAQ e documentos em **Conhecimento** pra respostas mais precisas.";
+          // Mensagem curta e escaneável — evita parede de texto que ninguém lê
           const appendix = `
 
-⚠️ **Pra publicar:** conecte sua chave LLM (OpenAI/Anthropic/Gemini) em **Configurações → Provedores**. O modelo Aikortex é só pra criação/testes.
+---
 
-${nextSteps}`;
+⚠️ **Pra publicar:** conecte sua chave LLM em **Configurações → Provedores**
+
+${nextSteps}
+
+_Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
           content = `${content}${appendix}`;
           console.log(`[wizard-setup] appendado seções faltantes: llmWarning=${hasLlmWarning} nextSteps=${hasNextSteps} archetype=${detectedSpec?.archetype ?? "(none)"}`);
         }

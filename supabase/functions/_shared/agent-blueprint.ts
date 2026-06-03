@@ -449,28 +449,23 @@ ${bullets(behaviorQs)}`.trim();
  * final depois da fase Criação.
  */
 export function buildNextStepsBlock(spec: ArchetypeSpec): string {
-  const lines: string[] = ["📋 **Próximos passos sugeridos:**"];
+  // Formato compacto e escaneável. Cada bloco em uma linha curta.
+  const lines: string[] = [];
 
   if (spec.knowledgeDocs.length > 0) {
-    lines.push("");
-    lines.push("**📚 Conhecimento — me envia esses documentos pra eu deixar o agente mais preciso:**");
-    spec.knowledgeDocs.slice(0, 3).forEach((d) => lines.push(`- ${d}`));
+    const docs = spec.knowledgeDocs.slice(0, 3).map((d) => d.split(" (")[0]).join(" · ");
+    lines.push(`📚 **Envie pra Conhecimento:** ${docs}`);
   }
 
   if (spec.tables.length > 0) {
-    lines.push("");
-    lines.push("**🗂️ Tabelas — já posso criar estas estruturas pra você:**");
-    spec.tables.forEach((t) => lines.push(`- **${t.name}** — ${t.purpose}`));
+    const tableNames = spec.tables.map((t) => `\`${t.name}\``).join(", ");
+    lines.push(`🗂️ **Tabelas sugeridas:** ${tableNames} — me peça "criar tabela ${spec.tables[0].name}" que eu faço`);
   }
 
   if (spec.cadences.length > 0) {
-    lines.push("");
-    lines.push("**⏰ Cadências sugeridas (configurar em Automações → Cadências):**");
-    spec.cadences.forEach((c) => lines.push(`- **${c.name}** (${c.trigger})`));
+    const cadenceNames = spec.cadences.map((c) => c.name).join(" · ");
+    lines.push(`⏰ **Cadências:** ${cadenceNames}`);
   }
-
-  lines.push("");
-  lines.push("Quer que eu já configure algum desses agora? É só responder qual.");
 
   return lines.join("\n");
 }
