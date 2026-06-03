@@ -59,12 +59,17 @@ begin
   -- Endpoint da edge function. URL hardcoded pro projeto (CLAUDE.md).
   v_function_url := 'https://jcahtniqqiaefszhgpqx.supabase.co/functions/v1/crm-hubspot-push';
 
-  -- Service role key vem de database GUC. User precisa rodar 1x:
-  --   alter database postgres set app.settings.service_role_key = 'eyJ...';
+  -- Service role key vem do Supabase Vault (criptografado). User precisa rodar 1x:
+  --   select vault.create_secret('eyJ...', 'crm_sync_service_key');
   -- (a service_role key fica em Dashboard → Settings → API → service_role)
-  v_service_key := current_setting('app.settings.service_role_key', true);
+  -- Vault é a forma recomendada — alter database app.settings.* é bloqueado.
+  select decrypted_secret into v_service_key
+    from vault.decrypted_secrets
+   where name = 'crm_sync_service_key'
+   limit 1;
+
   if v_service_key is null or v_service_key = '' then
-    raise notice '[crm_auto_sync] app.settings.service_role_key não configurada; auto-sync skipped';
+    raise notice '[crm_auto_sync] vault secret "crm_sync_service_key" não encontrada; skip';
     return new;
   end if;
 
