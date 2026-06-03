@@ -4,7 +4,7 @@
 import { callLLM } from "./llm-fallback.ts";
 import { applyToolsHints } from "./agent-runtime.ts";
 
-export type ToolKey = "web_search" | "image_gen" | "knowledge_search" | "table_read" | "table_write";
+export type ToolKey = "web_search" | "image_gen" | "knowledge_search" | "table_read" | "table_write" | "send_email" | "create_calendar_event";
 
 // Alinhado ao Master v7.4 §3.2
 export interface ToolQuota {
@@ -107,6 +107,44 @@ Example:
     },
     quotas: { start: -1, hack: -1, growth: -1 },
   },
+  send_email: {
+    key: "send_email",
+    name: "send_email",
+    description:
+      `Envia um email REAL via Resend (Aikortex/agency). Use sempre que disser ao user que vai mandar email (confirmação, convite, follow-up). Quando você chama essa tool, o email é entregue de verdade.
+
+NUNCA diga "vou enviar o email" sem chamar essa tool — alucinação. Se a tool retornar erro, comunique o erro ao user honestamente.`,
+    parameters: {
+      type: "object",
+      properties: {
+        to: { type: "string", description: "Email do destinatário (validado pelo Resend)." },
+        subject: { type: "string", description: "Assunto do email." },
+        body: { type: "string", description: "Corpo do email. Pode ser texto simples ou HTML." },
+      },
+      required: ["to", "subject", "body"],
+    },
+    quotas: { start: 50, hack: 500, growth: 5000 },
+  },
+  create_calendar_event: {
+    key: "create_calendar_event",
+    name: "create_calendar_event",
+    description:
+      `Cria um evento REAL no Google Calendar do user via Composio. Use sempre que disser ao user que vai agendar (reunião, consulta, visita). Quando você chama essa tool, o evento é criado de verdade no calendário do user.
+
+NUNCA diga "agendei" sem chamar essa tool. Se a tool retornar erro (user não conectou Calendar), informe que precisa conectar primeiro.`,
+    parameters: {
+      type: "object",
+      properties: {
+        summary: { type: "string", description: "Título do evento (ex: 'Reunião com Fred — RevendMax')." },
+        description: { type: "string", description: "Descrição/notas do evento (opcional, mas recomendado)." },
+        start_datetime: { type: "string", description: "Início em ISO 8601 com timezone (ex: '2026-06-04T14:00:00-03:00'). SEMPRE inclua offset de timezone." },
+        end_datetime: { type: "string", description: "Fim em ISO 8601 com timezone. Se não especificado, default é 1h após o start." },
+        attendees: { type: "array", items: { type: "string" }, description: "Lista de emails dos convidados." },
+      },
+      required: ["summary", "start_datetime"],
+    },
+    quotas: { start: 50, hack: 500, growth: 5000 },
+  },
   table_write: {
     key: "table_write",
     name: "table_write",
@@ -159,7 +197,12 @@ export interface EnabledTool {
   config: Record<string, unknown>;
 }
 
-/** Loads tools the agent has enabled. Returns [] when there are none. */
+/** Loads tools the agent has enabled. Returns [] when there are none.
+ *
+ * send_email e create_calendar_event são SEMPRE auto-incluídas — ações reais
+ * que todo agente que conversa com cliente pode precisar. O executor decide
+ * se há infra (Resend, Composio) na hora da execução; LLM apenas tenta chamar
+ * e recebe erro honesto se não houver conexão. */
 export async function loadEnabledTools(supabase: any, agentId: string): Promise<EnabledTool[]> {
   if (!agentId) return [];
   const { data } = await supabase
@@ -167,9 +210,16 @@ export async function loadEnabledTools(supabase: any, agentId: string): Promise<
     .select("tool_key, config, enabled")
     .eq("agent_id", agentId)
     .eq("enabled", true);
-  return (data || [])
+  const explicit: EnabledTool[] = (data || [])
     .filter((r: any) => r.tool_key in TOOL_CATALOG)
-    .map((r: any) => ({ tool_key: r.tool_key, config: r.config || {} }));
+    .map((r: any) => ({ tool_key: r.tool_key as ToolKey, config: r.config || {} }));
+  // Auto-append ações reais (não dependem de DB). LLM pode chamar — runtime
+  // dispatcha pra Resend/Composio. Erros voltam pro LLM comunicar ao user.
+  const existingKeys = new Set(explicit.map((t) => t.tool_key));
+  const autoTools: EnabledTool[] = [];
+  if (!existingKeys.has("send_email")) autoTools.push({ tool_key: "send_email", config: {} });
+  if (!existingKeys.has("create_calendar_event")) autoTools.push({ tool_key: "create_calendar_event", config: {} });
+  return [...explicit, ...autoTools];
 }
 
 /** Builds OpenAI/OpenRouter-compatible tool definitions for the LLM. */
@@ -212,6 +262,8 @@ async function executeToolCall(
     name === "knowledge_search" ? "tool-knowledge-search" :
     name === "table_read" ? "tool-table-read" :
     name === "table_write" ? "tool-table-write" :
+    name === "send_email" ? "tool-send-email" :
+    name === "create_calendar_event" ? "composio-execute" :
     null;
   if (!fn) {
     console.warn(`[agent-tools] UNKNOWN_TOOL name=${name}`);
@@ -248,9 +300,40 @@ async function executeToolCall(
 
     // Tools that need agent_id injected — LLM doesn't know it.
     const needsAgentId = name === "knowledge_search" || name === "table_read" || name === "table_write";
-    const body = needsAgentId
+    let body: Record<string, unknown> = needsAgentId
       ? { ...args, agent_id: opts.agentId }
       : args;
+
+    // create_calendar_event → composio-execute precisa de toolSlug + arguments.
+    // Mapeia o nome amigável → slug Composio + monta arguments com keys que o
+    // Composio aceita (eventos do Calendar).
+    if (name === "create_calendar_event") {
+      const summary = String(args.summary ?? "");
+      const description = String(args.description ?? "");
+      const startISO = String(args.start_datetime ?? "");
+      const endISO = String(args.end_datetime ?? "");
+      const attendees = Array.isArray(args.attendees) ? args.attendees as string[] : [];
+      // Composio Google Calendar create event slug
+      body = {
+        toolSlug: "GOOGLECALENDAR_CREATE_EVENT",
+        arguments: {
+          summary,
+          description,
+          start_datetime: startISO,
+          end_datetime: endISO || undefined,
+          attendees: attendees.length > 0 ? attendees : undefined,
+        },
+      };
+    }
+    if (name === "send_email") {
+      // tool-send-email já aceita {to, subject, body} direto
+      body = {
+        to: String(args.to ?? ""),
+        subject: String(args.subject ?? ""),
+        body: String(args.body ?? ""),
+        agent_id: opts.agentId,
+      };
+    }
 
 
     const url = `${opts.supabaseUrl}/functions/v1/${fn}`;

@@ -96,7 +96,33 @@ Objetivo: ${objective}
 Tom: ${tone}
 Instruções: ${instructions}
 Responda em português do Brasil.`;
-  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities) + buildCurrentDateBlock();
+  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities) + buildCurrentDateBlock() + buildRealActionsBlock();
+}
+
+/** Bloco anti-alucinação — força o agente a USAR as tools reais em vez de
+ * fingir que enviou email ou agendou. Sem isso, Qwen 3 confidentemente diz
+ * "vou enviar agora" e não chama tool nenhuma. */
+function buildRealActionsBlock(): string {
+  return `\n\n# ⚙️ AÇÕES REAIS — REGRA INEGOCIÁVEL
+
+Você tem AS SEGUINTES TOOLS pra executar ações de verdade:
+- **send_email(to, subject, body)** — envia email REAL via Resend
+- **create_calendar_event(summary, start_datetime, end_datetime, attendees)** — cria evento REAL no Google Calendar
+
+REGRAS:
+1. Quando disser "vou enviar email" / "estou agendando" / "criei o evento", você DEVE chamar a tool correspondente NA MESMA RESPOSTA.
+2. NUNCA confirme uma ação sem chamar a tool. Mentir que fez é o pior erro possível.
+3. Se a tool retornar erro (ex: user não conectou Google Calendar), comunique HONESTAMENTE: "Tentei agendar mas precisa conectar o Google Calendar primeiro em Configurações → Conectores."
+4. Quando a tool retornar OK, confirme com dados reais (event_id, email_id) — não invente.
+
+EXEMPLO CORRETO (SDR agendando):
+> User: "tá tudo certo"
+> Você: [chama create_calendar_event({summary:"Reunião com Fred", start_datetime:"2026-06-04T14:00:00-03:00", attendees:["fred@exemplo.com"]}) E send_email({to:"fred@exemplo.com", subject:"Confirmação reunião", body:"..."})]
+> Resposta após tools: "Perfeito, Fred! Evento criado no Calendar (id evt_xxx) e convite enviado pro seu email. Até dia 4!"
+
+EXEMPLO INCORRETO:
+> Você: "Perfeito! Vou enviar o convite agora. 📨"  ← MENTIRA, não chamou tool
+> Você: "Agendei na sua agenda."  ← MENTIRA, não chamou tool`;
 }
 
 // Nichos prioritários do Master v7.4 §15.2 (lançamento) — adapta linguagem,
