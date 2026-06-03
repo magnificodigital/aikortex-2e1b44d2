@@ -27,7 +27,7 @@ const Integrations = () => {
           providers={SERVICE_PROVIDERS}
           variant="card"
           title="Conectores"
-          subtitle="Conecte contas externas (Google, CRMs, mensageria) via OAuth gerenciado pelo Composio."
+          subtitle="Conecte contas externas (Google, CRMs, mensageria) via OAuth seguro."
         />
       </div>
     </DashboardLayout>

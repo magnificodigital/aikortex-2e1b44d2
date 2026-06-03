@@ -655,7 +655,7 @@ const SettingsPage = () => {
               providers={SERVICE_PROVIDERS}
               variant="card"
               title="Conectores"
-              subtitle="Conecte contas externas (Google, CRMs, mensageria) que os agentes podem usar durante a conversa. OAuth gerenciado via Composio."
+              subtitle="Conecte contas externas (Google, CRMs, mensageria) que os agentes podem usar durante a conversa."
             />
           </TabsContent>
 

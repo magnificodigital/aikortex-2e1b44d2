@@ -676,9 +676,9 @@ export function IntegrationsGrid({
                 <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 flex items-start gap-3">
                   <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
                   <div className="flex-1 space-y-1">
-                    <p className="text-sm font-semibold text-foreground">Conectado via Composio</p>
+                    <p className="text-sm font-semibold text-foreground">Conectado</p>
                     <p className="text-xs text-muted-foreground">
-                      O Aikortex usa OAuth gerenciado pelo Composio pra acessar {dialogProvider.label}. Sua senha nunca é compartilhada.
+                      O Aikortex usa OAuth seguro pra acessar {dialogProvider.label}. Sua senha nunca é compartilhada.
                     </p>
                   </div>
                 </div>
