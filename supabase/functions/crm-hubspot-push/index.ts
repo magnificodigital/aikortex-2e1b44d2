@@ -198,6 +198,20 @@ serve(async (req) => {
   if (contact.company) contactProps.company = contact.company;
   if (contact.role) contactProps.jobtitle = contact.role;
 
+  // Mapeia Aikortex stage_slug → HubSpot lifecyclestage do Contact.
+  // Sem isso, contato continua aparecendo em "Lead" mesmo após qualificar.
+  // Diferente do dealstage (que é no objeto Deal) — lifecyclestage é no Contact.
+  const lifecycleMap: Record<string, string> = {
+    new: "lead",
+    contacted: "lead",
+    qualified: "marketingqualifiedlead",
+    meeting_scheduled: "salesqualifiedlead",
+    won: "customer",
+    // 'lost' não tem equivalente — deixamos como veio (HubSpot não retroage)
+  };
+  const lifecyclestage = lifecycleMap[contact.stage_slug];
+  if (lifecyclestage) contactProps.lifecyclestage = lifecyclestage;
+
   let hsContactId = existingHsContactId;
   try {
     const start = Date.now();
