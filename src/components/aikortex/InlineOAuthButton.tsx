@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { fnUrl } from "@/lib/supabase-url";
 import { supabase } from "@/integrations/supabase/client";
 
-type Scope = "google_calendar" | "google_sheets" | "google_drive" | "gmail" | "hubspot" | "calendly" | "notion" | "slack";
+type Scope =
+  | "google_calendar" | "google_sheets" | "google_drive" | "gmail"
+  | "hubspot" | "calendly" | "notion" | "slack"
+  | "airtable" | "asana" | "trello" | "clickup"
+  | "discord" | "dropbox" | "github" | "linkedin" | "zoom";
 
 const SCOPE_LABELS: Record<Scope, { label: string; icon: string }> = {
   google_calendar: { label: "Conectar Google Calendar", icon: "📅" },
@@ -15,6 +19,15 @@ const SCOPE_LABELS: Record<Scope, { label: string; icon: string }> = {
   calendly: { label: "Conectar Calendly", icon: "🗓️" },
   notion: { label: "Conectar Notion", icon: "📝" },
   slack: { label: "Conectar Slack", icon: "💬" },
+  airtable: { label: "Conectar Airtable", icon: "🗂️" },
+  asana: { label: "Conectar Asana", icon: "✅" },
+  trello: { label: "Conectar Trello", icon: "📋" },
+  clickup: { label: "Conectar ClickUp", icon: "🆙" },
+  discord: { label: "Conectar Discord", icon: "🎮" },
+  dropbox: { label: "Conectar Dropbox", icon: "📦" },
+  github: { label: "Conectar GitHub", icon: "🐙" },
+  linkedin: { label: "Conectar LinkedIn", icon: "💼" },
+  zoom: { label: "Conectar Zoom", icon: "🎥" },
 };
 
 interface InlineOAuthButtonProps {

@@ -968,6 +968,8 @@ serve(async (req) => {
         const INLINE_OAUTH_PROVIDERS = new Set([
           "google_calendar", "google_sheets", "google_drive", "gmail",
           "hubspot", "calendly", "notion", "slack",
+          "airtable", "asana", "trello", "clickup",
+          "discord", "dropbox", "github", "linkedin", "zoom",
         ]);
         const oauthBlockers = wizardDetectedStatuses
           .filter((s: any) => INLINE_OAUTH_PROVIDERS.has(s.provider))

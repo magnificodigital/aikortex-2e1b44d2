@@ -15,6 +15,8 @@ import { fnUrl } from "@/lib/supabase-url";
 const OAUTH_PROVIDERS = new Set([
   "google_calendar", "google_sheets", "google_drive", "gmail",
   "hubspot", "calendly", "notion", "slack",
+  "airtable", "asana", "trello", "discord", "dropbox",
+  "github", "linkedin", "zoom", "clickup",
 ]);
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -81,13 +83,22 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
 export const SERVICE_PROVIDERS: IntegrationProvider[] = [
   { label: "Gmail", provider: "gmail", description: "Ler, enviar e compor e-mails.", logo: "https://cdn.simpleicons.org/gmail" },
   { label: "Google Calendar", provider: "google_calendar", description: "Ler e gerenciar eventos.", logo: "https://cdn.simpleicons.org/googlecalendar" },
-  { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: outlookCalendarIcon },
-  { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly" },
   { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets" },
   { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: "https://cdn.simpleicons.org/googledrive" },
+  { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: outlookCalendarIcon },
+  { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly" },
   { label: "HubSpot", provider: "hubspot", description: "CRM, contatos, deals e pipelines.", logo: "https://cdn.simpleicons.org/hubspot" },
   { label: "Notion", provider: "notion", description: "Páginas, databases e blocos.", logo: "https://cdn.simpleicons.org/notion" },
   { label: "Slack", provider: "slack", description: "Mensagens e canais de equipe.", logo: "https://cdn.simpleicons.org/slack" },
+  { label: "Airtable", provider: "airtable", description: "Bases, tabelas e registros.", logo: "https://cdn.simpleicons.org/airtable" },
+  { label: "Asana", provider: "asana", description: "Tarefas e projetos.", logo: "https://cdn.simpleicons.org/asana" },
+  { label: "Trello", provider: "trello", description: "Boards e cards.", logo: "https://cdn.simpleicons.org/trello" },
+  { label: "ClickUp", provider: "clickup", description: "Gestão de tarefas e docs.", logo: "https://cdn.simpleicons.org/clickup" },
+  { label: "Discord", provider: "discord", description: "Mensagens em servidores e canais.", logo: "https://cdn.simpleicons.org/discord" },
+  { label: "Dropbox", provider: "dropbox", description: "Arquivos e pastas na nuvem.", logo: "https://cdn.simpleicons.org/dropbox" },
+  { label: "GitHub", provider: "github", description: "Repos, issues e PRs.", logo: "https://cdn.simpleicons.org/github" },
+  { label: "LinkedIn", provider: "linkedin", description: "Posts e mensagens profissionais.", logo: "https://cdn.simpleicons.org/linkedin" },
+  { label: "Zoom", provider: "zoom", description: "Reuniões e gravações.", logo: "https://cdn.simpleicons.org/zoom" },
 ];
 
 export const ALL_PROVIDERS = [...LLM_PROVIDERS, ...SERVICE_PROVIDERS];
@@ -188,6 +199,14 @@ interface IntegrationsGridProps {
   filterProviders?: string[];
   /** Grid columns class override */
   gridClassName?: string;
+  /**
+   * Visual variant.
+   * "row" (default): one row per provider — logo + name + button na lateral.
+   *   Bom pra LLMs onde cada provider tem config rica.
+   * "card": grid de cards quadrados — logo grande no topo, nome embaixo, card todo clicável.
+   *   Padrão Zaia/Composio pra catálogo de conectores. Card todo dispara openDialog.
+   */
+  variant?: "row" | "card";
   /** Show section title */
   showTitle?: boolean;
   /** Custom title */
@@ -207,7 +226,8 @@ interface IntegrationsGridProps {
 export function IntegrationsGrid({
   providers,
   filterProviders,
-  gridClassName = "grid grid-cols-1 md:grid-cols-2 gap-1",
+  gridClassName,
+  variant = "row",
   showTitle = true,
   title = "APIs & Provedores de IA",
   subtitle = "Conecte suas chaves de API para habilitar integrações.",
@@ -216,6 +236,13 @@ export function IntegrationsGrid({
   initialProviderConfigs,
   storageKey = "aikortex-provider-configs",
 }: IntegrationsGridProps) {
+  // Grid responsivo padrão por variante. Row = 1-2 colunas (linhas largas).
+  // Card = 2-5 colunas (cards quadrados densos no estilo Zaia/Composio).
+  const resolvedGridClass = gridClassName ?? (
+    variant === "card"
+      ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
+      : "grid grid-cols-1 md:grid-cols-2 gap-1"
+  );
   const [connectorKeys, setConnectorKeys] = useState<Record<string, { configured: boolean }>>({});
   const [loading, setLoading] = useState(true);
   const [dialogProvider, setDialogProvider] = useState<IntegrationProvider | null>(null);
@@ -494,36 +521,79 @@ export function IntegrationsGrid({
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           </>
         )}
-        <div className={gridClassName}>
+        <div className={resolvedGridClass}>
           {displayProviders.map((p) => {
             const connected = isConnected(p);
+            const renderLogo = (size: "sm" | "lg") => {
+              const cls = size === "lg"
+                ? "w-12 h-12 object-contain"
+                : "w-7 h-7 object-contain shrink-0";
+              const invertCls = size === "lg"
+                ? "w-12 h-12 object-contain"
+                : "w-7 h-7 rounded object-contain shrink-0";
+              if (p.provider === "aikortex") {
+                return (
+                  <>
+                    <img src={aikortexIconDark} alt="Aikortex" className={`${cls} block dark:hidden`} />
+                    <img src={aikortexIconLight} alt="Aikortex" className={`${cls} hidden dark:block`} />
+                  </>
+                );
+              }
+              if (p.provider === "outlook_calendar") {
+                return <img src={p.logo} alt={p.label} className={`${cls} [filter:brightness(0)] dark:[filter:brightness(0)_invert(1)]`} />;
+              }
+              if (p.logo) {
+                return (
+                  <img
+                    src={p.logo}
+                    alt={p.label}
+                    className={`${invertCls} [filter:brightness(0)] dark:[filter:brightness(0)_invert(1)]`}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                );
+              }
+              return (
+                <div className={`${size === "lg" ? "w-12 h-12" : "w-7 h-7"} rounded bg-primary/10 flex items-center justify-center shrink-0`}>
+                  <Sparkles className={size === "lg" ? "w-6 h-6 text-primary" : "w-4 h-4 text-primary"} />
+                </div>
+              );
+            };
+
+            // ── Variant: card (padrão Zaia/Composio) ───────────────────────
+            if (variant === "card") {
+              return (
+                <button
+                  key={p.provider}
+                  type="button"
+                  onClick={() => !p.native && openDialog(p)}
+                  disabled={p.native}
+                  className={`group relative aspect-[5/4] flex flex-col items-center justify-center gap-2 p-4 rounded-xl border bg-card transition-all text-center ${
+                    p.native ? "cursor-default opacity-90" : "hover:border-primary/50 hover:bg-muted/30 hover:-translate-y-0.5 cursor-pointer"
+                  } ${connected ? "border-emerald-500/40" : "border-border"}`}
+                  title={p.description}
+                >
+                  {connected && (
+                    <span className="absolute top-2 right-2 flex items-center gap-0.5 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded-full">
+                      <Check className="w-2.5 h-2.5" />
+                      {p.native ? "Nativo" : "Conectado"}
+                    </span>
+                  )}
+                  {renderLogo("lg")}
+                  <p className="text-xs font-medium text-foreground line-clamp-2 leading-tight">
+                    {p.label}
+                  </p>
+                </button>
+              );
+            }
+
+            // ── Variant: row (default — usado por LLMs) ────────────────────
             return (
               <div
                 key={p.provider}
                 className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  {p.provider === "aikortex" ? (
-                    <>
-                      <img src={aikortexIconDark} alt="Aikortex" className="w-7 h-7 object-contain shrink-0 block dark:hidden" />
-                      <img src={aikortexIconLight} alt="Aikortex" className="w-7 h-7 object-contain shrink-0 hidden dark:block" />
-                    </>
-                  ) : p.provider === "outlook_calendar" ? (
-                    <img src={p.logo} alt={p.label} className="w-7 h-7 object-contain shrink-0 [filter:brightness(0)] dark:[filter:brightness(0)_invert(1)]" />
-
-                  ) : p.logo ? (
-                    <img
-                      src={p.logo}
-                      alt={p.label}
-                      className="w-7 h-7 rounded object-contain shrink-0 [filter:brightness(0)] dark:[filter:brightness(0)_invert(1)]"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    />
-                  ) : (
-                    <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
-                      <Sparkles className="w-4 h-4 text-primary" />
-                    </div>
-                  )}
-
+                  {renderLogo("sm")}
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-foreground">{p.label}</p>

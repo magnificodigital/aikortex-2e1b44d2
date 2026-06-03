@@ -1,6 +1,4 @@
-import { Blocks, Webhook } from "lucide-react";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS } from "@/components/shared/IntegrationsGrid";
-import EmptyIntegrationSection from "@/components/settings/EmptyIntegrationSection";
 
 export const IntegrationsPanel = () => {
   return (
@@ -13,23 +11,12 @@ export const IntegrationsPanel = () => {
 
       <IntegrationsGrid
         providers={SERVICE_PROVIDERS}
-        title="APIs & Serviços"
-        subtitle="Conecte ferramentas externas para expandir as capacidades dos agentes."
+        variant="card"
+        title="Conectores"
+        subtitle="Conecte contas externas (Google, CRMs, mensageria) que os agentes podem usar durante a conversa."
       />
 
-      <EmptyIntegrationSection
-        icon={Blocks}
-        title="MCPs"
-        description="Conecte servidores MCP (Model Context Protocol) para estender o contexto do agente com fontes externas."
-        actionLabel="Adicionar MCP"
-      />
-
-      <EmptyIntegrationSection
-        icon={Webhook}
-        title="Webhooks"
-        description="Configure webhooks para receber e enviar eventos em tempo real entre o Aikortex e sistemas externos."
-        actionLabel="Adicionar Webhook"
-      />
+      {/* MCPs e Webhooks: escondidos até estarem no roadmap (mesmo padrão do AgentRightPanel). */}
     </div>
   );
 };

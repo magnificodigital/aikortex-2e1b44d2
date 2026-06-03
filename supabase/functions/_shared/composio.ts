@@ -67,13 +67,13 @@ async function composioFetch<T = unknown>(
   let json: unknown = null;
   try { json = text ? JSON.parse(text) : null; } catch { /* response não-JSON */ }
 
-  console.log(`[composio] ← ${method} ${path} ${resp.status} body=${text.slice(0, 300)}`);
+  console.log(`[composio] ← ${method} ${path} ${resp.status} body=${text.slice(0, 600)}`);
 
   if (!resp.ok) {
-    const err = (json as { message?: string; error?: string } | null);
-    throw new Error(
-      `Composio ${method} ${path} → ${resp.status}: ${err?.message ?? err?.error ?? text.slice(0, 200)}`,
-    );
+    // Mensagem do Composio às vezes vem aninhada (ex: { error: { code, description }})
+    // ou em array. Stringify completo pra debug — sem isso vira "[object Object]".
+    const bodyMsg = text ? text.slice(0, 500) : "(corpo vazio)";
+    throw new Error(`Composio ${method} ${path} → ${resp.status}: ${bodyMsg}`);
   }
 
   return json as T;
@@ -136,24 +136,39 @@ export async function initiateConnection(
 ): Promise<InitiateResult> {
   const authConfigId = await getOrCreateAuthConfig(admin, toolkitSlug);
 
+  // /api/v3/connected_accounts virou só pra custom auth. Pra Composio-managed
+  // OAuth (nosso caso) o endpoint atual é /link, com auth_config_id e user_id
+  // no top level. Mensagem do próprio Composio diz isso.
   const resp = await composioFetch<{
-    id: string;
-    status: string;
-    state?: { val?: { redirectUrl?: string } };
+    id?: string;
+    connected_account_id?: string;
+    connectedAccountId?: string;
+    status?: string;
     redirect_url?: string;
-  }>("/api/v3/connected_accounts", {
+    redirectUrl?: string;
+    state?: { val?: { redirectUrl?: string } };
+  }>("/api/v3/connected_accounts/link", {
     method: "POST",
     body: JSON.stringify({
-      toolkit: { slug: toolkitSlug },
-      auth_config: { id: authConfigId },
+      auth_config_id: authConfigId,
       user_id: userId,
     }),
   });
 
+  const connectedAccountId = resp.id
+    ?? resp.connected_account_id
+    ?? resp.connectedAccountId
+    ?? "";
+
+  const redirectUrl = resp.redirectUrl
+    ?? resp.redirect_url
+    ?? resp.state?.val?.redirectUrl
+    ?? null;
+
   return {
-    connectedAccountId: resp.id,
-    redirectUrl: resp.state?.val?.redirectUrl ?? resp.redirect_url ?? null,
-    status: resp.status,
+    connectedAccountId,
+    redirectUrl,
+    status: resp.status ?? "INITIATED",
   };
 }
 

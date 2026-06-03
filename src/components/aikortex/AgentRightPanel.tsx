@@ -1351,6 +1351,7 @@ const AgentRightPanel = ({
 
                 <IntegrationsGrid
                   providers={SERVICE_PROVIDERS}
+                  variant="card"
                   showTitle={false}
                   onConnectedProvidersChange={(providers) => setSavedIntegrations(prev => Array.from(new Set([...prev.filter((provider) => !SERVICE_PROVIDERS.some((service) => service.provider === provider)), ...providers])))}
                   onProviderConfigsChange={(configs) => setIntegrationConfigs(prev => ({ ...prev, ...configs }))}
