@@ -144,6 +144,75 @@ export function useUpdateContact() {
   });
 }
 
+export function useCreateContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: Partial<CrmContact>) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Sessão expirada");
+      const { data: agency } = await (supabase
+        .from("agency_profiles" as any)
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle() as any);
+      if (!(agency as { id?: string } | null)?.id) throw new Error("Agência não encontrada");
+      const payload = {
+        ...vars,
+        agency_id: (agency as { id: string }).id,
+        stage_slug: vars.stage_slug ?? "new",
+        last_interaction_at: new Date().toISOString(),
+      };
+      const { data, error } = await (supabase
+        .from("crm_contacts" as any)
+        .insert(payload)
+        .select("id")
+        .single() as any);
+      if (error) throw error;
+      return (data as { id: string }).id;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["crm-contacts"] });
+      toast.success("Contato criado");
+    },
+    onError: (err) => toast.error(`Falha: ${(err as Error).message}`),
+  });
+}
+
+export function useDeleteContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (contactId: string) => {
+      const { error } = await (supabase
+        .from("crm_contacts" as any)
+        .delete()
+        .eq("id", contactId) as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["crm-contacts"] });
+      toast.success("Contato removido");
+    },
+    onError: (err) => toast.error(`Falha: ${(err as Error).message}`),
+  });
+}
+
+// Lista os agentes da agência pra dropdown de filtro
+export function useAgencyAgents() {
+  return useQuery({
+    queryKey: ["agency-agents-mini"],
+    queryFn: async (): Promise<Array<{ id: string; name: string }>> => {
+      const { data } = await (supabase
+        .from("user_agents" as any)
+        .select("id, name")
+        .order("name", { ascending: true }) as any);
+      return ((data as Array<{ id: string; name: string }> | null) || []).map((a) => ({
+        id: a.id,
+        name: a.name || "Sem nome",
+      }));
+    },
+  });
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Interactions
 // ──────────────────────────────────────────────────────────────────────────

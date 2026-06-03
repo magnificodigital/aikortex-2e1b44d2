@@ -4,14 +4,19 @@ import ModuleGate from "@/components/shared/ModuleGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users2, Search, LayoutGrid, List, Flame, Snowflake, MessageSquare, FileText as NoteIcon, Calendar as CalIcon, Wrench, Mail } from "lucide-react";
-import { useCrmContacts, useCrmStages, useCrmContact, useCrmInteractions, useUpdateContact, useAddNote, type CrmContact } from "@/hooks/use-crm";
+import { Users2, Search, LayoutGrid, List, Flame, Snowflake, MessageSquare, FileText as NoteIcon, Calendar as CalIcon, Wrench, Mail, Plus, Trash2 } from "lucide-react";
+import {
+  useCrmContacts, useCrmStages, useCrmContact, useCrmInteractions,
+  useUpdateContact, useAddNote, useCreateContact, useDeleteContact, useAgencyAgents,
+  type CrmContact,
+} from "@/hooks/use-crm";
 
 function formatRelativeTime(iso: string | null): string {
   if (!iso) return "—";
@@ -65,15 +70,95 @@ const INTERACTION_ICONS: Record<string, typeof MessageSquare> = {
   calendar_created: CalIcon,
 };
 
+// ──────────────────────────────────────────────────────────────────────────
+// Dialog: Novo contato
+// ──────────────────────────────────────────────────────────────────────────
+
+function NewContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { data: stages = [] } = useCrmStages();
+  const createContact = useCreateContact();
+  const [form, setForm] = useState<Partial<CrmContact>>({ stage_slug: "new" });
+
+  const reset = () => setForm({ stage_slug: "new" });
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>Novo contato</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-2 gap-3 py-2">
+          <div className="col-span-2 space-y-1">
+            <label className="text-xs text-muted-foreground">Nome</label>
+            <Input value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Maria Costa" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Email</label>
+            <Input value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="maria@empresa.com" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Telefone</label>
+            <Input value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="11 99999-0000" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Empresa</label>
+            <Input value={form.company ?? ""} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Cargo</label>
+            <Input value={form.role ?? ""} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Stage</label>
+            <Select value={form.stage_slug} onValueChange={(v) => setForm({ ...form, stage_slug: v })}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {stages.map((s) => <SelectItem key={s.id} value={s.slug} className="text-xs">{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Temperatura</label>
+            <Select value={form.temperature ?? ""} onValueChange={(v) => setForm({ ...form, temperature: v as CrmContact["temperature"] })}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hot">Quente</SelectItem>
+                <SelectItem value="warm">Morno</SelectItem>
+                <SelectItem value="cold">Frio</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-2 space-y-1">
+            <label className="text-xs text-muted-foreground">Notas</label>
+            <Textarea rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { reset(); onOpenChange(false); }}>Cancelar</Button>
+          <Button
+            disabled={!form.name?.trim() || createContact.isPending}
+            onClick={() => createContact.mutate(form, { onSuccess: () => { reset(); onOpenChange(false); } })}
+          >Criar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Lead Detail Sheet (editável)
+// ──────────────────────────────────────────────────────────────────────────
+
 function LeadDetail({ contactId, onClose }: { contactId: string | null; onClose: () => void }) {
   const { data: contact } = useCrmContact(contactId);
   const { data: stages } = useCrmStages();
   const { data: interactions } = useCrmInteractions(contactId);
   const updateContact = useUpdateContact();
   const addNote = useAddNote();
+  const deleteContact = useDeleteContact();
   const [noteDraft, setNoteDraft] = useState("");
 
   if (!contact) return null;
+
+  const patch = (p: Partial<CrmContact>) => updateContact.mutate({ id: contact.id, patch: p });
 
   return (
     <Sheet open={!!contactId} onOpenChange={(open) => !open && onClose()}>
@@ -93,40 +178,70 @@ function LeadDetail({ contactId, onClose }: { contactId: string | null; onClose:
           <Card className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Identidade</h3>
-              <Select
-                value={contact.stage_slug}
-                onValueChange={(v) => updateContact.mutate({ id: contact.id, patch: { stage_slug: v } })}
-              >
-                <SelectTrigger className="h-7 w-44 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {stages?.map((s) => (
-                    <SelectItem key={s.id} value={s.slug} className="text-xs">{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select value={contact.stage_slug} onValueChange={(v) => patch({ stage_slug: v })}>
+                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {stages?.map((s) => <SelectItem key={s.id} value={s.slug} className="text-xs">{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={contact.temperature ?? "none"} onValueChange={(v) => patch({ temperature: v === "none" ? null : v as CrmContact["temperature"] })}>
+                  <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Temp.</SelectItem>
+                    <SelectItem value="hot">Quente</SelectItem>
+                    <SelectItem value="warm">Morno</SelectItem>
+                    <SelectItem value="cold">Frio</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <dl className="grid grid-cols-2 gap-3 text-xs">
-              <div><dt className="text-muted-foreground">Email</dt><dd className="text-foreground">{contact.email || "—"}</dd></div>
-              <div><dt className="text-muted-foreground">Telefone</dt><dd className="text-foreground">{contact.phone || "—"}</dd></div>
-              <div><dt className="text-muted-foreground">Última interação</dt><dd className="text-foreground">{formatRelativeTime(contact.last_interaction_at)}</dd></div>
-              <div><dt className="text-muted-foreground">Próxima ação</dt><dd className="text-foreground">{contact.next_action_text || "—"}</dd></div>
-            </dl>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              {[
+                { k: "name", label: "Nome" },
+                { k: "email", label: "Email" },
+                { k: "phone", label: "Telefone" },
+                { k: "company", label: "Empresa" },
+                { k: "role", label: "Cargo" },
+              ].map((f) => (
+                <div key={f.k} className="space-y-1">
+                  <label className="text-muted-foreground">{f.label}</label>
+                  <Input
+                    className="h-7 text-xs"
+                    value={(contact as any)[f.k] ?? ""}
+                    onChange={(e) => patch({ [f.k]: e.target.value || null } as any)}
+                  />
+                </div>
+              ))}
+              <div className="space-y-1">
+                <label className="text-muted-foreground">Última interação</label>
+                <p className="text-foreground py-1">{formatRelativeTime(contact.last_interaction_at)}</p>
+              </div>
+            </div>
           </Card>
 
-          {/* Qualificação */}
-          {(contact.budget || contact.authority || contact.need || contact.timeline) && (
-            <Card className="p-4 space-y-2">
-              <h3 className="text-sm font-semibold">Qualificação (BANT)</h3>
-              <dl className="grid grid-cols-2 gap-2 text-xs">
-                {contact.budget && <div><dt className="text-muted-foreground">Budget</dt><dd>{contact.budget}</dd></div>}
-                {contact.authority && <div><dt className="text-muted-foreground">Autoridade</dt><dd>{contact.authority}</dd></div>}
-                {contact.need && <div><dt className="text-muted-foreground">Necessidade</dt><dd>{contact.need}</dd></div>}
-                {contact.timeline && <div><dt className="text-muted-foreground">Timeline</dt><dd>{contact.timeline}</dd></div>}
-              </dl>
-            </Card>
-          )}
+          {/* Qualificação BANT — editável */}
+          <Card className="p-4 space-y-2">
+            <h3 className="text-sm font-semibold">Qualificação (BANT)</h3>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              {[
+                { k: "budget", label: "Budget" },
+                { k: "authority", label: "Autoridade" },
+                { k: "need", label: "Necessidade" },
+                { k: "timeline", label: "Timeline" },
+              ].map((f) => (
+                <div key={f.k} className="space-y-1">
+                  <label className="text-muted-foreground">{f.label}</label>
+                  <Input
+                    className="h-7 text-xs"
+                    placeholder="—"
+                    value={(contact as any)[f.k] ?? ""}
+                    onChange={(e) => patch({ [f.k]: e.target.value || null } as any)}
+                  />
+                </div>
+              ))}
+            </div>
+          </Card>
 
           {/* Adicionar nota */}
           <Card className="p-4 space-y-2">
@@ -141,15 +256,11 @@ function LeadDetail({ contactId, onClose }: { contactId: string | null; onClose:
             <Button
               size="sm"
               disabled={!noteDraft.trim() || addNote.isPending}
-              onClick={() => {
-                addNote.mutate(
-                  { contactId: contact.id, content: noteDraft.trim() },
-                  { onSuccess: () => setNoteDraft("") },
-                );
-              }}
-            >
-              Salvar nota
-            </Button>
+              onClick={() => addNote.mutate(
+                { contactId: contact.id, content: noteDraft.trim() },
+                { onSuccess: () => setNoteDraft("") },
+              )}
+            >Salvar nota</Button>
           </Card>
 
           {/* Timeline */}
@@ -179,11 +290,31 @@ function LeadDetail({ contactId, onClose }: { contactId: string | null; onClose:
               <p className="text-xs text-muted-foreground">Sem interações registradas ainda.</p>
             )}
           </div>
+
+          {/* Danger zone */}
+          <div className="pt-4 border-t border-border/40">
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                if (confirm(`Deletar ${contact.name || "esse contato"}? Essa ação não pode ser desfeita.`)) {
+                  deleteContact.mutate(contact.id, { onSuccess: onClose });
+                }
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Deletar contato
+            </Button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
   );
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// Kanban
+// ──────────────────────────────────────────────────────────────────────────
 
 function KanbanView({ contacts, stages, onSelect }: {
   contacts: CrmContact[];
@@ -197,23 +328,23 @@ function KanbanView({ contacts, stages, onSelect }: {
   })), [stages, contacts]);
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
+    <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1 snap-x">
       {columns.map(({ stage, cards }) => (
         <div
           key={stage.id}
-          className="min-w-[260px] flex-1 rounded-lg bg-muted/30 p-2"
+          className="min-w-[220px] w-[220px] shrink-0 snap-start rounded-lg bg-muted/30 p-2 border border-border/40"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             const cid = e.dataTransfer.getData("text/plain");
             if (cid) updateContact.mutate({ id: cid, patch: { stage_slug: stage.slug } });
           }}
         >
-          <div className="flex items-center justify-between px-2 pb-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full" style={{ background: stage.color }} />
-              <span className="text-xs font-semibold">{stage.name}</span>
+          <div className="flex items-center justify-between px-1.5 pb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: stage.color }} />
+              <span className="text-xs font-semibold truncate">{stage.name}</span>
             </div>
-            <span className="text-[10px] text-muted-foreground">{cards.length}</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">{cards.length}</span>
           </div>
           <div className="space-y-1.5">
             {cards.map((c) => (
@@ -222,7 +353,7 @@ function KanbanView({ contacts, stages, onSelect }: {
                 draggable
                 onDragStart={(e) => e.dataTransfer.setData("text/plain", c.id)}
                 onClick={() => onSelect(c.id)}
-                className="p-2.5 cursor-pointer hover:border-primary/50 transition-colors space-y-1.5"
+                className="p-2 cursor-pointer hover:border-primary/50 transition-colors space-y-1"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium text-foreground truncate">{c.name || "Sem nome"}</p>
@@ -232,6 +363,9 @@ function KanbanView({ contacts, stages, onSelect }: {
                 <p className="text-[10px] text-muted-foreground">{formatRelativeTime(c.last_interaction_at)}</p>
               </Card>
             ))}
+            {cards.length === 0 && (
+              <p className="text-[10px] text-muted-foreground/60 text-center py-3 italic">vazio</p>
+            )}
           </div>
         </div>
       ))}
@@ -239,44 +373,61 @@ function KanbanView({ contacts, stages, onSelect }: {
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// Página
+// ──────────────────────────────────────────────────────────────────────────
+
 export default function AikortexCRM() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "kanban">("list");
+  const [newDialogOpen, setNewDialogOpen] = useState(false);
+  const [filterTemp, setFilterTemp] = useState<string>("all");
+  const [filterAgent, setFilterAgent] = useState<string>("all");
 
   const { data: stages = [] } = useCrmStages();
   const { data: contacts = [], isLoading } = useCrmContacts();
+  const { data: agents = [] } = useAgencyAgents();
 
   const filtered = useMemo(() => {
-    if (!search) return contacts;
-    const q = search.toLowerCase();
-    return contacts.filter((c) =>
-      (c.name ?? "").toLowerCase().includes(q) ||
-      (c.email ?? "").toLowerCase().includes(q) ||
-      (c.company ?? "").toLowerCase().includes(q),
-    );
-  }, [contacts, search]);
+    const q = search.trim().toLowerCase();
+    return contacts.filter((c) => {
+      if (q && !(c.name ?? "").toLowerCase().includes(q) && !(c.email ?? "").toLowerCase().includes(q) && !(c.company ?? "").toLowerCase().includes(q)) return false;
+      if (filterTemp !== "all" && c.temperature !== filterTemp) return false;
+      if (filterAgent !== "all" && c.primary_agent_id !== filterAgent) return false;
+      return true;
+    });
+  }, [contacts, search, filterTemp, filterAgent]);
 
   const stats = useMemo(() => {
-    const totalActive = contacts.filter((c) => !stages.find((s) => s.slug === c.stage_slug)?.is_won && !stages.find((s) => s.slug === c.stage_slug)?.is_lost).length;
-    const won = contacts.filter((c) => stages.find((s) => s.slug === c.stage_slug)?.is_won).length;
-    const lost = contacts.filter((c) => stages.find((s) => s.slug === c.stage_slug)?.is_lost).length;
+    const wonStages = new Set(stages.filter((s) => s.is_won).map((s) => s.slug));
+    const lostStages = new Set(stages.filter((s) => s.is_lost).map((s) => s.slug));
+    const won = contacts.filter((c) => wonStages.has(c.stage_slug)).length;
+    const lost = contacts.filter((c) => lostStages.has(c.stage_slug)).length;
+    const totalActive = contacts.length - won - lost;
     const conversion = (won + lost) > 0 ? Math.round((won / (won + lost)) * 100) : 0;
     return { totalActive, won, lost, conversion };
   }, [contacts, stages]);
+
+  const hasFilters = !!search.trim() || filterTemp !== "all" || filterAgent !== "all";
 
   return (
     <DashboardLayout>
       <ModuleGate moduleKey="gestao.crm">
         <div className="p-6 lg:p-8 max-w-7xl space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Users2 className="w-5 h-5 text-primary" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Users2 className="w-5 h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold text-foreground">CRM</h1>
+                <p className="text-sm text-muted-foreground truncate">Leads e contatos que seus agentes capturaram.</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">CRM</h1>
-              <p className="text-sm text-muted-foreground">Leads e contatos que seus agentes capturaram.</p>
-            </div>
+            <Button onClick={() => setNewDialogOpen(true)} className="gap-1.5 shrink-0">
+              <Plus className="w-4 h-4" /> Novo contato
+            </Button>
           </div>
 
           {/* Stats */}
@@ -288,8 +439,8 @@ export default function AikortexCRM() {
           </div>
 
           {/* Toolbar */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 relative">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex-1 min-w-[200px] relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome, email ou empresa..."
@@ -298,6 +449,22 @@ export default function AikortexCRM() {
                 className="pl-9 h-9"
               />
             </div>
+            <Select value={filterTemp} onValueChange={setFilterTemp}>
+              <SelectTrigger className="h-9 w-32 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">Todas temps.</SelectItem>
+                <SelectItem value="hot" className="text-xs">Quente</SelectItem>
+                <SelectItem value="warm" className="text-xs">Morno</SelectItem>
+                <SelectItem value="cold" className="text-xs">Frio</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterAgent} onValueChange={setFilterAgent}>
+              <SelectTrigger className="h-9 w-40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">Todos agentes</SelectItem>
+                {agents.map((a) => <SelectItem key={a.id} value={a.id} className="text-xs">{a.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Tabs value={view} onValueChange={(v) => setView(v as "list" | "kanban")}>
               <TabsList className="h-9">
                 <TabsTrigger value="list" className="gap-1.5 text-xs"><List className="w-3.5 h-3.5" /> Lista</TabsTrigger>
@@ -312,10 +479,15 @@ export default function AikortexCRM() {
           ) : filtered.length === 0 ? (
             <Card className="p-12 text-center space-y-2">
               <Users2 className="w-10 h-10 mx-auto text-muted-foreground/40" />
-              <p className="text-sm font-medium">Nenhum contato ainda</p>
+              <p className="text-sm font-medium">{hasFilters ? "Nenhum contato com esses filtros" : "Nenhum contato ainda"}</p>
               <p className="text-xs text-muted-foreground">
-                Quando seus agentes qualificarem leads, eles aparecem aqui automaticamente.
+                {hasFilters
+                  ? "Tente afrouxar os filtros ou criar um novo contato."
+                  : "Quando seus agentes qualificarem leads, eles aparecem aqui automaticamente."}
               </p>
+              <Button size="sm" variant="outline" className="gap-1.5 mt-2" onClick={() => setNewDialogOpen(true)}>
+                <Plus className="w-3.5 h-3.5" /> Adicionar manualmente
+              </Button>
             </Card>
           ) : view === "list" ? (
             <Card>
@@ -349,6 +521,7 @@ export default function AikortexCRM() {
           )}
 
           <LeadDetail contactId={selectedId} onClose={() => setSelectedId(null)} />
+          <NewContactDialog open={newDialogOpen} onOpenChange={setNewDialogOpen} />
         </div>
       </ModuleGate>
     </DashboardLayout>
