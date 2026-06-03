@@ -43,7 +43,6 @@ import {
 } from "lucide-react";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS } from "@/components/shared/IntegrationsGrid";
 import AgencyChannelsManager from "@/components/settings/AgencyChannelsManager";
-import { HubSpotSyncSettings } from "@/components/settings/HubSpotSyncSettings";
 import AgencyPermissions from "@/components/settings/AgencyPermissions";
 import SubscriptionTab from "@/components/settings/SubscriptionTab";
 import AsaasConfigTab from "@/components/settings/AsaasConfigTab";
@@ -658,7 +657,6 @@ const SettingsPage = () => {
               title="Conectores"
               subtitle="Conecte contas externas (Google, CRMs, mensageria) que os agentes podem usar durante a conversa."
             />
-            <HubSpotSyncSettings />
           </TabsContent>
 
           {/* ── CANAIS ─────────────────────────── */}

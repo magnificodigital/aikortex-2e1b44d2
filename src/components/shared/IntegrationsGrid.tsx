@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import aikortexIconDark from "@/assets/aikortex-icon-dark.png";
 import aikortexIconLight from "@/assets/aikortex-icon-light.png";
+import { HubSpotSyncSettings } from "@/components/settings/HubSpotSyncSettings";
 import outlookCalendarIcon from "@/assets/outlook-calendar-icon.png";
 // Logos multi-color das marcas (baixados do iconify logos collection).
 // Mantém identidade visual real em vez de silhueta monocromática.
@@ -706,6 +707,12 @@ export function IntegrationsGrid({
                     Desconectar
                   </Button>
                 </div>
+
+                {/* Config específica do provider — só pra HubSpot por enquanto.
+                    Quando Pipedrive/RD entrarem em sync, dispatcha por provider. */}
+                {dialogProvider.provider === "hubspot" && dialogIsConnected && (
+                  <HubSpotSyncSettings />
+                )}
               </div>
             )}
 
