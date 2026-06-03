@@ -30,15 +30,19 @@ async function bufferFromPlatform(
   messages: Array<{ role: string; content: string }>,
   preferredModel?: string,
   supabase?: ReturnType<typeof createClient>,
+  opts?: { maxTokens?: number; timeoutMs?: number; tag?: string },
 ): Promise<string> {
+  const sysLen = messages.find((m) => m.role === "system")?.content?.length ?? 0;
+  const totalLen = messages.reduce((acc, m) => acc + (m.content?.length ?? 0), 0);
+  console.log(`[app-chat] bufferFromPlatform tag=${opts?.tag ?? "default"} sysLen=${sysLen} totalLen=${totalLen} messages=${messages.length}`);
   const result = await callLLM(messages, {
     tier: "free",
     preferredModel,
-    maxTokens: 2048,
-    timeoutMs: 12000,
+    maxTokens: opts?.maxTokens ?? 2048,
+    timeoutMs: opts?.timeoutMs ?? 12000,
   }, supabase);
   if (!result.success) {
-    console.error("[app-chat] all models failed:", result.error);
+    console.error(`[app-chat] all models failed (tag=${opts?.tag ?? "default"}):`, result.error);
     return "";
   }
   return result.content || "";
@@ -1092,6 +1096,87 @@ serve(async (req) => {
           }
         }
 
+        // Fallback determinístico: Qwen 3 às vezes para no meio das tools sem
+        // chamar set_channel ou set_greeting_message → checklist trava em 4/6,
+        // wizard não fecha. Aqui completamos esses 2 críticos com defaults.
+        const executedNames = new Set(toolsExecuted.map((t) => t.name));
+        const deterministicCalls: Array<{ action: string; params: Record<string, unknown> }> = [];
+        if (!executedNames.has("set_channel")) {
+          deterministicCalls.push({ action: "set_channel", params: { channel: "whatsapp", enabled: true } });
+        }
+        if (!executedNames.has("set_greeting_message")) {
+          // Busca nome do agente do DB pra montar saudação coerente
+          try {
+            const { data: ag } = await adminClient
+              .from("user_agents")
+              .select("draft_config, name")
+              .eq("id", agentId)
+              .maybeSingle();
+            const agentName = (ag as any)?.name || (ag as any)?.draft_config?.name || "Assistente";
+            deterministicCalls.push({
+              action: "set_greeting_message",
+              params: { message: `Olá! Sou ${agentName}, posso te ajudar?` },
+            });
+          } catch {
+            deterministicCalls.push({
+              action: "set_greeting_message",
+              params: { message: "Olá! Como posso te ajudar hoje?" },
+            });
+          }
+        }
+        for (const call of deterministicCalls) {
+          try {
+            const resp = await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/agent-vibe-mutate`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${userJwt ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ agentId, action: call.action, params: call.params }),
+            });
+            if (resp.ok) {
+              const json = await resp.json();
+              toolsExecuted.push({ name: call.action, log: json.log || `${call.action} aplicado (default)` });
+              console.log(`[wizard-setup] determinístico ${call.action} aplicado`);
+            }
+          } catch (e) {
+            console.warn(`[wizard-setup] falha no fallback ${call.action}:`, e);
+          }
+        }
+
+        // Garante commit_draft (marca wizard_completed=true → frontend transiciona pra setupChat)
+        if (!executedNames.has("commit_draft")) {
+          try {
+            const resp = await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/agent-vibe-mutate`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${userJwt ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ agentId, action: "commit_draft", params: {} }),
+            });
+            if (resp.ok) {
+              toolsExecuted.push({ name: "commit_draft", log: "Draft confirmado (default)" });
+              console.log(`[wizard-setup] determinístico commit_draft aplicado`);
+            }
+          } catch (e) {
+            console.warn(`[wizard-setup] falha commit_draft determinístico:`, e);
+          }
+        }
+
+        // Garante resposta final completa com avisos LLM + próximos passos.
+        // Qwen 3 muitas vezes pula essas seções; backend appenda se faltarem.
+        const hasLlmWarning = /Provedores\s*→\s*LLMs|Integrações\s*→\s*LLMs|conecte sua chave LLM/i.test(content);
+        const hasNextSteps = /Próximos passos|próximas etapas|Conhecimento|Tabelas|Cadências/i.test(content);
+        if (!hasLlmWarning || !hasNextSteps) {
+          const appendix = `
+
+⚠️ **Pra publicar:** conecte sua chave LLM (OpenAI/Anthropic/Gemini) em **Configurações → Provedores**. O modelo Aikortex é só pra criação/testes.
+
+📋 **Próximos passos sugeridos:**
+- Adicione FAQ, políticas e documentos da empresa em **Conhecimento** pra respostas mais precisas.
+- Cadastre dados (pacientes, produtos, agendamentos) em **Tabelas** pro agente consultar/atualizar.
+- Pra lembretes automáticos e follow-ups, configure em **Automações → Cadências**.
+
+Quer ajustar algo? Edita no painel ou me diga aqui.`;
+          content = `${content}${appendix}`;
+          console.log(`[wizard-setup] appendado seções faltantes: llmWarning=${hasLlmWarning} nextSteps=${hasNextSteps}`);
+        }
+
         if (toolsExecuted.length > 0) {
           console.log(`[wizard-setup] ${agentId} aplicou ${toolsExecuted.length} mutações:`, toolsExecuted.map(t => t.name).join(", "));
           // Anexa marker invisível com tools executadas pra o frontend renderizar
@@ -1103,7 +1188,13 @@ serve(async (req) => {
         // Fases DESCOBERTA e PLANO do wizard: NÃO chama tools. Apenas conversa
         // (faz perguntas ou apresenta o plano). bufferFromPlatform mantém o
         // system prompt já injetado (com FASE ATUAL marcada) e gera resposta livre.
-        content = await bufferFromPlatform(chatMessages, preferred, adminClient);
+        // Timeout maior pq o prompt é grande (3 fases descritas) e Qwen 3 free
+        // costuma demorar 15-25s pra gerar respostas estruturadas longas.
+        content = await bufferFromPlatform(chatMessages, preferred, adminClient, {
+          maxTokens: 3000,
+          timeoutMs: 45000,
+          tag: `wizard-${wizardPhase}`,
+        });
       } else if (agentId) {
         // Split system + rest so runAgentLLM can prepend system itself.
         // models omitted → helper loads from available_llms (single source of truth).
