@@ -7,6 +7,14 @@ import { runAgentLLM } from "../_shared/agent-tools.ts";
 import { callLLM, buildAdminClient } from "../_shared/llm-fallback.ts";
 import { runWizardWithTools } from "../_shared/wizard-tools.ts";
 import { detectIntegrationsInText, getIntegrationStatuses, buildIntegrationStatusBlock } from "../_shared/integration-detector.ts";
+import {
+  detectArchetype,
+  getSpec,
+  buildDiscoveryQuestionsBlock,
+  buildNextStepsBlock,
+  inferConnectors,
+  type ArchetypeSpec,
+} from "../_shared/agent-blueprint.ts";
 
 function streamText(text: string): ReadableStream {
   const encoder = new TextEncoder();
@@ -1003,7 +1011,43 @@ serve(async (req) => {
             : undefined,
           { phase, agencyName, userMessageCount },
         );
-        console.log(`[wizard-setup] phase=${phase} userMessages=${userMessageCount} agencyName=${agencyName ?? "(none)"}`);
+
+        // Detecta arquétipo da PRIMEIRA mensagem do user (a descrição inicial).
+        // Spec do arquétipo guia perguntas direcionadas + capacidades+tools
+        // determinísticas. Fica disponível pra todas as fases.
+        const firstUserMsg = incomingMessages.find((m) => m.role === "user");
+        let detectedSpec: ArchetypeSpec | null = null;
+        if (firstUserMsg?.content) {
+          const arch = detectArchetype(firstUserMsg.content);
+          detectedSpec = getSpec(arch);
+          console.log(`[wizard-setup] archetype detectado: ${arch}`);
+
+          // Injeta bloco do arquétipo + perguntas direcionadas no system prompt
+          const connectorsInferred = inferConnectors(detectedSpec, firstUserMsg.content);
+          const archBlock = `
+# 🎯 ARQUÉTIPO DETECTADO: ${detectedSpec.label}
+Foco: ${detectedSpec.focusBR}
+
+**Capacidades cognitivas ESPERADAS (ative na fase CRIACAO):** ${detectedSpec.capabilities.join(", ")}
+**Tools runtime ESPERADAS:** ${detectedSpec.runtimeTools.join(", ")}
+${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${connectorsInferred.map((c) => `${c.provider} (${c.reason})`).join("; ")}` : ""}
+
+⚠️ Use esse spec como guia obrigatório — não invente capacidades/tools fora dele sem motivo forte.`;
+          wizardSystem += "\n\n" + archBlock;
+
+          // Na fase DESCOBERTA, substitui as perguntas genéricas pelas
+          // perguntas direcionadas do arquétipo (omite o que o user já disse).
+          if (phase === "DESCOBERTA") {
+            const questionsBlock = buildDiscoveryQuestionsBlock(
+              detectedSpec,
+              firstUserMsg.content,
+              agencyName,
+            );
+            wizardSystem += `\n\n# 🎯 PERGUNTAS OBRIGATÓRIAS DA DESCOBERTA (use EXATAMENTE estas — não invente outras)\n\n${questionsBlock}\n\nTermina com: "Quando responder, eu monto o plano e te peço confirmação antes de criar."`;
+          }
+        }
+
+        console.log(`[wizard-setup] phase=${phase} userMessages=${userMessageCount} agencyName=${agencyName ?? "(none)"} archetype=${detectedSpec?.archetype ?? "(none)"}`);
 
         // Detector de bloqueios pré-criação (Zaia Solutions Architect pattern):
         // analisa a última mensagem do user, detecta integrações mencionadas e
@@ -1096,11 +1140,31 @@ serve(async (req) => {
           }
         }
 
-        // Fallback determinístico: Qwen 3 às vezes para no meio das tools sem
-        // chamar set_channel ou set_greeting_message → checklist trava em 4/6,
-        // wizard não fecha. Aqui completamos esses 2 críticos com defaults.
+        // Fallback determinístico: Qwen 3 às vezes para no meio das tools.
+        // Aqui aplicamos o spec do arquétipo (capacidades + tools runtime +
+        // canal + greeting + commit) — garante agente "100% pronto" sempre.
         const executedNames = new Set(toolsExecuted.map((t) => t.name));
         const deterministicCalls: Array<{ action: string; params: Record<string, unknown> }> = [];
+
+        // Capacidades cognitivas do spec — uma chamada por capability ausente
+        if (detectedSpec) {
+          for (const cap of detectedSpec.capabilities) {
+            deterministicCalls.push({ action: "set_capability", params: { key: cap, enabled: true } });
+          }
+          // Tools runtime do spec — uma chamada por tool
+          for (const tool of detectedSpec.runtimeTools) {
+            deterministicCalls.push({ action: "add_tool", params: { tool } });
+          }
+          // Conectores inferidos da descrição → marca como integração externa
+          const firstMsg = incomingMessages.find((m) => m.role === "user")?.content ?? "";
+          for (const conn of inferConnectors(detectedSpec, firstMsg)) {
+            deterministicCalls.push({
+              action: "request_external_integration",
+              params: { integration_key: conn.provider },
+            });
+          }
+        }
+
         if (!executedNames.has("set_channel")) {
           deterministicCalls.push({ action: "set_channel", params: { channel: "whatsapp", enabled: true } });
         }
@@ -1159,22 +1223,26 @@ serve(async (req) => {
         }
 
         // Garante resposta final completa com avisos LLM + próximos passos.
-        // Qwen 3 muitas vezes pula essas seções; backend appenda se faltarem.
+        // Quando há spec de arquétipo, os próximos passos são ESPECÍFICOS
+        // (docs, tabelas e cadências daquele arquétipo). Sem spec, fallback genérico.
         const hasLlmWarning = /Provedores\s*→\s*LLMs|Integrações\s*→\s*LLMs|conecte sua chave LLM/i.test(content);
         const hasNextSteps = /Próximos passos|próximas etapas|Conhecimento|Tabelas|Cadências/i.test(content);
         if (!hasLlmWarning || !hasNextSteps) {
+          const nextSteps = detectedSpec
+            ? buildNextStepsBlock(detectedSpec)
+            : `📋 **Próximos passos sugeridos:**
+- Adicione FAQ, políticas e documentos da empresa em **Conhecimento**.
+- Cadastre dados em **Tabelas** pro agente consultar/atualizar.
+- Pra lembretes automáticos, configure em **Automações → Cadências**.
+
+Quer ajustar algo? Edita no painel ou me diga aqui.`;
           const appendix = `
 
 ⚠️ **Pra publicar:** conecte sua chave LLM (OpenAI/Anthropic/Gemini) em **Configurações → Provedores**. O modelo Aikortex é só pra criação/testes.
 
-📋 **Próximos passos sugeridos:**
-- Adicione FAQ, políticas e documentos da empresa em **Conhecimento** pra respostas mais precisas.
-- Cadastre dados (pacientes, produtos, agendamentos) em **Tabelas** pro agente consultar/atualizar.
-- Pra lembretes automáticos e follow-ups, configure em **Automações → Cadências**.
-
-Quer ajustar algo? Edita no painel ou me diga aqui.`;
+${nextSteps}`;
           content = `${content}${appendix}`;
-          console.log(`[wizard-setup] appendado seções faltantes: llmWarning=${hasLlmWarning} nextSteps=${hasNextSteps}`);
+          console.log(`[wizard-setup] appendado seções faltantes: llmWarning=${hasLlmWarning} nextSteps=${hasNextSteps} archetype=${detectedSpec?.archetype ?? "(none)"}`);
         }
 
         if (toolsExecuted.length > 0) {
