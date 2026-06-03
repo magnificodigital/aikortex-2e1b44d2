@@ -2,8 +2,11 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ArrowLeft, ArrowUp, Send, AlertTriangle, Square,
   Sparkles, Bot, Mic, MicOff, Check, Loader2, Pencil, RotateCw, Brain, Lock, ChevronDown,
-  Settings2, EyeOff,
+  Settings2, EyeOff, Paperclip, FileText as FileIcon,
 } from "lucide-react";
+import { ensureDefaultKb, uploadKbFile } from "@/hooks/use-agent-knowledge-bases";
+import { supabase } from "@/integrations/supabase/client";
+import { fnUrl } from "@/lib/supabase-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +37,8 @@ export interface StructuredAgentConfig {
 
 interface AgentChatPanelProps {
   onBack: () => void;
+  /** Agent ID — necessário pra upload de arquivos pra Conhecimento Base */
+  agentId?: string;
   agentType: AgentType;
   agentName: string;
   agentAvatar: string;
@@ -152,6 +157,7 @@ const extractOAuthMarkers = (text: string): { clean: string; oauths: string[] } 
 
 const AgentChatPanel = ({
   onBack,
+  agentId,
   agentType,
   agentName,
   agentAvatar,
@@ -202,6 +208,60 @@ const AgentChatPanel = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialPromptUsedRef = useRef(false);
   const handleDiscoverRef = useRef<(text: string) => Promise<void>>(async () => {});
+
+  // ── File upload pra Knowledge Base inline no chat ──
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingFile, setUploadingFile] = useState<string | null>(null);
+
+  const handleAttachClick = useCallback(() => {
+    if (!agentId) {
+      toast.error("Aguardando carregar o agente — tenta de novo em um instante.");
+      return;
+    }
+    fileInputRef.current?.click();
+  }, [agentId]);
+
+  const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite re-selecionar o mesmo arquivo depois
+    if (!file || !agentId) return;
+    setUploadingFile(file.name);
+    try {
+      // 1. Garante uma KB padrão pro agente
+      const { id: kbId } = await ensureDefaultKb(agentId);
+      // 2. Upload pro Storage (kb-files)
+      const { storage_path } = await uploadKbFile(agentId, file);
+      // 3. Dispara ingestão (chunk + embedding + insert)
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("Sessão expirada");
+      const resp = await fetch(fnUrl("ingest-document"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ kb_id: kbId, source_type: "file", title: file.name, storage_path }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Erro desconhecido" }));
+        throw new Error(err.error || `HTTP ${resp.status}`);
+      }
+      const result = await resp.json() as { chunks_count: number };
+      // 4. Mensagem de confirmação no chat (não chama o LLM — só append visual)
+      const confirmMsg = `📎 Adicionei **${file.name}** à base de conhecimento (${result.chunks_count} trechos indexados). Posso usar esse conteúdo nas respostas.`;
+      if (wizardStep === "discover") {
+        setWizardMessages((prev) => [...prev, { role: "assistant", content: confirmMsg }]);
+      } else if (sendMessage) {
+        // No modo done/setup, manda via sendMessage como assistant simulado
+        // (frontend já trata role assistant pra renderizar).
+        // Simplificação: usa toast e não polui o chat.
+      }
+      toast.success(`${file.name} indexado (${result.chunks_count} trechos)`);
+    } catch (err) {
+      console.error("[upload]", err);
+      toast.error(`Falha no upload: ${(err as Error).message}`);
+    } finally {
+      setUploadingFile(null);
+    }
+  }, [agentId, wizardStep, sendMessage]);
 
   // ── Audio recording via SpeechRecognition ──
   const [isRecording, setIsRecording] = useState(false);
@@ -968,6 +1028,31 @@ const AgentChatPanel = ({
           />
           <div className="flex items-center justify-between px-2 pb-1">
             <div className="flex items-center gap-1">
+              <button
+                onClick={handleAttachClick}
+                className={`transition-colors p-1 rounded ${
+                  uploadingFile
+                    ? "text-primary animate-pulse"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                disabled={isStreaming || isStructuring || isBuilding || !!uploadingFile || !agentId}
+                title={
+                  !agentId
+                    ? "Aguardando carregar o agente"
+                    : uploadingFile
+                    ? `Indexando ${uploadingFile}...`
+                    : "Anexar PDF, DOCX, TXT ou MD (envia pra Conhecimento)"
+                }
+              >
+                {uploadingFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.md"
+                className="hidden"
+                onChange={handleFileSelected}
+              />
               <button
                 onClick={handleMicClick}
                 className={`transition-colors p-1 rounded ${

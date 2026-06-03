@@ -1221,6 +1221,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
         } flex-col min-w-0 overflow-hidden transition-all duration-300`}>
           <AgentChatPanel
             onBack={() => navigate("/aikortex/agents")}
+            agentId={agentId && agentId !== "new" && !agentId.startsWith("new-") ? agentId : undefined}
             agentType={loadedAgent.agentType}
             agentName={loadedAgent.name}
             agentAvatar={loadedAgent.avatar}

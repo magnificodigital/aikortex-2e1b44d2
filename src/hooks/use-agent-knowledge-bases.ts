@@ -217,6 +217,40 @@ export type IngestPayload = IngestTextPayload | IngestFaqPayload | IngestFilePay
 const KB_ALLOWED_EXTS = ["txt", "md", "pdf", "docx"] as const;
 const KB_MAX_FILE_BYTES = 10 * 1024 * 1024;
 
+/**
+ * Garante que o agente tem uma KB padrão pronta pra receber documentos.
+ * Usada pelo upload inline no chat — não queremos forçar o user a criar
+ * uma KB explicitamente antes de mandar o primeiro arquivo.
+ *
+ * Estratégia: pega a primeira KB do agente (ordem de criação). Se não houver,
+ * cria uma chamada "Conhecimento Geral" com os defaults do schema.
+ */
+export async function ensureDefaultKb(agentId: string): Promise<{ id: string; created: boolean }> {
+  const { data: existing } = await (supabase
+    .from("agent_knowledge_bases" as any)
+    .select("id")
+    .eq("agent_id", agentId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle() as any);
+  if ((existing as { id?: string } | null)?.id) {
+    return { id: (existing as { id: string }).id, created: false };
+  }
+  const { data: created, error } = await (supabase
+    .from("agent_knowledge_bases" as any)
+    .insert({
+      agent_id: agentId,
+      name: "Conhecimento Geral",
+      description: "Base padrão pra documentos enviados durante a criação do agente.",
+    })
+    .select("id")
+    .single() as any);
+  if (error || !(created as { id?: string } | null)?.id) {
+    throw new Error(`Falha ao criar KB padrão: ${error?.message ?? "sem id retornado"}`);
+  }
+  return { id: (created as { id: string }).id, created: true };
+}
+
 export async function uploadKbFile(agentId: string, file: File): Promise<{ storage_path: string }> {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
   if (!KB_ALLOWED_EXTS.includes(ext as any)) {
