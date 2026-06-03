@@ -95,11 +95,18 @@ const AGENT_TYPE_FOCUS: Record<string, string> = {
  * Sempre contextualizado por nicho (§13.4 + §15.2). Quando nicho não vem,
  * primeira pergunta identifica o nicho.
  */
-function buildWizardSystemPrompt(agentType: string, niche?: string): string {
+function buildWizardSystemPrompt(
+  agentType: string,
+  niche?: string,
+  ctx?: { phase?: "DESCOBERTA" | "PLANO" | "CRIACAO"; agencyName?: string | null; userMessageCount?: number },
+): string {
   const normalizedType = ["SDR", "BDR", "SAC", "CS"].includes(agentType.toUpperCase())
     ? agentType.toUpperCase()
     : "Custom";
   const focus = AGENT_TYPE_FOCUS[normalizedType] || AGENT_TYPE_FOCUS.Custom;
+  const phase = ctx?.phase ?? "DESCOBERTA";
+  const agencyName = ctx?.agencyName ?? null;
+  const userMsgCount = ctx?.userMessageCount ?? 1;
 
   const nicheContext = niche
     ? `O agente vai operar no nicho de **${niche}**. Adapte exemplos, terminologia e integrações ao contexto brasileiro desse setor.`
@@ -117,13 +124,19 @@ function buildWizardSystemPrompt(agentType: string, niche?: string): string {
 - "agente pra seguros" → Seguros
 Se realmente NÃO houver pista (ex: "agente que organiza minha agenda"), use "Outros". Catálogo válido: ${NICHES_AIKORTEX.join(", ")}, Outros.`;
 
-  return `Você é o construtor ONE-SHOT de agentes do Aikortex (Modo Vibe — Master v7.4 §13.2).
+  return `Você é o construtor de agentes do Aikortex (Modo Vibe — Master v7.4 §13.2).
 
-# COMO VOCÊ FUNCIONA
+# COMO VOCÊ FUNCIONA — FLUXO EM 3 FASES
 
-O usuário vai te dar UMA descrição inicial do agente. Sua missão é criar o agente INTEIRO em UMA resposta — cobrindo todos os 4 blocos do §13.2 (Perfil + Integrações + Critérios + Fluxo) — chamando TODAS as tools necessárias em sequência, e finalizando com commit_draft.
+O processo é conversacional, em 3 fases bem definidas:
 
-VOCÊ NÃO ENTREVISTA. VOCÊ CONSTRÓI. Use suposições inteligentes pros campos não mencionados explicitamente, baseado no nicho + tipo do agente.
+1. **DESCOBERTA** — faz 3 perguntas agrupadas pra preencher os gaps da descrição inicial. NUNCA chama tools nessa fase.
+2. **PLANO** — apresenta um resumo do que vai criar e pede confirmação. NUNCA chama tools nessa fase.
+3. **CRIAÇÃO** — só depois do user confirmar, dispara TODAS as tools em sequência e finaliza com commit_draft.
+
+# 🔴 FASE ATUAL: **${phase}**
+
+${agencyName ? `# CONTEXTO DA CONTA\nAgência/empresa do user: **${agencyName}** (puxado da conta). Use esse nome como default pra "empresa" do agente, salvo se o user disser que é pra outra empresa.\n` : "# CONTEXTO DA CONTA\nAgência/empresa do user não está cadastrada. Pergunte na fase Descoberta.\n"}
 
 # REGRAS DE PRECISÃO (CRÍTICO)
 
@@ -139,13 +152,62 @@ VOCÊ NÃO ENTREVISTA. VOCÊ CONSTRÓI. Use suposições inteligentes pros campo
 Tipo do agente: **${normalizedType}** — foco em ${focus}.
 ${nicheContext}
 
-# FLUXO OBRIGATÓRIO EM UMA RESPOSTA
+# FLUXO POR FASE
 
-Quando receber a descrição do usuário, dispare TODAS as tools abaixo em sequência (na MESMA resposta, sem perguntar nada no meio). Cobrindo Master v7.4 §13.5 inteiro:
+## ⚪ FASE DESCOBERTA (quando FASE ATUAL = DESCOBERTA)
+
+Você acabou de receber a descrição inicial. NÃO chame nenhuma tool. NÃO crie o agente. Sua única tarefa: PERGUNTAR. Estruture as perguntas em 3 grupos curtos:
+
+\`\`\`
+Beleza! Antes de criar, preciso entender alguns detalhes pra fazer um agente real e consistente:
+
+**🏢 Sobre o negócio**
+${agencyName ? `- O agente é pra **${agencyName}** (sua conta) ou pra outra empresa?` : "- Qual o nome da empresa?"}
+- Qual produto/serviço principal? (ex: "consultas odontológicas particulares", "vendas de imóveis no litoral")
+
+**👥 Sobre o público e atendimento**
+- Quem o agente vai atender? (perfil do cliente típico)
+- Por qual canal principal: WhatsApp, Email ou Site/widget? Horário e dias?
+
+**⚙️ Sobre o funcionamento**
+- O que NÃO pode fazer (limites, escalações, palavras proibidas)?
+- Alguma integração específica ele vai precisar (Google Calendar, HubSpot, CRM específico)?
+\`\`\`
+
+Termina com: **"Quando responder, eu monto o plano e te peço confirmação antes de criar."**
+
+⚠️ ADAPTE as perguntas ao que o user JÁ DISSE. Se ele já mencionou canal, NÃO pergunte canal de novo. Se já mencionou integração, NÃO pergunte integração de novo. Foque as perguntas nos GAPS reais.
+
+⚠️ Se a descrição inicial mencionou alguma integração que requer OAuth e não está conectada, INCLUA o marker \`<!--oauth:NOME-->\` no final da pergunta sobre integrações pra user já conectar enquanto responde.
+
+## ⚪ FASE PLANO (quando FASE ATUAL = PLANO)
+
+User respondeu as perguntas. NÃO chame nenhuma tool ainda. Apresente um plano resumido pra confirmação:
+
+\`\`\`
+📋 **Plano do agente**
+
+**Nome proposto:** {nome humano coerente — Sofia/Lia/Pedro/Ana/Carlos/Beatriz}
+**Empresa:** {empresa}
+**Nicho:** {nicho}
+**O que faz:** {1-2 linhas baseadas nas respostas}
+**Canais:** {lista}
+**Integrações:** {✓ X conectado | ⚠ Y precisa OAuth}
+**Capacidades ativadas:** {lista — raciocínio, memória, planning, etc.}
+**Limites:** {o que não pode fazer, escalações}
+\`\`\`
+
+Termina com: **"Confirma? Posso criar?"** (ou "Quer ajustar alguma coisa antes?")
+
+Se o user pediu pra ajustar (ex: "muda o nome pra X", "tira o Instagram"), refaça o plano com as mudanças.
+
+## 🔴 FASE CRIAÇÃO (quando FASE ATUAL = CRIACAO)
+
+User confirmou ("sim"/"pode"/"manda bala"/"confirma"/"ok"/"vai"/"perfeito"). AGORA SIM dispara TODAS as tools em sequência (na MESMA resposta, sem perguntar nada no meio). Cobrindo Master v7.4 §13.5 inteiro:
 
 **PENSANDO — Identidade básica:**
-1. set_niche (identifica nicho do contexto — Saúde/Imobiliária/Advocacia/Food/Educação/SaaS/etc.)
-2. set_company_name (se mencionado, senão pula)
+1. set_niche (identifica nicho do contexto)
+2. set_company_name (sempre — use o que o user disse na descoberta ou o ${agencyName ?? "nome da empresa"})
 
 (NOTA: NÃO chame set_agent_type no one-shot. agent_type fica como "Custom" — só Templates definem SDR/BDR/SAC/CS.)
 
@@ -291,10 +353,20 @@ set_agent_name · set_agent_description · set_agent_type · set_avatar · set_c
 # REGRAS
 
 - Tom brasileiro, direto, profissional sem ser robótico
-- NUNCA pergunte no meio — dispare TUDO de uma vez
+- Na fase CRIACAO: NUNCA pergunte no meio das tools — dispare TUDO de uma vez
+- Nas fases DESCOBERTA e PLANO: NUNCA chame tools — apenas converse
 - Suposições devem ser TEMPLATEZADAS pelo nicho — não use placeholder genérico
-- Se a descrição inicial for muito curta (<20 chars), use defaults agressivos baseados no tipo
-- commit_draft é OBRIGATÓRIO no final — sem ele o wizard fica travado
+- commit_draft é OBRIGATÓRIO no final da fase CRIACAO — sem ele o wizard fica travado
+
+# ⚠️ LEMBRETE CRÍTICO DE FASE
+
+A **FASE ATUAL** está marcada no topo deste prompt. CONFIRA antes de responder:
+
+- Se DESCOBERTA → você só PERGUNTA (3 grupos). Zero tools.
+- Se PLANO → você só APRESENTA O PLANO e pede confirmação. Zero tools.
+- Se CRIACAO → você dispara TODAS as tools em sequência e responde com apresentação final.
+
+Chamar tool fora da fase CRIACAO é ERRO GRAVE. Não chamar tool na CRIACAO também é ERRO GRAVE.
 
 # RESPONDA A WARNINGS E INFOS DAS TOOLS
 
@@ -886,13 +958,48 @@ serve(async (req) => {
       const incomingMessages = (messages || []) as Array<{ role: string; content: string }>;
       let chatMessages: Array<{ role: string; content: string }>;
       let wizardDetectedStatuses: any[] = [];
+      let wizardPhase: "DESCOBERTA" | "PLANO" | "CRIACAO" = "CRIACAO";
       if (mode === "wizard-setup") {
+        // Conta mensagens do user pra decidir a fase do fluxo conversacional.
+        // - 1 user message = DESCOBERTA (faz perguntas, zero tools)
+        // - 2 user messages = PLANO (apresenta resumo, pede confirmação, zero tools)
+        // - 3+ user messages = CRIACAO (dispara tools, cria agente, commit_draft)
+        const userMessageCount = incomingMessages.filter((m) => m.role === "user").length;
+        wizardPhase =
+          userMessageCount <= 1 ? "DESCOBERTA"
+          : userMessageCount === 2 ? "PLANO"
+          : "CRIACAO";
+        const phase = wizardPhase;
+
+        // Busca agency_name do user — usado como default pra "empresa" do agente
+        let agencyName: string | null = null;
+        try {
+          const uid = (authResult as any).user?.id;
+          if (uid) {
+            const adminTmp = createClient(
+              Deno.env.get("SUPABASE_URL")!,
+              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+              { auth: { persistSession: false } },
+            );
+            const { data: agency } = await adminTmp
+              .from("agency_profiles")
+              .select("agency_name")
+              .eq("user_id", uid)
+              .maybeSingle();
+            agencyName = (agency as { agency_name?: string } | null)?.agency_name ?? null;
+          }
+        } catch (e) {
+          console.warn("[wizard-setup] agency_name fetch failed (non-fatal):", e);
+        }
+
         let wizardSystem = buildWizardSystemPrompt(
           String((body as Record<string, unknown>).agentType || "Custom"),
           typeof (body as any).niche === "string" && (body as any).niche
             ? (body as any).niche
             : undefined,
+          { phase, agencyName, userMessageCount },
         );
+        console.log(`[wizard-setup] phase=${phase} userMessages=${userMessageCount} agencyName=${agencyName ?? "(none)"}`);
 
         // Detector de bloqueios pré-criação (Zaia Solutions Architect pattern):
         // analisa a última mensagem do user, detecta integrações mencionadas e
@@ -947,10 +1054,11 @@ serve(async (req) => {
       const userJwt = authHeader?.replace(/^Bearer\s+/i, "") ?? null;
 
       let content = "";
-      if (mode === "wizard-setup" && agentId) {
-        // Modo Vibe ONE-SHOT (Master v7.4 §13.2): wizard cria o agente INTEIRO
-        // em uma resposta com 10+ tool calls. maxTokens generoso pra caber
-        // tools+resposta; maxIterations 8 pra dar margem caso LLM chame em batches.
+      if (mode === "wizard-setup" && agentId && wizardPhase === "CRIACAO") {
+        // Modo Vibe (Master v7.4 §13.2): só na fase CRIACAO (3ª+ mensagem do user,
+        // após confirmação) é que disparamos as tools e criamos o agente de fato.
+        // Nas fases DESCOBERTA e PLANO, caímos no else abaixo (streaming sem tools)
+        // e o LLM apenas conversa: faz perguntas (Descoberta) ou mostra o plano (Plano).
         const { content: wizContent, toolsExecuted } = await runWizardWithTools({
           supabase: adminClient,
           agentId,
@@ -991,6 +1099,11 @@ serve(async (req) => {
           // HTML comment não renderiza no ReactMarkdown; o frontend extrai via regex.
           content = `${content}\n\n<!--tools:${JSON.stringify(toolsExecuted)}-->`;
         }
+      } else if (mode === "wizard-setup") {
+        // Fases DESCOBERTA e PLANO do wizard: NÃO chama tools. Apenas conversa
+        // (faz perguntas ou apresenta o plano). bufferFromPlatform mantém o
+        // system prompt já injetado (com FASE ATUAL marcada) e gera resposta livre.
+        content = await bufferFromPlatform(chatMessages, preferred, adminClient);
       } else if (agentId) {
         // Split system + rest so runAgentLLM can prepend system itself.
         // models omitted → helper loads from available_llms (single source of truth).

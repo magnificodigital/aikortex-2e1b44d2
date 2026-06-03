@@ -22,8 +22,9 @@ const STEPS: ThinkingStep[] = [
   { id: "analyze", label: "Analisando sua descrição",         done: () => true },
   { id: "niche",   label: "Identificando o nicho do negócio", done: (cfg) => !!cfg?.businessContext?.niche },
 
-  // ── 📋 PLANEJANDO (7 steps) — persona + perfil + capacidades ──
-  { id: "company",      label: "Reconhecendo a empresa",                done: (cfg) => !!cfg?.businessContext?.companyName },
+  // ── 📋 PLANEJANDO (6 steps) — persona + perfil + capacidades ──
+  // (Empresa não é mais um passo separado — é perguntada na Fase Descoberta
+  // ou puxada da agency_profile do user antes da geração.)
   { id: "name",         label: "Nomeando o agente",                     done: (cfg) => !!cfg?.name && cfg.name !== "Novo Agente" && cfg.name !== "Carregando..." },
   { id: "description",  label: "Escrevendo a descrição do agente",      done: (cfg) => !!cfg?.descriptionConfigured },
   { id: "tone",         label: "Definindo o tom de voz",                done: (cfg) => !!(cfg?.businessContext?.toneOfVoice || cfg?.toneOfVoice) },
