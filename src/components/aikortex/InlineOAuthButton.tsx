@@ -49,6 +49,29 @@ export default function InlineOAuthButton({ scope, agentId, onConnected }: Inlin
   const watcherRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const info = SCOPE_LABELS[scope];
 
+  // Ao montar, checa se já está conectado. Mensagens antigas do wizard ficam
+  // no histórico do chat com o botão original — sem isso, user que conectou
+  // depois vê "Conectar" eternamente em vez de "Conectado".
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const resp = await fetch(fnUrl("composio-status"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ provider: scope }),
+        });
+        const json = await resp.json();
+        if (!cancelled && json?.connected) {
+          setState("connected");
+        }
+      } catch { /* silencioso — fallback é botão idle */ }
+    })();
+    return () => { cancelled = true; };
+  }, [scope]);
+
   // Polling em composio-status enquanto em loading. Quando ACTIVE → fecha popup,
   // marca connected, dispara onConnected. Composio não posta mensagem pra nós,
   // então polling é o único caminho confiável de detecção.

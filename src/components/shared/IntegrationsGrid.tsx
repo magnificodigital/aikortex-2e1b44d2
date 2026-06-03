@@ -99,7 +99,7 @@ export const SERVICE_PROVIDERS: IntegrationProvider[] = [
   { label: "Discord", provider: "discord", description: "Mensagens em servidores e canais.", logo: "https://cdn.simpleicons.org/discord/5865F2" },
   { label: "Dropbox", provider: "dropbox", description: "Arquivos e pastas na nuvem.", logo: "https://cdn.simpleicons.org/dropbox/0061FF" },
   { label: "GitHub", provider: "github", description: "Repos, issues e PRs.", logo: "https://cdn.simpleicons.org/github/181717/FFFFFF" },
-  { label: "LinkedIn", provider: "linkedin", description: "Posts e mensagens profissionais.", logo: "https://cdn.simpleicons.org/linkedin/0A66C2" },
+  { label: "LinkedIn", provider: "linkedin", description: "Posts e mensagens profissionais.", logo: "https://cdn.simpleicons.org/linkedin/0A66C2/FFFFFF" },
   { label: "Zoom", provider: "zoom", description: "Reuniões e gravações.", logo: "https://cdn.simpleicons.org/zoom/0B5CFF" },
 ];
 
@@ -528,10 +528,10 @@ export function IntegrationsGrid({
             const connected = isConnected(p);
             const renderLogo = (size: "sm" | "lg") => {
               const cls = size === "lg"
-                ? "w-12 h-12 object-contain"
+                ? "w-9 h-9 object-contain"
                 : "w-7 h-7 object-contain shrink-0";
               const invertCls = size === "lg"
-                ? "w-12 h-12 object-contain"
+                ? "w-9 h-9 object-contain"
                 : "w-7 h-7 rounded object-contain shrink-0";
               if (p.provider === "aikortex") {
                 return (
