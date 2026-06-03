@@ -53,12 +53,11 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     apiKeyUrl: "https://platform.openai.com/api-keys",
     apiKeyUrlLabel: "platform.openai.com",
   },
-
   {
     label: "Anthropic",
     provider: "anthropic",
     description: "Claude Opus 4, Sonnet 4.5, Haiku e modelos seguros de IA",
-    logo: "https://cdn.simpleicons.org/anthropic",
+    logo: "https://cdn.simpleicons.org/anthropic/_/D97757",
     apiKeyUrl: "https://console.anthropic.com/settings/keys",
     apiKeyUrlLabel: "console.anthropic.com",
   },
@@ -66,7 +65,7 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     label: "Google Gemini",
     provider: "gemini",
     description: "Gemini 2.5 Pro, Flash e IA multimodal do Google",
-    logo: "https://cdn.simpleicons.org/googlegemini",
+    logo: "https://cdn.simpleicons.org/googlegemini/4796E3",
     apiKeyUrl: "https://aistudio.google.com/apikey",
     apiKeyUrlLabel: "aistudio.google.com",
   },
@@ -74,31 +73,34 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     label: "DeepSeek",
     provider: "deepseek",
     description: "DeepSeek R1, V3 e modelos open-source de alto desempenho",
-    logo: "https://registry.npmmirror.com/@lobehub/icons-static-png/1.24.0/files/dark/deepseek-color.png",
+    logo: "https://cdn.simpleicons.org/deepseek/4D6BFE",
     apiKeyUrl: "https://platform.deepseek.com/api_keys",
     apiKeyUrlLabel: "platform.deepseek.com",
   },
 ];
 
+// Logo URLs com cor da marca via simpleicons. Formato: /{slug}/{lightHex}/{darkHex}
+// Pra brands quase-pretos (GitHub, Notion) o segundo hex sobrescreve no dark mode
+// pra ficar visível. Demais brands têm cor única que funciona em ambos os themes.
 export const SERVICE_PROVIDERS: IntegrationProvider[] = [
-  { label: "Gmail", provider: "gmail", description: "Ler, enviar e compor e-mails.", logo: "https://cdn.simpleicons.org/gmail" },
-  { label: "Google Calendar", provider: "google_calendar", description: "Ler e gerenciar eventos.", logo: "https://cdn.simpleicons.org/googlecalendar" },
-  { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets" },
-  { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: "https://cdn.simpleicons.org/googledrive" },
+  { label: "Gmail", provider: "gmail", description: "Ler, enviar e compor e-mails.", logo: "https://cdn.simpleicons.org/gmail/EA4335" },
+  { label: "Google Calendar", provider: "google_calendar", description: "Ler e gerenciar eventos.", logo: "https://cdn.simpleicons.org/googlecalendar/4285F4" },
+  { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets/34A853" },
+  { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: "https://cdn.simpleicons.org/googledrive/4285F4" },
   { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: outlookCalendarIcon },
-  { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly" },
-  { label: "HubSpot", provider: "hubspot", description: "CRM, contatos, deals e pipelines.", logo: "https://cdn.simpleicons.org/hubspot" },
-  { label: "Notion", provider: "notion", description: "Páginas, databases e blocos.", logo: "https://cdn.simpleicons.org/notion" },
-  { label: "Slack", provider: "slack", description: "Mensagens e canais de equipe.", logo: "https://cdn.simpleicons.org/slack" },
-  { label: "Airtable", provider: "airtable", description: "Bases, tabelas e registros.", logo: "https://cdn.simpleicons.org/airtable" },
-  { label: "Asana", provider: "asana", description: "Tarefas e projetos.", logo: "https://cdn.simpleicons.org/asana" },
-  { label: "Trello", provider: "trello", description: "Boards e cards.", logo: "https://cdn.simpleicons.org/trello" },
-  { label: "ClickUp", provider: "clickup", description: "Gestão de tarefas e docs.", logo: "https://cdn.simpleicons.org/clickup" },
-  { label: "Discord", provider: "discord", description: "Mensagens em servidores e canais.", logo: "https://cdn.simpleicons.org/discord" },
-  { label: "Dropbox", provider: "dropbox", description: "Arquivos e pastas na nuvem.", logo: "https://cdn.simpleicons.org/dropbox" },
-  { label: "GitHub", provider: "github", description: "Repos, issues e PRs.", logo: "https://cdn.simpleicons.org/github" },
-  { label: "LinkedIn", provider: "linkedin", description: "Posts e mensagens profissionais.", logo: "https://cdn.simpleicons.org/linkedin" },
-  { label: "Zoom", provider: "zoom", description: "Reuniões e gravações.", logo: "https://cdn.simpleicons.org/zoom" },
+  { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly/006BFF" },
+  { label: "HubSpot", provider: "hubspot", description: "CRM, contatos, deals e pipelines.", logo: "https://cdn.simpleicons.org/hubspot/FF7A59" },
+  { label: "Notion", provider: "notion", description: "Páginas, databases e blocos.", logo: "https://cdn.simpleicons.org/notion/111111/FFFFFF" },
+  { label: "Slack", provider: "slack", description: "Mensagens e canais de equipe.", logo: "https://cdn.simpleicons.org/slack/4A154B/E01E5A" },
+  { label: "Airtable", provider: "airtable", description: "Bases, tabelas e registros.", logo: "https://cdn.simpleicons.org/airtable/18BFFF" },
+  { label: "Asana", provider: "asana", description: "Tarefas e projetos.", logo: "https://cdn.simpleicons.org/asana/F06A6A" },
+  { label: "Trello", provider: "trello", description: "Boards e cards.", logo: "https://cdn.simpleicons.org/trello/0079BF" },
+  { label: "ClickUp", provider: "clickup", description: "Gestão de tarefas e docs.", logo: "https://cdn.simpleicons.org/clickup/7B68EE" },
+  { label: "Discord", provider: "discord", description: "Mensagens em servidores e canais.", logo: "https://cdn.simpleicons.org/discord/5865F2" },
+  { label: "Dropbox", provider: "dropbox", description: "Arquivos e pastas na nuvem.", logo: "https://cdn.simpleicons.org/dropbox/0061FF" },
+  { label: "GitHub", provider: "github", description: "Repos, issues e PRs.", logo: "https://cdn.simpleicons.org/github/181717/FFFFFF" },
+  { label: "LinkedIn", provider: "linkedin", description: "Posts e mensagens profissionais.", logo: "https://cdn.simpleicons.org/linkedin/0A66C2" },
+  { label: "Zoom", provider: "zoom", description: "Reuniões e gravações.", logo: "https://cdn.simpleicons.org/zoom/0B5CFF" },
 ];
 
 export const ALL_PROVIDERS = [...LLM_PROVIDERS, ...SERVICE_PROVIDERS];
@@ -540,14 +542,16 @@ export function IntegrationsGrid({
                 );
               }
               if (p.provider === "outlook_calendar") {
-                return <img src={p.logo} alt={p.label} className={`${cls} [filter:brightness(0)] dark:[filter:brightness(0)_invert(1)]`} />;
+                // Outlook logo é um PNG colorido local — não precisa de filter.
+                return <img src={p.logo} alt={p.label} className={cls} />;
               }
               if (p.logo) {
+                // Cores originais da marca (via simpleicons /{slug}/{hex}/{darkhex}).
                 return (
                   <img
                     src={p.logo}
                     alt={p.label}
-                    className={`${invertCls} [filter:brightness(0)] dark:[filter:brightness(0)_invert(1)]`}
+                    className={invertCls}
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                   />
                 );

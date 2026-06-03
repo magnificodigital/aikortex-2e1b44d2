@@ -39,8 +39,9 @@ import {
   CreditCard,
   Radio,
   DollarSign,
+  Sparkles,
 } from "lucide-react";
-import { IntegrationsPanel } from "@/components/settings/IntegrationsPanel";
+import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS } from "@/components/shared/IntegrationsGrid";
 import AgencyChannelsManager from "@/components/settings/AgencyChannelsManager";
 import AgencyPermissions from "@/components/settings/AgencyPermissions";
 import SubscriptionTab from "@/components/settings/SubscriptionTab";
@@ -305,7 +306,8 @@ const SettingsPage = () => {
             <TabsTrigger value="logo" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Image className="h-3.5 w-3.5" /> Logo</TabsTrigger>
             <TabsTrigger value="landing" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Globe className="h-3.5 w-3.5" /> Landing Page</TabsTrigger>
             <TabsTrigger value="biolink" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Link2 className="h-3.5 w-3.5" /> Bio Link</TabsTrigger>
-            <TabsTrigger value="integrations" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Plug className="h-3.5 w-3.5" /> Integrações</TabsTrigger>
+            <TabsTrigger value="providers" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Sparkles className="h-3.5 w-3.5" /> Provedores</TabsTrigger>
+            <TabsTrigger value="integrations" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Plug className="h-3.5 w-3.5" /> Conectores</TabsTrigger>
             <TabsTrigger value="channels" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Radio className="h-3.5 w-3.5" /> Canais</TabsTrigger>
             
             <TabsTrigger value="subscription" className="shrink-0 gap-1 whitespace-nowrap text-xs"><CreditCard className="h-3.5 w-3.5" /> Assinatura & Planos</TabsTrigger>
@@ -637,9 +639,24 @@ const SettingsPage = () => {
             </div>
           </TabsContent>
 
-          {/* ── INTEGRAÇÕES ─────────────────────────── */}
+          {/* ── PROVEDORES (LLMs) ───────────────────── */}
+          <TabsContent value="providers" className="space-y-6">
+            <IntegrationsGrid
+              providers={LLM_PROVIDERS}
+              variant="card"
+              title="Provedores de IA"
+              subtitle="Conecte chaves de API dos modelos que seus agentes vão usar. Clique no card pra configurar modelo padrão, temperatura, máx tokens e top-p."
+            />
+          </TabsContent>
+
+          {/* ── CONECTORES (serviços externos via Composio) ── */}
           <TabsContent value="integrations" className="space-y-6">
-            <IntegrationsPanel />
+            <IntegrationsGrid
+              providers={SERVICE_PROVIDERS}
+              variant="card"
+              title="Conectores"
+              subtitle="Conecte contas externas (Google, CRMs, mensageria) que os agentes podem usar durante a conversa. OAuth gerenciado via Composio."
+            />
           </TabsContent>
 
           {/* ── CANAIS ─────────────────────────── */}

@@ -141,6 +141,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "caps.intelligence",      label: "Raciocínio",           icon: Brain },
     { key: "resources.kb",           label: "Conhecimento",         icon: BookOpen },
     { key: "resources.tables",       label: "Tabelas",              icon: Database,        masterRef: "13.5.11" },
+    { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
     { key: "caps.runtime",           label: "Code Runtime",         icon: FileCode2,       comingSoon: true, sprint: "futuro", masterRef: "13.5.7" },
     { key: "caps.autoint",           label: "Auto-integração",      icon: Workflow,        comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
   ]},
@@ -157,10 +158,11 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "channels.tiktok",        label: "TikTok",               icon: Share2,          comingSoon: true, sprint: "futuro" },
     { key: "channels.telegram",      label: "Telegram",             icon: Share2,          comingSoon: true, sprint: "futuro" },
   ]},
-  { group: "Integrações", items: [
-    { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
+  { group: "Provedores", items: [
     { key: "integrations.llms",      label: "LLMs",                 icon: Sparkles },
-    { key: "integrations.apis",      label: "Conectores",           icon: Plug },
+  ]},
+  { group: "Conectores", items: [
+    { key: "integrations.apis",      label: "Catálogo",             icon: Plug },
   ]},
   { group: "Automações", items: [
     { key: "behavior.cadences",      label: "Cadências",            icon: Clock,           masterRef: "13.5.13" },
@@ -1319,17 +1321,18 @@ const AgentRightPanel = ({
               </div>
             )}
 
-            {/* ── Integrações → LLMs ── */}
+            {/* ── Provedores → LLMs ── */}
             {activeSection === "integrations.llms" && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">Modelos de IA (LLMs)</h2>
+                  <h2 className="text-lg font-bold text-foreground">Provedores de IA</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Conecte suas chaves de API e ajuste <strong>temperatura</strong>, <strong>max tokens</strong> e <strong>top-p</strong> de cada modelo individualmente. Clique no card do provedor pra configurar.
                   </p>
                 </div>
                 <IntegrationsGrid
                   providers={LLM_PROVIDERS}
+                  variant="card"
                   showTitle={false}
                   onConnectedProvidersChange={setSavedIntegrations}
                   onProviderConfigsChange={setIntegrationConfigs}
