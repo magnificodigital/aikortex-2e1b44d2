@@ -132,10 +132,16 @@ EXEMPLO CORRETO (user confirma agendamento):
 > Após tools OK: "Perfeito, Fred! Reunião agendada pra 04/06 às 14h (id evt_abc123) e convite enviado pro seu email. Até lá!"
 > Após tool com erro de conexão: "Tentei agendar mas o Google Calendar não está conectado. Conecte em Configurações → Conectores → Google Calendar e me chama de novo."
 
+REGRA DE REPORTE DE ERRO (CRÍTICA):
+- Quando uma tool retorna erro, NÃO diga "estou enfrentando dificuldades técnicas" ou "não consegui completar o processo".
+- LEIA o campo "error" ou "detail" do resultado da tool e mostre exatamente o que aconteceu.
+- Exemplo: tool retorna {"error":"EXECUTION_FAILED","message":"Connection not found for slug GOOGLECALENDAR"} → você diz: "Erro do Google Calendar: 'Connection not found'. Pode ser que a conexão tenha expirado — tente reconectar em Configurações → Conectores."
+
 EXEMPLO INCORRETO (NÃO FAÇA):
 > "Não tenho a capacidade de conectar seu calendar."  ← ERRADO: chame a tool primeiro
 > "Vou enviar o convite agora 📨"  ← ERRADO se não chamou send_email
-> "Você poderia verificar se está conectado?"  ← ERRADO: chame a tool, ela retorna o status real`;
+> "Você poderia verificar se está conectado?"  ← ERRADO: chame a tool, ela retorna o status real
+> "Estou enfrentando dificuldades técnicas para agendar"  ← ERRADO: mostre o erro real da tool`;
 }
 
 // Nichos prioritários do Master v7.4 §15.2 (lançamento) — adapta linguagem,
@@ -1031,6 +1037,7 @@ serve(async (req) => {
       let wizardDetectedStatuses: any[] = [];
       let wizardPhase: "DESCOBERTA" | "PLANO" | "CRIACAO" = "CRIACAO";
       let detectedSpec: ArchetypeSpec | null = null;
+      let agencyName: string | null = null;
       if (mode === "wizard-setup") {
         // Conta mensagens do user pra decidir a fase do fluxo conversacional.
         // - 1 user message = DESCOBERTA (faz perguntas, zero tools)
@@ -1044,7 +1051,8 @@ serve(async (req) => {
         const phase = wizardPhase;
 
         // Busca agency_name do user — usado como default pra "empresa" do agente
-        let agencyName: string | null = null;
+        // (agencyName está declarado no escopo externo pra ser visível também no
+        // fast-path da Descoberta abaixo).
         try {
           const uid = (authResult as any).user?.id;
           if (uid) {
