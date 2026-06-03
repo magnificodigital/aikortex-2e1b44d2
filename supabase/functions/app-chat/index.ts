@@ -971,6 +971,7 @@ serve(async (req) => {
       let chatMessages: Array<{ role: string; content: string }>;
       let wizardDetectedStatuses: any[] = [];
       let wizardPhase: "DESCOBERTA" | "PLANO" | "CRIACAO" = "CRIACAO";
+      let detectedSpec: ArchetypeSpec | null = null;
       if (mode === "wizard-setup") {
         // Conta mensagens do user pra decidir a fase do fluxo conversacional.
         // - 1 user message = DESCOBERTA (faz perguntas, zero tools)
@@ -1014,9 +1015,9 @@ serve(async (req) => {
 
         // Detecta arquétipo da PRIMEIRA mensagem do user (a descrição inicial).
         // Spec do arquétipo guia perguntas direcionadas + capacidades+tools
-        // determinísticas. Fica disponível pra todas as fases.
+        // determinísticas. Fica disponível pra todas as fases (declarado no
+        // escopo externo pra ser visível também no fallback determinístico).
         const firstUserMsg = incomingMessages.find((m) => m.role === "user");
-        let detectedSpec: ArchetypeSpec | null = null;
         if (firstUserMsg?.content) {
           const arch = detectArchetype(firstUserMsg.content);
           detectedSpec = getSpec(arch);
