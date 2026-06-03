@@ -76,7 +76,10 @@ Quando o user perguntar "que dia é hoje?", "qual a data?", "que horas são?" �
 Quando agendar ou propor datas, use ESSA como referência de "hoje".`;
 }
 
-function buildAgentSystemPrompt(agentConfig: Record<string, unknown>): string {
+function buildAgentSystemPrompt(
+  agentConfig: Record<string, unknown>,
+  connectorStatus?: { calendar: boolean; email: boolean },
+): string {
   const name = String(agentConfig?.name || "Assistente");
   const role = String(agentConfig?.role || "").toLowerCase();
   const objective = String(agentConfig?.objective || "");
@@ -96,33 +99,43 @@ Objetivo: ${objective}
 Tom: ${tone}
 Instruções: ${instructions}
 Responda em português do Brasil.`;
-  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities) + buildCurrentDateBlock() + buildRealActionsBlock();
+  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities) + buildCurrentDateBlock() + buildRealActionsBlock(connectorStatus);
 }
 
 /** Bloco anti-alucinação — força o agente a USAR as tools reais em vez de
  * fingir que enviou email ou agendou. Sem isso, Qwen 3 confidentemente diz
  * "vou enviar agora" e não chama tool nenhuma. */
-function buildRealActionsBlock(): string {
+function buildRealActionsBlock(connectorStatus?: { calendar: boolean; email: boolean }): string {
+  const calendarStatus = connectorStatus
+    ? (connectorStatus.calendar ? "✅ CONECTADO" : "❌ NÃO CONECTADO")
+    : "(status desconhecido — TENTE chamar a tool mesmo assim)";
+  const emailStatus = connectorStatus
+    ? (connectorStatus.email ? "✅ DISPONÍVEL (Resend)" : "❌ NÃO DISPONÍVEL")
+    : "(disponível por padrão via Resend)";
+
   return `\n\n# ⚙️ AÇÕES REAIS — REGRA INEGOCIÁVEL
 
 Você tem AS SEGUINTES TOOLS pra executar ações de verdade:
-- **send_email(to, subject, body)** — envia email REAL via Resend
-- **create_calendar_event(summary, start_datetime, end_datetime, attendees)** — cria evento REAL no Google Calendar
+- **send_email(to, subject, body)** — envia email REAL via Resend. Status: ${emailStatus}
+- **create_calendar_event(summary, start_datetime, end_datetime, attendees)** — cria evento REAL no Google Calendar. Status: ${calendarStatus}
 
-REGRAS:
-1. Quando disser "vou enviar email" / "estou agendando" / "criei o evento", você DEVE chamar a tool correspondente NA MESMA RESPOSTA.
-2. NUNCA confirme uma ação sem chamar a tool. Mentir que fez é o pior erro possível.
-3. Se a tool retornar erro (ex: user não conectou Google Calendar), comunique HONESTAMENTE: "Tentei agendar mas precisa conectar o Google Calendar primeiro em Configurações → Conectores."
-4. Quando a tool retornar OK, confirme com dados reais (event_id, email_id) — não invente.
+REGRAS ABSOLUTAS:
+1. **SEMPRE TENTE A TOOL PRIMEIRO** — mesmo se desconfia que pode falhar. Você NÃO decide se a integração está conectada — a tool retorna erro real se não estiver.
+2. NUNCA diga "não tenho capacidade", "não posso conectar", "não tenho acesso" pra ações que existem como tool. Em vez disso, CHAME a tool. Se falhar, reporte o erro real.
+3. Quando user confirma ("tá tudo certo", "manda", "pode agendar"), CHAME a tool IMEDIATAMENTE — sem dizer "vou enviar" sem chamar.
+4. Se tool retornar OK: confirme com dados reais (event_id, link, email_id).
+5. Se tool retornar erro: leia a mensagem de erro, comunique honestamente, e se for problema de conexão sugira: "preciso que você conecte X em Configurações → Conectores".
 
-EXEMPLO CORRETO (SDR agendando):
-> User: "tá tudo certo"
-> Você: [chama create_calendar_event({summary:"Reunião com Fred", start_datetime:"2026-06-04T14:00:00-03:00", attendees:["fred@exemplo.com"]}) E send_email({to:"fred@exemplo.com", subject:"Confirmação reunião", body:"..."})]
-> Resposta após tools: "Perfeito, Fred! Evento criado no Calendar (id evt_xxx) e convite enviado pro seu email. Até dia 4!"
+EXEMPLO CORRETO (user confirma agendamento):
+> User: "tá tudo certo, pode agendar"
+> Você [chama create_calendar_event SEM HESITAR + send_email NA MESMA RESPOSTA]
+> Após tools OK: "Perfeito, Fred! Reunião agendada pra 04/06 às 14h (id evt_abc123) e convite enviado pro seu email. Até lá!"
+> Após tool com erro de conexão: "Tentei agendar mas o Google Calendar não está conectado. Conecte em Configurações → Conectores → Google Calendar e me chama de novo."
 
-EXEMPLO INCORRETO:
-> Você: "Perfeito! Vou enviar o convite agora. 📨"  ← MENTIRA, não chamou tool
-> Você: "Agendei na sua agenda."  ← MENTIRA, não chamou tool`;
+EXEMPLO INCORRETO (NÃO FAÇA):
+> "Não tenho a capacidade de conectar seu calendar."  ← ERRADO: chame a tool primeiro
+> "Vou enviar o convite agora 📨"  ← ERRADO se não chamou send_email
+> "Você poderia verificar se está conectado?"  ← ERRADO: chame a tool, ela retorna o status real`;
 }
 
 // Nichos prioritários do Master v7.4 §15.2 (lançamento) — adapta linguagem,
@@ -1128,8 +1141,42 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
         const nonSystem = incomingMessages.filter((m) => m.role !== "system");
         chatMessages = [{ role: "system", content: wizardSystem }, ...nonSystem];
       } else if (agentId) {
+        // Pre-flight check: consulta status real do Composio Google Calendar
+        // pra esse user. Sem isso, agente alucina ("não tenho acesso") ou
+        // confidentemente diz que vai agendar e não chama tool. Saber antes
+        // se está conectado calibra a resposta.
+        let calendarConnected = false;
+        try {
+          const uid = (authResult as any).user?.id;
+          if (uid) {
+            const adminTmp = createClient(
+              Deno.env.get("SUPABASE_URL")!,
+              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+              { auth: { persistSession: false } },
+            );
+            const { data: keyRow } = await adminTmp
+              .from("user_api_keys")
+              .select("api_key")
+              .eq("user_id", uid)
+              .eq("provider", "google_calendar")
+              .maybeSingle();
+            if ((keyRow as { api_key?: string } | null)?.api_key) {
+              try {
+                const parsed = JSON.parse((keyRow as { api_key: string }).api_key);
+                calendarConnected = parsed?.status === "ACTIVE" || !parsed?.pending;
+              } catch {
+                calendarConnected = true; // api_key existe mas não é JSON — provider legado, considera ok
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("[agent-chat] preflight calendar check failed:", e);
+        }
+        // Email via Resend está sempre disponível (trial Aikortex ou BYOK)
+        const connectorStatus = { calendar: calendarConnected, email: true };
+        console.log(`[agent-chat] connectorStatus calendar=${calendarConnected} email=true`);
         chatMessages = [
-          { role: "system", content: buildAgentSystemPrompt((runtimeAgentConfig || {}) as Record<string, unknown>) },
+          { role: "system", content: buildAgentSystemPrompt((runtimeAgentConfig || {}) as Record<string, unknown>, connectorStatus) },
           ...incomingMessages,
         ];
       } else {
