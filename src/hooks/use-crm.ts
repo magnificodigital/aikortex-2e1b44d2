@@ -1,6 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fnUrl } from "@/lib/supabase-url";
 import { toast } from "sonner";
+
+export interface CrmSyncConfig {
+  id: string;
+  agency_id: string;
+  provider: string;
+  enabled: boolean;
+  hubspot_pipeline_id: string | null;
+  stage_mapping: Record<string, string>;
+  auto_sync: boolean;
+  inbound_enabled: boolean;
+  last_sync_at: string | null;
+  last_sync_error: string | null;
+  total_synced: number;
+}
 
 export interface CrmContact {
   id: string;
@@ -193,6 +208,76 @@ export function useDeleteContact() {
       toast.success("Contato removido");
     },
     onError: (err) => toast.error(`Falha: ${(err as Error).message}`),
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Sync HubSpot
+// ──────────────────────────────────────────────────────────────────────────
+
+export function useHubSpotSyncConfig() {
+  return useQuery({
+    queryKey: ["crm-sync-config", "hubspot"],
+    queryFn: async (): Promise<CrmSyncConfig | null> => {
+      const { data, error } = await (supabase
+        .from("crm_sync_configs" as any)
+        .select("*")
+        .eq("provider", "hubspot")
+        .maybeSingle() as any);
+      if (error) throw error;
+      return (data as CrmSyncConfig) || null;
+    },
+  });
+}
+
+export function useUpsertHubSpotSyncConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (patch: Partial<CrmSyncConfig>) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Sessão expirada");
+      const { data: agency } = await (supabase
+        .from("agency_profiles" as any)
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle() as any);
+      const agencyId = (agency as { id?: string } | null)?.id;
+      if (!agencyId) throw new Error("Agência não encontrada");
+      const payload = { ...patch, agency_id: agencyId, provider: "hubspot" };
+      const { error } = await (supabase
+        .from("crm_sync_configs" as any)
+        .upsert(payload, { onConflict: "agency_id,provider" }) as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["crm-sync-config", "hubspot"] });
+      toast.success("Configuração salva");
+    },
+    onError: (err) => toast.error(`Falha: ${(err as Error).message}`),
+  });
+}
+
+export function useHubSpotPushContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (contactId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão expirada");
+      const resp = await fetch(fnUrl("crm-hubspot-push"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ contact_id: contactId }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.detail || json.error || `HTTP ${resp.status}`);
+      return json;
+    },
+    onSuccess: (_d, contactId) => {
+      qc.invalidateQueries({ queryKey: ["crm-contact", contactId] });
+      qc.invalidateQueries({ queryKey: ["crm-contacts"] });
+      toast.success("Sincronizado com HubSpot");
+    },
+    onError: (err) => toast.error(`Sync falhou: ${(err as Error).message}`),
   });
 }
 

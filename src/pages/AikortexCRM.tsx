@@ -11,10 +11,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users2, Search, LayoutGrid, List, Flame, Snowflake, MessageSquare, FileText as NoteIcon, Calendar as CalIcon, Wrench, Mail, Plus, Trash2 } from "lucide-react";
+import { Users2, Search, LayoutGrid, List, Flame, Snowflake, MessageSquare, FileText as NoteIcon, Calendar as CalIcon, Wrench, Mail, Plus, Trash2, RefreshCw, ExternalLink } from "lucide-react";
 import {
   useCrmContacts, useCrmStages, useCrmContact, useCrmInteractions,
   useUpdateContact, useAddNote, useCreateContact, useDeleteContact, useAgencyAgents,
+  useHubSpotSyncConfig, useHubSpotPushContact,
   type CrmContact,
 } from "@/hooks/use-crm";
 
@@ -140,6 +141,74 @@ function NewContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// HubSpot Sync card (no Detail)
+// ──────────────────────────────────────────────────────────────────────────
+
+function HubSpotSyncCard({ contact }: { contact: CrmContact }) {
+  const { data: syncConfig } = useHubSpotSyncConfig();
+  const pushContact = useHubSpotPushContact();
+
+  const ids = contact.external_ids ?? {};
+  const hsContactId = ids.hubspot_contact_id;
+  const hsDealId = ids.hubspot_deal_id;
+
+  if (!syncConfig?.enabled) {
+    return (
+      <Card className="p-4 space-y-2">
+        <h3 className="text-sm font-semibold">HubSpot</h3>
+        <p className="text-xs text-muted-foreground">
+          Sync com HubSpot não está ativado. Configure em <strong>Configurações → Conectores → HubSpot Sync</strong>.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">HubSpot</h3>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          disabled={pushContact.isPending}
+          onClick={() => pushContact.mutate(contact.id)}
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${pushContact.isPending ? "animate-spin" : ""}`} />
+          {hsContactId ? "Re-sincronizar" : "Sincronizar agora"}
+        </Button>
+      </div>
+      <div className="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <p className="text-muted-foreground">Contato HubSpot</p>
+          {hsContactId ? (
+            <a
+              href={`https://app.hubspot.com/contacts/_/contact/${hsContactId}`}
+              target="_blank" rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-1"
+            >
+              {hsContactId} <ExternalLink className="w-3 h-3" />
+            </a>
+          ) : <span className="text-muted-foreground">Não sincronizado</span>}
+        </div>
+        <div>
+          <p className="text-muted-foreground">Deal HubSpot</p>
+          {hsDealId ? (
+            <a
+              href={`https://app.hubspot.com/contacts/_/deal/${hsDealId}`}
+              target="_blank" rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-1"
+            >
+              {hsDealId} <ExternalLink className="w-3 h-3" />
+            </a>
+          ) : <span className="text-muted-foreground">Sem deal</span>}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -290,6 +359,9 @@ function LeadDetail({ contactId, onClose }: { contactId: string | null; onClose:
               <p className="text-xs text-muted-foreground">Sem interações registradas ainda.</p>
             )}
           </div>
+
+          {/* HubSpot Sync */}
+          <HubSpotSyncCard contact={contact} />
 
           {/* Danger zone */}
           <div className="pt-4 border-t border-border/40">
