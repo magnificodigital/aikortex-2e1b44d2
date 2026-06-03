@@ -129,7 +129,9 @@ NUNCA diga "vou enviar o email" sem chamar essa tool — alucinação. Se a tool
     key: "create_calendar_event",
     name: "create_calendar_event",
     description:
-      `Cria um evento REAL no Google Calendar do user via Composio. Use sempre que disser ao user que vai agendar (reunião, consulta, visita). Quando você chama essa tool, o evento é criado de verdade no calendário do user.
+      `Cria um evento REAL no Google Calendar do user. Use sempre que disser ao user que vai agendar (reunião, consulta, visita). Quando você chama essa tool, o evento é criado de verdade no calendário.
+
+⚠️ TIMEZONE: Aikortex opera em BRT (Brasília, UTC-3). Quando o user disser "14h" — significa 14h BRT. SEMPRE inclua o offset -03:00 no datetime: "2026-06-04T14:00:00-03:00". Sem o offset, o evento sai 3h fora.
 
 NUNCA diga "agendei" sem chamar essa tool. Se a tool retornar erro (user não conectou Calendar), informe que precisa conectar primeiro.`,
     parameters: {
@@ -137,8 +139,11 @@ NUNCA diga "agendei" sem chamar essa tool. Se a tool retornar erro (user não co
       properties: {
         summary: { type: "string", description: "Título do evento (ex: 'Reunião com Fred — RevendMax')." },
         description: { type: "string", description: "Descrição/notas do evento (opcional, mas recomendado)." },
-        start_datetime: { type: "string", description: "Início em ISO 8601 com timezone (ex: '2026-06-04T14:00:00-03:00'). SEMPRE inclua offset de timezone." },
-        end_datetime: { type: "string", description: "Fim em ISO 8601 com timezone. Se não especificado, default é 1h após o start." },
+        start_datetime: {
+          type: "string",
+          description: "Início em ISO 8601 COM offset de timezone BRT. Exemplo OBRIGATÓRIO: '2026-06-04T14:00:00-03:00' (14h horário de Brasília). NUNCA passe sem o '-03:00' no final.",
+        },
+        end_datetime: { type: "string", description: "Fim em ISO 8601 com offset -03:00. Se não especificado, default é 1h após o start." },
         attendees: { type: "array", items: { type: "string" }, description: "Lista de emails dos convidados." },
       },
       required: ["summary", "start_datetime"],
@@ -310,10 +315,20 @@ async function executeToolCall(
     if (name === "create_calendar_event") {
       const summary = String(args.summary ?? "");
       const description = String(args.description ?? "");
-      const startISO = String(args.start_datetime ?? "");
-      const endISO = String(args.end_datetime ?? "");
       const attendees = Array.isArray(args.attendees) ? args.attendees as string[] : [];
-      // Composio Google Calendar create event slug
+
+      // Garante timezone -03:00 (BRT) se o LLM esqueceu — sem isso Composio
+      // interpreta como UTC e o evento aparece 3h fora no Google Calendar.
+      const ensureBRT = (iso: string): string => {
+        if (!iso) return iso;
+        // Se já tem timezone (Z ou +/-HH:MM), mantém
+        if (/[Zz]$|[+-]\d{2}:?\d{2}$/.test(iso)) return iso;
+        // Adiciona -03:00 (BRT) — Aikortex é Brasil
+        return `${iso}-03:00`;
+      };
+      const startISO = ensureBRT(String(args.start_datetime ?? ""));
+      const endISO = ensureBRT(String(args.end_datetime ?? ""));
+
       body = {
         toolSlug: "GOOGLECALENDAR_CREATE_EVENT",
         arguments: {
@@ -322,6 +337,8 @@ async function executeToolCall(
           start_datetime: startISO,
           end_datetime: endISO || undefined,
           attendees: attendees.length > 0 ? attendees : undefined,
+          // Composio Google Calendar aceita timezone explícito em alguns specs
+          timezone: "America/Sao_Paulo",
         },
       };
     }
@@ -342,6 +359,7 @@ async function executeToolCall(
     const authToken = opts.userJwt ?? opts.serviceKey;
     const apiKeyHeader = opts.anonKey || opts.serviceKey;
 
+    console.log(`[agent-tools] → ${fn} body=${JSON.stringify(body).slice(0, 300)}`);
     const resp = await fetch(url, {
       method: "POST",
       headers: {
@@ -352,8 +370,9 @@ async function executeToolCall(
       body: JSON.stringify(body),
     });
     const text = await resp.text();
+    console.log(`[agent-tools] ← ${fn} HTTP ${resp.status} body=${text.slice(0, 400)}`);
     if (!resp.ok) {
-      console.warn(`[agent-tools] ${fn} HTTP ${resp.status}: ${text.slice(0, 200)}`);
+      console.warn(`[agent-tools] ${fn} FAIL HTTP ${resp.status}: ${text.slice(0, 400)}`);
     }
     return finish(resp.ok, text, resp.ok ? null : `HTTP_${resp.status}`);
   } catch (e) {
