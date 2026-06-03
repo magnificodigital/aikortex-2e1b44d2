@@ -20,7 +20,7 @@ interface ThinkingStep {
 const STEPS: ThinkingStep[] = [
   // ── 🧠 PENSANDO (2 steps) — entendimento do contexto ──
   { id: "analyze", label: "Analisando sua descrição",         done: () => true },
-  { id: "niche",   label: "Identificando o nicho do negócio", done: (cfg) => !!cfg?.businessContext?.niche },
+  { id: "niche",   label: "Identificando perfil do agente", done: (cfg) => !!cfg?.businessContext?.niche },
 
   // ── 📋 PLANEJANDO (6 steps) — persona + perfil + capacidades ──
   // (Empresa não é mais um passo separado — é perguntada na Fase Descoberta
