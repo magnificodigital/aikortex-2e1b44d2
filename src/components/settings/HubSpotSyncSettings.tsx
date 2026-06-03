@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { AlertTriangle, CheckCircle2, ChevronDown, Settings2 } from "lucide-react";
-import { useHubSpotSyncConfig, useUpsertHubSpotSyncConfig, useCrmStages } from "@/hooks/use-crm";
+import { AlertTriangle, CheckCircle2, ChevronDown, Settings2, RefreshCw } from "lucide-react";
+import { useHubSpotSyncConfig, useUpsertHubSpotSyncConfig, useCrmStages, useHubSpotBulkSync } from "@/hooks/use-crm";
 
 /**
  * Settings de sync com CRM Aikortex — versão inline pra usar dentro do dialog
@@ -18,8 +18,10 @@ export function HubSpotSyncSettings() {
   const { data: config } = useHubSpotSyncConfig();
   const { data: stages } = useCrmStages();
   const upsert = useUpsertHubSpotSyncConfig();
+  const bulkSync = useHubSpotBulkSync();
 
   const [enabled, setEnabled] = useState(false);
+  const [autoSync, setAutoSync] = useState(false);
   const [pipelineId, setPipelineId] = useState("default");
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -28,6 +30,7 @@ export function HubSpotSyncSettings() {
   useEffect(() => {
     if (!config) return;
     setEnabled(config.enabled);
+    setAutoSync(config.auto_sync);
     setPipelineId(config.hubspot_pipeline_id ?? "default");
     setMapping(config.stage_mapping ?? {});
     setDirty(false);
@@ -52,7 +55,7 @@ export function HubSpotSyncSettings() {
 
   const handleSave = () => {
     upsert.mutate(
-      { enabled, hubspot_pipeline_id: pipelineId, stage_mapping: mapping },
+      { enabled, auto_sync: autoSync, hubspot_pipeline_id: pipelineId, stage_mapping: mapping },
       { onSuccess: () => setDirty(false) },
     );
   };
@@ -79,6 +82,22 @@ export function HubSpotSyncSettings() {
         />
       </div>
 
+      {/* Auto-sync — só faz sentido se sync principal estiver ativo */}
+      {enabled && (
+        <div className="flex items-start justify-between gap-3 ml-0">
+          <div className="flex-1">
+            <p className="text-sm font-medium">Sincronizar automaticamente</p>
+            <p className="text-xs text-muted-foreground">
+              Toda alteração em um contato dispara o sync na hora.
+            </p>
+          </div>
+          <Switch
+            checked={autoSync}
+            onCheckedChange={(v) => { setAutoSync(v); setDirty(true); }}
+          />
+        </div>
+      )}
+
       {config?.last_sync_error && (
         <div className="flex items-start gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/30">
           <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
@@ -93,6 +112,20 @@ export function HubSpotSyncSettings() {
         <p className="text-[10px] text-muted-foreground">
           Última sync: {new Date(config.last_sync_at).toLocaleString("pt-BR")} · {config.total_synced} sincronizados
         </p>
+      )}
+
+      {/* Bulk catch-up — só faz sentido se sync principal ativo */}
+      {enabled && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full gap-1.5"
+          disabled={bulkSync.isPending}
+          onClick={() => bulkSync.mutate({ only_unsynced: true })}
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${bulkSync.isPending ? "animate-spin" : ""}`} />
+          {bulkSync.isPending ? "Sincronizando..." : "Sincronizar contatos pendentes"}
+        </Button>
       )}
 
       {/* Avançado */}

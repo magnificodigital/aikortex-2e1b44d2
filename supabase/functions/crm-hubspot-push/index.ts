@@ -107,10 +107,10 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-
-  const { data: userData, error: userErr } = await admin.auth.getUser(jwt);
-  if (userErr || !userData?.user) return json({ error: "INVALID_TOKEN" }, 401);
-  const userId = userData.user.id;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  // Chamadas internas (trigger DB → pg_net) usam service_role. Detectamos
+  // e resolvemos user_id via contact.agency_id → agency_profiles.user_id.
+  const isInternal = jwt === serviceKey;
 
   let body: { contact_id?: string };
   try { body = await req.json(); } catch {
@@ -119,14 +119,40 @@ serve(async (req) => {
   const contactId = String(body.contact_id ?? "");
   if (!contactId) return json({ error: "MISSING_CONTACT_ID" }, 400);
 
-  // Resolve agência do user
-  const { data: agency } = await admin
-    .from("agency_profiles")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const agencyId = (agency as { id?: string } | null)?.id;
-  if (!agencyId) return json({ error: "NO_AGENCY" }, 403);
+  let userId: string;
+  let agencyId: string;
+
+  if (isInternal) {
+    // Resolve user_id a partir do contact.agency_id
+    const { data: c } = await admin
+      .from("crm_contacts")
+      .select("agency_id")
+      .eq("id", contactId)
+      .maybeSingle();
+    const cAgencyId = (c as { agency_id?: string } | null)?.agency_id;
+    if (!cAgencyId) return json({ error: "CONTACT_NOT_FOUND" }, 404);
+    const { data: a } = await admin
+      .from("agency_profiles")
+      .select("user_id")
+      .eq("id", cAgencyId)
+      .maybeSingle();
+    const aUserId = (a as { user_id?: string } | null)?.user_id;
+    if (!aUserId) return json({ error: "AGENCY_OWNER_NOT_FOUND" }, 404);
+    userId = aUserId;
+    agencyId = cAgencyId;
+  } else {
+    const { data: userData, error: userErr } = await admin.auth.getUser(jwt);
+    if (userErr || !userData?.user) return json({ error: "INVALID_TOKEN" }, 401);
+    userId = userData.user.id;
+    const { data: agency } = await admin
+      .from("agency_profiles")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const resolvedAgencyId = (agency as { id?: string } | null)?.id;
+    if (!resolvedAgencyId) return json({ error: "NO_AGENCY" }, 403);
+    agencyId = resolvedAgencyId;
+  }
 
   // Carrega config de sync
   const { data: configRow } = await admin

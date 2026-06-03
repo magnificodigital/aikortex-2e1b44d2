@@ -257,6 +257,33 @@ export function useUpsertHubSpotSyncConfig() {
   });
 }
 
+export function useHubSpotBulkSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars?: { only_unsynced?: boolean }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão expirada");
+      const resp = await fetch(fnUrl("crm-hubspot-bulk-sync"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify(vars ?? {}),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.message || json.error || `HTTP ${resp.status}`);
+      return json as { total: number; succeeded: number; failed: number; errors: Array<{ contact_id: string; error: string }> };
+    },
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["crm-contacts"] });
+      if (result.failed === 0) {
+        toast.success(`${result.succeeded} contatos sincronizados`);
+      } else {
+        toast.warning(`${result.succeeded} OK · ${result.failed} falharam`);
+      }
+    },
+    onError: (err) => toast.error(`Bulk sync falhou: ${(err as Error).message}`),
+  });
+}
+
 export function useHubSpotPushContact() {
   const qc = useQueryClient();
   return useMutation({
