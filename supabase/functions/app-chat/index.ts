@@ -56,6 +56,26 @@ async function bufferFromPlatform(
   return result.content || "";
 }
 
+/** Data atual em pt-BR pra injetar no system prompt — modelos com knowledge
+ * cutoff antigo (Qwen 3 30B free é treinado até início de 2024) alucinam
+ * datas se não tiverem essa âncora. Crítico pra agentes que agendam ou
+ * fazem follow-up por timing. */
+function buildCurrentDateBlock(): string {
+  const now = new Date();
+  const fmt = new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/Sao_Paulo",
+  });
+  const dateStr = fmt.format(now);
+  return `\n\n# 📅 DATA E HORA ATUAL (não alucine — use SEMPRE esta referência)
+Hoje é **${dateStr}** (fuso América/São_Paulo).
+Quando o user perguntar "que dia é hoje?", "qual a data?", "que horas são?" — use ESSA data, NÃO sua data de treinamento.
+Quando agendar ou propor datas, use ESSA como referência de "hoje".`;
+}
+
 function buildAgentSystemPrompt(agentConfig: Record<string, unknown>): string {
   const name = String(agentConfig?.name || "Assistente");
   const role = String(agentConfig?.role || "").toLowerCase();
@@ -76,7 +96,7 @@ Objetivo: ${objective}
 Tom: ${tone}
 Instruções: ${instructions}
 Responda em português do Brasil.`;
-  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities);
+  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities) + buildCurrentDateBlock();
 }
 
 // Nichos prioritários do Master v7.4 §15.2 (lançamento) — adapta linguagem,
@@ -1253,12 +1273,29 @@ ${nextSteps}`;
           // HTML comment não renderiza no ReactMarkdown; o frontend extrai via regex.
           content = `${content}\n\n<!--tools:${JSON.stringify(toolsExecuted)}-->`;
         }
+      } else if (mode === "wizard-setup" && wizardPhase === "DESCOBERTA" && detectedSpec) {
+        // ⚡ FAST-PATH: Descoberta NÃO chama LLM. Geramos a resposta a partir do
+        // spec do arquétipo direto — perguntas já estão estruturadas, sem motivo
+        // pra esperar 25s do Qwen 3. Instant.
+        const firstMsgContent = incomingMessages.find((m) => m.role === "user")?.content ?? "";
+        const questionsBlock = buildDiscoveryQuestionsBlock(detectedSpec, firstMsgContent, agencyName);
+
+        // Inferred connectors → cada um vira marker OAuth inline pra user já conectar
+        const connectorMarkers = inferConnectors(detectedSpec, firstMsgContent)
+          .map((c) => `<!--oauth:${c.provider}-->`)
+          .join("\n");
+
+        const intro = `Beleza! Um ${detectedSpec.label} — ótimo caso de uso. Antes de criar, preciso entender alguns detalhes pra fazer um agente real e consistente:`;
+        const closing = connectorMarkers
+          ? `\n\n💡 Já pode ir conectando ${inferConnectors(detectedSpec, firstMsgContent).map((c) => c.provider.replace("_", " ")).join(" e ")} enquanto responde — o agente precisa dessas integrações pra funcionar de verdade:\n\n${connectorMarkers}\n\n**Quando responder, eu monto o plano e te peço confirmação antes de criar.**`
+          : `\n\n**Quando responder, eu monto o plano e te peço confirmação antes de criar.**`;
+
+        content = `${intro}\n\n${questionsBlock}${closing}`;
+        console.log(`[wizard-DESCOBERTA-fast] archetype=${detectedSpec.archetype} (sem LLM call)`);
       } else if (mode === "wizard-setup") {
-        // Fases DESCOBERTA e PLANO do wizard: NÃO chama tools. Apenas conversa
-        // (faz perguntas ou apresenta o plano). bufferFromPlatform mantém o
-        // system prompt já injetado (com FASE ATUAL marcada) e gera resposta livre.
-        // Timeout maior pq o prompt é grande (3 fases descritas) e Qwen 3 free
-        // costuma demorar 15-25s pra gerar respostas estruturadas longas.
+        // Fase PLANO (e fallback Descoberta sem spec detectado): usa LLM.
+        // Timeout maior pq o prompt é grande e Qwen 3 free costuma demorar
+        // 15-25s pra gerar respostas estruturadas longas.
         content = await bufferFromPlatform(chatMessages, preferred, adminClient, {
           maxTokens: 3000,
           timeoutMs: 45000,
