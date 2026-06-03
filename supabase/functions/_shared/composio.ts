@@ -160,9 +160,14 @@ export async function initiateConnection(
     ?? resp.connectedAccountId
     ?? "";
 
-  const redirectUrl = resp.redirectUrl
+  // Composio retorna 2 URLs:
+  // - state.val.redirectUrl = URL DIRETA do provider (accounts.google.com/...)
+  // - redirect_url/redirectUrl = link hospedado do Composio (platform.composio.dev/link/...)
+  //   que só serve uma página intermediária e redireciona pra mesma URL direta.
+  // Preferimos a direta — UX mais limpo (1 redirect a menos, sem branding Composio).
+  const redirectUrl = resp.state?.val?.redirectUrl
+    ?? resp.redirectUrl
     ?? resp.redirect_url
-    ?? resp.state?.val?.redirectUrl
     ?? null;
 
   return {
@@ -213,16 +218,22 @@ export async function disconnectAccount(connectedAccountId: string): Promise<voi
   });
 }
 
-/** Executa uma tool. params depende da action. */
+/** Executa uma tool/action via Composio.
+ *
+ * Endpoint v3 atual: POST /api/v3/tools/execute/{slug}
+ * Body: { user_id, arguments } (sem o slug — vai na URL).
+ * Descobri probando — o SDK chama `client.tools.execute(slug, body)` com
+ * slug como path param. O caminho /api/v3/tools/execute sozinho retorna 404.
+ */
 export async function executeAction(
   userId: string,
   toolSlug: string,
   params: Record<string, unknown>,
 ): Promise<unknown> {
-  return await composioFetch("/api/v3/tools/execute", {
+  const encodedSlug = encodeURIComponent(toolSlug);
+  return await composioFetch(`/api/v3/tools/execute/${encodedSlug}`, {
     method: "POST",
     body: JSON.stringify({
-      tool_slug: toolSlug,
       user_id: userId,
       arguments: params,
     }),
