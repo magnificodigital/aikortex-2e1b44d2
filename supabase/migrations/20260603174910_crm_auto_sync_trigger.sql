@@ -13,7 +13,9 @@
 create extension if not exists pg_net with schema extensions;
 
 create or replace function public.crm_auto_sync_hubspot()
-returns trigger language plpgsql security definer as $$
+returns trigger language plpgsql security definer
+set search_path = public, extensions, net
+as $$
 declare
   v_config_enabled boolean;
   v_auto_sync boolean;
@@ -74,7 +76,8 @@ begin
   end if;
 
   -- Fire-and-forget POST. pg_net é assíncrono; não bloqueia o trigger.
-  perform extensions.net.http_post(
+  -- Schema é "net" (não "extensions.net" — esse é interpretado como db.schema).
+  perform net.http_post(
     url := v_function_url,
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
