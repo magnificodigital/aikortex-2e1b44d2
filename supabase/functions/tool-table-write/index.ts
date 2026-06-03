@@ -92,6 +92,79 @@ serve(async (req) => {
     if (error) return jsonError(500, error.message);
     result = { inserted: 1, row };
     formatted = `Cadastrei 1 registro em ${table.name}.`;
+
+    // ── Auto-popular CRM ──────────────────────────────────────────────
+    // Se a tabela parece ser de leads/contatos/clientes (heurística por
+    // nome), espelha o registro pra crm_contacts pra aparecer no CRM nativo.
+    try {
+      const isCrmTable = /^(leads?|contatos?|contacts?|clientes?|customers?|prospects?)$/i.test(table.name);
+      if (isCrmTable) {
+        const d = data as Record<string, unknown>;
+        // Resolve agency_id do agente
+        const { data: agentDetail } = await admin
+          .from("user_agents")
+          .select("id, user_id")
+          .eq("id", agent_id)
+          .maybeSingle();
+        const { data: agency } = await admin
+          .from("agency_profiles")
+          .select("id")
+          .eq("user_id", (agentDetail as { user_id?: string } | null)?.user_id ?? "")
+          .maybeSingle();
+        if ((agency as { id?: string } | null)?.id) {
+          const pickStr = (...keys: string[]) => {
+            for (const k of keys) {
+              const v = d[k];
+              if (typeof v === "string" && v.trim()) return v.trim();
+            }
+            return null;
+          };
+          const contact = {
+            agency_id: (agency as { id: string }).id,
+            client_id: (agent as { client_id?: string } | null)?.client_id ?? null,
+            name: pickStr("nome", "name", "lead", "cliente"),
+            email: pickStr("email", "e-mail"),
+            phone: pickStr("telefone", "phone", "celular", "whatsapp"),
+            company: pickStr("empresa", "company"),
+            role: pickStr("cargo", "role", "position"),
+            budget: pickStr("budget", "orcamento", "investimento"),
+            authority: pickStr("authority", "autoridade", "decisor"),
+            need: pickStr("need", "necessidade", "dor"),
+            timeline: pickStr("timeline", "prazo"),
+            notes: pickStr("notas", "notes", "observacoes"),
+            stage_slug: pickStr("stage", "estagio", "status") ?? "new",
+            temperature: ["hot", "warm", "cold"].includes(String(d.temperature ?? "").toLowerCase())
+              ? String(d.temperature).toLowerCase()
+              : null,
+            primary_agent_id: agent_id,
+            client_table_row_id: (row as { id?: string } | null)?.id ?? null,
+            custom_fields: d,
+            last_interaction_at: new Date().toISOString(),
+          };
+          const { data: createdContact, error: contactErr } = await admin
+            .from("crm_contacts")
+            .insert(contact)
+            .select("id")
+            .single();
+          if (contactErr) {
+            console.warn("[tool-table-write] CRM contact insert failed:", contactErr.message);
+          } else if ((createdContact as { id?: string } | null)?.id) {
+            // Loga a interação inicial
+            await admin.from("crm_interactions").insert({
+              contact_id: (createdContact as { id: string }).id,
+              agency_id: (agency as { id: string }).id,
+              agent_id,
+              type: "tool_called",
+              channel: null,
+              content: `Lead criado pelo agente via tabela "${table.name}".`,
+              metadata: { action: "insert", table_name: table.name, fields: Object.keys(d) },
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[tool-table-write] CRM auto-populate failed (non-fatal):", e);
+    }
   } else if (action === "update") {
     if (!filter || typeof filter !== "object" || Object.keys(filter).length === 0) {
       return jsonError(400, "filter required for update");

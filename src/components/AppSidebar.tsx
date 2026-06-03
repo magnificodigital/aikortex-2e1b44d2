@@ -41,6 +41,7 @@ import {
   Video,
   X,
   ShieldCheck,
+  Users2,
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -78,6 +79,7 @@ const partnersItems: NavItem[] = [
 
 const aikortexItems: NavItem[] = [
   { label: "Agentes", icon: Bot, path: "/aikortex/agents" },
+  { label: "CRM", icon: Users2, path: "/aikortex/crm" },
   { label: "Ligações", icon: PhoneIcon, path: "/calls" },
   { label: "Apps", icon: AppWindow, path: "/apps" },
   { label: "Mensagens", icon: MessageSquare, path: "/aikortex/messages" },
