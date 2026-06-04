@@ -1270,8 +1270,11 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
             deterministicCalls.push({ action: "set_capability", params: { key: cap, enabled: true } });
           }
           // Tools runtime do spec — uma chamada por tool
+          // BUG fix (2026-06-04): agent-vibe-mutate espera params.tool_key,
+          // não params.tool. Antes essa chamada era rejeitada silenciosamente
+          // com INVALID_TOOL_KEY e o agente saía sem ferramentas runtime.
           for (const tool of detectedSpec.runtimeTools) {
-            deterministicCalls.push({ action: "add_tool", params: { tool } });
+            deterministicCalls.push({ action: "add_tool", params: { tool_key: tool } });
           }
           // Conectores inferidos da descrição → marca como integração externa
           const firstMsg = incomingMessages.find((m) => m.role === "user")?.content ?? "";
@@ -1325,6 +1328,61 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
             }
           } catch (e) {
             console.warn(`[wizard-setup] EXCEPTION no fallback ${call.action}:`, e);
+          }
+        }
+
+        // ── VERIFICAÇÃO DURA pós-mutations ─────────────────────────────────
+        // Lê o agente de VOLTA do DB e checa se capacidades + tools do spec
+        // foram realmente persistidas. Se faltar, RE-APLICA. Última linha de
+        // defesa: mesmo se LLM falhou + fallback falhou, isso garante que o
+        // agente NUNCA sai do wizard sem o setup completo do arquétipo.
+        if (detectedSpec) {
+          try {
+            const { data: agentRow } = await adminClient
+              .from("user_agents")
+              .select("config")
+              .eq("id", agentId)
+              .maybeSingle();
+            const cfg = (agentRow as { config?: Record<string, unknown> } | null)?.config ?? {};
+            const currentCaps = (cfg.capabilities ?? {}) as Record<string, { enabled?: boolean }>;
+            const currentTools = Array.isArray(cfg.enabledTools) ? cfg.enabledTools as string[] : [];
+
+            const missingCaps = detectedSpec.capabilities.filter((c) =>
+              !currentCaps[c] || currentCaps[c].enabled !== true
+            );
+            const missingTools = detectedSpec.runtimeTools.filter((t) => !currentTools.includes(t));
+
+            if (missingCaps.length > 0 || missingTools.length > 0) {
+              console.warn(`[wizard-setup] ⚠️ VERIFICAÇÃO ENCONTROU GAPS — caps faltando: ${missingCaps.join(",") || "nenhuma"} | tools faltando: ${missingTools.join(",") || "nenhuma"}`);
+              const repairCalls: Array<{ action: string; params: Record<string, unknown> }> = [];
+              for (const cap of missingCaps) {
+                repairCalls.push({ action: "set_capability", params: { key: cap, enabled: true } });
+              }
+              for (const tool of missingTools) {
+                repairCalls.push({ action: "add_tool", params: { tool_key: tool } });
+              }
+              for (const call of repairCalls) {
+                try {
+                  const resp = await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/agent-vibe-mutate`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${userJwt ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ agentId, action: call.action, params: call.params }),
+                  });
+                  if (resp.ok) {
+                    console.log(`[wizard-setup] 🔧 REPAIR ${call.action}(${JSON.stringify(call.params)}) aplicado`);
+                  } else {
+                    const txt = await resp.text();
+                    console.error(`[wizard-setup] ❌ REPAIR ${call.action} FALHOU HTTP ${resp.status}: ${txt.slice(0, 200)}`);
+                  }
+                } catch (e) {
+                  console.error(`[wizard-setup] ❌ REPAIR exception:`, e);
+                }
+              }
+            } else {
+              console.log(`[wizard-setup] ✓ verificação OK — todas as caps+tools do spec ${detectedSpec.archetype} aplicadas`);
+            }
+          } catch (e) {
+            console.error(`[wizard-setup] verificação dura falhou:`, e);
           }
         }
 
