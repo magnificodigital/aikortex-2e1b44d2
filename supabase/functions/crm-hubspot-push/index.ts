@@ -107,16 +107,10 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-  // Chamadas internas (trigger DB → pg_net) usam service_role JWT. Detectamos
-  // decodificando o payload e checando claim `role === 'service_role'`.
-  // Não usa strict equality com env var pq vault pode ter sido populado
-  // com versão diferente do mesmo key e ainda assim ser válida (Supabase
-  // gateway aceita ambas se assinadas com a mesma master).
-  let isInternal = false;
-  try {
-    const payload = JSON.parse(atob(jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    isInternal = payload?.role === "service_role";
-  } catch { /* JWT mal formatado — trata como user JWT */ }
+  // Chamadas internas (trigger DB → pg_net) devem passar EXATAMENTE o
+  // SUPABASE_SERVICE_ROLE_KEY no header. Antes decodávamos o payload do JWT
+  // sem verificar a assinatura, permitindo forjar identidade service_role.
+  const isInternal = jwt === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
   let body: { contact_id?: string };
   try { body = await req.json(); } catch {

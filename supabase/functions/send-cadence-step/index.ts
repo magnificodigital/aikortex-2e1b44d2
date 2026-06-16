@@ -377,6 +377,15 @@ async function sendViaEmail(opts: {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  // Auth: somente service role (chamado interno por cron/scheduler).
+  // Antes era totalmente aberto — qualquer um com execution_id válido podia
+  // disparar emails/WhatsApp e consumir cota do usuário.
+  const authHeader = req.headers.get('Authorization') || '';
+  const callerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (callerToken !== SERVICE_ROLE) {
+    return jsonError(401, 'Unauthorized');
+  }
+
   try {
     const body = await req.json().catch(() => ({}));
     const executionId = body.execution_id;

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as ed25519 from "https://esm.sh/@noble/ed25519@2.0.0";
 import { overlayPublishedConfig, applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
 import { callLLM } from "../_shared/llm-fallback.ts";
@@ -7,6 +8,43 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
+
+function b64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/**
+ * Verifica assinatura Ed25519 do webhook Telnyx.
+ * Headers: telnyx-signature-ed25519 (base64) + telnyx-timestamp.
+ * Public key configurada como TELNYX_WEBHOOK_PUBLIC_KEY (base64).
+ * Fail-closed: se a key não estiver configurada OU assinatura inválida, rejeita.
+ */
+async function verifyTelnyxSignature(req: Request, rawBody: string): Promise<boolean> {
+  const pubKeyB64 = Deno.env.get("TELNYX_WEBHOOK_PUBLIC_KEY");
+  if (!pubKeyB64) {
+    console.error("TELNYX_WEBHOOK_PUBLIC_KEY not configured — rejecting all webhook requests");
+    return false;
+  }
+  const sigHeader = req.headers.get("telnyx-signature-ed25519") || "";
+  const tsHeader = req.headers.get("telnyx-timestamp") || "";
+  if (!sigHeader || !tsHeader) return false;
+  // Anti-replay: rejeita timestamps com mais de 5 min de diferença
+  const ts = parseInt(tsHeader, 10);
+  if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
+  try {
+    const message = new TextEncoder().encode(`${tsHeader}|${rawBody}`);
+    const signature = b64ToBytes(sigHeader);
+    const pubKey = b64ToBytes(pubKeyB64);
+    return await ed25519.verifyAsync(signature, message, pubKey);
+  } catch (e) {
+    console.error("Telnyx signature verification failed:", (e as Error).message);
+    return false;
+  }
+}
+
 
 // Reject internal/private hostnames and non-https URLs to prevent SSRF.
 function isSafeWebhookUrl(url: string): boolean {
@@ -47,7 +85,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+
+    // Verifica assinatura Ed25519 — fail-closed se inválida ou key não configurada.
+    // Antes processava QUALQUER POST, permitindo injeção de eventos falsos.
+    const valid = await verifyTelnyxSignature(req, rawBody);
+    if (!valid) {
+      return new Response("Forbidden", { status: 403 });
+    }
+
+    const body = JSON.parse(rawBody);
     const event = body.data?.event_type;
     const payload = body.data?.payload;
     const callControlId = payload?.call_control_id;

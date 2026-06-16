@@ -88,6 +88,18 @@ async function pingModel(model_id: string, apiKey: string): Promise<PingResult> 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Auth: somente service role (chamado por cron platform admin).
+  // Antes totalmente aberto — atacante podia esgotar quota OpenRouter e
+  // marcar todos os modelos como "dead" no DB.
+  const authHeader = req.headers.get("Authorization") || "";
+  const callerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (callerToken !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "OPENROUTER_API_KEY ausente" }), {

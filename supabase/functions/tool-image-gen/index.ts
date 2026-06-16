@@ -1,6 +1,7 @@
 // Sprint 2.4-a — Tool: image_gen (OpenRouter, Nano Banana)
 // Master §5.3: toda IA generativa passa pelo OpenRouter.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,26 @@ const IMAGE_MODELS = [
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Auth: aceita JWT de usuário válido OU service role key (runtime do agente).
+  // Antes era totalmente aberto — qualquer um podia esgotar quota OpenRouter.
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!token) {
+    return new Response(JSON.stringify({ error: "Unauthorized", code: "MISSING_AUTH" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  if (token !== serviceKey) {
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
+    const { data, error } = await admin.auth.getUser(token);
+    if (error || !data?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized", code: "INVALID_TOKEN" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
 
   try {
     const { prompt, aspect_ratio = "1:1" } = await req.json();
