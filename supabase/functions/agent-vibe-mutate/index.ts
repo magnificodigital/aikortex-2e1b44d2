@@ -66,10 +66,20 @@ serve(async (req) => {
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Auth: aceita JWT do usuário OU service role (chamado interno do app-chat)
+  // Auth: aceita JWT do usuário OU service role key (chamado interno).
+  // CRÍTICO: valida JWT antes de qualquer acesso ao DB. Antes aceitava
+  // qualquer string não-vazia, permitindo tampering em agentes alheios.
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!token) return jsonRes({ error: "UNAUTHORIZED" }, 401);
+
+  const isServiceRole = token === SUPABASE_SERVICE_ROLE_KEY;
+  let callerUserId: string | null = null;
+  if (!isServiceRole) {
+    const { data: userData, error: userErr } = await admin.auth.getUser(token);
+    if (userErr || !userData?.user) return jsonRes({ error: "INVALID_TOKEN" }, 401);
+    callerUserId = userData.user.id;
+  }
 
   let body: MutateRequest;
   try { body = await req.json(); } catch { return jsonRes({ error: "INVALID_JSON" }, 400); }
@@ -77,12 +87,14 @@ serve(async (req) => {
   const { agentId, action, params } = body ?? {};
   if (!agentId || !action) return jsonRes({ error: "MISSING_FIELDS", message: "agentId e action obrigatórios" }, 400);
 
-  // Carrega o agente atual (admin client; ownership validado via service role)
-  const { data: agent, error: agentErr } = await admin
+  // Carrega o agente atual e valida ownership (a menos que seja service role)
+  const agentQuery = admin
     .from("user_agents")
     .select("id, user_id, name, description, config")
-    .eq("id", agentId)
-    .maybeSingle();
+    .eq("id", agentId);
+  const { data: agent, error: agentErr } = await (
+    isServiceRole ? agentQuery.maybeSingle() : agentQuery.eq("user_id", callerUserId!).maybeSingle()
+  );
   if (agentErr || !agent) {
     return jsonRes({ error: "AGENT_NOT_FOUND", details: agentErr }, 404);
   }

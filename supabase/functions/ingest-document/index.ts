@@ -296,6 +296,8 @@ async function extractFromUrl(url: string): Promise<{ text: string; metadata: Re
     throw new Error("URL points to internal address");
   }
 
+  // SSRF: redirect manual e re-valida hostname final. Antes 'follow' permitia
+  // redirecionamento para endereços internos via open redirectors.
   const resp = await fetch(url, {
     method: "GET",
     signal: AbortSignal.timeout(30000),
@@ -303,9 +305,12 @@ async function extractFromUrl(url: string): Promise<{ text: string; metadata: Re
       "User-Agent": "Aikortex-KB-Scraper/1.0 (+https://aikortex26.lovable.app)",
       Accept: "text/html,text/plain,application/xhtml+xml;q=0.9,*/*;q=0.8",
     },
-    redirect: "follow",
+    redirect: "manual",
   });
 
+  if (resp.status >= 300 && resp.status < 400) {
+    throw new Error("Redirects are not allowed for SSRF safety");
+  }
   if (!resp.ok) throw new Error(`URL fetch failed: HTTP ${resp.status}`);
 
   const contentType = resp.headers.get("content-type") ?? "";
