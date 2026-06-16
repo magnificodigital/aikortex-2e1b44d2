@@ -1,5 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as ed25519 from "https://esm.sh/@noble/ed25519@2.0.0";
+import { overlayPublishedConfig, applyCapabilityAddons } from "../_shared/agent-runtime.ts";
+import { runAgentLLM } from "../_shared/agent-tools.ts";
+import { callLLM } from "../_shared/llm-fallback.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
