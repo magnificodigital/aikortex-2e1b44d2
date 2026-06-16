@@ -21,7 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
   Users, Plus, Search, MoreHorizontal, Eye, Trash2, Pencil, RotateCcw, PowerOff,
-  Trophy, DollarSign, LayoutTemplate,
+  Trophy, DollarSign, LayoutTemplate, Mail,
 } from "lucide-react";
 import AddClientWizard from "@/components/clients/AddClientWizard";
 import EditClientDialog, { AgencyClientLite } from "@/components/clients/EditClientDialog";
@@ -45,6 +45,7 @@ type TemplateSub = {
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
   active: { label: "Ativo", class: "bg-green-500/10 text-green-600 border-green-500/20" },
+  pending: { label: "Convite enviado", class: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
   inactive: { label: "Inativo", class: "bg-muted text-muted-foreground border-border" },
 };
 
@@ -94,9 +95,11 @@ const Clients = () => {
   }, [searchParams, setSearchParams]);
 
   const filtered = clients.filter((c) => {
-    if (statusFilter === "active" && c.status !== "active") return false;
+    // "active" engloba active + pending (cliente que ainda não criou senha)
+    if (statusFilter === "active" && c.status === "inactive") return false;
+    if (statusFilter === "pending" && c.status !== "pending") return false;
     if (statusFilter === "inactive" && c.status !== "inactive") return false;
-    // "all" mostra ambos
+    // "all" mostra todos
     if (search) {
       const q = search.toLowerCase();
       if (!c.client_name.toLowerCase().includes(q) && !(c.client_email ?? "").toLowerCase().includes(q)) return false;
@@ -126,6 +129,13 @@ const Clients = () => {
     toast.success(newStatus === "active" ? "Cliente reativado" : "Cliente desativado");
     await loadData();
     await refreshClients();
+  };
+
+  const handleResendInvite = async (clientId: string) => {
+    const { error } = await supabase.functions.invoke("client-invite", { body: { client_id: clientId } });
+    if (error) { toast.error(`Erro ao reenviar convite: ${error.message}`); return; }
+    toast.success("Convite reenviado");
+    await loadData();
   };
 
   if (loading) {
@@ -192,6 +202,7 @@ const Clients = () => {
             <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="active">Ativos</SelectItem>
+              <SelectItem value="pending">Convite enviado</SelectItem>
               <SelectItem value="inactive">Inativos</SelectItem>
               <SelectItem value="all">Todos</SelectItem>
             </SelectContent>
@@ -255,6 +266,11 @@ const Clients = () => {
                           }}>
                             <Pencil className="w-4 h-4 mr-2" /> Editar
                           </DropdownMenuItem>
+                          {(c.status === "pending" || c.status === "inactive") && c.client_email && (
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleResendInvite(c.id); }}>
+                              <Mail className="w-4 h-4 mr-2 text-amber-500" /> Reenviar convite
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(c.id, c.status); }}>
                             {c.status === "active" ? (
                               <><PowerOff className="w-4 h-4 mr-2 text-orange-500" /> Desativar</>

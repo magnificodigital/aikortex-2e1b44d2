@@ -48,7 +48,10 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
   const [document, setDocument] = useState("");
 
   // Client workspace access
-  const [createWorkspaceAccess, setCreateWorkspaceAccess] = useState(false);
+  const [createWorkspaceAccess, setCreateWorkspaceAccess] = useState(true);
+  // "invite" = cliente recebe email com link e cria a própria senha (default).
+  // "manual" = agência define a senha agora e passa pro cliente fora da plataforma.
+  const [accessMode, setAccessMode] = useState<"invite" | "manual">("invite");
   const [clientPassword, setClientPassword] = useState("");
 
   // Step 2
@@ -63,7 +66,7 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
     if (open) {
       setStep(1); setName(""); setEmail(""); setPhone(""); setDocument("");
       setSelected(new Set()); setPaymentLink(""); setCreatedClientId("");
-      setCreateWorkspaceAccess(false); setClientPassword("");
+      setCreateWorkspaceAccess(true); setAccessMode("invite"); setClientPassword("");
       supabase.from("platform_templates").select("*").eq("is_active", true).then(({ data }) => {
         if (data) setTemplates(data.filter((t: any) => TIER_ORDER[agencyTier] >= TIER_ORDER[t.min_tier]) as Template[]);
       });
@@ -107,20 +110,31 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
       const clientId = payload.client?.id;
       setCreatedClientId(clientId);
 
-      // Optionally create workspace access for client
-      if (createWorkspaceAccess && email && clientPassword) {
-        const createRes = await supabase.functions.invoke("create-user", {
-          body: {
-            email,
-            password: clientPassword,
-            full_name: name,
-            role: "client_owner",
-            tenant_type: "client",
-          },
-        });
-        if (createRes.data?.user?.id) {
-          // Link client_user_id
-          await supabase.from("agency_clients").update({ client_user_id: createRes.data.user.id }).eq("id", clientId);
+      // Workspace access — invite (default) ou senha manual
+      if (createWorkspaceAccess && email) {
+        if (accessMode === "invite") {
+          const inviteRes = await supabase.functions.invoke("client-invite", {
+            body: { client_id: clientId },
+          });
+          if (inviteRes.error) {
+            toast.warning("Cliente criado, mas o envio do convite falhou. Você pode reenviar pela lista.");
+          }
+        } else if (clientPassword) {
+          const createRes = await supabase.functions.invoke("create-user", {
+            body: {
+              email,
+              password: clientPassword,
+              full_name: name,
+              role: "client",
+              tenant_type: "client",
+            },
+          });
+          if (createRes.data?.user?.id) {
+            await supabase
+              .from("agency_clients")
+              .update({ client_user_id: createRes.data.user.id, status: "active" })
+              .eq("id", clientId);
+          }
         }
       }
 
@@ -171,15 +185,50 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
                 <Switch checked={createWorkspaceAccess} onCheckedChange={setCreateWorkspaceAccess} />
               </div>
               {createWorkspaceAccess && (
-                <div>
-                  <Label>Senha temporária *</Label>
-                  <Input type="password" value={clientPassword} onChange={(e) => setClientPassword(e.target.value)} placeholder="Senha de acesso" />
-                  <p className="text-[10px] text-muted-foreground mt-1">O cliente usará o email acima + esta senha para entrar.</p>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAccessMode("invite")}
+                      className={`text-left rounded-lg border p-3 transition-all ${
+                        accessMode === "invite" ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                    >
+                      <p className="text-xs font-semibold">Enviar convite por email</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Cliente cria a própria senha</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAccessMode("manual")}
+                      className={`text-left rounded-lg border p-3 transition-all ${
+                        accessMode === "manual" ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                    >
+                      <p className="text-xs font-semibold">Definir senha agora</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Você passa as credenciais</p>
+                    </button>
+                  </div>
+                  {accessMode === "manual" && (
+                    <div>
+                      <Label>Senha temporária *</Label>
+                      <Input type="password" value={clientPassword} onChange={(e) => setClientPassword(e.target.value)} placeholder="Senha de acesso" />
+                      <p className="text-[10px] text-muted-foreground mt-1">O cliente usará o email acima + esta senha para entrar.</p>
+                    </div>
+                  )}
+                  {accessMode === "invite" && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Um email será enviado pro cliente com link único pra ele criar a própria senha.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
 
-            <Button className="w-full" disabled={!name || !email || (createWorkspaceAccess && !clientPassword)} onClick={() => setStep(2)}>
+            <Button
+              className="w-full"
+              disabled={!name || !email || (createWorkspaceAccess && accessMode === "manual" && !clientPassword)}
+              onClick={() => setStep(2)}
+            >
               Próximo <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
