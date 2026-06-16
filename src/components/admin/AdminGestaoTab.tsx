@@ -748,6 +748,8 @@ const Level2 = ({ agency, onSelectClient, onAgencyUpdated }: { agency: AgencyRow
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
   const [confirmUserAction, setConfirmUserAction] = useState<{ type: "suspend" | "unsuspend" | "delete" | "reset-password"; user: UserRow } | null>(null);
   const [userActionLoading, setUserActionLoading] = useState(false);
+  const [magicLink, setMagicLink] = useState<{ url: string; label: string } | null>(null);
+  const [magicLoading, setMagicLoading] = useState(false);
 
   useEffect(() => { fetchData(); }, [agency.id]);
 
@@ -806,6 +808,17 @@ const Level2 = ({ agency, onSelectClient, onAgencyUpdated }: { agency: AgencyRow
     setActionLoading(false);
   };
 
+  const handleMagicLink = async () => {
+    if (!agency.email) { toast.error("Agência sem email"); return; }
+    setMagicLoading(true);
+    try {
+      const data: any = await adminInvoke({ action: "magic-link", email: agency.email });
+      if (!data?.link) throw new Error("Link não retornado");
+      setMagicLink({ url: data.link, label: agency.agency_name || agency.email });
+    } catch (e: any) { toast.error(e.message || "Erro ao gerar link"); }
+    setMagicLoading(false);
+  };
+
   const handleDeleteAgency = async () => {
     setActionLoading(true);
     try {
@@ -858,8 +871,12 @@ const Level2 = ({ agency, onSelectClient, onAgencyUpdated }: { agency: AgencyRow
               <p className="text-sm">Lucro Agência: <span className="font-medium">R$ {(agency.mrr || 0).toFixed(2)}</span></p>
             </div>
           </div>
-          <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+          <div className="flex gap-2 mt-4 pt-4 border-t border-border flex-wrap">
             <Button size="sm" variant="outline" onClick={() => setShowEditAgency(true)}><Pencil className="w-3.5 h-3.5 mr-1.5" />Editar</Button>
+            <Button size="sm" variant="outline" className="text-blue-600" onClick={handleMagicLink} disabled={magicLoading || !agency.email}>
+              {magicLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5 mr-1.5" />}
+              Entrar como
+            </Button>
             <Button size="sm" variant="outline" className="text-yellow-600" onClick={() => setConfirmSuspend(true)}><Ban className="w-3.5 h-3.5 mr-1.5" />Suspender</Button>
             <Button size="sm" variant="outline" className="text-destructive" onClick={() => setConfirmDelete(true)}><Trash2 className="w-3.5 h-3.5 mr-1.5" />Excluir</Button>
           </div>
@@ -1067,6 +1084,34 @@ const Level2 = ({ agency, onSelectClient, onAgencyUpdated }: { agency: AgencyRow
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!magicLink} onOpenChange={(o) => !o && setMagicLink(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link de login gerado</DialogTitle>
+            <DialogDescription>
+              Abra em aba anônima pra logar como <strong>{magicLink?.label}</strong>. O link é one-shot e expira em 1 hora.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <div className="flex gap-2">
+              <Input value={magicLink?.url || ""} readOnly className="font-mono text-xs" />
+              <Button variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(magicLink?.url || ""); toast.success("Link copiado"); }}>
+                <Copy className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-amber-600">
+              ⚠️ Acesso total à conta. Saia depois pra voltar pra sua sessão.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMagicLink(null)}>Fechar</Button>
+            <Button onClick={() => window.open(magicLink?.url, "_blank")}>
+              Abrir em nova aba <KeyRound className="w-4 h-4 ml-1" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -1081,6 +1126,8 @@ const Level3 = ({ agency, client, onSelectSubscription, onGoToAgency, onClientUp
   const [confirmSuspend, setConfirmSuspend] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [magicLink, setMagicLink] = useState<{ url: string; label: string } | null>(null);
+  const [magicLoading, setMagicLoading] = useState(false);
 
   useEffect(() => {
     supabase.from("billing_events").select("id, event_type, amount, platform_amount, description, created_at, asaas_payment_id, subscription_id").eq("client_id", client.id).order("created_at", { ascending: false }).limit(20)
@@ -1123,6 +1170,18 @@ const Level3 = ({ agency, client, onSelectSubscription, onGoToAgency, onClientUp
     setActionLoading(false);
   };
 
+  const handleMagicLink = async () => {
+    if (!client.client_email) { toast.error("Cliente sem email cadastrado"); return; }
+    if (!client.client_user_id) { toast.error("Cliente ainda não criou conta — convite pendente"); return; }
+    setMagicLoading(true);
+    try {
+      const data: any = await adminInvoke({ action: "magic-link", email: client.client_email });
+      if (!data?.link) throw new Error("Link não retornado");
+      setMagicLink({ url: data.link, label: client.client_name });
+    } catch (e: any) { toast.error(e.message || "Erro ao gerar link"); }
+    setMagicLoading(false);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -1144,8 +1203,19 @@ const Level3 = ({ agency, client, onSelectSubscription, onGoToAgency, onClientUp
               <p className="text-sm text-muted-foreground">Cadastro: {relativeDate(client.created_at)}</p>
             </div>
           </div>
-          <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+          <div className="flex gap-2 mt-4 pt-4 border-t border-border flex-wrap">
             <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}><Pencil className="w-3.5 h-3.5 mr-1.5" />Editar</Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-blue-600"
+              onClick={handleMagicLink}
+              disabled={magicLoading || !client.client_email || !client.client_user_id}
+              title={!client.client_user_id ? "Cliente ainda não criou conta" : ""}
+            >
+              {magicLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5 mr-1.5" />}
+              Entrar como
+            </Button>
             <Button size="sm" variant="outline" className="text-yellow-600" onClick={() => setConfirmSuspend(true)}><Ban className="w-3.5 h-3.5 mr-1.5" />Suspender</Button>
             <Button size="sm" variant="outline" className="text-destructive" onClick={() => setConfirmDelete(true)}><Trash2 className="w-3.5 h-3.5 mr-1.5" />Excluir</Button>
           </div>
@@ -1248,6 +1318,32 @@ const Level3 = ({ agency, client, onSelectSubscription, onGoToAgency, onClientUp
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!magicLink} onOpenChange={(o) => !o && setMagicLink(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link de login gerado</DialogTitle>
+            <DialogDescription>
+              Abra em aba anônima pra logar como <strong>{magicLink?.label}</strong>. One-shot, expira em 1 hora.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <div className="flex gap-2">
+              <Input value={magicLink?.url || ""} readOnly className="font-mono text-xs" />
+              <Button variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(magicLink?.url || ""); toast.success("Link copiado"); }}>
+                <Copy className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-amber-600">⚠️ Acesso total à conta. Saia depois pra voltar pra sua sessão.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMagicLink(null)}>Fechar</Button>
+            <Button onClick={() => window.open(magicLink?.url, "_blank")}>
+              Abrir em nova aba <KeyRound className="w-4 h-4 ml-1" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

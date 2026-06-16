@@ -213,6 +213,18 @@ Deno.serve(async (req) => {
         return json({ success: true, link: data?.properties?.action_link || null });
       }
 
+      /* ─── MAGIC LINK (entrar como) ─── */
+      // Gera link de login one-shot pra abrir a conta da agência/cliente em outra
+      // aba (incognito). Não muda senha, não dispara email — só retorna a URL
+      // pro admin abrir manualmente.
+      case "magic-link": {
+        const { email } = body;
+        if (!email) return json({ error: "email required" }, 400);
+        const { data, error } = await supabase.auth.admin.generateLink({ type: "magiclink", email });
+        if (error) return json({ error: error.message }, 400);
+        return json({ success: true, link: data?.properties?.action_link || null });
+      }
+
       /* ─── UPDATE AGENCY ─── */
       case "update-agency": {
         const { agency_id, agency_name, tier, tier_manually_overridden } = body;
