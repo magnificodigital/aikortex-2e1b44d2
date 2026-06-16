@@ -15,6 +15,7 @@ const AuthModal = ({ open, mode = "signup", onClose }: AuthModalProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [agencyName, setAgencyName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signUp, signIn } = useAuth();
@@ -32,7 +33,12 @@ const AuthModal = ({ open, mode = "signup", onClose }: AuthModalProps) => {
     setLoading(true);
 
     if (isSignUp) {
-      const { error } = await signUp(email, password, fullName);
+      if (!agencyName.trim()) {
+        toast({ title: "Nome da agência obrigatório", description: "Como sua agência se chama?", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      const { error } = await signUp(email, password, fullName, agencyName.trim());
       if (error) {
         toast({ title: "Erro ao criar conta", description: error.message, variant: "destructive" });
       } else {
@@ -118,13 +124,23 @@ const AuthModal = ({ open, mode = "signup", onClose }: AuthModalProps) => {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp && (
-            <input
-              type="text"
-              placeholder="Nome completo"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full h-12 px-4 rounded-xl border border-white/10 bg-white/5 text-white text-sm placeholder:text-white/30 outline-none focus:border-primary/50 transition-colors"
-            />
+            <>
+              <input
+                type="text"
+                placeholder="Seu nome completo"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full h-12 px-4 rounded-xl border border-white/10 bg-white/5 text-white text-sm placeholder:text-white/30 outline-none focus:border-primary/50 transition-colors"
+              />
+              <input
+                type="text"
+                placeholder="Nome da sua agência"
+                value={agencyName}
+                onChange={(e) => setAgencyName(e.target.value)}
+                required
+                className="w-full h-12 px-4 rounded-xl border border-white/10 bg-white/5 text-white text-sm placeholder:text-white/30 outline-none focus:border-primary/50 transition-colors"
+              />
+            </>
           )}
           <input
             type="email"

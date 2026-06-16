@@ -23,7 +23,7 @@ interface AuthContextType {
   isAgencyOwner: boolean;
   isClient: boolean;
   getRedirectPath: () => string;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName?: string, agencyName?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
@@ -90,12 +90,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return "/home";
   };
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = async (email: string, password: string, fullName?: string, agencyName?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName },
+        // raw_user_meta_data → handle_new_user trigger lê e cria
+        // profile + agency_profiles automaticamente.
+        data: { full_name: fullName, agency_name: agencyName },
         emailRedirectTo: window.location.origin,
       },
     });
