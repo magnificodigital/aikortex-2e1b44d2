@@ -85,7 +85,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+
+    // Verifica assinatura Ed25519 — fail-closed se inválida ou key não configurada.
+    // Antes processava QUALQUER POST, permitindo injeção de eventos falsos.
+    const valid = await verifyTelnyxSignature(req, rawBody);
+    if (!valid) {
+      return new Response("Forbidden", { status: 403 });
+    }
+
+    const body = JSON.parse(rawBody);
     const event = body.data?.event_type;
     const payload = body.data?.payload;
     const callControlId = payload?.call_control_id;
