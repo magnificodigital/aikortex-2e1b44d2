@@ -112,6 +112,7 @@ export type Database = {
           created_at: string | null
           custom_pricing: Json | null
           email_trial_used: number
+          enabled_channels: string[] | null
           id: string
           logo_url: string | null
           platform_fee_monthly: number | null
@@ -128,6 +129,7 @@ export type Database = {
           created_at?: string | null
           custom_pricing?: Json | null
           email_trial_used?: number
+          enabled_channels?: string[] | null
           id?: string
           logo_url?: string | null
           platform_fee_monthly?: number | null
@@ -144,6 +146,7 @@ export type Database = {
           created_at?: string | null
           custom_pricing?: Json | null
           email_trial_used?: number
+          enabled_channels?: string[] | null
           id?: string
           logo_url?: string | null
           platform_fee_monthly?: number | null
@@ -176,6 +179,8 @@ export type Database = {
         Row: {
           agency_user_id: string
           asaas_api_key: string | null
+          default_from_name: string | null
+          default_reply_to: string | null
           resend_api_key: string | null
           resend_from_email: string | null
           updated_at: string
@@ -183,6 +188,8 @@ export type Database = {
         Insert: {
           agency_user_id: string
           asaas_api_key?: string | null
+          default_from_name?: string | null
+          default_reply_to?: string | null
           resend_api_key?: string | null
           resend_from_email?: string | null
           updated_at?: string
@@ -190,6 +197,8 @@ export type Database = {
         Update: {
           agency_user_id?: string
           asaas_api_key?: string | null
+          default_from_name?: string | null
+          default_reply_to?: string | null
           resend_api_key?: string | null
           resend_from_email?: string | null
           updated_at?: string
@@ -774,6 +783,41 @@ export type Database = {
           },
         ]
       }
+      cadence_unsubscribes: {
+        Row: {
+          agent_id: string
+          channel: string
+          contact_email: string
+          id: string
+          reason: string | null
+          unsubscribed_at: string
+        }
+        Insert: {
+          agent_id: string
+          channel?: string
+          contact_email: string
+          id?: string
+          reason?: string | null
+          unsubscribed_at?: string
+        }
+        Update: {
+          agent_id?: string
+          channel?: string
+          contact_email?: string
+          id?: string
+          reason?: string | null
+          unsubscribed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cadence_unsubscribes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_logs: {
         Row: {
           agent_id: string | null
@@ -1033,6 +1077,27 @@ export type Database = {
           },
         ]
       }
+      composio_auth_configs: {
+        Row: {
+          auth_config_id: string
+          created_at: string
+          toolkit_slug: string
+          updated_at: string
+        }
+        Insert: {
+          auth_config_id: string
+          created_at?: string
+          toolkit_slug: string
+          updated_at?: string
+        }
+        Update: {
+          auth_config_id?: string
+          created_at?: string
+          toolkit_slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           agency_id: string
@@ -1188,6 +1253,340 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      crm_contacts: {
+        Row: {
+          agency_id: string
+          authority: string | null
+          budget: string | null
+          client_id: string | null
+          client_table_row_id: string | null
+          company: string | null
+          created_at: string
+          custom_fields: Json
+          email: string | null
+          external_ids: Json
+          id: string
+          last_interaction_at: string | null
+          name: string | null
+          need: string | null
+          next_action_at: string | null
+          next_action_text: string | null
+          notes: string | null
+          phone: string | null
+          primary_agent_id: string | null
+          role: string | null
+          source_channel: string | null
+          stage_slug: string
+          temperature: string | null
+          timeline: string | null
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          authority?: string | null
+          budget?: string | null
+          client_id?: string | null
+          client_table_row_id?: string | null
+          company?: string | null
+          created_at?: string
+          custom_fields?: Json
+          email?: string | null
+          external_ids?: Json
+          id?: string
+          last_interaction_at?: string | null
+          name?: string | null
+          need?: string | null
+          next_action_at?: string | null
+          next_action_text?: string | null
+          notes?: string | null
+          phone?: string | null
+          primary_agent_id?: string | null
+          role?: string | null
+          source_channel?: string | null
+          stage_slug?: string
+          temperature?: string | null
+          timeline?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          authority?: string | null
+          budget?: string | null
+          client_id?: string | null
+          client_table_row_id?: string | null
+          company?: string | null
+          created_at?: string
+          custom_fields?: Json
+          email?: string | null
+          external_ids?: Json
+          id?: string
+          last_interaction_at?: string | null
+          name?: string | null
+          need?: string | null
+          next_action_at?: string | null
+          next_action_text?: string | null
+          notes?: string | null
+          phone?: string | null
+          primary_agent_id?: string | null
+          role?: string | null
+          source_channel?: string | null
+          stage_slug?: string
+          temperature?: string | null
+          timeline?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_contacts_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agency_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "agency_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_contacts_client_table_row_id_fkey"
+            columns: ["client_table_row_id"]
+            isOneToOne: false
+            referencedRelation: "client_table_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_contacts_primary_agent_id_fkey"
+            columns: ["primary_agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_interactions: {
+        Row: {
+          agency_id: string
+          agent_id: string | null
+          channel: string | null
+          contact_id: string
+          content: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          type: string
+        }
+        Insert: {
+          agency_id: string
+          agent_id?: string | null
+          channel?: string | null
+          contact_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          type: string
+        }
+        Update: {
+          agency_id?: string
+          agent_id?: string | null
+          channel?: string | null
+          contact_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_interactions_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agency_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_interactions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_interactions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "crm_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pipeline_stages: {
+        Row: {
+          agency_id: string
+          color: string | null
+          created_at: string
+          id: string
+          is_lost: boolean
+          is_won: boolean
+          name: string
+          order_index: number
+          slug: string
+        }
+        Insert: {
+          agency_id: string
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          name: string
+          order_index?: number
+          slug: string
+        }
+        Update: {
+          agency_id?: string
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          name?: string
+          order_index?: number
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipeline_stages_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agency_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_sync_configs: {
+        Row: {
+          agency_id: string
+          auto_sync: boolean
+          created_at: string
+          enabled: boolean
+          hubspot_pipeline_id: string | null
+          id: string
+          inbound_enabled: boolean
+          last_sync_at: string | null
+          last_sync_error: string | null
+          provider: string
+          stage_mapping: Json
+          total_synced: number
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          auto_sync?: boolean
+          created_at?: string
+          enabled?: boolean
+          hubspot_pipeline_id?: string | null
+          id?: string
+          inbound_enabled?: boolean
+          last_sync_at?: string | null
+          last_sync_error?: string | null
+          provider: string
+          stage_mapping?: Json
+          total_synced?: number
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          auto_sync?: boolean
+          created_at?: string
+          enabled?: boolean
+          hubspot_pipeline_id?: string | null
+          id?: string
+          inbound_enabled?: boolean
+          last_sync_at?: string | null
+          last_sync_error?: string | null
+          provider?: string
+          stage_mapping?: Json
+          total_synced?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_sync_configs_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agency_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_sync_logs: {
+        Row: {
+          action: string
+          agency_id: string
+          contact_id: string | null
+          created_at: string
+          direction: string
+          duration_ms: number | null
+          error_message: string | null
+          external_id: string | null
+          id: string
+          provider: string
+          request_payload: Json | null
+          response_payload: Json | null
+          status: string
+        }
+        Insert: {
+          action: string
+          agency_id: string
+          contact_id?: string | null
+          created_at?: string
+          direction: string
+          duration_ms?: number | null
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          provider: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status: string
+        }
+        Update: {
+          action?: string
+          agency_id?: string
+          contact_id?: string | null
+          created_at?: string
+          direction?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          provider?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_sync_logs_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agency_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_sync_logs_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "crm_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_templates: {
         Row: {
@@ -2592,6 +2991,11 @@ export type Database = {
         Args: { p_agent_id: string; p_label?: string; p_notes?: string }
         Returns: Json
       }
+      seed_default_crm_stages: {
+        Args: { p_agency_id: string }
+        Returns: undefined
+      }
+      user_agency_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
