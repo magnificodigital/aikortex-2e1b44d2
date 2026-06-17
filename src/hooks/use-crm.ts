@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
 import { toast } from "sonner";
+import { useActiveClient } from "@/hooks/use-active-client";
 
 export interface CrmSyncConfig {
   id: string;
@@ -12,6 +13,7 @@ export interface CrmSyncConfig {
   stage_mapping: Record<string, string>;
   auto_sync: boolean;
   inbound_enabled: boolean;
+  webhook_token: string | null;
   last_sync_at: string | null;
   last_sync_error: string | null;
   total_synced: number;
@@ -110,12 +112,16 @@ export function useCrmStages() {
 // ──────────────────────────────────────────────────────────────────────────
 
 export function useCrmContacts(opts?: { stageSlug?: string; agentId?: string }) {
+  // Respeita o switcher do WorkspaceContext: agência operando "como cliente X"
+  // vê só contatos atribuídos àquele cliente.
+  const { activeClientId, isAgencyMode } = useActiveClient();
   return useQuery({
-    queryKey: ["crm-contacts", opts?.stageSlug ?? "all", opts?.agentId ?? "all"],
+    queryKey: ["crm-contacts", opts?.stageSlug ?? "all", opts?.agentId ?? "all", isAgencyMode ? "agency" : activeClientId],
     queryFn: async (): Promise<CrmContact[]> => {
       let query = (supabase.from("crm_contacts" as any).select("*") as any).order("updated_at", { ascending: false }).limit(500);
       if (opts?.stageSlug) query = query.eq("stage_slug", opts.stageSlug);
       if (opts?.agentId) query = query.eq("primary_agent_id", opts.agentId);
+      if (!isAgencyMode && activeClientId) query = query.eq("client_id", activeClientId);
       const { data, error } = await query;
       if (error) throw error;
       return (data as CrmContact[]) || [];
