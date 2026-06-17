@@ -23,6 +23,19 @@
 -- ── 1. Triggers de validação ───────────────────────────────────────────────
 -- Precisa atualizar ANTES dos UPDATEs senão a validação bloqueia.
 
+-- ⚠️ Esta trigger foi criada manualmente no painel Supabase (fora de migration)
+-- e por isso não estava versionada. Definindo aqui pra ficar sob controle e
+-- não regredir em ambiente novo. Tiers do Master v7.4: start/hack/growth.
+CREATE OR REPLACE FUNCTION public.validate_tier_module_access_tier()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.tier NOT IN ('start', 'hack', 'growth') THEN
+    RAISE EXCEPTION 'Invalid tier: %', NEW.tier;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public;
+
 CREATE OR REPLACE FUNCTION public.validate_partner_tier()
 RETURNS TRIGGER AS $$
 BEGIN
