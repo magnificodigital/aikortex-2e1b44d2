@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/DashboardLayout";
-import ClientGestaoGuard from "@/components/shared/ClientGestaoGuard";
+import { useActiveClient } from "@/hooks/use-active-client";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -38,19 +38,21 @@ const hackBenefits = [
 
 const Financeiro = () => {
   const { user } = useAuth();
+  const { isAgencyMode } = useActiveClient();
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
   const [projClients, setProjClients] = useState(10);
   const [projOpen, setProjOpen] = useState(false);
 
-  // Agency profile
+  // Agency profile — só carrega em modo agência (no modo cliente as queries
+  // ficam disabled e retornam vazio, simulando ERP zerado do cliente).
   const { data: agency } = useQuery({
     queryKey: ["agency-profile", user?.id],
     queryFn: async () => {
       const { data } = await supabase.from("agency_profiles").select("*").eq("user_id", user!.id).single();
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && isAgencyMode,
   });
 
   // Active subscriptions
@@ -196,7 +198,6 @@ const Financeiro = () => {
   });
 
   return (
-    <ClientGestaoGuard section="Financeiro">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
         {/* Tier Progress Widget */}
@@ -457,7 +458,6 @@ const Financeiro = () => {
         </Collapsible>
       </div>
     </DashboardLayout>
-    </ClientGestaoGuard>
   );
 };
 

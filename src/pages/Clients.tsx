@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
-import ClientGestaoGuard from "@/components/shared/ClientGestaoGuard";
+import { useActiveClient } from "@/hooks/use-active-client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,7 @@ const TIER_LABELS: Record<string, string> = { starter: "Starter", explorer: "Exp
 
 const Clients = () => {
   const { user } = useAuth();
+  const { isAgencyMode } = useActiveClient();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { refreshClients } = useWorkspace();
@@ -68,6 +69,9 @@ const Clients = () => {
 
   const loadData = async () => {
     if (!user) return;
+    // No modo cliente, lista parte do zero (clientes-do-cliente são entidade
+    // diferente — vão pra schema próprio em F2/F3).
+    if (!isAgencyMode) { setClients([]); setSubs([]); setLoading(false); return; }
     const [agRes, clRes] = await Promise.all([
       supabase.from("agency_profiles").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("agency_clients").select("*").order("created_at", { ascending: false }),
@@ -85,7 +89,7 @@ const Clients = () => {
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, [user]);
+  useEffect(() => { loadData(); }, [user, isAgencyMode]);
 
   useEffect(() => {
     if (searchParams.get("new") === "1") {
@@ -150,7 +154,6 @@ const Clients = () => {
   }
 
   return (
-    <ClientGestaoGuard section="Clientes">
     <DashboardLayout>
       <ModuleGate moduleKey="gestao.clientes">
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
@@ -311,7 +314,6 @@ const Clients = () => {
       />
       </ModuleGate>
     </DashboardLayout>
-    </ClientGestaoGuard>
   );
 };
 

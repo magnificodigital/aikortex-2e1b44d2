@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
-import ClientGestaoGuard from "@/components/shared/ClientGestaoGuard";
+import { useActiveClient } from "@/hooks/use-active-client";
 import { CheckSquare, List, LayoutGrid, Calendar, User, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockTasks, Task, TaskStatus } from "@/types/task";
@@ -16,7 +16,11 @@ import TaskDetailDialog from "@/components/tasks/TaskDetailDialog";
 import NewTaskDialog from "@/components/tasks/NewTaskDialog";
 
 const Tasks = () => {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const { isAgencyMode } = useActiveClient();
+  // No modo cliente, ele começa zerado e cadastra as próprias tarefas.
+  // (Persistência por client_id virá em F2/F3 com schema multi-tenant.)
+  const [tasks, setTasks] = useState<Task[]>(isAgencyMode ? mockTasks : []);
+  useEffect(() => { setTasks(isAgencyMode ? mockTasks : []); }, [isAgencyMode]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -47,7 +51,6 @@ const Tasks = () => {
 
   return (
     <ModuleGate moduleKey="gestao.tarefas">
-    <ClientGestaoGuard section="Tarefas">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-[1400px] space-y-5">
         {/* Header */}
@@ -117,7 +120,6 @@ const Tasks = () => {
         <NewTaskDialog open={showNewTask} onOpenChange={setShowNewTask} />
       </div>
     </DashboardLayout>
-    </ClientGestaoGuard>
     </ModuleGate>
   );
 };

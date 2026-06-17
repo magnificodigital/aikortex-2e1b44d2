@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
-import ClientGestaoGuard from "@/components/shared/ClientGestaoGuard";
+import { useActiveClient } from "@/hooks/use-active-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,13 +22,15 @@ const stageColors: Record<string, string> = {
 };
 
 const Sales = () => {
-  const totalPipeline = salesData.reduce((s, d) => s + d.value, 0);
-  const totalClosed = salesData.filter((d) => d.stage === "Fechado").reduce((s, d) => s + d.value, 0);
-  const avgDeal = Math.round(totalPipeline / salesData.length);
+  const { isAgencyMode } = useActiveClient();
+  // No modo cliente, pipeline parte do zero (cliente cadastra próprias vendas).
+  const data = isAgencyMode ? salesData : [];
+  const totalPipeline = data.reduce((s, d) => s + d.value, 0);
+  const totalClosed = data.filter((d) => d.stage === "Fechado").reduce((s, d) => s + d.value, 0);
+  const avgDeal = data.length ? Math.round(totalPipeline / data.length) : 0;
 
   return (
     <ModuleGate moduleKey="gestao.vendas">
-    <ClientGestaoGuard section="Vendas">
     <DashboardLayout>
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
@@ -95,7 +97,7 @@ const Sales = () => {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Oportunidades</p>
-                  <p className="text-xl font-bold text-foreground">{salesData.length}</p>
+                  <p className="text-xl font-bold text-foreground">{data.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -120,7 +122,10 @@ const Sales = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {salesData.map((sale) => (
+                  {data.length === 0 && (
+                    <tr><td colSpan={5} className="py-8 text-center text-sm text-muted-foreground">Nenhuma venda cadastrada. Clique em "Nova Venda" pra começar.</td></tr>
+                  )}
+                  {data.map((sale) => (
                     <tr key={sale.id} className="hover:bg-muted/40 transition-colors cursor-pointer">
                       <td className="py-3 font-medium text-foreground">{sale.client}</td>
                       <td className="py-3 text-foreground">R$ {sale.value.toLocaleString()}</td>
@@ -140,7 +145,6 @@ const Sales = () => {
         </Card>
       </div>
     </DashboardLayout>
-    </ClientGestaoGuard>
     </ModuleGate>
   );
 };

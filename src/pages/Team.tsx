@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
-import ClientGestaoGuard from "@/components/shared/ClientGestaoGuard";
+import { useActiveClient } from "@/hooks/use-active-client";
 import { UsersRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,14 +24,16 @@ const Team = () => {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
+  const { isAgencyMode } = useActiveClient();
 
   useEffect(() => {
+    if (!isAgencyMode) { setMembers([]); return; }
     supabase
       .from("profiles")
       .select("id, full_name, role, tenant_type, is_active, avatar_url, created_at")
       .order("created_at", { ascending: false })
       .then(({ data }) => { if (data) setMembers(data); });
-  }, []);
+  }, [isAgencyMode]);
 
   const filtered = useMemo(() => {
     return members.filter((m: any) => {
@@ -43,7 +45,6 @@ const Team = () => {
 
   return (
     <ModuleGate moduleKey="gestao.equipe">
-    <ClientGestaoGuard section="Equipe">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
         <div className="flex items-center gap-3">
@@ -83,7 +84,6 @@ const Team = () => {
         context="agency"
       />
     </DashboardLayout>
-    </ClientGestaoGuard>
     </ModuleGate>
   );
 };
