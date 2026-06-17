@@ -10,9 +10,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AlertTriangle, PowerOff, Power } from "lucide-react";
+
+const WORKSPACE_MODULES: { key: string; label: string; description: string }[] = [
+  { key: "workspace.dashboard", label: "Dashboard", description: "Visão geral e quotas" },
+  { key: "workspace.messages",  label: "Mensagens", description: "Conversas dos agentes de IA" },
+  { key: "workspace.crm",       label: "CRM",       description: "Contatos e leads atribuídos" },
+  { key: "workspace.settings",  label: "Configurações", description: "Perfil e senha" },
+];
 
 export type AgencyClientLite = {
   id: string;
@@ -41,6 +49,7 @@ const EditClientDialog = ({ client, open, onOpenChange, onChanged }: Props) => {
   const [typedName, setTypedName] = useState("");
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [hardDeleting, setHardDeleting] = useState(false);
+  const [enabledModules, setEnabledModules] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (client && open) {
@@ -51,6 +60,15 @@ const EditClientDialog = ({ client, open, onOpenChange, onChanged }: Props) => {
       });
       setTypedName("");
       setShowHardDelete(false);
+      // Carrega enabled_modules atuais
+      supabase
+        .from("agency_clients")
+        .select("enabled_modules")
+        .eq("id", client.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setEnabledModules(new Set((data?.enabled_modules as string[]) ?? []));
+        });
     }
   }, [client, open, reset]);
 
@@ -63,6 +81,7 @@ const EditClientDialog = ({ client, open, onOpenChange, onChanged }: Props) => {
         client_name: data.client_name.trim(),
         client_email: data.client_email.trim() || null,
         client_phone: data.client_phone.trim() || null,
+        enabled_modules: Array.from(enabledModules),
       })
       .eq("id", client.id);
     if (error) {
@@ -130,6 +149,34 @@ const EditClientDialog = ({ client, open, onOpenChange, onChanged }: Props) => {
             <div className="space-y-1.5">
               <Label htmlFor="client_phone">Telefone</Label>
               <Input id="client_phone" {...register("client_phone")} />
+            </div>
+
+            <div className="border-t border-border pt-3 space-y-2">
+              <div>
+                <p className="text-sm font-medium">Módulos do workspace</p>
+                <p className="text-[10px] text-muted-foreground">Áreas que o cliente vai ver no painel dele</p>
+              </div>
+              <div className="space-y-1.5">
+                {WORKSPACE_MODULES.map((m) => {
+                  const checked = enabledModules.has(m.key);
+                  return (
+                    <label key={m.key} className="flex items-start gap-2 cursor-pointer rounded-md p-2 hover:bg-muted/40">
+                      <Switch
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          const next = new Set(enabledModules);
+                          if (v) next.add(m.key); else next.delete(m.key);
+                          setEnabledModules(next);
+                        }}
+                      />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium">{m.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{m.description}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">

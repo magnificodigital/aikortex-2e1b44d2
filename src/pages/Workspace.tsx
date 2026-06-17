@@ -1,44 +1,79 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, Routes, Route, Navigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/use-theme";
 import { useIsMobile } from "@/hooks/use-mobile";
 import aikortexLogoWhite from "@/assets/aikortex-logo-white.png";
 import aikortexLogoBlack from "@/assets/aikortex-logo-black.png";
 import {
-  LayoutDashboard, Users, CheckSquare, DollarSign, FileText, Settings,
-  LogOut, Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Contact,
+  LayoutDashboard, MessageSquare, Settings, Contact,
+  LogOut, Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Loader2,
 } from "lucide-react";
 import { RightPanelProvider } from "@/components/RightPanel";
+import WorkspaceDashboard from "@/pages/workspace/WorkspaceDashboard";
+import WorkspaceMessages from "@/pages/workspace/WorkspaceMessages";
+import WorkspaceCRM from "@/pages/workspace/WorkspaceCRM";
+import WorkspaceSettings from "@/pages/workspace/WorkspaceSettings";
 
-type NavItem = { label: string; icon: typeof LayoutDashboard; path: string };
+// F1 — módulos disponíveis. Slug bate com o que a agência escolhe no wizard.
+type NavItem = { key: string; label: string; icon: typeof LayoutDashboard; path: string };
 
-const clientNavItems: NavItem[] = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/workspace" },
-  { label: "CRM", icon: Contact, path: "/workspace/crm" },
-  { label: "Projetos", icon: Users, path: "/workspace/projects" },
-  { label: "Tarefas", icon: CheckSquare, path: "/workspace/tasks" },
-  { label: "Financeiro", icon: DollarSign, path: "/workspace/financial" },
-  { label: "Contratos", icon: FileText, path: "/workspace/contracts" },
-  { label: "Configurações", icon: Settings, path: "/workspace/settings" },
+const ALL_NAV_ITEMS: NavItem[] = [
+  { key: "workspace.dashboard", label: "Dashboard",   icon: LayoutDashboard, path: "/workspace" },
+  { key: "workspace.messages",  label: "Mensagens",   icon: MessageSquare,   path: "/workspace/messages" },
+  { key: "workspace.crm",       label: "CRM",         icon: Contact,         path: "/workspace/crm" },
+  { key: "workspace.settings",  label: "Configurações", icon: Settings,      path: "/workspace/settings" },
 ];
 
 const Workspace = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggle } = useTheme();
-  const { profile, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  const isActive = (path: string) => location.pathname === path;
+  // Carrega o próprio registro do cliente pra saber enabled_modules.
+  // Policy "client_view_own_record" garante que cliente lê só a si.
+  const { data: clientRecord, isLoading: loadingClient } = useQuery({
+    queryKey: ["workspace-client-record", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agency_clients")
+        .select("id, client_name, enabled_modules")
+        .eq("client_user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const enabledSet = new Set(clientRecord?.enabled_modules ?? []);
+  // Settings sempre disponível (perfil/senha) mesmo que agência não habilite
+  enabledSet.add("workspace.settings");
+  const visibleNavItems = ALL_NAV_ITEMS.filter((item) => enabledSet.has(item.key));
+
+  const isActive = (path: string) =>
+    path === "/workspace" ? location.pathname === "/workspace" : location.pathname.startsWith(path);
+
   const linkClasses = (active: boolean) =>
     `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
       active ? "bg-primary/10 text-primary font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-foreground"
     }`;
 
   useEffect(() => { if (isMobile) setMobileSidebarOpen(false); }, [location.pathname]);
+
+  if (loadingClient) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <RightPanelProvider>
@@ -69,12 +104,17 @@ const Workspace = () => {
           )}
 
           <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-            {clientNavItems.map(item => (
+            {visibleNavItems.map(item => (
               <Link key={item.path} to={item.path} className={linkClasses(isActive(item.path))}>
                 <item.icon className={`w-4 h-4 shrink-0 ${isActive(item.path) ? "text-primary" : ""}`} />
                 {(!collapsed || isMobile) && <span className="truncate">{item.label}</span>}
               </Link>
             ))}
+            {visibleNavItems.length === 0 && (!collapsed || isMobile) && (
+              <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                Nenhum módulo liberado.<br />Fale com sua agência.
+              </div>
+            )}
           </nav>
 
           <div className="space-y-0.5 border-t border-sidebar-border px-2 py-2">
@@ -104,14 +144,46 @@ const Workspace = () => {
             <div />
           </div>
 
-          <div className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Bem-vindo ao seu workspace</h1>
-            <p className="text-muted-foreground">Este é o seu espaço de trabalho. Use o menu lateral para navegar entre os módulos disponíveis.</p>
-          </div>
+          <Routes>
+            <Route
+              index
+              element={enabledSet.has("workspace.dashboard")
+                ? <WorkspaceDashboard clientId={clientRecord?.id} clientName={clientRecord?.client_name} />
+                : <Navigate to="/workspace/settings" replace />}
+            />
+            <Route
+              path="messages"
+              element={enabledSet.has("workspace.messages")
+                ? <WorkspaceMessages clientId={clientRecord?.id} />
+                : <ModuleNotAvailable />}
+            />
+            <Route
+              path="crm"
+              element={enabledSet.has("workspace.crm")
+                ? <WorkspaceCRM clientId={clientRecord?.id} />
+                : <ModuleNotAvailable />}
+            />
+            <Route path="settings" element={<WorkspaceSettings />} />
+            <Route path="*" element={<Navigate to="/workspace" replace />} />
+          </Routes>
         </main>
       </div>
     </RightPanelProvider>
   );
 };
+
+const ModuleNotAvailable = () => (
+  <div className="flex items-center justify-center min-h-[60vh] p-6">
+    <div className="text-center max-w-md space-y-3">
+      <div className="w-14 h-14 rounded-full bg-muted mx-auto flex items-center justify-center">
+        <X className="w-6 h-6 text-muted-foreground" />
+      </div>
+      <h2 className="text-lg font-semibold">Módulo não disponível</h2>
+      <p className="text-sm text-muted-foreground">
+        Sua agência ainda não liberou esta área pra você. Entre em contato com ela pra ativar.
+      </p>
+    </div>
+  </div>
+);
 
 export default Workspace;

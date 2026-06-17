@@ -35,6 +35,15 @@ type Template = {
 // Alinhado ao Master v7.4 §3.2: Start (0) → Hack (1) → Growth (2)
 const TIER_ORDER: Record<string, number> = { start: 0, hack: 1, growth: 2 };
 
+// F1 — módulos disponíveis no workspace do cliente. Agência escolhe quais
+// liberar. Schema: agency_clients.enabled_modules text[] guarda os slugs.
+const WORKSPACE_MODULES: { key: string; label: string; description: string }[] = [
+  { key: "workspace.dashboard", label: "Dashboard", description: "Visão geral e quotas" },
+  { key: "workspace.messages",  label: "Mensagens", description: "Conversas dos agentes de IA" },
+  { key: "workspace.crm",       label: "CRM",       description: "Contatos e leads atribuídos" },
+  { key: "workspace.settings",  label: "Configurações", description: "Perfil e senha" },
+];
+
 const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTier, onSuccess }: Props) => {
   const navigate = useNavigate();
   const { hasAsaasConfigured } = useHasAsaasConfigured();
@@ -53,6 +62,10 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
   // "manual" = agência define a senha agora e passa pro cliente fora da plataforma.
   const [accessMode, setAccessMode] = useState<"invite" | "manual">("invite");
   const [clientPassword, setClientPassword] = useState("");
+  // Módulos liberados — default: todos selecionados.
+  const [enabledModules, setEnabledModules] = useState<Set<string>>(
+    new Set(WORKSPACE_MODULES.map((m) => m.key))
+  );
 
   // Step 2
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -67,6 +80,7 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
       setStep(1); setName(""); setEmail(""); setPhone(""); setDocument("");
       setSelected(new Set()); setPaymentLink(""); setCreatedClientId("");
       setCreateWorkspaceAccess(true); setAccessMode("invite"); setClientPassword("");
+      setEnabledModules(new Set(WORKSPACE_MODULES.map((m) => m.key)));
       supabase.from("platform_templates").select("*").eq("is_active", true).then(({ data }) => {
         if (data) setTemplates(data.filter((t: any) => TIER_ORDER[agencyTier] >= TIER_ORDER[t.min_tier]) as Template[]);
       });
@@ -109,6 +123,14 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
 
       const clientId = payload.client?.id;
       setCreatedClientId(clientId);
+
+      // Persiste módulos liberados (só vale se houver acesso ao workspace)
+      if (createWorkspaceAccess) {
+        await supabase
+          .from("agency_clients")
+          .update({ enabled_modules: Array.from(enabledModules) })
+          .eq("id", clientId);
+      }
 
       // Workspace access — invite (default) ou senha manual
       if (createWorkspaceAccess && email) {
@@ -220,6 +242,37 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
                       Um email será enviado pro cliente com link único pra ele criar a própria senha.
                     </p>
                   )}
+
+                  <div className="border-t border-border pt-3 space-y-2">
+                    <div>
+                      <p className="text-sm font-medium">Módulos liberados</p>
+                      <p className="text-[10px] text-muted-foreground">Áreas do workspace que o cliente vai ver</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      {WORKSPACE_MODULES.map((m) => {
+                        const checked = enabledModules.has(m.key);
+                        return (
+                          <label
+                            key={m.key}
+                            className="flex items-start gap-2 cursor-pointer rounded-md p-2 hover:bg-muted/40"
+                          >
+                            <Switch
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                const next = new Set(enabledModules);
+                                if (v) next.add(m.key); else next.delete(m.key);
+                                setEnabledModules(next);
+                              }}
+                            />
+                            <div className="flex-1">
+                              <p className="text-xs font-medium">{m.label}</p>
+                              <p className="text-[10px] text-muted-foreground">{m.description}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
