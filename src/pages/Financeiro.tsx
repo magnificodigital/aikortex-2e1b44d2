@@ -200,7 +200,8 @@ const Financeiro = () => {
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
-        {/* Tier Progress Widget */}
+        {/* Tier Progress Widget — exclusivo da agência (progressão Start→Hack→Growth) */}
+        {isAgencyMode && (
         <div className="glass-card rounded-xl p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
@@ -240,6 +241,7 @@ const Financeiro = () => {
             </Collapsible>
           )}
         </div>
+        )}
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">

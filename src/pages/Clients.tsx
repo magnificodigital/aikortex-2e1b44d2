@@ -187,6 +187,7 @@ const Clients = () => {
             <LayoutTemplate className="w-5 h-5 text-blue-600" />
             <div><p className="text-xs text-muted-foreground">Templates ativos</p><p className="text-xl font-bold text-foreground">{activeSubs.length}</p></div>
           </CardContent></Card>
+          {isAgencyMode && (
           <Card><CardContent className="p-4 flex items-center gap-3">
             <Trophy className="w-5 h-5 text-amber-600" />
             <div>
@@ -195,6 +196,7 @@ const Clients = () => {
               <p className="text-[10px] text-muted-foreground mt-0.5">{tierProgress.label}</p>
             </div>
           </CardContent></Card>
+          )}
         </div>
 
         {/* Filters */}
