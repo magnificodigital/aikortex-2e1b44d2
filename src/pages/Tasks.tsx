@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
+import ClientGestaoGuard from "@/components/shared/ClientGestaoGuard";
 import { CheckSquare, List, LayoutGrid, Calendar, User, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockTasks, Task, TaskStatus } from "@/types/task";
@@ -46,6 +47,7 @@ const Tasks = () => {
 
   return (
     <ModuleGate moduleKey="gestao.tarefas">
+    <ClientGestaoGuard section="Tarefas">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-[1400px] space-y-5">
         {/* Header */}
@@ -115,6 +117,7 @@ const Tasks = () => {
         <NewTaskDialog open={showNewTask} onOpenChange={setShowNewTask} />
       </div>
     </DashboardLayout>
+    </ClientGestaoGuard>
     </ModuleGate>
   );
 };

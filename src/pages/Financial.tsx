@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
+import ClientGestaoGuard from "@/components/shared/ClientGestaoGuard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Plus, Search, Download, FileText, Receipt, TrendingUp, TrendingDown, ShoppingCart, Tag, Users, QrCode, RefreshCw, Truck, BarChart3 } from "lucide-react";
@@ -47,6 +48,7 @@ const Financial = () => {
 
   return (
     <ModuleGate moduleKey="gestao.financeiro">
+    <ClientGestaoGuard section="Financeiro">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
         {/* Header */}
@@ -153,6 +155,7 @@ const Financial = () => {
         <QuickSaleDialog open={showQuickSale} onOpenChange={setShowQuickSale} />
       </div>
     </DashboardLayout>
+    </ClientGestaoGuard>
     </ModuleGate>
   );
 };

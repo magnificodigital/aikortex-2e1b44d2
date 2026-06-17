@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
+import ClientGestaoGuard from "@/components/shared/ClientGestaoGuard";
 import { UsersRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -42,6 +43,7 @@ const Team = () => {
 
   return (
     <ModuleGate moduleKey="gestao.equipe">
+    <ClientGestaoGuard section="Equipe">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
         <div className="flex items-center gap-3">
@@ -81,6 +83,7 @@ const Team = () => {
         context="agency"
       />
     </DashboardLayout>
+    </ClientGestaoGuard>
     </ModuleGate>
   );
 };

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
+import ClientGestaoGuard from "@/components/shared/ClientGestaoGuard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -149,6 +150,7 @@ const Clients = () => {
   }
 
   return (
+    <ClientGestaoGuard section="Clientes">
     <DashboardLayout>
       <ModuleGate moduleKey="gestao.clientes">
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
@@ -309,6 +311,7 @@ const Clients = () => {
       />
       </ModuleGate>
     </DashboardLayout>
+    </ClientGestaoGuard>
   );
 };
 

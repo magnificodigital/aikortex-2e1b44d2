@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/DashboardLayout";
+import ClientGestaoGuard from "@/components/shared/ClientGestaoGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -195,6 +196,7 @@ const Financeiro = () => {
   });
 
   return (
+    <ClientGestaoGuard section="Financeiro">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
         {/* Tier Progress Widget */}
@@ -455,6 +457,7 @@ const Financeiro = () => {
         </Collapsible>
       </div>
     </DashboardLayout>
+    </ClientGestaoGuard>
   );
 };
 
