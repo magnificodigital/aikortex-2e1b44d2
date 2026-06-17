@@ -35,13 +35,19 @@ type Template = {
 // Alinhado ao Master v7.4 §3.2: Start (0) → Hack (1) → Growth (2)
 const TIER_ORDER: Record<string, number> = { start: 0, hack: 1, growth: 2 };
 
-// F1 — módulos disponíveis no workspace do cliente. Agência escolhe quais
-// liberar. Schema: agency_clients.enabled_modules text[] guarda os slugs.
-const WORKSPACE_MODULES: { key: string; label: string; description: string }[] = [
-  { key: "workspace.dashboard", label: "Dashboard", description: "Visão geral e quotas" },
-  { key: "workspace.messages",  label: "Mensagens", description: "Conversas dos agentes de IA" },
-  { key: "workspace.crm",       label: "CRM",       description: "Contatos e leads atribuídos" },
-  { key: "workspace.settings",  label: "Configurações", description: "Perfil e senha" },
+// Módulos liberáveis = mesmos items dos grupos AIKORTEX e GESTÃO da sidebar.
+// A agência escolhe quais o cliente vê. Partners não entra (exclusivo agência).
+const WORKSPACE_MODULES: { key: string; group: "Aikortex" | "Gestão"; label: string; description: string }[] = [
+  { key: "aikortex.agentes",   group: "Aikortex", label: "Agentes",    description: "Agentes de IA configurados" },
+  { key: "aikortex.crm",       group: "Aikortex", label: "CRM",        description: "Pipeline e contatos" },
+  { key: "aikortex.ligacoes",  group: "Aikortex", label: "Ligações",   description: "Histórico de calls" },
+  { key: "aikortex.apps",      group: "Aikortex", label: "Apps",       description: "WhatsApp Business e integrações" },
+  { key: "aikortex.mensagens", group: "Aikortex", label: "Mensagens",  description: "Conversas dos agentes" },
+  { key: "gestao.clientes",    group: "Gestão",   label: "Clientes",   description: "Cadastro de clientes" },
+  { key: "gestao.vendas",      group: "Gestão",   label: "Vendas",     description: "Pipeline de vendas" },
+  { key: "gestao.financeiro",  group: "Gestão",   label: "Financeiro", description: "Receitas e despesas" },
+  { key: "gestao.equipe",      group: "Gestão",   label: "Equipe",     description: "Membros e papéis" },
+  { key: "gestao.tarefas",     group: "Gestão",   label: "Tarefas",    description: "Quadro de tarefas" },
 ];
 
 const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTier, onSuccess }: Props) => {
@@ -243,35 +249,40 @@ const AddClientWizard = ({ open, onOpenChange, agencyId, customPricing, agencyTi
                     </p>
                   )}
 
-                  <div className="border-t border-border pt-3 space-y-2">
+                  <div className="border-t border-border pt-3 space-y-3">
                     <div>
-                      <p className="text-sm font-medium">Módulos liberados</p>
-                      <p className="text-[10px] text-muted-foreground">Áreas do workspace que o cliente vai ver</p>
+                      <p className="text-sm font-medium">Funções liberadas pro cliente</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        O cliente vai ver no workspace dele apenas os módulos ligados aqui.
+                      </p>
                     </div>
-                    <div className="space-y-1.5">
-                      {WORKSPACE_MODULES.map((m) => {
-                        const checked = enabledModules.has(m.key);
-                        return (
-                          <label
-                            key={m.key}
-                            className="flex items-start gap-2 cursor-pointer rounded-md p-2 hover:bg-muted/40"
-                          >
-                            <Switch
-                              checked={checked}
-                              onCheckedChange={(v) => {
-                                const next = new Set(enabledModules);
-                                if (v) next.add(m.key); else next.delete(m.key);
-                                setEnabledModules(next);
-                              }}
-                            />
-                            <div className="flex-1">
-                              <p className="text-xs font-medium">{m.label}</p>
-                              <p className="text-[10px] text-muted-foreground">{m.description}</p>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    {(["Aikortex", "Gestão"] as const).map((group) => (
+                      <div key={group} className="space-y-1.5">
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{group}</p>
+                        {WORKSPACE_MODULES.filter((m) => m.group === group).map((m) => {
+                          const checked = enabledModules.has(m.key);
+                          return (
+                            <label
+                              key={m.key}
+                              className="flex items-start gap-2 cursor-pointer rounded-md p-2 hover:bg-muted/40"
+                            >
+                              <Switch
+                                checked={checked}
+                                onCheckedChange={(v) => {
+                                  const next = new Set(enabledModules);
+                                  if (v) next.add(m.key); else next.delete(m.key);
+                                  setEnabledModules(next);
+                                }}
+                              />
+                              <div className="flex-1">
+                                <p className="text-xs font-medium">{m.label}</p>
+                                <p className="text-[10px] text-muted-foreground">{m.description}</p>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

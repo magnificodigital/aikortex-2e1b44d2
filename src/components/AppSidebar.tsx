@@ -88,18 +88,21 @@ const aikortexItems: NavItem[] = [
   { label: "Mensagens", icon: MessageSquare, path: "/aikortex/messages" },
 ];
 
-// Itens do modo preview "Cliente X" — espelha o que o cliente vê no workspace
-// dele (/workspace/*). Cada slug bate com enabled_modules em agency_clients.
-// Como agência continua no painel dela, mapeamos pro path equivalente que ela
-// pode navegar. Filtros por client_id já aplicam onde implementado (CRM, agentes).
-type ClientPreviewItem = { moduleKey: string; label: string; icon: NavItem["icon"]; path: string };
-
-const clientPreviewItems: ClientPreviewItem[] = [
-  { moduleKey: "workspace.dashboard", label: "Dashboard",    icon: LayoutDashboard, path: "/home" },
-  { moduleKey: "workspace.messages",  label: "Mensagens",    icon: MessageSquare,   path: "/aikortex/messages" },
-  { moduleKey: "workspace.crm",       label: "CRM",          icon: Contact,         path: "/aikortex/crm" },
-  { moduleKey: "workspace.settings",  label: "Configurações", icon: Settings,       path: "/clients" },
-];
+// Mapeia cada item de sidebar pra um slug de módulo (mesmo schema que aparece
+// em agency_clients.enabled_modules). No modo cliente, só os items cujo slug
+// está habilitado aparecem na sidebar.
+const ITEM_MODULE_KEY: Record<string, string> = {
+  "/aikortex/agents":   "aikortex.agentes",
+  "/aikortex/crm":      "aikortex.crm",
+  "/calls":             "aikortex.ligacoes",
+  "/apps":              "aikortex.apps",
+  "/aikortex/messages": "aikortex.mensagens",
+  "/clients":           "gestao.clientes",
+  "/sales":             "gestao.vendas",
+  "/financeiro":        "gestao.financeiro",
+  "/team":              "gestao.equipe",
+  "/tasks":             "gestao.tarefas",
+};
 
 const MODULE_KEY_MAP: Record<string, string> = {
   "/aikortex/agents": "aikortex.agentes",
@@ -171,12 +174,18 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
     },
   });
 
-  // No modo agência: mostra sidebar completa.
-  // No modo cliente: substitui Aikortex/Gestão/Partners pelo preview dos módulos
-  // que a agência liberou pra esse cliente (mesma sidebar que ele vê no workspace).
-  const visibleClientPreviewItems = isAgencyMode
-    ? []
-    : clientPreviewItems.filter((i) => (clientEnabledModules ?? []).includes(i.moduleKey));
+  // Filtra items dos grupos pelos módulos que a agência liberou pra esse cliente.
+  // Partners é sempre escondido no modo cliente (exclusivo da agência).
+  const filterByEnabled = (items: NavItem[]) => {
+    if (isAgencyMode) return items;
+    const enabled = clientEnabledModules ?? [];
+    return items.filter((i) => {
+      const key = ITEM_MODULE_KEY[i.path.split("?")[0]];
+      return key ? enabled.includes(key) : false;
+    });
+  };
+  const visibleAikortexItems = filterByEnabled(aikortexItems);
+  const visibleGestaoItems = filterByEnabled(gestaoItems);
   const { messageCount, monthlyLimit, hasByok, isNearLimit, isUnlimited } = useMonthlyUsage();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -354,21 +363,10 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
             </Link>
           </div>
 
-          {/* Modo agência: 3 grupos completos. Modo cliente: preview do workspace */}
-          {isAgencyMode ? (
-            <>
-              {renderGroup("Aikortex", aikortexItems, aikortexOpen, setAikortexOpen)}
-              {renderGroup("Gestão", gestaoItems, gestaoOpen, setGestaoOpen)}
-              {renderGroup("Partners", partnersItems, partnersOpen, setPartnersOpen)}
-            </>
-          ) : (
-            renderGroup(
-              `Workspace de ${activeWorkspace.name || "cliente"}`,
-              visibleClientPreviewItems.map(({ moduleKey, ...item }) => item),
-              aikortexOpen,
-              setAikortexOpen
-            )
-          )}
+          {/* Mantém os mesmos grupos. Modo cliente filtra items por enabled_modules. */}
+          {visibleAikortexItems.length > 0 && renderGroup("Aikortex", visibleAikortexItems, aikortexOpen, setAikortexOpen)}
+          {visibleGestaoItems.length > 0 && renderGroup("Gestão", visibleGestaoItems, gestaoOpen, setGestaoOpen)}
+          {isAgencyMode && renderGroup("Partners", partnersItems, partnersOpen, setPartnersOpen)}
 
           {/* Seção Conta & Suporte */}
           <div>

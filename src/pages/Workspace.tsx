@@ -8,23 +8,33 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import aikortexLogoWhite from "@/assets/aikortex-logo-white.png";
 import aikortexLogoBlack from "@/assets/aikortex-logo-black.png";
 import {
-  LayoutDashboard, MessageSquare, Settings, Contact,
+  Bot, MessageSquare, Settings, Contact, Phone as PhoneIcon, AppWindow,
+  Users, ShoppingCart, DollarSign, UserCheck, CheckSquare,
   LogOut, Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Loader2,
 } from "lucide-react";
 import { RightPanelProvider } from "@/components/RightPanel";
-import WorkspaceDashboard from "@/pages/workspace/WorkspaceDashboard";
 import WorkspaceMessages from "@/pages/workspace/WorkspaceMessages";
 import WorkspaceCRM from "@/pages/workspace/WorkspaceCRM";
 import WorkspaceSettings from "@/pages/workspace/WorkspaceSettings";
+import WorkspacePlaceholder from "@/pages/workspace/WorkspacePlaceholder";
 
-// F1 — módulos disponíveis. Slug bate com o que a agência escolhe no wizard.
-type NavItem = { key: string; label: string; icon: typeof LayoutDashboard; path: string };
+// Sidebar do cliente espelha exatamente os 10 módulos liberáveis pela agência.
+// Mesma estrutura (Aikortex + Gestão) que ela vê no switcher modo cliente.
+type NavItem = { key: string; label: string; icon: typeof Bot; path: string; group: "Aikortex" | "Gestão" };
 
 const ALL_NAV_ITEMS: NavItem[] = [
-  { key: "workspace.dashboard", label: "Dashboard",   icon: LayoutDashboard, path: "/workspace" },
-  { key: "workspace.messages",  label: "Mensagens",   icon: MessageSquare,   path: "/workspace/messages" },
-  { key: "workspace.crm",       label: "CRM",         icon: Contact,         path: "/workspace/crm" },
-  { key: "workspace.settings",  label: "Configurações", icon: Settings,      path: "/workspace/settings" },
+  // Aikortex
+  { key: "aikortex.agentes",   group: "Aikortex", label: "Agentes",    icon: Bot,            path: "/workspace/agents" },
+  { key: "aikortex.crm",       group: "Aikortex", label: "CRM",        icon: Contact,        path: "/workspace/crm" },
+  { key: "aikortex.ligacoes",  group: "Aikortex", label: "Ligações",   icon: PhoneIcon,      path: "/workspace/calls" },
+  { key: "aikortex.apps",      group: "Aikortex", label: "Apps",       icon: AppWindow,      path: "/workspace/apps" },
+  { key: "aikortex.mensagens", group: "Aikortex", label: "Mensagens",  icon: MessageSquare,  path: "/workspace/messages" },
+  // Gestão
+  { key: "gestao.clientes",    group: "Gestão",   label: "Clientes",   icon: Users,          path: "/workspace/clients" },
+  { key: "gestao.vendas",      group: "Gestão",   label: "Vendas",     icon: ShoppingCart,   path: "/workspace/sales" },
+  { key: "gestao.financeiro",  group: "Gestão",   label: "Financeiro", icon: DollarSign,     path: "/workspace/financial" },
+  { key: "gestao.equipe",      group: "Gestão",   label: "Equipe",     icon: UserCheck,      path: "/workspace/team" },
+  { key: "gestao.tarefas",     group: "Gestão",   label: "Tarefas",    icon: CheckSquare,    path: "/workspace/tasks" },
 ];
 
 const Workspace = () => {
@@ -53,9 +63,9 @@ const Workspace = () => {
   });
 
   const enabledSet = new Set(clientRecord?.enabled_modules ?? []);
-  // Settings sempre disponível (perfil/senha) mesmo que agência não habilite
-  enabledSet.add("workspace.settings");
   const visibleNavItems = ALL_NAV_ITEMS.filter((item) => enabledSet.has(item.key));
+  const visibleAikortex = visibleNavItems.filter((i) => i.group === "Aikortex");
+  const visibleGestao = visibleNavItems.filter((i) => i.group === "Gestão");
 
   const isActive = (path: string) =>
     path === "/workspace" ? location.pathname === "/workspace" : location.pathname.startsWith(path);
@@ -103,13 +113,24 @@ const Workspace = () => {
             </div>
           )}
 
-          <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-            {visibleNavItems.map(item => (
-              <Link key={item.path} to={item.path} className={linkClasses(isActive(item.path))}>
-                <item.icon className={`w-4 h-4 shrink-0 ${isActive(item.path) ? "text-primary" : ""}`} />
-                {(!collapsed || isMobile) && <span className="truncate">{item.label}</span>}
-              </Link>
-            ))}
+          <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-3">
+            {(["Aikortex", "Gestão"] as const).map((group) => {
+              const items = group === "Aikortex" ? visibleAikortex : visibleGestao;
+              if (items.length === 0) return null;
+              return (
+                <div key={group} className="space-y-0.5">
+                  {(!collapsed || isMobile) && (
+                    <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">{group}</div>
+                  )}
+                  {items.map(item => (
+                    <Link key={item.path} to={item.path} className={linkClasses(isActive(item.path))}>
+                      <item.icon className={`w-4 h-4 shrink-0 ${isActive(item.path) ? "text-primary" : ""}`} />
+                      {(!collapsed || isMobile) && <span className="truncate">{item.label}</span>}
+                    </Link>
+                  ))}
+                </div>
+              );
+            })}
             {visibleNavItems.length === 0 && (!collapsed || isMobile) && (
               <div className="px-3 py-4 text-xs text-muted-foreground text-center">
                 Nenhum módulo liberado.<br />Fale com sua agência.
@@ -147,23 +168,21 @@ const Workspace = () => {
           <Routes>
             <Route
               index
-              element={enabledSet.has("workspace.dashboard")
-                ? <WorkspaceDashboard clientId={clientRecord?.id} clientName={clientRecord?.client_name} />
-                : <Navigate to="/workspace/settings" replace />}
-            />
-            <Route
-              path="messages"
-              element={enabledSet.has("workspace.messages")
-                ? <WorkspaceMessages clientId={clientRecord?.id} />
-                : <ModuleNotAvailable />}
-            />
-            <Route
-              path="crm"
-              element={enabledSet.has("workspace.crm")
-                ? <WorkspaceCRM clientId={clientRecord?.id} />
-                : <ModuleNotAvailable />}
+              element={visibleNavItems[0]
+                ? <Navigate to={visibleNavItems[0].path} replace />
+                : <WorkspaceSettings />}
             />
             <Route path="settings" element={<WorkspaceSettings />} />
+            {ALL_NAV_ITEMS.map((item) => {
+              if (!enabledSet.has(item.key)) {
+                return <Route key={item.key} path={item.path.replace("/workspace/", "")} element={<ModuleNotAvailable />} />;
+              }
+              let el: JSX.Element;
+              if (item.key === "aikortex.crm") el = <WorkspaceCRM clientId={clientRecord?.id} />;
+              else if (item.key === "aikortex.mensagens") el = <WorkspaceMessages clientId={clientRecord?.id} />;
+              else el = <WorkspacePlaceholder label={item.label} />;
+              return <Route key={item.key} path={item.path.replace("/workspace/", "")} element={el} />;
+            })}
             <Route path="*" element={<Navigate to="/workspace" replace />} />
           </Routes>
         </main>
