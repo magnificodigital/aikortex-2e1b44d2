@@ -25,7 +25,6 @@ const MODULE_LABELS: Record<string, string> = {
   "gestao.tarefas": "Tarefas",
   "gestao.projetos": "Projetos",
   "gestao.relatorios": "Relatórios",
-  "partners": "Partners",
 };
 
 interface ModuleGateProps {

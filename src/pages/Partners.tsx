@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import ModuleGate from "@/components/shared/ModuleGate";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Handshake, User, TrendingUp, BookOpen, Award, LayoutTemplate, Calendar, MessageCircle } from "lucide-react";
 import { type PartnerProfile } from "@/types/partner";
@@ -81,7 +80,6 @@ const Partners = () => {
   }, [profile]);
 
   return (
-    <ModuleGate moduleKey="partners">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl">
         <div className="flex items-center gap-3 mb-6">
@@ -115,7 +113,6 @@ const Partners = () => {
         </Tabs>
       </div>
     </DashboardLayout>
-    </ModuleGate>
   );
 };
 
