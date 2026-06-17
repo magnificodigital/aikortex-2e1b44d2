@@ -140,17 +140,18 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
   const { isAgencyMode } = useActiveClient();
   const { canAccess } = useModuleAccess();
 
-  // Quando o switcher está em modo "Cliente X", esconde items meta-agência:
+  // Quando o switcher está em modo "Cliente X", esconde tudo que ainda
+  // mostraria dados da agência:
   // - Partners (programa de parceiros é exclusivo da agência)
-  // - Clientes / Vendas / Equipe (são conceitos da agência, não fazem
-  //   sentido no contexto de operar como cliente)
-  // - Apps é da agência (cliente não cria apps)
+  // - Grupo Gestão inteiro: clientes/vendas/equipe são conceitos da agência,
+  //   e financeiro/tarefas ainda não são multi-tenant por cliente
+  //   (F3/F4 vão implementar ERP do cliente — schema novo com client_id).
+  //   Mostrar agora vazaria dados da agência. Esconde até então.
+  // - Apps (cliente não cria apps)
   const visibleAikortexItems = isAgencyMode
     ? aikortexItems
     : aikortexItems.filter((i) => i.path !== "/apps");
-  const visibleGestaoItems = isAgencyMode
-    ? gestaoItems
-    : gestaoItems.filter((i) => !["/clients", "/sales", "/team"].includes(i.path));
+  const visibleGestaoItems = isAgencyMode ? gestaoItems : [];
   const { messageCount, monthlyLimit, hasByok, isNearLimit, isUnlimited } = useMonthlyUsage();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -330,7 +331,7 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
 
           {/* Switcher em modo cliente: esconde Partners + items meta-agência */}
           {renderGroup("Aikortex", visibleAikortexItems, aikortexOpen, setAikortexOpen)}
-          {renderGroup("Gestão", visibleGestaoItems, gestaoOpen, setGestaoOpen)}
+          {visibleGestaoItems.length > 0 && renderGroup("Gestão", visibleGestaoItems, gestaoOpen, setGestaoOpen)}
           {isAgencyMode && renderGroup("Partners", partnersItems, partnersOpen, setPartnersOpen)}
 
           {/* Seção Conta & Suporte */}
