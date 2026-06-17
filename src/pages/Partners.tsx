@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Handshake, User, TrendingUp, BookOpen, Award, LayoutTemplate, Calendar, MessageCircle } from "lucide-react";
+import { Handshake, User, TrendingUp, BookOpen, Award, LayoutTemplate, Calendar, MessageCircle, Loader2 } from "lucide-react";
 import { type PartnerProfile } from "@/types/partner";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePartnerTier } from "@/hooks/use-partner-tier";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import PartnerProfileTab from "@/components/partners/PartnerProfileTab";
 import PartnerTiersTab from "@/components/partners/PartnerTiersTab";
 import TrainingCenterTab from "@/components/partners/TrainingCenterTab";
@@ -12,72 +17,124 @@ import MarketplaceTab from "@/components/partners/MarketplaceTab";
 import EventsMediaTab from "@/components/partners/EventsMediaTab";
 import CommunityTab from "@/components/partners/CommunityTab";
 
-const STORAGE_KEY = "aihub_partner_profile";
+// Campos que ainda não têm coluna em agency_profiles ou partner_tiers.
+// Persistidos em localStorage temporariamente. TODO: migrar pra coluna no banco
+// quando houver UX clara — hoje seriam dados perdidos entre browsers.
+const EDITABLE_STORAGE_KEY = "aihub_partner_editable_fields";
 
-const DEFAULT_PROFILE: PartnerProfile = {
-  id: "1",
-  name: "Minha Agência IA",
-  description: "Agência especializada em soluções de inteligência artificial para negócios.",
-  specializations: ["Automação IA", "Agentes de IA", "CRM"],
-  certifications: ["AI Automation Specialist", "CRM Implementation Expert"],
-  tier: "hack",
-  clientsServed: 12,
-  revenue: 35000,
-  solutionsPublished: 3,
-  joinedAt: "2024-01-15",
-  email: "contato@minhaagencia.com",
-  website: "https://minhaagencia.com",
+type EditableFields = Pick<PartnerProfile, "description" | "specializations" | "certifications" | "website">;
+
+const EMPTY_EDITABLE: EditableFields = {
+  description: "",
+  specializations: [],
+  certifications: [],
+  website: "",
 };
 
-const normalizePartnerProfile = (value: unknown): PartnerProfile => {
-  const saved = value && typeof value === "object" ? (value as Partial<PartnerProfile>) : {};
-
-  return {
-    ...DEFAULT_PROFILE,
-    ...saved,
-    id: typeof saved.id === "string" && saved.id ? saved.id : DEFAULT_PROFILE.id,
-    name: typeof saved.name === "string" && saved.name.trim() ? saved.name : DEFAULT_PROFILE.name,
-    description: typeof saved.description === "string" ? saved.description : DEFAULT_PROFILE.description,
-    specializations: Array.isArray(saved.specializations)
-      ? saved.specializations.filter((item): item is string => typeof item === "string")
-      : DEFAULT_PROFILE.specializations,
-    certifications: Array.isArray(saved.certifications)
-      ? saved.certifications.filter((item): item is string => typeof item === "string")
-      : DEFAULT_PROFILE.certifications,
-    tier: saved.tier === "start" || saved.tier === "hack" || saved.tier === "growth"
-      ? saved.tier
-      : DEFAULT_PROFILE.tier,
-    clientsServed: typeof saved.clientsServed === "number" ? saved.clientsServed : DEFAULT_PROFILE.clientsServed,
-    revenue: typeof saved.revenue === "number" ? saved.revenue : DEFAULT_PROFILE.revenue,
-    solutionsPublished: typeof saved.solutionsPublished === "number" ? saved.solutionsPublished : DEFAULT_PROFILE.solutionsPublished,
-    joinedAt: typeof saved.joinedAt === "string" && saved.joinedAt ? saved.joinedAt : DEFAULT_PROFILE.joinedAt,
-    email: typeof saved.email === "string" && saved.email ? saved.email : DEFAULT_PROFILE.email,
-    website: typeof saved.website === "string" ? saved.website : DEFAULT_PROFILE.website,
-    logo: typeof saved.logo === "string" ? saved.logo : undefined,
-  };
+const loadEditable = (): EditableFields => {
+  try {
+    const raw = localStorage.getItem(EDITABLE_STORAGE_KEY);
+    if (!raw) return EMPTY_EDITABLE;
+    const parsed = JSON.parse(raw);
+    return {
+      description: typeof parsed.description === "string" ? parsed.description : "",
+      specializations: Array.isArray(parsed.specializations) ? parsed.specializations.filter((x: unknown): x is string => typeof x === "string") : [],
+      certifications: Array.isArray(parsed.certifications) ? parsed.certifications.filter((x: unknown): x is string => typeof x === "string") : [],
+      website: typeof parsed.website === "string" ? parsed.website : "",
+    };
+  } catch {
+    return EMPTY_EDITABLE;
+  }
 };
 
 const Partners = () => {
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") || "profile";
   const [activeTab, setActiveTab] = useState(tabFromUrl);
+  const { user } = useAuth();
+  const { tier, data: partnerTierData, isLoading: tierLoading } = usePartnerTier();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setActiveTab(tabFromUrl);
   }, [tabFromUrl]);
 
-  const [profile, setProfile] = useState<PartnerProfile>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? normalizePartnerProfile(JSON.parse(saved)) : DEFAULT_PROFILE;
-    } catch {
-      return DEFAULT_PROFILE;
-    }
+  // Cleanup da chave antiga (continha mock data: "Minha Agência IA", tier "hack")
+  useEffect(() => {
+    localStorage.removeItem("aihub_partner_profile");
+  }, []);
+
+  // Carrega agency_profiles (nome, logo, data de cadastro) do banco
+  const { data: agency, isLoading: agencyLoading } = useQuery({
+    queryKey: ["partners-agency-profile", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agency_profiles")
+        .select("id, agency_name, logo_url, created_at")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
   });
 
+  const [editable, setEditable] = useState<EditableFields>(loadEditable);
+
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizePartnerProfile(profile)));
-  }, [profile]);
+    localStorage.setItem(EDITABLE_STORAGE_KEY, JSON.stringify(editable));
+  }, [editable]);
+
+  if (agencyLoading || tierLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Monta profile combinando dados reais (banco) + editáveis (localStorage)
+  const profile: PartnerProfile = {
+    id: agency?.id || user?.id || "",
+    name: agency?.agency_name || "Sua agência",
+    logo: agency?.logo_url || undefined,
+    email: user?.email || "",
+    tier: tier || "start",
+    clientsServed: partnerTierData?.clients_served ?? 0,
+    revenue: Number(partnerTierData?.revenue ?? 0),
+    solutionsPublished: partnerTierData?.solutions_published ?? 0,
+    joinedAt: agency?.created_at || partnerTierData?.tier_upgraded_at || new Date().toISOString(),
+    ...editable,
+  };
+
+  const handleUpdate = async (next: PartnerProfile) => {
+    // Salva editáveis em localStorage
+    setEditable({
+      description: next.description,
+      specializations: next.specializations,
+      certifications: next.certifications,
+      website: next.website ?? "",
+    });
+
+    // Persiste nome/logo no banco se mudaram
+    const agencyChanged = next.name !== profile.name || next.logo !== profile.logo;
+    if (agencyChanged && user?.id) {
+      const { error } = await supabase
+        .from("agency_profiles")
+        .update({
+          agency_name: next.name,
+          logo_url: next.logo || null,
+        })
+        .eq("user_id", user.id);
+      if (error) {
+        toast.error(`Erro ao salvar agência: ${error.message}`);
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["partners-agency-profile"] });
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -103,7 +160,7 @@ const Partners = () => {
             <TabsTrigger value="community" className="flex items-center gap-1.5 text-xs"><MessageCircle className="w-3.5 h-3.5" />Comunidade</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="profile"><PartnerProfileTab profile={profile} onUpdate={setProfile} /></TabsContent>
+          <TabsContent value="profile"><PartnerProfileTab profile={profile} onUpdate={handleUpdate} /></TabsContent>
           <TabsContent value="tiers"><PartnerTiersTab /></TabsContent>
           <TabsContent value="training"><TrainingCenterTab /></TabsContent>
           <TabsContent value="certifications"><CertificationsTab /></TabsContent>
