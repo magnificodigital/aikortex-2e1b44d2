@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { useActiveClient } from "@/hooks/use-active-client";
 import { useModuleAccess } from "@/hooks/use-module-access";
 import { useMonthlyUsage } from "@/hooks/use-monthly-usage";
 import aikortexLogoWhite from "@/assets/aikortex-logo-white.png";
@@ -136,7 +137,20 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
   const { theme, toggle } = useTheme();
   const { signOut, isPlatform } = useAuth();
   const { agencyName, clients, activeWorkspace, switchToAgency, switchToClient } = useWorkspace();
+  const { isAgencyMode } = useActiveClient();
   const { canAccess } = useModuleAccess();
+
+  // Quando o switcher está em modo "Cliente X", esconde items meta-agência:
+  // - Partners (programa de parceiros é exclusivo da agência)
+  // - Clientes / Vendas / Equipe (são conceitos da agência, não fazem
+  //   sentido no contexto de operar como cliente)
+  // - Apps é da agência (cliente não cria apps)
+  const visibleAikortexItems = isAgencyMode
+    ? aikortexItems
+    : aikortexItems.filter((i) => i.path !== "/apps");
+  const visibleGestaoItems = isAgencyMode
+    ? gestaoItems
+    : gestaoItems.filter((i) => !["/clients", "/sales", "/team"].includes(i.path));
   const { messageCount, monthlyLimit, hasByok, isNearLimit, isUnlimited } = useMonthlyUsage();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -314,10 +328,10 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
             </Link>
           </div>
 
-          {/* Always render all sections — switcher filters data, not menu items */}
-          {renderGroup("Aikortex", aikortexItems, aikortexOpen, setAikortexOpen)}
-          {renderGroup("Gestão", gestaoItems, gestaoOpen, setGestaoOpen)}
-          {renderGroup("Partners", partnersItems, partnersOpen, setPartnersOpen)}
+          {/* Switcher em modo cliente: esconde Partners + items meta-agência */}
+          {renderGroup("Aikortex", visibleAikortexItems, aikortexOpen, setAikortexOpen)}
+          {renderGroup("Gestão", visibleGestaoItems, gestaoOpen, setGestaoOpen)}
+          {isAgencyMode && renderGroup("Partners", partnersItems, partnersOpen, setPartnersOpen)}
 
           {/* Seção Conta & Suporte */}
           <div>
