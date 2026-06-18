@@ -782,7 +782,7 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
       niche: wizardNiche || undefined,
       // Master v7.4 §13.16: Modo Vibe Acting precisa do agentId pra agent-vibe-mutate
       // poder atualizar o draft em tempo real.
-      agentContext: agentId ? { agentId } : undefined,
+      agentContext: agentId ? { agentId, name: loadedAgent?.name ?? "" } : undefined,
       disableCrmExtraction: true,
       persistKey: shouldPersistTemplateDraft ? `${storagePrefix}-wizard-messages` : undefined,
     }

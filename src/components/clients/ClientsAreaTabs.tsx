@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { label: "Clientes", to: "/clients" },
-  { label: "Propostas e Contratos", to: "/contracts" },
+  { label: "Propostas", to: "/proposals" },
+  { label: "Contratos", to: "/contracts" },
 ];
 
 const ClientsAreaTabs = () => {
