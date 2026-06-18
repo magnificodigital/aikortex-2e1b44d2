@@ -27,6 +27,7 @@ import {
 import AddClientWizard from "@/components/clients/AddClientWizard";
 import EditClientDialog, { AgencyClientLite } from "@/components/clients/EditClientDialog";
 import AddCustomerSimpleDialog, { SimpleCustomer } from "@/components/clients/AddCustomerSimpleDialog";
+import ClientsAreaTabs from "@/components/clients/ClientsAreaTabs";
 
 type AgencyClient = {
   id: string;
