@@ -41,10 +41,27 @@ const STATUS_MAP: Record<ProposalStatus, { label: string; class: string; icon: a
   expired:  { label: "Expirada",       class: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: Clock },
 };
 
+const STORAGE_KEY = "aikortex.proposals.v1";
+
+const loadProposals = (): Proposal[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Proposal[]) : [];
+  } catch {
+    return [];
+  }
+};
+
 const Proposals = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [proposals] = useState<Proposal[]>([]);
+  const [proposals, setProposals] = useState<Proposal[]>(() => loadProposals());
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  const persist = (next: Proposal[]) => {
+    setProposals(next);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+  };
 
   const filtered = proposals.filter((p) => {
     if (statusFilter !== "all" && p.status !== statusFilter) return false;
@@ -62,6 +79,42 @@ const Proposals = () => {
     pipeline: proposals
       .filter((p) => p.status === "sent" || p.status === "viewed")
       .reduce((s, p) => s + p.amount, 0),
+  };
+
+  const handleEditorSubmit = (draft: ProposalDraft, action: "draft" | "send") => {
+    const amount = draft.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + draft.validityDays * 86400000).toISOString();
+    const proposal: Proposal = {
+      id: crypto.randomUUID(),
+      title: draft.title,
+      client: draft.client,
+      amount,
+      status: action === "send" ? "sent" : "draft",
+      sentAt: action === "send" ? now.toISOString() : null,
+      expiresAt,
+    };
+    persist([proposal, ...proposals]);
+    setEditorOpen(false);
+    toast.success(
+      action === "send"
+        ? `Proposta enviada para ${draft.client}`
+        : "Rascunho salvo",
+    );
+  };
+
+  const handleDelete = (id: string) => {
+    persist(proposals.filter((p) => p.id !== id));
+    toast.success("Proposta excluída");
+  };
+
+  const handleSend = (id: string) => {
+    persist(
+      proposals.map((p) =>
+        p.id === id ? { ...p, status: "sent" as ProposalStatus, sentAt: new Date().toISOString() } : p,
+      ),
+    );
+    toast.success("Proposta enviada");
   };
 
   const handleConvertToContract = (p: Proposal) => {
