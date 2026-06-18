@@ -431,17 +431,38 @@ export function buildDiscoveryQuestionsBlock(
     .filter((q) => !(mentioned.schedule && /hor[áa]rio/i.test(q)));
   const behaviorQs = spec.discoveryQuestions.behavior;
 
-  const bullets = (arr: string[]) => arr.slice(0, 3).map((q) => `- ${q}`).join("\n");
+  // Junta as 3-5 perguntas mais essenciais (uma de cada categoria + extras)
+  const flat = [
+    businessQs[0],
+    audienceQs[0],
+    behaviorQs[0],
+    businessQs[1],
+    audienceQs[1],
+    behaviorQs[1],
+  ].filter(Boolean).slice(0, 4);
 
-  return `
-**🏢 Sobre o negócio**
-${bullets(businessQs)}
+  // 3 estilos rotativos — escolha pseudo-aleatória baseada no hash da descrição
+  // (mesma descrição = mesmo estilo, mas descrições diferentes variam)
+  const hash = description.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const style = hash % 3;
 
-**👥 Sobre o público**
-${bullets(audienceQs)}
+  if (style === 0) {
+    // Estilo A — Lista numerada (vira cards no RichMarkdown)
+    return flat.map((q, i) => `${i + 1}. ${q}`).join("\n");
+  }
 
-**⚙️ Sobre comportamento e dados**
-${bullets(behaviorQs)}`.trim();
+  if (style === 1) {
+    // Estilo B — H2 com 1 pergunta por bloco
+    const blocks = [
+      { icon: "🎯", title: "O propósito", q: businessQs[0] },
+      { icon: "📞", title: "O contato", q: audienceQs[0] },
+      { icon: "🚧", title: "Os limites", q: behaviorQs[0] },
+    ].filter((b) => b.q);
+    return blocks.map((b) => `## ${b.icon} ${b.title}\n${b.q}`).join("\n\n");
+  }
+
+  // Estilo C — Bullets simples seguidos
+  return flat.map((q) => `- ${q}`).join("\n");
 }
 
 /**

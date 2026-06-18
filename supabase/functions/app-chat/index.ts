@@ -412,26 +412,57 @@ Qual desses chega mais perto do seu caso? (Ou me descreve com suas palavras, fic
 - **Fonte de dados**: onde estão as informações que o agente vai consultar? (CRM, planilha, ERP, "tudo na cabeça")
 - **Autonomia**: só consultar dados, ou pode atualizar status/notas também?
 ` : `
+⚠️ NÃO USE TEMPLATE FIXO. Cada conversa é diferente. Adapte tom, perguntas e estilo ao que o user trouxe.
+
+**Sua tarefa:** identificar 2-4 perguntas ESSENCIAIS que ainda faltam pra criar o agente. Você decide quais com base na descrição inicial. Não precisa cobrir tudo — foque no que mais reduz incerteza.
+
+**Sobre formato — VARIE entre estes 3 estilos (não use sempre o mesmo):**
+
+Estilo A — Lista numerada (vira cards visuais):
 \`\`\`
-Beleza! Antes de criar, preciso entender alguns detalhes pra fazer um agente real e consistente:
+Boa ideia! Pra criar esse agente faltam algumas peças. Me responde isso:
 
-**🏢 Sobre o negócio**
-${agencyName ? `- O agente é pra **${agencyName}** (sua conta) ou pra outra empresa?` : "- Qual o nome da empresa?"}
-- Qual produto/serviço principal? (ex: "consultas odontológicas particulares", "vendas de imóveis no litoral")
-
-**👥 Sobre o público e atendimento**
-- Quem o agente vai atender? (perfil do cliente típico)
-- Por qual canal principal: WhatsApp, Email ou Site/widget? Horário e dias?
-
-**⚙️ Sobre o funcionamento**
-- O que NÃO pode fazer (limites, escalações, palavras proibidas)?
-- Alguma integração específica ele vai precisar (Google Calendar, HubSpot, CRM específico)?
+1. **O que ele faz no dia-a-dia** — descreve o serviço principal (consultas, vendas, suporte…)
+2. **Quem ele atende** — cliente final, time interno, fornecedor?
+3. **Por onde recebe contato** — WhatsApp, email, site?
 \`\`\`
+
+Estilo B — Conversacional curta com 1 pergunta principal + bullets:
+\`\`\`
+Legal! Antes de bolar isso, **o que é pesado no atendimento hoje?**
+
+Tipo:
+- Dúvida sobre prazo / status?
+- Cobrança / 2ª via?
+- Suporte técnico?
+- Agendamento?
+
+(ou me descreve com suas palavras)
+\`\`\`
+
+Estilo C — H2 com 1-2 perguntas por bloco:
+\`\`\`
+Bacana! Pra fazer um agente real e não genérico, me ajuda com isso:
+
+## 🎯 O propósito principal
+O que ele faz no dia-a-dia?
+
+## 📞 O contato
+WhatsApp, email ou site? Quem do outro lado?
+
+## 🚧 Limites
+O que ele **nunca** pode fazer?
+\`\`\`
+
+**Diretrizes:**
+- 2-4 perguntas no máximo (qualidade > quantidade)
+- ADAPTE ao que o user JÁ DISSE — não pergunte de novo o que já está claro
+- Se ele já mencionou nicho (contabilidade, advocacia, etc), use vocabulário do setor
+- Pode incluir ${agencyName ? `referência a **${agencyName}** se relevante (default = empresa dele)` : "pergunta opcional sobre nome da empresa"}
+- Se a descrição inicial cita integração que precisa OAuth, inclua \`<!--oauth:NOME-->\` no final
+- Termina com algo natural tipo "**Quando responder, eu monto o plano.**" (varia a frase, não copia literal)
+- **Escolhe UM estilo (A, B ou C) por conversa.** Não mistura.
 `}
-
-Termina com: **"Quando responder, eu monto o plano e te peço confirmação antes de criar."**
-
-⚠️ ADAPTE as perguntas ao que o user JÁ DISSE. Se ele já mencionou canal, NÃO pergunte canal de novo. Se já mencionou integração, NÃO pergunte integração de novo. Foque as perguntas nos GAPS reais.
 
 ⚠️ Se a descrição inicial mencionou alguma integração que requer OAuth e não está conectada, INCLUA o marker \`<!--oauth:NOME-->\` no final da pergunta sobre integrações pra user já conectar enquanto responde.
 
@@ -1630,10 +1661,28 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
           .map((c) => `<!--oauth:${c.provider}-->`)
           .join("\n");
 
-        const intro = `Beleza! Um ${detectedSpec.label} — ótimo caso de uso. Antes de criar, preciso entender alguns detalhes pra fazer um agente real e consistente:`;
+        // Varia frase introdutória pra não soar template (5 variações rotativas)
+        const introVariations = [
+          `Beleza! Um ${detectedSpec.label} — ótimo caso de uso. Antes de bolar, me ajuda com algumas coisas:`,
+          `Boa! ${detectedSpec.label} dá pra fazer rápido. Preciso entender alguns detalhes antes:`,
+          `Show, ${detectedSpec.label}. Pra fazer um agente real (não genérico), me responde isso:`,
+          `Legal, ${detectedSpec.label} é um clássico. Pra mandar bem desde o começo:`,
+          `Bacana! ${detectedSpec.label}. Vou montar um agente sob medida — antes só preciso de:`,
+        ];
+        // Varia frase de fechamento
+        const closingVariations = [
+          `Quando responder, eu monto o plano e te peço confirmação.`,
+          `Me responde isso e eu já volto com o plano.`,
+          `Com essas respostas eu estruturo o agente e te mostro o resumo.`,
+          `Depois das respostas eu monto tudo e você confirma antes de criar.`,
+        ];
+        const introHash = firstMsgContent.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+        const intro = introVariations[introHash % introVariations.length];
+        const closingPhrase = closingVariations[introHash % closingVariations.length];
+
         const closing = connectorMarkers
-          ? `\n\n💡 Já pode ir conectando ${inferConnectors(detectedSpec, firstMsgContent).map((c) => c.provider.replace("_", " ")).join(" e ")} enquanto responde — o agente precisa dessas integrações pra funcionar de verdade:\n\n${connectorMarkers}\n\n**Quando responder, eu monto o plano e te peço confirmação antes de criar.**`
-          : `\n\n**Quando responder, eu monto o plano e te peço confirmação antes de criar.**`;
+          ? `\n\n💡 Já pode ir conectando ${inferConnectors(detectedSpec, firstMsgContent).map((c) => c.provider.replace("_", " ")).join(" e ")} enquanto responde — o agente precisa dessas integrações pra funcionar de verdade:\n\n${connectorMarkers}\n\n**${closingPhrase}**`
+          : `\n\n**${closingPhrase}**`;
 
         content = `${intro}\n\n${questionsBlock}${closing}`;
         console.log(`[wizard-DESCOBERTA-fast] archetype=${detectedSpec.archetype} (sem LLM call)`);
