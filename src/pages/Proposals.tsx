@@ -139,7 +139,7 @@ const Proposals = () => {
                 </p>
               </div>
             </div>
-            <Button size="sm" onClick={() => toast.info("Em breve: editor de propostas")}>
+            <Button size="sm" onClick={() => setEditorOpen(true)}>
               <Plus className="w-4 h-4 mr-1" /> Nova Proposta
             </Button>
           </div>
