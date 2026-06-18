@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Sun, Moon, Sparkles } from "lucide-react";
+import { Check, Sun, Moon, Sparkles, MessageSquare, Wrench, Mic, Volume2, BookOpen } from "lucide-react";
 import { computeWizardProgress } from "@/lib/wizard-progress";
 import { useTheme } from "@/hooks/use-theme";
 import aikortexIcon from "@/assets/aikortex-icon-white.png";
@@ -54,6 +54,20 @@ export default function WizardShowcasePanel({
     }
   }, [phaseId]);
 
+  // Estado "tudo pronto" — quando todas as fases marcaram done, mostramos o
+  // card de resumo (substitui o display de processo). Mais vendedor.
+  const isComplete = !currentPhase && doneCount > 0;
+
+  // Dados pro resumo
+  const integrations = (savedConfig as any)?.integrations ?? [];
+  const tools = Array.isArray(integrations)
+    ? integrations
+    : (integrations && typeof integrations === "object" ? Object.keys(integrations).filter((k) => integrations[k]) : []);
+  const knowledgeFiles = (savedConfig as any)?.knowledgeFiles ?? [];
+  const urls = (savedConfig as any)?.urls ?? [];
+  const kbCount = (Array.isArray(knowledgeFiles) ? knowledgeFiles.length : 0) + (Array.isArray(urls) ? urls.length : 0);
+  const greetingMessage = (savedConfig as any)?.greetingMessage as string | undefined;
+
   return (
     <div className="h-full flex flex-col items-center justify-center bg-gradient-to-br from-background via-card/20 to-background relative overflow-hidden">
       {/* Ambient glow */}
@@ -69,6 +83,91 @@ export default function WizardShowcasePanel({
         {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
       </button>
 
+      {/* Modo "agente pronto" — card de resumo (G4). Substitui o display de processo
+          quando o checklist completa. Mais vendedor que o display anterior. */}
+      {isComplete ? (
+        <div className="relative z-10 flex flex-col items-center max-w-md px-6 w-full">
+          <div className="mb-4 px-3 py-1.5 rounded-full border text-[11px] font-medium tracking-wide bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-400">
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3 h-3" />
+              Tudo pronto pra criar
+            </span>
+          </div>
+
+          <div className="w-full rounded-2xl border border-primary/20 bg-card/60 backdrop-blur-sm p-6 shadow-xl shadow-primary/5 space-y-5">
+            {/* Header — avatar + nome + cargo */}
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/25 to-primary/5 ring-1 ring-primary/30 flex items-center justify-center shrink-0">
+                <img
+                  src={isDark ? aikortexIcon : aikortexIconDark}
+                  alt="Aikortex"
+                  className="w-10 h-10 object-contain"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-bold text-foreground truncate">
+                  {displayName || "Seu agente"}
+                </h2>
+                {agentType && agentType !== "Custom" && (
+                  <p className="text-xs text-muted-foreground mt-0.5">Agente {agentType}</p>
+                )}
+                {ctx.companyName && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{ctx.companyName}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Resumo em linhas */}
+            <div className="space-y-2.5">
+              {tone && (
+                <div className="flex items-start gap-2 text-xs">
+                  <Volume2 className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-muted-foreground">Tom: </span>
+                    <span className="text-foreground font-medium">{tone}</span>
+                  </div>
+                </div>
+              )}
+              {channels.length > 0 && (
+                <div className="flex items-start gap-2 text-xs">
+                  <MessageSquare className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-muted-foreground">Canais: </span>
+                    <span className="text-foreground font-medium">{channels.join(", ")}</span>
+                  </div>
+                </div>
+              )}
+              {tools.length > 0 && (
+                <div className="flex items-start gap-2 text-xs">
+                  <Wrench className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-muted-foreground">Ferramentas: </span>
+                    <span className="text-foreground font-medium">{tools.length} {tools.length === 1 ? "integração" : "integrações"}</span>
+                  </div>
+                </div>
+              )}
+              {kbCount > 0 && (
+                <div className="flex items-start gap-2 text-xs">
+                  <BookOpen className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-muted-foreground">Conhecimento: </span>
+                    <span className="text-foreground font-medium">{kbCount} {kbCount === 1 ? "fonte" : "fontes"}</span>
+                  </div>
+                </div>
+              )}
+              {greetingMessage && (
+                <div className="text-xs italic text-muted-foreground border-t border-border/40 pt-3 mt-3 line-clamp-2">
+                  "{greetingMessage}"
+                </div>
+              )}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground mt-5 text-center max-w-xs">
+            Digite "criar" no chat pra finalizar, ou peça ajustes que ainda quiser fazer.
+          </p>
+        </div>
+      ) : (
       <div className="relative z-10 flex flex-col items-center max-w-sm px-6 w-full">
         {/* Fase atual (§13.2) — pulse na transição */}
         <div className={`mb-5 px-3 py-1.5 rounded-full border text-[11px] font-medium tracking-wide transition-all duration-500 ${
@@ -193,6 +292,7 @@ export default function WizardShowcasePanel({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
