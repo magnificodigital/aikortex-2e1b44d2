@@ -239,7 +239,7 @@ const AdminLLMsTab = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Catálogo de LLMs</h2>
+          <h2 className="text-lg font-semibold">Conectores de LLMs</h2>
           <p className="text-sm text-muted-foreground">
             Fonte única de verdade para modelos OpenRouter consumidos por todas edge functions.
           </p>

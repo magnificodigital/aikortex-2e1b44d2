@@ -161,7 +161,7 @@ const RIGHT_NAV: NavGroup[] = [
   ]},
   { group: "Integrações", items: [
     { key: "integrations.llms",      label: "LLMs",                 icon: Sparkles },
-    { key: "integrations.apis",      label: "Catálogo",             icon: Plug },
+    { key: "integrations.apis",      label: "Conectores",           icon: Plug },
   ]},
   { group: "Automações", items: [
     { key: "behavior.cadences",      label: "Cadências",            icon: Clock,           masterRef: "13.5.13" },
