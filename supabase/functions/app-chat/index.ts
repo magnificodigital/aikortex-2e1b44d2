@@ -99,7 +99,25 @@ Objetivo: ${objective}
 Tom: ${tone}
 Instruções: ${instructions}
 Responda em português do Brasil.`;
-  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities) + buildCurrentDateBlock() + buildRealActionsBlock(connectorStatus);
+  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities) + buildCurrentDateBlock() + buildRealActionsBlock(connectorStatus) + buildGuardrailsBlock((agentConfig as any)?.guardrails);
+}
+
+// Guardrails — limites NEGATIVOS configurados pela agência. Vai no fim do
+// prompt como bloco de "o que VOCÊ NUNCA faz". Sem guardrails, não emite
+// bloco nenhum (comportamento atual idêntico).
+function buildGuardrailsBlock(guardrails: unknown): string {
+  if (!Array.isArray(guardrails) || guardrails.length === 0) return "";
+  const lines = guardrails
+    .filter((g): g is string => typeof g === "string" && g.trim().length > 0)
+    .map((g) => `- ${g.trim()}`)
+    .join("\n");
+  if (!lines) return "";
+  return `
+
+[LIMITES — VOCÊ NUNCA FAZ:]
+${lines}
+
+Quando o cliente pedir algo na lista acima, responda educadamente que vai passar pra equipe humana e NÃO tente resolver sozinho.`;
 }
 
 /** Bloco anti-alucinação — força o agente a USAR as tools reais em vez de

@@ -164,6 +164,9 @@ const RIGHT_NAV: NavGroup[] = [
   { group: "Conectores", items: [
     { key: "integrations.apis",      label: "Catálogo",             icon: Plug },
   ]},
+  { group: "Comportamento", items: [
+    { key: "behavior.guardrails",    label: "Limites",              icon: ShieldAlert },
+  ]},
   { group: "Automações", items: [
     { key: "behavior.cadences",      label: "Cadências",            icon: Clock,           masterRef: "13.5.13" },
     { key: "ops.executions",         label: "Execuções",            icon: Activity },
@@ -459,6 +462,12 @@ const AgentRightPanel = ({
   const [agentInstructions,   setAgentInstructions]   = useState(() => resolveInitial("instructions",   savedConfig?.instructions,   presetData?.instructions) || DEFAULT_INSTRUCTIONS_TEMPLATE);
   const [agentToneOfVoice,    setAgentToneOfVoice]    = useState(() => resolveInitial("toneOfVoice",    savedConfig?.toneOfVoice,    presetData?.toneOfVoice) || "Profissional e Amigável");
   const [agentGreetingMessage,setAgentGreetingMessage]= useState(() => resolveInitial("greetingMessage",savedConfig?.greetingMessage,presetData?.greetingMessage));
+  // Guardrails — frame negativo "o que o agente NUNCA pode fazer".
+  // Lista de strings: preset opcional + custom.
+  const [agentGuardrails, setAgentGuardrails] = useState<string[]>(
+    () => (savedConfig?.guardrails as string[]) ?? []
+  );
+  const [agentCustomGuardrail, setAgentCustomGuardrail] = useState("");
 
   // Master v7.4 §13.16 (Modo Vibe Acting): quando wizard chama tools que
   // mutam o draft, savedConfig é atualizado via polling. Sincroniza state
@@ -607,10 +616,11 @@ const AgentRightPanel = ({
       knowledgeFiles: knowledgeFiles.map(f => f.name), urls, apiConfig,
       voiceConfig,
       capabilities,
+      guardrails: agentGuardrails,
     };
     onConfigChangeRef.current?.(config);
   }, [agentName, agentDesc, agentObjective, agentInstructions, agentToneOfVoice, agentGreetingMessage,
-      avatarPreview, connectedChannels, savedIntegrations, integrationConfigs, knowledgeFiles, urls, apiConfig, voiceConfig, capabilities, agent.avatar]);
+      avatarPreview, connectedChannels, savedIntegrations, integrationConfigs, knowledgeFiles, urls, apiConfig, voiceConfig, capabilities, agentGuardrails, agent.avatar]);
 
   // ── Helpers ──
   const handleFiles = (files: FileList) => {
@@ -1270,6 +1280,122 @@ const AgentRightPanel = ({
 
             {activeSection === "resources.tables" && (
               <ClientTablesSection agentId={agentId} isFreshNew={!agentId} />
+            )}
+
+            {activeSection === "behavior.guardrails" && (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Limites do agente</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    O que o agente <strong>nunca</strong> pode fazer. Marque as opções que se aplicam — elas viram instruções claras
+                    no prompt e protegem você de surpresas (preços inventados, promessas de prazo, decisão jurídica, etc).
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {[
+                    { key: "preco_desconto",        label: "Falar de preços ou conceder descontos",       hint: "Qualquer dúvida de valor → passa pra humano" },
+                    { key: "prazo_entrega",         label: "Prometer prazos de entrega ou de contrato",   hint: "Só repassa o que está nos sistemas, nunca inventa" },
+                    { key: "juridico_contratual",   label: "Responder questões jurídicas ou contratuais", hint: "Encaminha direto pra equipe responsável" },
+                    { key: "reclamacao_seria",      label: "Lidar com reclamação séria",                   hint: "Cliente bravo → handoff humano imediato" },
+                    { key: "fechar_negocio",        label: "Fechar negócio ou contrato sem aprovação",    hint: "Proposta/assinatura sempre passa por humano" },
+                    { key: "dados_pessoais",        label: "Pedir ou divulgar dados pessoais sensíveis",  hint: "CPF, senhas, cartão — só humano autorizado" },
+                  ].map((g) => {
+                    const checked = agentGuardrails.includes(g.label);
+                    return (
+                      <label
+                        key={g.key}
+                        className="flex items-start gap-3 p-3 rounded-lg border border-border hover:border-primary/30 cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAgentGuardrails((prev) => Array.from(new Set([...prev, g.label])));
+                            } else {
+                              setAgentGuardrails((prev) => prev.filter((x) => x !== g.label));
+                            }
+                          }}
+                          className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">{g.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{g.hint}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Custom guardrails */}
+                <div className="space-y-2 pt-2">
+                  <h3 className="text-sm font-semibold text-foreground">Outras regras (livre)</h3>
+                  <div className="flex gap-2">
+                    <Input
+                      value={agentCustomGuardrail}
+                      onChange={(e) => setAgentCustomGuardrail(e.target.value)}
+                      placeholder='Ex: "Nunca falar de concorrentes"'
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && agentCustomGuardrail.trim()) {
+                          e.preventDefault();
+                          setAgentGuardrails((prev) => Array.from(new Set([...prev, agentCustomGuardrail.trim()])));
+                          setAgentCustomGuardrail("");
+                        }
+                      }}
+                      className="text-sm"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (agentCustomGuardrail.trim()) {
+                          setAgentGuardrails((prev) => Array.from(new Set([...prev, agentCustomGuardrail.trim()])));
+                          setAgentCustomGuardrail("");
+                        }
+                      }}
+                    >
+                      Adicionar
+                    </Button>
+                  </div>
+                  {agentGuardrails.filter((g) =>
+                    !["Falar de preços ou conceder descontos", "Prometer prazos de entrega ou de contrato",
+                      "Responder questões jurídicas ou contratuais", "Lidar com reclamação séria",
+                      "Fechar negócio ou contrato sem aprovação", "Pedir ou divulgar dados pessoais sensíveis"].includes(g)
+                  ).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {agentGuardrails
+                        .filter((g) =>
+                          !["Falar de preços ou conceder descontos", "Prometer prazos de entrega ou de contrato",
+                            "Responder questões jurídicas ou contratuais", "Lidar com reclamação séria",
+                            "Fechar negócio ou contrato sem aprovação", "Pedir ou divulgar dados pessoais sensíveis"].includes(g)
+                        )
+                        .map((g) => (
+                          <span
+                            key={g}
+                            className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-md"
+                          >
+                            {g}
+                            <button
+                              type="button"
+                              onClick={() => setAgentGuardrails((prev) => prev.filter((x) => x !== g))}
+                              className="text-muted-foreground hover:text-destructive ml-1"
+                              aria-label="Remover"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground italic">
+                  Os limites entram como instruções <strong>negativas</strong> no prompt do agente. Em cada conversa,
+                  ele lê esses limites antes de responder. Mudou de ideia? Desmarca aqui e salva.
+                </p>
+              </div>
             )}
 
             {activeSection === "behavior.cadences" && (
