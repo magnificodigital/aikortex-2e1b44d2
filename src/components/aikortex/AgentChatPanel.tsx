@@ -206,6 +206,7 @@ const AgentChatPanel = ({
   const [editingConfig, setEditingConfig] = useState(false);
   const [wizardMessages, setWizardMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>(() => initialWizardMessages || []);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const initialPromptUsedRef = useRef(false);
   const handleDiscoverRef = useRef<(text: string) => Promise<void>>(async () => {});
 
@@ -350,11 +351,38 @@ const AgentChatPanel = ({
     }
   }, [isRecording, stopRecording, wizardStep, sendMessage]);
 
+  // Scroll automático — dispara sempre que:
+  // - array de mensagens muda (nova msg)
+  // - conteúdo da ÚLTIMA mensagem muda (streaming chunk-by-chunk)
+  // - estado de loading muda
+  const lastMessageContent = messages[messages.length - 1]?.text ?? "";
+  const lastWizardContent = wizardMessages[wizardMessages.length - 1]?.content ?? "";
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // requestAnimationFrame garante que rola depois do paint
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
     }
-  }, [messages, wizardMessages, isStructuring, isBuilding]);
+  }, [messages.length, wizardMessages.length, lastMessageContent, lastWizardContent, isStructuring, isBuilding, isStreaming, wizardIsStreaming]);
+
+  // Auto-focus do input quando o user pode digitar (não streaming, não loading)
+  const canType =
+    !isStructuring && !isBuilding &&
+    !(wizardStep === "done" && isStreaming) &&
+    !(wizardStep === "discover" && wizardIsStreaming) &&
+    (wizardStep === "done" || wizardStep === "discover");
+
+  useEffect(() => {
+    // Foca quando passa pra "pode digitar" (após streaming/loading terminar)
+    if (canType && inputRef.current) {
+      // Pequeno delay garante que o textarea está renderizado e clicável
+      const t = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 50);
+      return () => clearTimeout(t);
+    }
+  }, [canType, messages.length, wizardMessages.length]);
 
   const selectedModelInfo = availableModels.find(m => m.value === agentModel);
   const isSelectedModelFree = selectedModelInfo?.badge === "free";
@@ -1006,6 +1034,8 @@ const AgentChatPanel = ({
           (wizardStep === "done" || wizardStep === "discover") ? "focus-within:border-primary/30" : "opacity-60"
         }`}>
           <textarea
+            ref={inputRef}
+            autoFocus
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
