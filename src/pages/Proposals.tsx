@@ -18,6 +18,7 @@ import {
   CheckCircle2, Clock, XCircle, FilePlus,
 } from "lucide-react";
 import { toast } from "sonner";
+import ProposalEditorDialog, { type ProposalDraft } from "@/components/proposals/ProposalEditorDialog";
 
 type ProposalStatus = "draft" | "sent" | "viewed" | "approved" | "rejected" | "expired";
 
