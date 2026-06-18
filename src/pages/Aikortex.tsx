@@ -43,7 +43,7 @@ const Aikortex = () => {
   const { agents, loading, deleteAgent } = useUserAgents({ clientId: activeClientId, isAgencyMode });
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const tab = searchParams.get("tab") === "templates" ? "templates" : "mine";
+  const tab = (searchParams.get("tab") === "templates" && isAgencyMode) ? "templates" : "mine";
   const nicheSlug = searchParams.get("nicho");
   const search = searchParams.get("busca") ?? "";
 
@@ -103,9 +103,11 @@ const Aikortex = () => {
               {contextLabel} <span className="text-muted-foreground/60">›</span> Agentes
             </p>
           </div>
-          <Button onClick={handleNewCustom} className="gap-2 rounded-full">
-            <Plus className="w-4 h-4" /> Novo Agente
-          </Button>
+          {isAgencyMode && (
+            <Button onClick={handleNewCustom} className="gap-2 rounded-full">
+              <Plus className="w-4 h-4" /> Novo Agente
+            </Button>
+          )}
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
@@ -115,20 +117,22 @@ const Aikortex = () => {
               className="relative z-10 rounded-full px-5 h-9 text-sm font-medium text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_24px_-6px_hsl(var(--primary)/0.6)] transition-all"
             >
               <span className="inline-flex items-center gap-2">
-                Meus Agentes
+                {isAgencyMode ? "Meus Agentes" : "Agentes contratados"}
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-foreground/10 data-[state=active]:bg-primary-foreground/15">
                   {agents.length}
                 </span>
               </span>
             </TabsTrigger>
-            <TabsTrigger
-              value="templates"
-              className="relative z-10 rounded-full px-5 h-9 text-sm font-medium text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_24px_-6px_hsl(var(--primary)/0.6)] transition-all"
-            >
-              <span className="inline-flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5" /> Templates
-              </span>
-            </TabsTrigger>
+            {isAgencyMode && (
+              <TabsTrigger
+                value="templates"
+                className="relative z-10 rounded-full px-5 h-9 text-sm font-medium text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_0_24px_-6px_hsl(var(--primary)/0.6)] transition-all"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5" /> Templates
+                </span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="mine" className="mt-6">
@@ -138,14 +142,20 @@ const Aikortex = () => {
                   <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
                     <LayoutGrid className="w-5 h-5 text-muted-foreground" />
                   </div>
-                  <p className="text-sm font-medium">
-                    {isAgencyMode
-                      ? "Sua agência ainda não tem agentes. Crie a partir de um template."
-                      : `${activeClientName} ainda não tem agentes. Crie a partir de um template.`}
-                  </p>
-                  <Button size="sm" onClick={() => setTab("templates")}>
-                    Ver templates
-                  </Button>
+                  {isAgencyMode ? (
+                    <>
+                      <p className="text-sm font-medium">
+                        Sua agência ainda não tem agentes. Crie a partir de um template.
+                      </p>
+                      <Button size="sm" onClick={() => setTab("templates")}>
+                        Ver templates
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {activeClientName} ainda não tem agentes contratados.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             )}
