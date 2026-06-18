@@ -13,6 +13,7 @@ import NewContractDialog from "@/components/contracts/NewContractDialog";
 import EditContractDialog from "@/components/contracts/EditContractDialog";
 import SignatureDialog from "@/components/contracts/SignatureDialog";
 import { supabase } from "@/integrations/supabase/client";
+import ClientsAreaTabs from "@/components/clients/ClientsAreaTabs";
 
 const Contracts = () => {
   const [search, setSearch] = useState("");
