@@ -44,6 +44,33 @@ import linkedinLogo from "@/assets/connectors/linkedin.svg";
 import zoomLogo from "@/assets/connectors/zoom.svg";
 
 
+// Tags semânticas pra categorizar integrações no marketplace. Permite filtros
+// rápidos sem migration de banco — vive no objeto de constante.
+export type IntegrationTag =
+  | "llm"
+  | "calendario"
+  | "produtividade"
+  | "comunicacao"
+  | "crm"
+  | "vendas"
+  | "dev"
+  | "arquivos"
+  | "reunioes"
+  | "marketing";
+
+export const TAG_LABELS: Record<IntegrationTag, string> = {
+  llm: "IA / LLM",
+  calendario: "Calendário",
+  produtividade: "Produtividade",
+  comunicacao: "Comunicação",
+  crm: "CRM",
+  vendas: "Vendas",
+  dev: "Dev / Code",
+  arquivos: "Arquivos",
+  reunioes: "Reuniões",
+  marketing: "Marketing",
+};
+
 export interface IntegrationProvider {
   label: string;
   provider: string;
@@ -52,6 +79,7 @@ export interface IntegrationProvider {
   native?: boolean;
   apiKeyUrl?: string;
   apiKeyUrlLabel?: string;
+  tags?: IntegrationTag[];
 }
 
 export const LLM_PROVIDERS: IntegrationProvider[] = [
@@ -61,6 +89,7 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     description: "IA nativa da plataforma para criação e estruturação de agentes e apps",
     logo: "",
     native: true,
+    tags: ["llm"],
   },
   {
     label: "OpenAI",
@@ -69,6 +98,7 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     logo: new URL("@/assets/openai-icon.png", import.meta.url).href,
     apiKeyUrl: "https://platform.openai.com/api-keys",
     apiKeyUrlLabel: "platform.openai.com",
+    tags: ["llm"],
   },
   {
     label: "Anthropic",
@@ -77,6 +107,7 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     logo: "https://cdn.simpleicons.org/anthropic/_/D97757",
     apiKeyUrl: "https://console.anthropic.com/settings/keys",
     apiKeyUrlLabel: "console.anthropic.com",
+    tags: ["llm"],
   },
   {
     label: "Google Gemini",
@@ -85,6 +116,7 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     logo: "https://cdn.simpleicons.org/googlegemini/4796E3",
     apiKeyUrl: "https://aistudio.google.com/apikey",
     apiKeyUrlLabel: "aistudio.google.com",
+    tags: ["llm"],
   },
   {
     label: "DeepSeek",
@@ -93,6 +125,7 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     logo: "https://cdn.simpleicons.org/deepseek/4D6BFE",
     apiKeyUrl: "https://platform.deepseek.com/api_keys",
     apiKeyUrlLabel: "platform.deepseek.com",
+    tags: ["llm"],
   },
 ];
 
@@ -100,24 +133,24 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
 // silhueta na cor da marca via simpleicons como fallback pros poucos que
 // não estão no iconify logos collection).
 export const SERVICE_PROVIDERS: IntegrationProvider[] = [
-  { label: "Gmail", provider: "gmail", description: "Ler, enviar e compor e-mails.", logo: gmailLogo },
-  { label: "Google Calendar", provider: "google_calendar", description: "Ler e gerenciar eventos.", logo: googleCalendarLogo },
-  { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets/34A853" },
-  { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: googleDriveLogo },
-  { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: outlookCalendarIcon },
-  { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly/006BFF" },
-  { label: "HubSpot", provider: "hubspot", description: "CRM, contatos, deals e pipelines.", logo: hubspotLogo },
-  { label: "Notion", provider: "notion", description: "Páginas, databases e blocos.", logo: notionLogo },
-  { label: "Slack", provider: "slack", description: "Mensagens e canais de equipe.", logo: slackLogo },
-  { label: "Airtable", provider: "airtable", description: "Bases, tabelas e registros.", logo: airtableLogo },
-  { label: "Asana", provider: "asana", description: "Tarefas e projetos.", logo: asanaLogo },
-  { label: "Trello", provider: "trello", description: "Boards e cards.", logo: trelloLogo },
-  { label: "ClickUp", provider: "clickup", description: "Gestão de tarefas e docs.", logo: "https://cdn.simpleicons.org/clickup/7B68EE" },
-  { label: "Discord", provider: "discord", description: "Mensagens em servidores e canais.", logo: discordLogo },
-  { label: "Dropbox", provider: "dropbox", description: "Arquivos e pastas na nuvem.", logo: dropboxLogo },
-  { label: "GitHub", provider: "github", description: "Repos, issues e PRs.", logo: githubLogo },
-  { label: "LinkedIn", provider: "linkedin", description: "Posts e mensagens profissionais.", logo: linkedinLogo },
-  { label: "Zoom", provider: "zoom", description: "Reuniões e gravações.", logo: zoomLogo },
+  { label: "Gmail", provider: "gmail", description: "Ler, enviar e compor e-mails.", logo: gmailLogo, tags: ["comunicacao", "produtividade"] },
+  { label: "Google Calendar", provider: "google_calendar", description: "Ler e gerenciar eventos.", logo: googleCalendarLogo, tags: ["calendario", "produtividade"] },
+  { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets/34A853", tags: ["produtividade", "arquivos"] },
+  { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: googleDriveLogo, tags: ["arquivos", "produtividade"] },
+  { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: outlookCalendarIcon, tags: ["calendario", "produtividade"] },
+  { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly/006BFF", tags: ["calendario", "reunioes"] },
+  { label: "HubSpot", provider: "hubspot", description: "CRM, contatos, deals e pipelines.", logo: hubspotLogo, tags: ["crm", "vendas", "marketing"] },
+  { label: "Notion", provider: "notion", description: "Páginas, databases e blocos.", logo: notionLogo, tags: ["produtividade", "arquivos"] },
+  { label: "Slack", provider: "slack", description: "Mensagens e canais de equipe.", logo: slackLogo, tags: ["comunicacao"] },
+  { label: "Airtable", provider: "airtable", description: "Bases, tabelas e registros.", logo: airtableLogo, tags: ["produtividade", "arquivos"] },
+  { label: "Asana", provider: "asana", description: "Tarefas e projetos.", logo: asanaLogo, tags: ["produtividade"] },
+  { label: "Trello", provider: "trello", description: "Boards e cards.", logo: trelloLogo, tags: ["produtividade"] },
+  { label: "ClickUp", provider: "clickup", description: "Gestão de tarefas e docs.", logo: "https://cdn.simpleicons.org/clickup/7B68EE", tags: ["produtividade"] },
+  { label: "Discord", provider: "discord", description: "Mensagens em servidores e canais.", logo: discordLogo, tags: ["comunicacao"] },
+  { label: "Dropbox", provider: "dropbox", description: "Arquivos e pastas na nuvem.", logo: dropboxLogo, tags: ["arquivos"] },
+  { label: "GitHub", provider: "github", description: "Repos, issues e PRs.", logo: githubLogo, tags: ["dev"] },
+  { label: "LinkedIn", provider: "linkedin", description: "Posts e mensagens profissionais.", logo: linkedinLogo, tags: ["comunicacao", "marketing"] },
+  { label: "Zoom", provider: "zoom", description: "Reuniões e gravações.", logo: zoomLogo, tags: ["reunioes", "comunicacao"] },
 ];
 
 export const ALL_PROVIDERS = [...LLM_PROVIDERS, ...SERVICE_PROVIDERS];
@@ -323,6 +356,18 @@ export function IntegrationsGrid({
   let displayProviders = providers || ALL_PROVIDERS;
   if (filterProviders) {
     displayProviders = displayProviders.filter(p => filterProviders.includes(p.provider));
+  }
+
+  // Tags disponíveis na coleção atual (calculadas dinamicamente — só mostra
+  // chip de tag que tem ao menos 1 integração).
+  const availableTags = Array.from(
+    new Set(displayProviders.flatMap((p) => p.tags ?? []))
+  ) as IntegrationTag[];
+
+  const [activeTag, setActiveTag] = useState<IntegrationTag | "all">("all");
+
+  if (activeTag !== "all") {
+    displayProviders = displayProviders.filter((p) => (p.tags ?? []).includes(activeTag));
   }
 
   const connectedCount = displayProviders.filter(p => p.native || connectorKeys[p.provider]?.configured).length;
@@ -540,6 +585,41 @@ export function IntegrationsGrid({
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           </>
         )}
+        {availableTags.length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setActiveTag("all")}
+              className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                activeTag === "all"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+              }`}
+            >
+              Todas
+            </button>
+            {availableTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => setActiveTag(tag)}
+                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                  activeTag === tag
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-transparent border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                }`}
+              >
+                {TAG_LABELS[tag]}
+              </button>
+            ))}
+          </div>
+        )}
+        {displayProviders.length === 0 && (
+          <div className="py-10 text-center text-xs text-muted-foreground">
+            Nenhuma integração nessa categoria ainda.{" "}
+            <button onClick={() => setActiveTag("all")} className="text-primary hover:underline">
+              Ver todas
+            </button>
+          </div>
+        )}
         <div className={resolvedGridClass}>
           {displayProviders.map((p) => {
             const connected = isConnected(p);
@@ -609,6 +689,11 @@ export function IntegrationsGrid({
                   <p className="text-xs font-medium text-foreground line-clamp-2 leading-tight">
                     {p.label}
                   </p>
+                  {p.tags && p.tags.length > 0 && (
+                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70">
+                      {TAG_LABELS[p.tags[0]]}
+                    </span>
+                  )}
                 </button>
               );
             }
