@@ -55,6 +55,7 @@ type NavItem = {
   label: string;
   icon: typeof Zap;
   path: string;
+  moduleKey?: string;  // override do gating quando path não bate com o module
   children?: NavItem[];
 };
 
@@ -65,7 +66,8 @@ type AppSidebarProps = {
 
 const gestaoItems: NavItem[] = [
   { label: "Clientes", icon: Users, path: "/clients", children: [{ label: "Contratos", icon: FileText, path: "/contracts" }] },
-  { label: "Vendas", icon: ShoppingCart, path: "/sales", children: [{ label: "CRM", icon: Contact, path: "/aikortex/crm" }, { label: "Reuniões", icon: Video, path: "/meetings" }] },
+  { label: "Vendas", icon: ShoppingCart, path: "/aikortex/crm", moduleKey: "gestao.vendas" },
+  { label: "Reuniões", icon: Video, path: "/meetings", moduleKey: "gestao.reunioes" },
   { label: "Financeiro", icon: DollarSign, path: "/financeiro", children: [{ label: "Gestão Fin.", icon: DollarSign, path: "/financial" }] },
   { label: "Equipe", icon: UserCheck, path: "/team" },
   { label: "Tarefas", icon: CheckSquare, path: "/tasks" },
@@ -180,7 +182,7 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
     if (isAgencyMode) return items;
     const enabled = clientEnabledModules ?? [];
     return items.filter((i) => {
-      const key = ITEM_MODULE_KEY[i.path.split("?")[0]];
+      const key = i.moduleKey ?? ITEM_MODULE_KEY[i.path.split("?")[0]];
       return key ? enabled.includes(key) : false;
     });
   };

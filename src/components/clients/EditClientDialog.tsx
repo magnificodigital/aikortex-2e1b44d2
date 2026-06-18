@@ -27,7 +27,8 @@ const WORKSPACE_MODULES: { key: string; group: "Aikortex" | "Gestão"; label: st
   { key: "aikortex.mensagens", group: "Aikortex", label: "Mensagens",  description: "Conversas dos agentes" },
   // Gestão
   { key: "gestao.clientes",    group: "Gestão",   label: "Clientes",   description: "Cadastro de clientes" },
-  { key: "gestao.vendas",      group: "Gestão",   label: "Vendas",     description: "Pipeline de vendas" },
+  { key: "gestao.vendas",      group: "Gestão",   label: "Vendas",     description: "Pipeline de vendas (CRM)" },
+  { key: "gestao.reunioes",    group: "Gestão",   label: "Reuniões",   description: "Agenda de reuniões" },
   { key: "gestao.financeiro",  group: "Gestão",   label: "Financeiro", description: "Receitas e despesas" },
   { key: "gestao.equipe",      group: "Gestão",   label: "Equipe",     description: "Membros e papéis" },
   { key: "gestao.tarefas",     group: "Gestão",   label: "Tarefas",    description: "Quadro de tarefas" },
