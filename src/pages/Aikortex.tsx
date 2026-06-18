@@ -25,7 +25,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import type { TemplateRow } from "@/types/templates";
 import avatar1 from "@/assets/avatars/avatar-1.png";
-import AgentAvatar from "@/components/aikortex/AgentAvatar";
 
 
 const PROVIDER_BADGE: Record<string, { label: string; className: string }> = {
@@ -171,12 +170,10 @@ const Aikortex = () => {
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <AgentAvatar
-                          name={agent.name}
-                          emoji={agent.persona_emoji}
-                          avatarUrl={agent.avatar_url}
-                          fallbackAvatar={avatar1}
-                          size="sm"
+                        <img
+                          src={getAvatarSrc(agent)}
+                          alt={agent.name}
+                          className="w-8 h-8 rounded-full object-cover"
                         />
                         <div>
                           <p className="text-sm font-bold text-foreground">{agent.name}</p>

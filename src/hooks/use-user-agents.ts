@@ -11,7 +11,6 @@ export interface UserAgent {
   name: string;
   description: string;
   avatar_url: string;
-  persona_emoji?: string | null;
   model: string;
   provider: string;
   status: string;
@@ -77,10 +76,6 @@ export function useUserAgents(opts?: { clientId?: string | null; isAgencyMode?: 
       config: agent.config || {},
       ...voiceColumns,
     };
-    // Persona emoji: vem em agent.persona_emoji direto OU em config.personaEmoji
-    // (vem do AgentRightPanel via onConfigChange).
-    const emoji = agent.persona_emoji ?? (agent.config as any)?.personaEmoji ?? null;
-    if (emoji !== undefined) payload.persona_emoji = emoji || null;
     if (agent.client_id !== undefined) payload.client_id = agent.client_id;
 
     if (agent.id) {

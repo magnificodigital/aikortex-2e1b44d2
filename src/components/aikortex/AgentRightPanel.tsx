@@ -459,7 +459,6 @@ const AgentRightPanel = ({
   const [agentInstructions,   setAgentInstructions]   = useState(() => resolveInitial("instructions",   savedConfig?.instructions,   presetData?.instructions) || DEFAULT_INSTRUCTIONS_TEMPLATE);
   const [agentToneOfVoice,    setAgentToneOfVoice]    = useState(() => resolveInitial("toneOfVoice",    savedConfig?.toneOfVoice,    presetData?.toneOfVoice) || "Profissional e Amigável");
   const [agentGreetingMessage,setAgentGreetingMessage]= useState(() => resolveInitial("greetingMessage",savedConfig?.greetingMessage,presetData?.greetingMessage));
-  const [agentPersonaEmoji,   setAgentPersonaEmoji]   = useState<string>(() => (agent as any)?.persona_emoji || savedConfig?.personaEmoji || "");
 
   // Master v7.4 §13.16 (Modo Vibe Acting): quando wizard chama tools que
   // mutam o draft, savedConfig é atualizado via polling. Sincroniza state
@@ -602,7 +601,6 @@ const AgentRightPanel = ({
       instructions: agentInstructions, toneOfVoice: agentToneOfVoice,
       greetingMessage: agentGreetingMessage,
       avatarUrl: avatarPreview || agent.avatar || "",
-      personaEmoji: agentPersonaEmoji || undefined,
       channels: connectedChannels,
       integrations: savedIntegrations,
       integrationConfigs,
@@ -612,7 +610,7 @@ const AgentRightPanel = ({
     };
     onConfigChangeRef.current?.(config);
   }, [agentName, agentDesc, agentObjective, agentInstructions, agentToneOfVoice, agentGreetingMessage,
-      avatarPreview, agentPersonaEmoji, connectedChannels, savedIntegrations, integrationConfigs, knowledgeFiles, urls, apiConfig, voiceConfig, capabilities, agent.avatar]);
+      avatarPreview, connectedChannels, savedIntegrations, integrationConfigs, knowledgeFiles, urls, apiConfig, voiceConfig, capabilities, agent.avatar]);
 
   // ── Helpers ──
   const handleFiles = (files: FileList) => {
@@ -1147,23 +1145,7 @@ const AgentRightPanel = ({
                     </div>
                     <div className="space-y-2">
                       <h3 className="text-sm font-semibold text-foreground">Nome do agente</h3>
-                      <div className="flex items-stretch gap-2">
-                        <Input
-                          value={agentPersonaEmoji}
-                          onChange={(e) => {
-                            // Pega só o primeiro emoji/caractere (sem strings longas)
-                            const v = e.target.value.trim();
-                            const first = Array.from(v)[0] || "";
-                            setAgentPersonaEmoji(first);
-                          }}
-                          placeholder="🌹"
-                          maxLength={4}
-                          className="text-base text-center w-14 shrink-0"
-                          title="Emoji da persona (ex: 🌹 Helena)"
-                        />
-                        <Input value={agentName} onChange={(e) => setAgentName(e.target.value)} className="text-sm flex-1" />
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">Emoji opcional — humaniza o card do agente nas listas.</p>
+                      <Input value={agentName} onChange={(e) => setAgentName(e.target.value)} className="text-sm" />
                     </div>
                     <div className="space-y-2">
                       <h3 className="text-sm font-semibold text-foreground">Cargo / Função</h3>
