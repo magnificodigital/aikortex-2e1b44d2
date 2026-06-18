@@ -7,6 +7,7 @@ import ClientSnapshot from "@/components/dashboard/ClientSnapshot";
 import AutomationStatus from "@/components/dashboard/AutomationStatus";
 import PerformanceWidgets from "@/components/dashboard/PerformanceWidgets";
 import AgencyOverview from "@/components/dashboard/AgencyOverview";
+import FinancialPanel from "@/components/dashboard/FinancialPanel";
 
 const Index = () => {
   return (
@@ -25,6 +26,9 @@ const Index = () => {
 
         {/* Agency Overview */}
         <AgencyOverview />
+
+        {/* Financeiro (receita/tier/MRR/templates) — antes vivia em /financeiro */}
+        <FinancialPanel />
 
         {/* 1. Business Overview */}
         <BusinessOverview />
