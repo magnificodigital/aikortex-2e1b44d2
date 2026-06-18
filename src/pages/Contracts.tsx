@@ -43,12 +43,12 @@ const Contracts = () => {
               <FileText className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Propostas e Contratos</h1>
-              <p className="text-sm text-muted-foreground">Gere propostas e contratos e envie para assinatura digital</p>
+              <h1 className="text-2xl font-bold text-foreground">Contratos</h1>
+              <p className="text-sm text-muted-foreground">Envie contratos para assinatura digital após a aprovação da proposta</p>
             </div>
           </div>
           <Button size="sm" onClick={() => setShowNew(true)}>
-            <Plus className="w-4 h-4 mr-1" /> Nova Proposta/Contrato
+            <Plus className="w-4 h-4 mr-1" /> Novo Contrato
           </Button>
         </div>
 
