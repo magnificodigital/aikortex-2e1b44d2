@@ -20,6 +20,7 @@ const Tasks = lazy(() => import("./pages/Tasks"));
 const Team = lazy(() => import("./pages/Team"));
 const Financial = lazy(() => import("./pages/Financial"));
 const Contracts = lazy(() => import("./pages/Contracts"));
+const Proposals = lazy(() => import("./pages/Proposals"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Partners = lazy(() => import("./pages/Partners"));
 const Sales = lazy(() => import("./pages/Sales"));
