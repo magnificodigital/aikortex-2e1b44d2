@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { GitBranch, RotateCcw, Eye, Pencil, Check, Zap } from "lucide-react";
 import { useAgentVersions, useAgentPublishState, useRestoreAgentVersion, useUpdateVersionLabel, type AgentVersion } from "@/hooks/use-agent-versions";
 import AgentDiffView from "./AgentDiffView";
+import RichEmptyState from "@/components/shared/RichEmptyState";
 import { Input } from "@/components/ui/input";
 import { computeAgentDiff } from "@/lib/agent-diff";
 
@@ -73,7 +74,12 @@ export default function AgentVersionsSection({ agentId }: { agentId?: string }) 
 
       {/* Lista de versões */}
       {versions.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Nenhuma versão publicada ainda. Use o botão "Publicar" no topo.</p>
+        <RichEmptyState
+          icon={GitBranch}
+          title="Nenhuma versão publicada"
+          description="Cada vez que você publicar o agente, criamos uma versão. Dá pra comparar mudanças e voltar pra qualquer momento sem perder nada."
+          variant="card"
+        />
       ) : (
         <div className="space-y-2">
           {versions.map((v) => {

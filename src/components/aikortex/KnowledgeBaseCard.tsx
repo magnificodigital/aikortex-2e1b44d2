@@ -6,6 +6,7 @@ import { Settings, Loader2, Database, FileText, Globe, Type, HelpCircle } from "
 import { useKnowledgeDocuments, useUpdateKb, type AgentKnowledgeBase } from "@/hooks/use-agent-knowledge-bases";
 import DocumentListItem from "./DocumentListItem";
 import AddDocumentDialog from "./AddDocumentDialog";
+import RichEmptyState from "@/components/shared/RichEmptyState";
 import KbSettingsDialog from "./KbSettingsDialog";
 
 interface Props {
@@ -77,9 +78,12 @@ export default function KnowledgeBaseCard({ kb, agentId }: Props) {
           </div>
         )}
         {!isLoading && docs.length === 0 && (
-          <div className="text-center py-6 text-xs text-muted-foreground">
-            Nenhum documento ainda. Adicione o primeiro abaixo.
-          </div>
+          <RichEmptyState
+            icon={FileText}
+            title="Sem documentos ainda"
+            description="Adicione PDFs, links, FAQ ou texto livre. O agente vai consultar essa base pra responder perguntas com precisão (RAG)."
+            variant="inline"
+          />
         )}
         {!isLoading && docs.length > 0 && (
           <div className="space-y-2">

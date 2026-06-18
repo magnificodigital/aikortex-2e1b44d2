@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Clock, Plus, Sparkles, Pencil, Trash2, Play, Pause, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import RichEmptyState from "@/components/shared/RichEmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -92,18 +93,12 @@ export default function CadencesSection({ agentId, isFreshNew }: Props) {
       )}
 
       {!isLoading && cadences.length === 0 && (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center space-y-3">
-          <Clock className="w-8 h-8 text-muted-foreground mx-auto" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Nenhuma cadência ainda</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Crie sua primeira sequência temporal de mensagens.
-            </p>
-          </div>
-          <Button size="sm" className="gap-1.5" onClick={openNew}>
-            <Plus className="w-3.5 h-3.5" /> Criar primeira cadência
-          </Button>
-        </div>
+        <RichEmptyState
+          icon={Clock}
+          title="Nenhuma cadência ainda"
+          description="Cadências permitem que o agente faça follow-ups automáticos (ex: D+1, D+3, D+7) sem você precisar lembrar. Ideal pra reativar leads frios."
+          primaryAction={{ label: "Criar primeira cadência", icon: Plus, onClick: openNew }}
+        />
       )}
 
       {!isLoading && cadences.length > 0 && (
