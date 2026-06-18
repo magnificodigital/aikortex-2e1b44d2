@@ -240,7 +240,7 @@ const Proposals = () => {
                               <Eye className="w-4 h-4 mr-2" /> Visualizar
                             </DropdownMenuItem>
                             {p.status === "draft" && (
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSend(p.id)}>
                                 <Send className="w-4 h-4 mr-2" /> Enviar para cliente
                               </DropdownMenuItem>
                             )}
@@ -249,7 +249,7 @@ const Proposals = () => {
                                 <FileCheck className="w-4 h-4 mr-2" /> Converter em contrato
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(p.id)}>
                               <Trash2 className="w-4 h-4 mr-2" /> Excluir
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -261,6 +261,12 @@ const Proposals = () => {
               </TableBody>
             </Table>
           </Card>
+
+          <ProposalEditorDialog
+            open={editorOpen}
+            onOpenChange={setEditorOpen}
+            onSubmit={handleEditorSubmit}
+          />
         </div>
       </DashboardLayout>
     </ModuleGate>
