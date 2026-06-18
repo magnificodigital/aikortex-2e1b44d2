@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import AddClientWizard from "@/components/clients/AddClientWizard";
 import EditClientDialog, { AgencyClientLite } from "@/components/clients/EditClientDialog";
+import AddCustomerSimpleDialog, { SimpleCustomer } from "@/components/clients/AddCustomerSimpleDialog";
 
 type AgencyClient = {
   id: string;
@@ -66,6 +67,10 @@ const Clients = () => {
   const [statusFilter, setStatusFilter] = useState("active");
   const [showWizard, setShowWizard] = useState(false);
   const [editingClient, setEditingClient] = useState<AgencyClientLite | null>(null);
+  // Clientes-do-cliente (estado local — schema persistente em F2/F3)
+  const [showSimpleAdd, setShowSimpleAdd] = useState(false);
+  const [simpleCustomers, setSimpleCustomers] = useState<SimpleCustomer[]>([]);
+  const [editingSimple, setEditingSimple] = useState<SimpleCustomer | null>(null);
 
   const loadData = async () => {
     if (!user) return;
@@ -168,7 +173,7 @@ const Clients = () => {
               <p className="text-sm text-muted-foreground">Gerencie os clientes da sua agência</p>
             </div>
           </div>
-          <Button onClick={() => setShowWizard(true)}>
+          <Button onClick={() => isAgencyMode ? setShowWizard(true) : setShowSimpleAdd(true)}>
             <Plus className="w-4 h-4 mr-1" /> Adicionar Cliente
           </Button>
         </div>
@@ -201,7 +206,7 @@ const Clients = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card><CardContent className="p-4 flex items-center gap-3">
             <Users className="w-5 h-5 text-primary" />
-            <div><p className="text-xs text-muted-foreground">Clientes cadastrados</p><p className="text-xl font-bold text-foreground">0</p></div>
+            <div><p className="text-xs text-muted-foreground">Clientes cadastrados</p><p className="text-xl font-bold text-foreground">{simpleCustomers.length}</p></div>
           </CardContent></Card>
           <Card><CardContent className="p-4 flex items-center gap-3">
             <DollarSign className="w-5 h-5 text-green-600" />
@@ -227,7 +232,60 @@ const Clients = () => {
           </Select>
         </div>
 
-        {/* Table */}
+        {/* Table — modo cliente mostra tabela simplificada de contatos/empresas */}
+        {!isAgencyMode ? (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead className="hidden md:table-cell">Email</TableHead>
+                <TableHead className="hidden md:table-cell">Telefone</TableHead>
+                <TableHead className="hidden lg:table-cell">CNPJ</TableHead>
+                <TableHead className="w-12" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {simpleCustomers.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                  Nenhum cliente cadastrado. Clique em "Adicionar Cliente" pra começar.
+                </TableCell></TableRow>
+              ) : simpleCustomers.map((c) => {
+                const initials = c.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+                return (
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9"><AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">{initials}</AvatarFallback></Avatar>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{c.name}</p>
+                          {c.website && <p className="text-[10px] text-muted-foreground">{c.website}</p>}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{c.email || "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{c.phone || "—"}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{c.cnpj || "—"}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setEditingSimple(c); setShowSimpleAdd(true); }}>
+                            <Pencil className="w-4 h-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setSimpleCustomers((prev) => prev.filter((x) => x.id !== c.id))}>
+                            <Trash2 className="w-4 h-4 mr-2 text-destructive" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+        ) : (
         <Card>
           <Table>
             <TableHeader>
@@ -308,6 +366,7 @@ const Clients = () => {
             </TableBody>
           </Table>
         </Card>
+        )}
       </div>
 
       <AddClientWizard
@@ -324,6 +383,19 @@ const Clients = () => {
         open={!!editingClient}
         onOpenChange={(o) => { if (!o) setEditingClient(null); }}
         onChanged={async () => { await loadData(); await refreshClients(); }}
+      />
+
+      <AddCustomerSimpleDialog
+        open={showSimpleAdd}
+        onOpenChange={(o) => { if (!o) { setShowSimpleAdd(false); setEditingSimple(null); } }}
+        initial={editingSimple}
+        onCreate={(c) => {
+          setSimpleCustomers((prev) => {
+            const exists = prev.find((x) => x.id === c.id);
+            return exists ? prev.map((x) => x.id === c.id ? c : x) : [...prev, c];
+          });
+          setEditingSimple(null);
+        }}
       />
       </ModuleGate>
     </DashboardLayout>
