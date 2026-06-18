@@ -10,8 +10,7 @@ import { fnUrl } from "@/lib/supabase-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import ReactMarkdown from "react-markdown";
-import { getRehypePlugins } from "@/lib/safe-rehype";
+import RichMarkdown from "@/components/aikortex/RichMarkdown";
 import { toast } from "sonner";
 import type { ChatMessage } from "@/hooks/use-agent-chat";
 import type { AgentType } from "@/types/agent-builder";
@@ -700,10 +699,8 @@ const AgentChatPanel = ({
                     </div>
                   )}
                   <div className="flex-1 min-w-0 space-y-2">
-                    <div className="text-sm leading-relaxed text-foreground bg-card/30 border border-border/50 rounded-2xl rounded-tl-sm px-4 py-2.5">
-                      <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:mb-0.5 [&_strong]:text-foreground">
-                        <ReactMarkdown rehypePlugins={getRehypePlugins()}>{text}</ReactMarkdown>
-                      </div>
+                    <div className="text-sm text-foreground bg-card/30 border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3">
+                      <RichMarkdown>{text}</RichMarkdown>
                     </div>
                     {/* Master v7.4 §13.16: cards inline de tools aplicadas */}
                     {tools.length > 0 && (
