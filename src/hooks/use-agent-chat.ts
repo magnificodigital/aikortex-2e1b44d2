@@ -120,6 +120,8 @@ interface UseAgentChatOptions {
   niche?: string;
   /** Disable CRM lead extraction post-processing (e.g. during wizard). */
   disableCrmExtraction?: boolean;
+  /** G6 — modo consultivo do wizard (perguntas focadas em problema operacional). */
+  consultive?: boolean;
 }
 
 function deriveProvider(model?: string): string | undefined {
@@ -253,6 +255,7 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
 
         if (options.mode === "wizard-setup") {
           payload.agentType = options.agentType || "Custom";
+          if (options.consultive) payload.consultive = true;
           // Master v7.4 §13.4: tipos contextualizados por nicho. Quando vem,
           // app-chat adapta exemplos/terminologia ao setor brasileiro.
           if (options.niche) payload.niche = options.niche;

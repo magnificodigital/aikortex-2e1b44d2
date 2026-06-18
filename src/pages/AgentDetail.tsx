@@ -785,6 +785,10 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
       agentContext: agentId ? { agentId, name: loadedAgent?.name ?? "" } : undefined,
       disableCrmExtraction: true,
       persistKey: shouldPersistTemplateDraft ? `${storagePrefix}-wizard-messages` : undefined,
+      // G6 — flag opcional pra modo consultivo. Liga via localStorage:
+      // localStorage.setItem("aikortex_wizard_consultive", "1")
+      // Default desligado (comportamento atual idêntico).
+      consultive: (typeof window !== "undefined" && window.localStorage?.getItem("aikortex_wizard_consultive") === "1") || undefined,
     }
   );
 

@@ -209,7 +209,7 @@ const AGENT_TYPE_FOCUS: Record<string, string> = {
 function buildWizardSystemPrompt(
   agentType: string,
   niche?: string,
-  ctx?: { phase?: "DESCOBERTA" | "PLANO" | "CRIACAO"; agencyName?: string | null; userMessageCount?: number },
+  ctx?: { phase?: "DESCOBERTA" | "PLANO" | "CRIACAO"; agencyName?: string | null; userMessageCount?: number; consultive?: boolean },
 ): string {
   const normalizedType = ["SDR", "BDR", "SAC", "CS"].includes(agentType.toUpperCase())
     ? agentType.toUpperCase()
@@ -269,6 +269,28 @@ ${nicheContext}
 
 Você acabou de receber a descrição inicial. NÃO chame nenhuma tool. NÃO crie o agente. Sua única tarefa: PERGUNTAR. Estruture as perguntas em 3 grupos curtos:
 
+${ctx?.consultive ? `
+\`\`\`
+Antes de eu sugerir agente nenhum, me conta uma coisa rápida:
+
+**O que tá pesando aí no atendimento da sua empresa hoje?**
+
+Tipo:
+- 🛒 **Cliente perguntando status de pedido / troca / prazo de entrega**
+- 💻 **Dúvida de funcionalidade, bug ou cobrança de produto digital**
+- 🏢 **Cliente B2B querendo update de projeto, segunda via de nota, suporte técnico**
+- 📅 **Marcar / remarcar horário, confirmar consulta**
+
+Qual desses chega mais perto do seu caso? (Ou me descreve com suas palavras, fica melhor ainda.)
+\`\`\`
+
+⚠️ ESTILO CONSULTIVO: NUNCA pergunte "qual tipo de agente quer criar?". Sempre pergunte o PROBLEMA OPERACIONAL. Dono de negócio pensa em "WhatsApp lotado", "cliente bravo", "ninguém responde fim de semana" — não em "agente de IA". Adapte ao que ele responde, faça 1-2 perguntas por vez no máximo, multi-select sempre que faz sentido.
+
+⚠️ Depois que entender o problema, faça mais 2-3 perguntas curtas focadas em:
+- **Canal**: por onde os clientes falam? (WhatsApp / Site / Email / Insta / Tickets)
+- **Fonte de dados**: onde estão as informações que o agente vai consultar? (CRM, planilha, ERP, "tudo na cabeça")
+- **Autonomia**: só consultar dados, ou pode atualizar status/notas também?
+` : `
 \`\`\`
 Beleza! Antes de criar, preciso entender alguns detalhes pra fazer um agente real e consistente:
 
@@ -284,6 +306,7 @@ ${agencyName ? `- O agente é pra **${agencyName}** (sua conta) ou pra outra emp
 - O que NÃO pode fazer (limites, escalações, palavras proibidas)?
 - Alguma integração específica ele vai precisar (Google Calendar, HubSpot, CRM específico)?
 \`\`\`
+`}
 
 Termina com: **"Quando responder, eu monto o plano e te peço confirmação antes de criar."**
 
@@ -1106,12 +1129,19 @@ serve(async (req) => {
           console.warn("[wizard-setup] agency_name fetch failed (non-fatal):", e);
         }
 
+        // Flag opcional pra modo consultivo (G6). Vem do body.consultive
+        // ou de um header X-Wizard-Consultive: 1. Default false (comportamento
+        // atual idêntico). Quando true, troca as perguntas técnicas por
+        // consultivas focadas em problema operacional.
+        const consultive = (body as any).consultive === true
+          || req.headers.get("x-wizard-consultive") === "1";
+
         let wizardSystem = buildWizardSystemPrompt(
           String((body as Record<string, unknown>).agentType || "Custom"),
           typeof (body as any).niche === "string" && (body as any).niche
             ? (body as any).niche
             : undefined,
-          { phase, agencyName, userMessageCount },
+          { phase, agencyName, userMessageCount, consultive },
         );
 
         // Detecta arquétipo da PRIMEIRA mensagem do user (a descrição inicial).
