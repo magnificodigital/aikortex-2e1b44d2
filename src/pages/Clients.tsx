@@ -163,6 +163,7 @@ const Clients = () => {
     <DashboardLayout>
       <ModuleGate moduleKey="gestao.clientes">
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
+        <ClientsAreaTabs />
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
