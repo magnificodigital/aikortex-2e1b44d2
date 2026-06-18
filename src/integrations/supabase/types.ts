@@ -2633,6 +2633,7 @@ export type Database = {
           max_call_duration_seconds: number | null
           model: string | null
           name: string
+          persona_emoji: string | null
           provider: string
           published_version_id: string | null
           status: string
@@ -2661,6 +2662,7 @@ export type Database = {
           max_call_duration_seconds?: number | null
           model?: string | null
           name: string
+          persona_emoji?: string | null
           provider?: string
           published_version_id?: string | null
           status?: string
@@ -2689,6 +2691,7 @@ export type Database = {
           max_call_duration_seconds?: number | null
           model?: string | null
           name?: string
+          persona_emoji?: string | null
           provider?: string
           published_version_id?: string | null
           status?: string
