@@ -68,7 +68,7 @@ const gestaoItems: NavItem[] = [
   { label: "Clientes", icon: Users, path: "/clients", children: [{ label: "Contratos", icon: FileText, path: "/contracts" }] },
   { label: "Vendas", icon: ShoppingCart, path: "/aikortex/crm", moduleKey: "gestao.vendas" },
   { label: "Reuniões", icon: Video, path: "/meetings", moduleKey: "gestao.reunioes" },
-  { label: "Financeiro", icon: DollarSign, path: "/financeiro", children: [{ label: "Gestão Fin.", icon: DollarSign, path: "/financial" }] },
+  { label: "Financeiro", icon: DollarSign, path: "/financial" },
   { label: "Equipe", icon: UserCheck, path: "/team" },
   { label: "Tarefas", icon: CheckSquare, path: "/tasks" },
 ];
