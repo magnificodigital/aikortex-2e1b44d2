@@ -271,6 +271,19 @@ const Financeiro = () => {
           </div>
         </div>
 
+        {!isAgencyMode && (
+          <div className="glass-card rounded-xl p-10 text-center space-y-3">
+            <DollarSign className="w-10 h-10 mx-auto text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Financeiro do seu negócio</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              Aqui você vai controlar receitas, despesas e fluxo de caixa do seu negócio.
+              Persistência multi-tenant em construção — em breve você cadastra suas primeiras entradas.
+            </p>
+          </div>
+        )}
+
+        {isAgencyMode && <>
+
         {/* Stats Row 1 — Revenue */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
@@ -458,6 +471,8 @@ const Financeiro = () => {
             </CollapsibleContent>
           </div>
         </Collapsible>
+
+        </>}
       </div>
     </DashboardLayout>
   );

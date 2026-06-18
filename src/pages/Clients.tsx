@@ -173,7 +173,8 @@ const Clients = () => {
           </Button>
         </div>
 
-        {/* Stats */}
+        {/* Stats — só modo agência (receita/tier/templates são meta-info da agência) */}
+        {isAgencyMode ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card><CardContent className="p-4 flex items-center gap-3">
             <Users className="w-5 h-5 text-primary" />
@@ -187,7 +188,6 @@ const Clients = () => {
             <LayoutTemplate className="w-5 h-5 text-blue-600" />
             <div><p className="text-xs text-muted-foreground">Templates ativos</p><p className="text-xl font-bold text-foreground">{activeSubs.length}</p></div>
           </CardContent></Card>
-          {isAgencyMode && (
           <Card><CardContent className="p-4 flex items-center gap-3">
             <Trophy className="w-5 h-5 text-amber-600" />
             <div>
@@ -196,8 +196,19 @@ const Clients = () => {
               <p className="text-[10px] text-muted-foreground mt-0.5">{tierProgress.label}</p>
             </div>
           </CardContent></Card>
-          )}
         </div>
+        ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card><CardContent className="p-4 flex items-center gap-3">
+            <Users className="w-5 h-5 text-primary" />
+            <div><p className="text-xs text-muted-foreground">Clientes cadastrados</p><p className="text-xl font-bold text-foreground">0</p></div>
+          </CardContent></Card>
+          <Card><CardContent className="p-4 flex items-center gap-3">
+            <DollarSign className="w-5 h-5 text-green-600" />
+            <div><p className="text-xs text-muted-foreground">Receita mensal</p><p className="text-xl font-bold text-foreground">R$ 0</p></div>
+          </CardContent></Card>
+        </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
