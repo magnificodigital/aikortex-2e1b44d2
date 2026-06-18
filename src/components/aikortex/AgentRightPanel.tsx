@@ -142,6 +142,7 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "resources.kb",           label: "Conhecimento",         icon: BookOpen },
     { key: "resources.tables",       label: "Tabelas",              icon: Database,        masterRef: "13.5.11" },
     { key: "resources.tools",        label: "Ferramentas",          icon: Wrench },
+    { key: "behavior.guardrails",    label: "Limites",              icon: ShieldAlert },
     { key: "caps.runtime",           label: "Code Runtime",         icon: FileCode2,       comingSoon: true, sprint: "futuro", masterRef: "13.5.7" },
     { key: "caps.autoint",           label: "Auto-integração",      icon: Workflow,        comingSoon: true, sprint: "futuro", masterRef: "13.5.8" },
   ]},
@@ -158,14 +159,9 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "channels.tiktok",        label: "TikTok",               icon: Share2,          comingSoon: true, sprint: "futuro" },
     { key: "channels.telegram",      label: "Telegram",             icon: Share2,          comingSoon: true, sprint: "futuro" },
   ]},
-  { group: "Provedores", items: [
+  { group: "Integrações", items: [
     { key: "integrations.llms",      label: "LLMs",                 icon: Sparkles },
-  ]},
-  { group: "Conectores", items: [
     { key: "integrations.apis",      label: "Catálogo",             icon: Plug },
-  ]},
-  { group: "Comportamento", items: [
-    { key: "behavior.guardrails",    label: "Limites",              icon: ShieldAlert },
   ]},
   { group: "Automações", items: [
     { key: "behavior.cadences",      label: "Cadências",            icon: Clock,           masterRef: "13.5.13" },
@@ -1292,7 +1288,10 @@ const AgentRightPanel = ({
                   </p>
                 </div>
 
-                <div className="space-y-2">
+                {/* Universais — fazem sentido pra qualquer agente customer-facing */}
+                <div>
+                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">Universais</p>
+                  <div className="space-y-2">
                   {[
                     { key: "preco_desconto",        label: "Falar de preços ou conceder descontos",       hint: "Qualquer dúvida de valor → passa pra humano" },
                     { key: "prazo_entrega",         label: "Prometer prazos de entrega ou de contrato",   hint: "Só repassa o que está nos sistemas, nunca inventa" },
@@ -1326,7 +1325,67 @@ const AgentRightPanel = ({
                       </label>
                     );
                   })}
+                  </div>
                 </div>
+
+                {/* Contextuais por tipo de agente */}
+                {(() => {
+                  const contextual: Record<string, { key: string; label: string; hint: string }[]> = {
+                    SDR: [
+                      { key: "fechar_venda",      label: "Confirmar venda sem aval do gestor",     hint: "SDR qualifica e agenda — fechamento é com humano" },
+                      { key: "desconto_agressivo", label: "Negociar descontos fora da política",     hint: "Tabela de desconto sempre passa por humano" },
+                    ],
+                    BDR: [
+                      { key: "prospec_fora",      label: "Prospectar leads fora do ICP definido",  hint: "Mantém foco no perfil ideal de cliente" },
+                    ],
+                    SAC: [
+                      { key: "troca_devolucao",   label: "Aprovar troca / devolução sozinho",      hint: "Política de troca = decisão humana" },
+                      { key: "extorno_reembolso", label: "Autorizar estorno ou reembolso",         hint: "Movimentação financeira → equipe responsável" },
+                      { key: "cancelar_assinatura", label: "Cancelar plano / assinatura do cliente", hint: "Retenção tenta humano antes" },
+                    ],
+                    CS: [
+                      { key: "promessa_features", label: "Prometer features que não estão no roadmap", hint: "Só repete o roadmap público" },
+                      { key: "alterar_plano",     label: "Mudar plano ou cobrança do cliente",      hint: "Movimentação contratual → CSM humano" },
+                    ],
+                  };
+                  const list = contextual[agentType] || [];
+                  if (list.length === 0) return null;
+                  return (
+                    <div>
+                      <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">
+                        Específicos pra {agentType}
+                      </p>
+                      <div className="space-y-2">
+                        {list.map((g) => {
+                          const checked = agentGuardrails.includes(g.label);
+                          return (
+                            <label
+                              key={g.key}
+                              className="flex items-start gap-3 p-3 rounded-lg border border-border hover:border-primary/30 cursor-pointer transition-colors"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setAgentGuardrails((prev) => Array.from(new Set([...prev, g.label])));
+                                  } else {
+                                    setAgentGuardrails((prev) => prev.filter((x) => x !== g.label));
+                                  }
+                                }}
+                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                              />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-foreground">{g.label}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{g.hint}</p>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Custom guardrails */}
                 <div className="space-y-2 pt-2">
