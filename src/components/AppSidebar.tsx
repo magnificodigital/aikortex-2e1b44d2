@@ -65,7 +65,7 @@ type AppSidebarProps = {
 };
 
 const gestaoItems: NavItem[] = [
-  { label: "Clientes", icon: Users, path: "/clients", children: [{ label: "Contratos", icon: FileText, path: "/contracts" }] },
+  { label: "Clientes", icon: Users, path: "/clients" },
   { label: "Vendas", icon: ShoppingCart, path: "/aikortex/crm", moduleKey: "gestao.vendas" },
   { label: "Reuniões", icon: Video, path: "/meetings", moduleKey: "gestao.reunioes" },
   { label: "Financeiro", icon: DollarSign, path: "/financial" },

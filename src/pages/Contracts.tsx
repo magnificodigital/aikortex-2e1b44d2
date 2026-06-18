@@ -13,6 +13,7 @@ import NewContractDialog from "@/components/contracts/NewContractDialog";
 import EditContractDialog from "@/components/contracts/EditContractDialog";
 import SignatureDialog from "@/components/contracts/SignatureDialog";
 import { supabase } from "@/integrations/supabase/client";
+import ClientsAreaTabs from "@/components/clients/ClientsAreaTabs";
 
 const Contracts = () => {
   const [search, setSearch] = useState("");
@@ -35,18 +36,19 @@ const Contracts = () => {
     <ModuleGate moduleKey="gestao.contratos">
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl space-y-6">
+        <ClientsAreaTabs />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <FileText className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Contratos</h1>
-              <p className="text-sm text-muted-foreground">Gestão contratual da agência</p>
+              <h1 className="text-2xl font-bold text-foreground">Propostas e Contratos</h1>
+              <p className="text-sm text-muted-foreground">Gere propostas e contratos e envie para assinatura digital</p>
             </div>
           </div>
           <Button size="sm" onClick={() => setShowNew(true)}>
-            <Plus className="w-4 h-4 mr-1" /> Novo Contrato
+            <Plus className="w-4 h-4 mr-1" /> Nova Proposta/Contrato
           </Button>
         </div>
 

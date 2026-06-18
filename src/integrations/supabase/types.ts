@@ -27,6 +27,7 @@ export type Database = {
           client_primary_color: string | null
           client_user_id: string | null
           created_at: string | null
+          enabled_modules: string[]
           id: string
           platform_subscription_id: string | null
           platform_subscription_status: string | null
@@ -45,6 +46,7 @@ export type Database = {
           client_primary_color?: string | null
           client_user_id?: string | null
           created_at?: string | null
+          enabled_modules?: string[]
           id?: string
           platform_subscription_id?: string | null
           platform_subscription_status?: string | null
@@ -63,6 +65,7 @@ export type Database = {
           client_primary_color?: string | null
           client_user_id?: string | null
           created_at?: string | null
+          enabled_modules?: string[]
           id?: string
           platform_subscription_id?: string | null
           platform_subscription_status?: string | null
@@ -2949,6 +2952,7 @@ export type Database = {
         Args: { p_agency_id: string; p_limit: number; p_window_start: string }
         Returns: boolean
       }
+      current_client_id: { Args: never; Returns: string }
       get_agency_tool_usage: {
         Args: { p_agency_id: string; p_year_month: string }
         Returns: {
