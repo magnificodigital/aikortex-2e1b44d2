@@ -167,7 +167,7 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
             // Estado final: todos steps done. LLM ainda terminando de escrever
             // a resposta. Mostra "Finalizando saída..." com 3 dots animados.
             <div className="mt-3 flex items-center gap-2 text-[11px] text-foreground/80">
-              <span className="font-medium">Escrevendo o resumo</span>
+              <span className="font-medium">Processando...</span>
               <span className="flex gap-1">
                 <span className="w-1 h-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
                 <span className="w-1 h-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
