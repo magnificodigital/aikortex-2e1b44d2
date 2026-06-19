@@ -9,6 +9,7 @@ import { GitBranch, RotateCcw, Eye, Pencil, Check, Zap } from "lucide-react";
 import { useAgentVersions, useAgentPublishState, useRestoreAgentVersion, useUpdateVersionLabel, type AgentVersion } from "@/hooks/use-agent-versions";
 import AgentDiffView from "./AgentDiffView";
 import RichEmptyState from "@/components/shared/RichEmptyState";
+import { computeAgentDiff, countChanges } from "@/lib/agent-diff";
 import { Input } from "@/components/ui/input";
 import { computeAgentDiff } from "@/lib/agent-diff";
 
@@ -85,6 +86,19 @@ export default function AgentVersionsSection({ agentId }: { agentId?: string }) 
           {versions.map((v) => {
             const isPublished = v.id === publishedId;
             const prev = findPrev(v);
+            // Sumário inline de mudanças vs versão anterior
+            let diffSummary = "";
+            if (prev) {
+              try {
+                const changes = computeAgentDiff(prev.config_snapshot, v.config_snapshot);
+                const counts = countChanges(changes);
+                const parts: string[] = [];
+                if (counts.added > 0) parts.push(`+${counts.added}`);
+                if (counts.modified > 0) parts.push(`~${counts.modified}`);
+                if (counts.removed > 0) parts.push(`−${counts.removed}`);
+                if (parts.length) diffSummary = parts.join(" · ");
+              } catch { /* skip */ }
+            }
             return (
               <div key={v.id} className={`rounded-lg border p-3 space-y-1 ${isPublished ? "border-emerald-500/40 bg-emerald-500/5" : "border-border bg-card"}`}>
                 <div className="flex items-center justify-between gap-2">
@@ -104,7 +118,14 @@ export default function AgentVersionsSection({ agentId }: { agentId?: string }) 
                     )}
                   </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Publicada {timeAgo(v.created_at)}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[11px] text-muted-foreground">Publicada {timeAgo(v.created_at)}</p>
+                  {diffSummary && (
+                    <span className="text-[10px] font-mono text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded">
+                      {diffSummary} campos
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   {editingId === v.id ? (
                     <div className="flex items-center gap-1 flex-1">
