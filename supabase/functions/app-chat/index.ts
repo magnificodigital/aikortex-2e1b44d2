@@ -15,6 +15,7 @@ import {
   inferConnectors,
   type ArchetypeSpec,
 } from "../_shared/agent-blueprint.ts";
+import { buildNicheIntegrationsBlock } from "../_shared/niche-integrations.ts";
 
 function streamText(text: string): ReadableStream {
   const encoder = new TextEncoder();
@@ -99,7 +100,37 @@ Objetivo: ${objective}
 Tom: ${tone}
 Instruções: ${instructions}
 Responda em português do Brasil.`;
-  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities) + buildCurrentDateBlock() + buildRealActionsBlock(connectorStatus) + buildGuardrailsBlock((agentConfig as any)?.guardrails);
+  return applyCapabilityAddons(base, (agentConfig as any)?.capabilities) + buildCurrentDateBlock() + buildRealActionsBlock(connectorStatus) + buildAntiHallucinationBlock() + buildGuardrailsBlock((agentConfig as any)?.guardrails);
+}
+
+// Anti-alucinação geral de criação de coisas. Sem isso, LLM diz "tabela criada
+// com sucesso" sem rodar tool nenhuma. User percebe rápido que mentiu.
+function buildAntiHallucinationBlock(): string {
+  return `
+
+# 🚫 NUNCA AFIRME TER FEITO ALGO QUE VOCÊ NÃO FEZ
+
+Se o user pedir pra **criar tabela**, **salvar informação**, **enviar email**, **agendar evento**, **adicionar contato no CRM**, **registrar nota**, **disparar cadência** ou qualquer ação que muda estado:
+
+- Você DEVE chamar a tool específica e ESPERAR o retorno
+- Se a tool **NÃO existe** no seu repertório, diga aberto: "essa ação específica eu ainda não consigo fazer direto — me avisa por outro canal que registro pra equipe."
+- Se a tool **falhar**, comunique com frase neutra ("Anotei aqui e te confirmo em breve")
+- NUNCA escreva "criei", "salvei", "agendei", "enviei", "adicionei", "registrei" SEM ter chamado a tool e recebido sucesso
+
+## Caso especial: tabelas
+
+Tabelas em Aikortex pertencem a **CLIENTES** (cada cliente da agência tem as próprias, compartilhadas entre os agentes dele).
+
+- Se você está em **modo rascunho** ou **personalizado** SEM cliente atribuído, você NÃO tem como criar tabela. A resposta correta é:
+  > "Pra criar tabelas, esse agente precisa estar vinculado a um cliente específico. A agência pode te atribuir a um cliente no painel."
+- NUNCA finja que criou tabela quando não tem cliente atribuído.
+
+## Caso especial: integrações em roadmap
+
+Se o user pedir pra integrar com sistema que ainda não está disponível (status "planned" no catálogo), reconheça:
+> "Essa integração está no nosso roadmap. Por ora consigo trabalhar com [alternativas disponíveis]. Quando ela for liberada, te aviso."
+
+NUNCA diga "integrei agora" pra sistema que não existe ainda na plataforma.`;
 }
 
 // Guardrails — limites NEGATIVOS configurados pela agência. Vai no fim do
@@ -383,6 +414,7 @@ ${agencyName ? `# CONTEXTO DA CONTA\nAgência/empresa do user: **${agencyName}**
 
 Tipo do agente: **${normalizedType}** — foco em ${focus}.
 ${nicheContext}
+${buildNicheIntegrationsBlock(niche)}
 
 # FLUXO POR FASE
 
