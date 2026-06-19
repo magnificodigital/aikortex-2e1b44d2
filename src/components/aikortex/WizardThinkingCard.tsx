@@ -84,17 +84,19 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
     if (!statuses[i]) skippedSet.add(i);
   }
 
-  // Frase principal varia conforme progresso
-  const headline =
-    currentIdx === -1
-      ? "Aguarde enquanto estamos criando seu agente..."
-      : pct < 25
-      ? "Iniciando construção..."
-      : pct < 60
-      ? "Construindo seu agente..."
-      : pct < 90
-      ? "Finalizando detalhes..."
-      : "Quase lá, finalizando...";
+  // Frase principal varia conforme progresso. "pronto" SÓ se 100% — porque
+  // steps skipped fazem currentIdx === -1 antes de pct chegar a 100, o que
+  // antes mostrava "Agente pronto" no meio da construção. Confuso.
+  const isFullyDone = pct >= 100;
+  const headline = isFullyDone
+    ? "Agente pronto — escrevendo resumo"
+    : pct < 25
+    ? "Iniciando construção..."
+    : pct < 60
+    ? "Construindo seu agente..."
+    : pct < 90
+    ? "Finalizando detalhes..."
+    : "Quase lá...";
 
   return (
     <div className="relative rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card/60 to-card/40 p-4 shadow-lg shadow-primary/10 overflow-hidden">
@@ -158,16 +160,17 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
             })}
           </ul>
 
-          {/* Subtítulo motivacional embaixo */}
-          {currentIdx !== -1 ? (
+          {/* Subtítulo motivacional embaixo. "Pronto" só vira true quando
+              100% — antes (currentIdx === -1) podia indicar steps pulados. */}
+          {!isFullyDone ? (
             <p className="text-[10px] text-muted-foreground/70 mt-3 italic">
               Isso leva uns 20-30 segundos — montando tudo direitinho.
             </p>
           ) : (
-            // Estado final: todos steps done. LLM ainda terminando de escrever
-            // a resposta. Mostra "Finalizando saída..." com 3 dots animados.
+            // Estado final 100%: todos steps done. LLM ainda terminando de
+            // escrever a resposta. Mostra "Finalizando saída..." com 3 dots.
             <div className="mt-3 flex items-center gap-2 text-[11px] text-foreground/80">
-              <span className="font-medium">Processando...</span>
+              <span className="font-medium">Escrevendo o resumo</span>
               <span className="flex gap-1">
                 <span className="w-1 h-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
                 <span className="w-1 h-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
