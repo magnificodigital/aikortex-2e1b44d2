@@ -447,25 +447,25 @@ Você acabou de receber a descrição inicial. NÃO chame nenhuma tool. NÃO cri
 
 ${ctx?.consultive ? `
 \`\`\`
-Antes de eu sugerir agente nenhum, me conta uma coisa rápida:
+Pra começar, me conta rapidinho:
 
-**O que tá pesando aí no atendimento da sua empresa hoje?**
+**Qual o principal problema de atendimento hoje?**
 
-Tipo:
-- 🛒 **Cliente perguntando status de pedido / troca / prazo de entrega**
-- 💻 **Dúvida de funcionalidade, bug ou cobrança de produto digital**
-- 🏢 **Cliente B2B querendo update de projeto, segunda via de nota, suporte técnico**
-- 📅 **Marcar / remarcar horário, confirmar consulta**
+1. Status de pedido / troca / entrega
+2. Dúvida sobre produto, bug ou cobrança
+3. Suporte B2B (projeto, nota, técnico)
+4. Agendamento / confirmação
 
-Qual desses chega mais perto do seu caso? (Ou me descreve com suas palavras, fica melhor ainda.)
+Marca uma ou descreve com suas palavras.
 \`\`\`
 
-⚠️ ESTILO CONSULTIVO: NUNCA pergunte "qual tipo de agente quer criar?". Sempre pergunte o PROBLEMA OPERACIONAL. Dono de negócio pensa em "WhatsApp lotado", "cliente bravo", "ninguém responde fim de semana" — não em "agente de IA". Adapte ao que ele responde, faça 1-2 perguntas por vez no máximo, multi-select sempre que faz sentido.
+⚠️ ESTILO CONSULTIVO: pergunte sempre o PROBLEMA OPERACIONAL, nunca "qual agente quer criar". Máx. 1-2 perguntas por vez. Sem rodeios, sem preâmbulo longo.
 
-⚠️ Depois que entender o problema, faça mais 2-3 perguntas curtas focadas em:
-- **Canal**: por onde os clientes falam? (WhatsApp / Site / Email / Insta / Tickets)
-- **Fonte de dados**: onde estão as informações que o agente vai consultar? (CRM, planilha, ERP, "tudo na cabeça")
-- **Autonomia**: só consultar dados, ou pode atualizar status/notas também?
+⚠️ Depois disso, faça no máx. 2-3 perguntas curtas, uma de cada vez quando fizer sentido:
+- **Canal** (WhatsApp / Site / Email / Insta / Tickets)
+- **Fonte de dados** (CRM, planilha, ERP, "tudo na cabeça")
+- **Autonomia** (só consultar, ou também atualizar status/notas)
+
 ` : `
 ⚠️ NÃO USE TEMPLATE FIXO. Cada conversa é diferente. Adapte tom, perguntas e estilo ao que o user trouxe.
 
