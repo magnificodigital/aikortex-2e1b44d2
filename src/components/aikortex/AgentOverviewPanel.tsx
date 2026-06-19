@@ -2,16 +2,21 @@ import { useMemo } from "react";
 import {
   ArrowRight,
   Bot,
+  BookOpen,
+  Brain,
   CheckCircle2,
   Circle,
   Clock,
   Database,
   FlaskConical,
   GitBranch,
+  Key,
   Mail,
   MessageSquare,
   Plug,
   Send,
+  ShieldAlert,
+  Sparkles,
   TrendingUp,
   Users,
   Wrench,
@@ -25,6 +30,9 @@ import { useCadenceExecutionStats } from "@/hooks/use-cadence-executions";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
 import { useWhatsAppIntegrationStatus } from "@/hooks/use-whatsapp-integration";
 import { useWhatsAppTemplates } from "@/hooks/use-whatsapp-templates";
+import { useAgentTools } from "@/hooks/use-agent-tools";
+import { useAgentKnowledgeBases, useKnowledgeDocuments } from "@/hooks/use-agent-knowledge-bases";
+import type { AgentCapabilities } from "@/types/agent-capabilities";
 
 interface Props {
   agentId?: string;
@@ -34,6 +42,11 @@ interface Props {
   isInstructionsSet?: boolean;
   isTonalitySet?: boolean;
   onGoSection: (key: string) => void;
+  /** Config técnica do agente — usada pra contar capabilities, guardrails, etc */
+  capabilities?: AgentCapabilities;
+  guardrails?: string[];
+  llmProvider?: string;
+  llmModel?: string;
 }
 
 export default function AgentOverviewPanel({
@@ -44,6 +57,10 @@ export default function AgentOverviewPanel({
   isInstructionsSet = false,
   isTonalitySet = false,
   onGoSection,
+  capabilities,
+  guardrails,
+  llmProvider,
+  llmModel,
 }: Props) {
   const isPublished = agentStatus === "publicado" || agentStatus === "published";
 
@@ -52,12 +69,28 @@ export default function AgentOverviewPanel({
   const { data: emailStatus } = useEmailIntegrationStatus();
   const { data: waStatus } = useWhatsAppIntegrationStatus();
   const { data: templates = [] } = useWhatsAppTemplates();
+  const { data: tools = [] } = useAgentTools(agentId);
+  const { data: kbs = [] } = useAgentKnowledgeBases(agentId);
+  const firstKbId = kbs[0]?.id;
+  const { data: kbDocs = [] } = useKnowledgeDocuments(firstKbId);
 
   const enabledCadences = cadences.filter((c) => c.enabled).length;
   const hasEmailChannel = !!emailStatus?.connected;
   const hasWhatsAppChannel = !!waStatus?.connected;
   const hasAnyChannel = hasEmailChannel || hasWhatsAppChannel;
   const approvedTemplatesCount = templates.filter((t) => t.status === "APPROVED").length;
+
+  // Contadores técnicos
+  const capCount = capabilities
+    ? Object.values(capabilities).filter((c: any) => c?.enabled === true).length
+    : 0;
+  const guardrailsCount = (guardrails ?? []).length;
+  const toolsCount = tools.length;
+  const kbDocsCount = kbDocs.length;
+  const isLLMReady = !!llmProvider && llmProvider !== "aikortex" && llmProvider !== "auto";
+  const llmLabel = isLLMReady
+    ? `${llmProvider}${llmModel ? ` · ${llmModel}` : ""}`
+    : "Aikortex (testes — conecta uma chave pra publicar)";
 
   const checklist = useMemo(() => [
     {
@@ -249,6 +282,112 @@ export default function AgentOverviewPanel({
             </div>
           </div>
         </Card>
+      </div>
+
+      {/* Configuração técnica — radiografia do agente em uma olhada */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">Configuração técnica</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+          {/* LLM */}
+          <button
+            type="button"
+            onClick={() => onGoSection("integrations.llms")}
+            className={`text-left rounded-lg border p-3 transition-all hover:border-primary/40 group ${
+              isLLMReady ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Key className={`w-3.5 h-3.5 ${isLLMReady ? "text-emerald-600" : "text-amber-600"}`} />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">LLM</span>
+            </div>
+            <p className={`text-xs font-medium truncate ${isLLMReady ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
+              {llmLabel}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {isLLMReady ? "pronto pra produção" : "só pra testes"}
+            </p>
+          </button>
+
+          {/* Capacidades */}
+          <button
+            type="button"
+            onClick={() => onGoSection("caps.intelligence")}
+            className="text-left rounded-lg border border-border p-3 transition-all hover:border-primary/40 group"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Brain className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Capacidades</span>
+            </div>
+            <p className="text-base font-bold text-foreground">{capCount} <span className="text-xs text-muted-foreground font-normal">ativas</span></p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Raciocínio · Memória · Planning</p>
+          </button>
+
+          {/* Conhecimento */}
+          <button
+            type="button"
+            onClick={() => onGoSection("resources.kb")}
+            className="text-left rounded-lg border border-border p-3 transition-all hover:border-primary/40 group"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <BookOpen className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Conhecimento</span>
+            </div>
+            <p className="text-base font-bold text-foreground">{kbDocsCount} <span className="text-xs text-muted-foreground font-normal">{kbDocsCount === 1 ? "fonte" : "fontes"}</span></p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {kbDocsCount === 0 ? "adicione FAQ, docs" : "indexadas pra RAG"}
+            </p>
+          </button>
+
+          {/* Ferramentas */}
+          <button
+            type="button"
+            onClick={() => onGoSection("resources.tools")}
+            className="text-left rounded-lg border border-border p-3 transition-all hover:border-primary/40 group"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Wrench className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Ferramentas</span>
+            </div>
+            <p className="text-base font-bold text-foreground">{toolsCount} <span className="text-xs text-muted-foreground font-normal">{toolsCount === 1 ? "tool" : "tools"}</span></p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {toolsCount === 0 ? "agente sem ações" : "ações reais habilitadas"}
+            </p>
+          </button>
+
+          {/* Guardrails */}
+          <button
+            type="button"
+            onClick={() => onGoSection("behavior.guardrails")}
+            className={`text-left rounded-lg border p-3 transition-all hover:border-primary/40 group ${
+              guardrailsCount > 0 ? "border-border" : "border-amber-500/30 bg-amber-500/5"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldAlert className={`w-3.5 h-3.5 ${guardrailsCount > 0 ? "text-primary" : "text-amber-600"}`} />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Limites</span>
+            </div>
+            <p className="text-base font-bold text-foreground">{guardrailsCount} <span className="text-xs text-muted-foreground font-normal">{guardrailsCount === 1 ? "regra" : "regras"}</span></p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {guardrailsCount === 0 ? "defina o que NUNCA pode" : "ativos no prompt"}
+            </p>
+          </button>
+
+          {/* Versão */}
+          <button
+            type="button"
+            onClick={() => onGoSection("ops.versions")}
+            className="text-left rounded-lg border border-border p-3 transition-all hover:border-primary/40 group"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <GitBranch className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Versão</span>
+            </div>
+            <p className="text-base font-bold text-foreground truncate">{agentVersion || "rascunho"}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {isPublished ? "publicado" : "sem versão publicada"}
+            </p>
+          </button>
+        </div>
       </div>
 
       {/* Setup checklist */}

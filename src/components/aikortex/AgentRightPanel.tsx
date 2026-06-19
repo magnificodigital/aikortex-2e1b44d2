@@ -1119,6 +1119,10 @@ const AgentRightPanel = ({
                     isInstructionsSet={!!(agentInstructions && agentInstructions.trim().length > 0)}
                     isTonalitySet={!!(agentToneOfVoice && agentToneOfVoice.trim().length > 0)}
                     onGoSection={goSection}
+                    capabilities={capabilities}
+                    guardrails={agentGuardrails}
+                    llmProvider={(agent as any)?.provider}
+                    llmModel={agentModel}
                   />
                 )}
 
