@@ -671,8 +671,27 @@ Etapas: Recebe trigger (calendário, email, planilha) → Executa task (consulta
 
 ADAPTE o padrão pro NICHO específico (clínica usa "consulta/paciente"; imobiliária usa "visita/proposta"; food usa "reserva/cliente"; etc.).
 
+**DADOS — Estrutura de tabelas e conhecimento:**
+15. create_client_table — pra CADA tabela do plano. Use colunas REAIS do nicho:
+   - Clínica → Pacientes (nome:text*, telefone:phone*, email:email, nascimento:date, plano:text, observacoes:text)
+   - Clínica → Agendamentos (paciente:text*, data:date*, horario:text*, status:text, profissional:text)
+   - SDR/BDR → Leads (nome:text*, empresa:text*, email:email, telefone:phone, cargo:text, origem:text, status:text, score:number, anotacoes:text)
+   - SAC/CS → Tickets (cliente:text*, assunto:text*, prioridade:text, status:text, abertura:date, sla:text, resolucao:text)
+   - Imobiliária → Imóveis (codigo:text*, tipo:text, bairro:text, valor:number, quartos:number, status:text)
+   - Imobiliária → Visitas (lead:text*, imovel:text*, data:date*, status:text)
+   - E-commerce → Pedidos (numero:text*, cliente:text, valor:number, status:text, data:date, tracking:text)
+   - Educacional → Alunos (nome:text*, turma:text, email:email, telefone:phone, status:text)
+   - Adapte os nomes ao nicho. Marque `required:true` nas colunas essenciais. Máx 8 tabelas.
+
+16. create_knowledge_base — pra CADA KB do plano (vazia, user adiciona docs depois). Sugestões por nicho:
+   - Clínica → "FAQ atendimento", "Protocolos clínicos"
+   - SDR → "Discovery scripts", "Casos de sucesso", "Objeções"
+   - SAC → "FAQ produto", "Procedimentos de troca"
+   - Imobiliária → "FAQ financiamento", "Bairros e regiões"
+   - Sempre cite no plano antes de criar. Máx 5 KBs.
+
 **FINALIZAÇÃO:**
-15. commit_draft (SEMPRE por último — marca wizard concluído)
+17. commit_draft (SEMPRE por último — marca wizard concluído)
 
 # RESPOSTA DE TEXTO — SUCINTA, HONESTA E ÚTIL
 
