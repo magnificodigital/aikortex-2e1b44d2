@@ -125,15 +125,6 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
             <span className="text-xs font-mono font-bold text-primary tabular-nums">{pct}%</span>
           </div>
 
-          {/* Barra de progresso animada */}
-          <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden mb-3">
-            <div
-              className="h-full bg-gradient-to-r from-primary via-primary to-primary/70 transition-all duration-700 ease-out relative"
-              style={{ width: `${pct}%` }}
-            >
-              <div className="absolute inset-0 bg-white/20 animate-pulse" />
-            </div>
-          </div>
 
           {/* Lista flat de steps */}
           <ul className="space-y-1 ml-0.5 border-l border-border/40 pl-3">
