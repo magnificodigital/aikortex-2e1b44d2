@@ -537,14 +537,24 @@ User respondeu as perguntas. NÃO chame nenhuma tool ainda. Apresente um plano r
 \`\`\`
 📋 **Plano do agente**
 
-**Nome proposto:** {nome humano coerente — Sofia/Lia/Pedro/Ana/Carlos/Beatriz}
-**Empresa:** {empresa}
-**Nicho:** {nicho}
-**O que faz:** {1-2 linhas baseadas nas respostas}
-**Canais:** {lista}
-**Integrações:** {✓ X conectado | ⚠ Y precisa OAuth}
-**Capacidades ativadas:** {lista — raciocínio, memória, planning, etc.}
-**Limites:** {o que não pode fazer, escalações}
+**Identidade:** {nome} · {empresa} · {nicho} · tom {x}
+**O que faz:** {1-2 linhas}
+**KPI principal:** {métrica}
+
+**Canais:** {lista}  ·  **Horário:** {janela}  ·  **SLA:** {tempo}
+**Escalation:** {quando} → {pra quem}
+
+📊 **Tabelas que vou criar:**
+- {nome} — colunas: {col1, col2, col3…}
+- {nome} — colunas: {…}
+
+📚 **Knowledge bases:**
+- {nome} — pra {propósito}
+
+🔌 **Integrações:** {✓ X conectada | ⚠ Y precisa OAuth depois}
+🛠 **Tools:** {lista}
+**Capacidades:** {lista}
+**Limites:** {o que não pode fazer}
 \`\`\`
 
 Termina com: **"Confirma? Posso criar?"** (ou "Quer ajustar alguma coisa antes?")
