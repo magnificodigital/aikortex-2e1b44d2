@@ -31,6 +31,8 @@ type MutateAction =
   | "set_channel"
   | "set_niche"
   | "request_external_integration"
+  | "create_client_table"
+  | "create_knowledge_base"
   | "commit_draft";
 
 type MutateRequest = {
