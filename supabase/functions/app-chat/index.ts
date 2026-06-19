@@ -1327,16 +1327,28 @@ serve(async (req) => {
       let detectedSpec: ArchetypeSpec | null = null;
       let agencyName: string | null = null;
       if (mode === "wizard-setup") {
-        // Conta mensagens do user pra decidir a fase do fluxo conversacional.
-        // - 1 user message = DESCOBERTA (faz perguntas, zero tools)
-        // - 2 user messages = PLANO (apresenta resumo, pede confirmação, zero tools)
-        // - 3+ user messages = CRIACAO (dispara tools, cria agente, commit_draft)
-        const userMessageCount = incomingMessages.filter((m) => m.role === "user").length;
+        // Gating dinâmico de fase (Master v7.4 revisado):
+        // - DESCOBERTA: até cobrir 4 áreas (objetivo+KPIs, canais+horários,
+        //   dados+tabelas, escalation+handoff) OU o user pedir pra avançar.
+        // - PLANO: quando user mandou ≥ 3 mensagens com conteúdo OU pediu plano.
+        // - CRIACAO: só após confirmação explícita ("sim", "pode", "manda", etc).
+        // Fallback: ≥ 8 mensagens do user força avanço pra PLANO; confirmação
+        // explícita em qualquer momento avança pra CRIACAO.
+        const userMsgs = incomingMessages.filter((m) => m.role === "user");
+        const userMessageCount = userMsgs.length;
+        const lastUserMsg = (userMsgs[userMsgs.length - 1]?.content ?? "").toLowerCase().trim();
+        const confirmRegex = /\b(sim|pode|manda(\s+bala)?|confirma(do)?|ok|vai|perfeito|cria(r)?|beleza|fechou|t[áa]\s+(bom|certo)|simbora)\b/;
+        const askPlanRegex = /\b(plano|monta|resume|resumo|mostra|partir(\s+pra)?\s+cria|pode\s+criar)\b/;
+        const isConfirm = confirmRegex.test(lastUserMsg) && lastUserMsg.length < 80;
+        const isAskPlan = askPlanRegex.test(lastUserMsg);
         wizardPhase =
           userMessageCount <= 1 ? "DESCOBERTA"
-          : userMessageCount === 2 ? "PLANO"
-          : "CRIACAO";
+          : isConfirm && userMessageCount >= 3 ? "CRIACAO"
+          : isAskPlan || userMessageCount >= 6 ? "PLANO"
+          : userMessageCount >= 8 ? "PLANO"
+          : "DESCOBERTA";
         const phase = wizardPhase;
+
 
         // Busca agency_name do user — usado como default pra "empresa" do agente
         // (agencyName está declarado no escopo externo pra ser visível também no
