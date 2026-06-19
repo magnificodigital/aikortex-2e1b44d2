@@ -820,10 +820,30 @@ IMPORTANTE: Você NÃO é o agente final. Apenas configure.`;
     const mentionsTables = /Tabela|Tables\b/i.test(lastWizardText);
     const mentionsCadences = /Cadência|Cadências|Automaç(ões|ão)/i.test(lastWizardText);
 
+    // Exemplos de tabela por nicho — contextualiza a sugestão pra parecer
+    // pensada pro agente real, não copy-paste de saúde.
+    const niche = (loadedAgent.savedConfig as any)?.businessContext?.niche as string | undefined;
+    const tableExamplesByNiche: Record<string, string> = {
+      "Saúde":         "pacientes, agendamentos, planos de saúde",
+      "Odontologia":   "pacientes, procedimentos, agendamentos",
+      "Veterinária":   "tutores, pets, vacinas, agendamentos",
+      "Contabilidade": "clientes, regimes tributários, prazos de impostos",
+      "Advocacia":     "clientes, processos, prazos, audiências",
+      "Imobiliária":   "imóveis, leads, contratos, comissões",
+      "Retail":        "produtos, pedidos, estoque, fretes",
+      "Food":          "cardápio, pedidos, mesas, ingredientes",
+      "Educação":      "alunos, turmas, materiais, mensalidades",
+      "Pet":           "tutores, pets, produtos, agendamentos",
+      "Estética":      "clientes, procedimentos, agendamentos",
+      "Seguros":       "segurados, apólices, sinistros, comissões",
+      "SaaS":          "clientes, planos, assinaturas, tickets",
+    };
+    const tableExamples = (niche && tableExamplesByNiche[niche]) || "clientes, produtos, agendamentos";
+
     const missing: string[] = [];
     if (!mentionsLLMs) missing.push("- ⚠️ Pra **publicar**, conecte sua chave LLM (OpenAI/Anthropic/Gemini) em **Integrações → LLMs**. O modelo Aikortex é só pra criação/testes.");
     if (!mentionsKB) missing.push("- 📚 Adicione FAQ, políticas e documentos da empresa em **Conhecimento** pra respostas mais precisas.");
-    if (!mentionsTables) missing.push("- 🗃️ Cadastre dados (pacientes, produtos, agendamentos) em **Tabelas** pro agente consultar/atualizar.");
+    if (!mentionsTables) missing.push(`- 🗃️ Cadastre dados (${tableExamples}) em **Tabelas** pro agente consultar/atualizar.`);
     if (!mentionsCadences) missing.push("- ⏱️ Pra lembretes automáticos e follow-ups, configure em **Automações → Cadências**.");
 
     let finalMessage = lastWizardText || setupInitialMessage;

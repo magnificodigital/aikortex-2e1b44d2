@@ -55,7 +55,7 @@ export const AGENT_TOOLS_CATALOG: Record<ToolKey, ToolCatalogEntry> = {
     name: "Consultar tabelas",
     shortLabel: "table_read",
     description:
-      "Permite o agente buscar registros nas tabelas do cliente (pacientes, produtos, agendamentos, etc.) com filtros.",
+      "Permite o agente buscar registros nas tabelas do cliente (clientes, contatos, agendamentos, etc.) com filtros.",
     icon: Database,
     requiredSecret: "—",
     secretHelpUrl: "https://docs.lovable.dev/",
