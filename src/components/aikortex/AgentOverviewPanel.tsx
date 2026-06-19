@@ -69,8 +69,8 @@ export default function AgentOverviewPanel({
   const { data: emailStatus } = useEmailIntegrationStatus();
   const { data: waStatus } = useWhatsAppIntegrationStatus();
   const { data: templates = [] } = useWhatsAppTemplates();
-  const { data: tools = [] } = useAgentTools(agentId);
-  const { data: kbs = [] } = useAgentKnowledgeBases(agentId);
+  const { tools = [] } = useAgentTools(agentId);
+  const { knowledgeBases: kbs = [] } = useAgentKnowledgeBases(agentId);
   const firstKbId = kbs[0]?.id;
   const { data: kbDocs = [] } = useKnowledgeDocuments(firstKbId);
 
