@@ -1701,24 +1701,53 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
           .map((c) => `<!--oauth:${c.provider}-->`)
           .join("\n");
 
-        // Varia frase introdutória pra não soar template (5 variações rotativas)
-        const introVariations = [
-          `Beleza! Um ${detectedSpec.label} — ótimo caso de uso. Antes de bolar, me ajuda com algumas coisas:`,
-          `Boa! ${detectedSpec.label} dá pra fazer rápido. Preciso entender alguns detalhes antes:`,
-          `Show, ${detectedSpec.label}. Pra fazer um agente real (não genérico), me responde isso:`,
-          `Legal, ${detectedSpec.label} é um clássico. Pra mandar bem desde o começo:`,
-          `Bacana! ${detectedSpec.label}. Vou montar um agente sob medida — antes só preciso de:`,
+        // Varia frase introdutória pra não soar template. Frases UNIVERSAIS
+        // (sem inserir o label naked — "Customizado é um clássico" não fazia
+        // sentido). Quando o spec tem label útil, mencionamos sem grudar
+        // adjetivo genérico.
+        const isGenericType = !detectedSpec.label || detectedSpec.label === "Customizado" || detectedSpec.label === "Custom";
+
+        const introVariationsUniversal = [
+          `Beleza! Vamos por partes pra fazer um agente que faça sentido pro seu caso:`,
+          `Boa! Antes de criar, preciso entender alguns detalhes:`,
+          `Show. Vou montar isso sob medida — me responde rapidinho:`,
+          `Legal! Pra esse agente sair real e não genérico, me ajuda com:`,
+          `Bacana! Pra fazer direito, preciso saber:`,
+          `Top. Antes de bolar, me conta isso:`,
+          `Ótimo. Vou estruturar agora — só preciso de algumas info:`,
+          `Combinado. Pra fazer um agente que funciona de verdade:`,
+          `Tranquilo. Antes de montar, me responde umas perguntas rápidas:`,
+          `Perfeito. Pra esse agente nascer com cara de gente, me conta:`,
         ];
-        // Varia frase de fechamento
+
+        const introVariationsWithLabel = [
+          `Beleza! Um ${detectedSpec.label} — boa escolha. Antes de criar, me ajuda com:`,
+          `Boa! ${detectedSpec.label} dá pra fazer rápido — só preciso de:`,
+          `Show, ${detectedSpec.label}. Pra ficar real e não genérico, me responde:`,
+          `Bacana! ${detectedSpec.label} — vou montar sob medida. Antes preciso saber:`,
+          `Legal, ${detectedSpec.label}. Pra mandar bem desde o começo:`,
+        ];
+
+        // Varia frase de fechamento (independente da intro)
         const closingVariations = [
           `Quando responder, eu monto o plano e te peço confirmação.`,
           `Me responde isso e eu já volto com o plano.`,
           `Com essas respostas eu estruturo o agente e te mostro o resumo.`,
           `Depois das respostas eu monto tudo e você confirma antes de criar.`,
+          `Manda essas info que eu já te trago a estrutura pronta pra confirmar.`,
+          `Com isso eu já consigo montar — depois você confirma.`,
         ];
-        const introHash = firstMsgContent.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-        const intro = introVariations[introHash % introVariations.length];
-        const closingPhrase = closingVariations[introHash % closingVariations.length];
+
+        // Hash mais sensível: usa primeiros 30 chars (não a string toda).
+        // Pequenas mudanças na descrição → variação diferente.
+        const hashStr = firstMsgContent.slice(0, 30) + firstMsgContent.length;
+        const introHash = hashStr.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+        const closingHash = (introHash * 7) + firstMsgContent.length; // hash diferente pro fechamento
+
+        const intro = isGenericType
+          ? introVariationsUniversal[introHash % introVariationsUniversal.length]
+          : introVariationsWithLabel[introHash % introVariationsWithLabel.length];
+        const closingPhrase = closingVariations[closingHash % closingVariations.length];
 
         const closing = connectorMarkers
           ? `\n\n💡 Já pode ir conectando ${inferConnectors(detectedSpec, firstMsgContent).map((c) => c.provider.replace("_", " ")).join(" e ")} enquanto responde — o agente precisa dessas integrações pra funcionar de verdade:\n\n${connectorMarkers}\n\n**${closingPhrase}**`
