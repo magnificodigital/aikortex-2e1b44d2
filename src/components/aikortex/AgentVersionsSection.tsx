@@ -11,7 +11,7 @@ import AgentDiffView from "./AgentDiffView";
 import RichEmptyState from "@/components/shared/RichEmptyState";
 import { computeAgentDiff, countChanges } from "@/lib/agent-diff";
 import { Input } from "@/components/ui/input";
-import { computeAgentDiff } from "@/lib/agent-diff";
+
 
 function timeAgo(iso?: string | null) {
   if (!iso) return "";
@@ -94,7 +94,7 @@ export default function AgentVersionsSection({ agentId }: { agentId?: string }) 
                 const counts = countChanges(changes);
                 const parts: string[] = [];
                 if (counts.added > 0) parts.push(`+${counts.added}`);
-                if (counts.modified > 0) parts.push(`~${counts.modified}`);
+                if (counts.changed > 0) parts.push(`~${counts.changed}`);
                 if (counts.removed > 0) parts.push(`−${counts.removed}`);
                 if (parts.length) diffSummary = parts.join(" · ");
               } catch { /* skip */ }
