@@ -184,8 +184,51 @@ export const WIZARD_TOOL_DEFS = [
   {
     type: "function",
     function: {
+      name: "create_client_table",
+      description: "Cria uma tabela de dados estruturados pro agente (ex: pacientes, leads, pedidos, agendamentos). USE na fase CRIAÇÃO pra cada tabela do plano. Tipos válidos: text, number, date, boolean, email, phone, url, json. Máx 8 tabelas.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome curto da tabela (ex: 'Pacientes', 'Leads qualificados')." },
+          description: { type: "string", description: "1 frase explicando pra que serve." },
+          columns: {
+            type: "array",
+            description: "Colunas da tabela.",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                type: { type: "string", enum: ["text", "number", "date", "boolean", "email", "phone", "url", "json"] },
+                required: { type: "boolean" },
+              },
+              required: ["name", "type"],
+            },
+          },
+        },
+        required: ["name", "columns"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_knowledge_base",
+      description: "Cria uma base de conhecimento vazia pro agente (ex: 'FAQ da clínica', 'Catálogo'). User adiciona documentos depois. Máx 5 KBs.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          description: { type: "string" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "commit_draft",
-      description: "Marca o wizard como concluído. CHAME esta tool no final, depois de cobrir os 4 elementos do §13.2 (perfil + integrações + critérios + fluxo) e confirmar com o usuário.",
+      description: "Marca o wizard como concluído. CHAME por ÚLTIMO, depois de criar identidade + instruções + tools + canais + tabelas + KBs + integrações.",
       parameters: { type: "object", properties: {} },
     },
   },
