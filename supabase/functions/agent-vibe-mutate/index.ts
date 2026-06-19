@@ -352,6 +352,80 @@ serve(async (req) => {
         logMessage = `Tool "${tool_key}" removida`;
         break;
       }
+      case "create_client_table": {
+        const name = String(params.name ?? "").trim();
+        const description = String(params.description ?? "").trim() || null;
+        const cols = Array.isArray(params.columns) ? params.columns : [];
+        if (!name || cols.length === 0) {
+          return jsonRes({ error: "INVALID_PARAMS", message: "name e columns são obrigatórios" }, 400);
+        }
+        const validTypes = new Set(["text", "number", "date", "boolean", "email", "phone", "url", "json"]);
+        const normalizedCols = cols
+          .map((c: any) => ({
+            name: String(c?.name ?? "").trim(),
+            type: validTypes.has(String(c?.type)) ? String(c.type) : "text",
+            required: !!c?.required,
+          }))
+          .filter((c: any) => c.name.length > 0)
+          .slice(0, 20);
+        if (normalizedCols.length === 0) {
+          return jsonRes({ error: "INVALID_COLUMNS" }, 400);
+        }
+        // client_id vem do agent.client_id; se não tiver, usa user_id como fallback
+        // (compat com agentes antigos). Precisa recarregar com client_id.
+        const { data: agentFull } = await admin
+          .from("user_agents")
+          .select("client_id, user_id")
+          .eq("id", agentId)
+          .maybeSingle();
+        const clientId = (agentFull as any)?.client_id ?? (agentFull as any)?.user_id;
+        if (!clientId) {
+          return jsonRes({ error: "NO_CLIENT_ID" }, 400);
+        }
+        // Limite: máx 8 tabelas por cliente neste agente
+        const { count } = await admin
+          .from("client_tables")
+          .select("id", { count: "exact", head: true })
+          .eq("client_id", clientId);
+        if ((count ?? 0) >= 8) {
+          return jsonRes({ ok: true, log: `Tabela "${name}" não criada (limite de 8 atingido)`, warning: "MAX_TABLES" });
+        }
+        const { error: insErr } = await admin.from("client_tables").insert({
+          client_id: clientId,
+          name,
+          description,
+          columns: normalizedCols,
+          enabled: true,
+        });
+        if (insErr) {
+          return jsonRes({ error: "INSERT_FAILED", details: insErr.message }, 500);
+        }
+        logMessage = `Tabela "${name}" criada (${normalizedCols.length} colunas)`;
+        break;
+      }
+      case "create_knowledge_base": {
+        const name = String(params.name ?? "").trim();
+        const description = String(params.description ?? "").trim() || null;
+        if (!name) return jsonRes({ error: "INVALID_PARAMS", message: "name obrigatório" }, 400);
+        const { count } = await admin
+          .from("agent_knowledge_bases")
+          .select("id", { count: "exact", head: true })
+          .eq("agent_id", agentId);
+        if ((count ?? 0) >= 5) {
+          return jsonRes({ ok: true, log: `KB "${name}" não criada (limite de 5)`, warning: "MAX_KBS" });
+        }
+        const { error: insErr } = await admin.from("agent_knowledge_bases").insert({
+          agent_id: agentId,
+          name,
+          description,
+          enabled: true,
+        });
+        if (insErr) {
+          return jsonRes({ error: "INSERT_FAILED", details: insErr.message }, 500);
+        }
+        logMessage = `Knowledge base "${name}" criada`;
+        break;
+      }
       case "commit_draft": {
         // Marca o agente como pronto pra revisão final do usuário. O status
         // "draft" continua mas com flag de "wizard_completed" no config.
