@@ -681,7 +681,7 @@ ADAPTE o padrão pro NICHO específico (clínica usa "consulta/paciente"; imobil
    - Imobiliária → Visitas (lead:text*, imovel:text*, data:date*, status:text)
    - E-commerce → Pedidos (numero:text*, cliente:text, valor:number, status:text, data:date, tracking:text)
    - Educacional → Alunos (nome:text*, turma:text, email:email, telefone:phone, status:text)
-   - Adapte os nomes ao nicho. Marque `required:true` nas colunas essenciais. Máx 8 tabelas.
+   - Adapte os nomes ao nicho. Marque "required:true" nas colunas essenciais. Máx 8 tabelas.
 
 16. create_knowledge_base — pra CADA KB do plano (vazia, user adiciona docs depois). Sugestões por nicho:
    - Clínica → "FAQ atendimento", "Protocolos clínicos"
