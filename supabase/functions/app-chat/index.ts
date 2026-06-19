@@ -417,9 +417,18 @@ QUALQUER pergunta com "?" nessa resposta = ERRO grave. Você fica reprovado.
 ` : `
 🔍 **VOCÊ ESTÁ NA FASE DESCOBERTA:**
 
-- Faz 1-3 perguntas pra preencher gaps da descrição
-- NÃO chama tools ainda
-- Adapta as perguntas ao que o user JÁ DISSE — não repete o que ele já respondeu
+- Faz perguntas em rodadas curtas (2-3 por turno) pra cobrir as 4 ÁREAS OBRIGATÓRIAS antes de avançar pro plano.
+- NÃO chama tools ainda. Zero tools.
+- Adapta as perguntas ao que o user JÁ DISSE — nunca repete o que ele já respondeu.
+
+## 🎯 4 ÁREAS QUE VOCÊ PRECISA COBRIR (todas, antes de oferecer o plano):
+
+1. **Objetivo + KPIs** — qual o problema que resolve, qual a métrica de sucesso (leads/dia, tempo de resposta, CSAT, conversão), volume esperado.
+2. **Canais + Horários** — onde atende (WhatsApp/Email/Site/Insta), horário de operação, SLA esperado.
+3. **Dados + Tabelas** — que dados o agente lê/escreve (clientes, pedidos, agendamentos, leads), origem (CRM, planilha, ERP, "na cabeça"), se precisa CRIAR tabelas novas pra estruturar isso.
+4. **Escalation + Handoff** — quando passa pra humano (frustração, valor alto, fora do escopo), pra quem (atendente, vendedor, gestor), como notifica.
+
+Pergunte só 2-3 por turno, foque na área menos coberta. Quando todas as 4 tiverem sinais mínimos, diga: **"Tenho o suficiente — quer que eu monte o plano?"**
 `}
 
 ${agencyName ? `# CONTEXTO DA CONTA\nAgência/empresa do user: **${agencyName}** (puxado da conta). Use esse nome como default pra "empresa" do agente, salvo se o user disser que é pra outra empresa.\n` : "# CONTEXTO DA CONTA\nAgência/empresa do user não está cadastrada. Pergunte na fase Descoberta.\n"}
@@ -528,14 +537,24 @@ User respondeu as perguntas. NÃO chame nenhuma tool ainda. Apresente um plano r
 \`\`\`
 📋 **Plano do agente**
 
-**Nome proposto:** {nome humano coerente — Sofia/Lia/Pedro/Ana/Carlos/Beatriz}
-**Empresa:** {empresa}
-**Nicho:** {nicho}
-**O que faz:** {1-2 linhas baseadas nas respostas}
-**Canais:** {lista}
-**Integrações:** {✓ X conectado | ⚠ Y precisa OAuth}
-**Capacidades ativadas:** {lista — raciocínio, memória, planning, etc.}
-**Limites:** {o que não pode fazer, escalações}
+**Identidade:** {nome} · {empresa} · {nicho} · tom {x}
+**O que faz:** {1-2 linhas}
+**KPI principal:** {métrica}
+
+**Canais:** {lista}  ·  **Horário:** {janela}  ·  **SLA:** {tempo}
+**Escalation:** {quando} → {pra quem}
+
+📊 **Tabelas que vou criar:**
+- {nome} — colunas: {col1, col2, col3…}
+- {nome} — colunas: {…}
+
+📚 **Knowledge bases:**
+- {nome} — pra {propósito}
+
+🔌 **Integrações:** {✓ X conectada | ⚠ Y precisa OAuth depois}
+🛠 **Tools:** {lista}
+**Capacidades:** {lista}
+**Limites:** {o que não pode fazer}
 \`\`\`
 
 Termina com: **"Confirma? Posso criar?"** (ou "Quer ajustar alguma coisa antes?")
@@ -652,8 +671,27 @@ Etapas: Recebe trigger (calendário, email, planilha) → Executa task (consulta
 
 ADAPTE o padrão pro NICHO específico (clínica usa "consulta/paciente"; imobiliária usa "visita/proposta"; food usa "reserva/cliente"; etc.).
 
+**DADOS — Estrutura de tabelas e conhecimento:**
+15. create_client_table — pra CADA tabela do plano. Use colunas REAIS do nicho:
+   - Clínica → Pacientes (nome:text*, telefone:phone*, email:email, nascimento:date, plano:text, observacoes:text)
+   - Clínica → Agendamentos (paciente:text*, data:date*, horario:text*, status:text, profissional:text)
+   - SDR/BDR → Leads (nome:text*, empresa:text*, email:email, telefone:phone, cargo:text, origem:text, status:text, score:number, anotacoes:text)
+   - SAC/CS → Tickets (cliente:text*, assunto:text*, prioridade:text, status:text, abertura:date, sla:text, resolucao:text)
+   - Imobiliária → Imóveis (codigo:text*, tipo:text, bairro:text, valor:number, quartos:number, status:text)
+   - Imobiliária → Visitas (lead:text*, imovel:text*, data:date*, status:text)
+   - E-commerce → Pedidos (numero:text*, cliente:text, valor:number, status:text, data:date, tracking:text)
+   - Educacional → Alunos (nome:text*, turma:text, email:email, telefone:phone, status:text)
+   - Adapte os nomes ao nicho. Marque "required:true" nas colunas essenciais. Máx 8 tabelas.
+
+16. create_knowledge_base — pra CADA KB do plano (vazia, user adiciona docs depois). Sugestões por nicho:
+   - Clínica → "FAQ atendimento", "Protocolos clínicos"
+   - SDR → "Discovery scripts", "Casos de sucesso", "Objeções"
+   - SAC → "FAQ produto", "Procedimentos de troca"
+   - Imobiliária → "FAQ financiamento", "Bairros e regiões"
+   - Sempre cite no plano antes de criar. Máx 5 KBs.
+
 **FINALIZAÇÃO:**
-15. commit_draft (SEMPRE por último — marca wizard concluído)
+17. commit_draft (SEMPRE por último — marca wizard concluído)
 
 # RESPOSTA DE TEXTO — SUCINTA, HONESTA E ÚTIL
 
@@ -713,7 +751,7 @@ Exemplo conteúdo Instagram (mais simples):
 
 # TOOLS DISPONÍVEIS
 
-set_agent_name · set_agent_description · set_agent_type · set_avatar · set_company_name · set_niche · set_tone_of_voice · set_objective · set_instructions · set_greeting_message · set_capability · set_channel · add_tool · request_external_integration · commit_draft
+set_agent_name · set_agent_description · set_agent_type · set_avatar · set_company_name · set_niche · set_tone_of_voice · set_objective · set_instructions · set_greeting_message · set_capability · set_channel · add_tool · request_external_integration · create_client_table · create_knowledge_base · commit_draft
 
 # REGRAS
 
@@ -1327,16 +1365,28 @@ serve(async (req) => {
       let detectedSpec: ArchetypeSpec | null = null;
       let agencyName: string | null = null;
       if (mode === "wizard-setup") {
-        // Conta mensagens do user pra decidir a fase do fluxo conversacional.
-        // - 1 user message = DESCOBERTA (faz perguntas, zero tools)
-        // - 2 user messages = PLANO (apresenta resumo, pede confirmação, zero tools)
-        // - 3+ user messages = CRIACAO (dispara tools, cria agente, commit_draft)
-        const userMessageCount = incomingMessages.filter((m) => m.role === "user").length;
+        // Gating dinâmico de fase (Master v7.4 revisado):
+        // - DESCOBERTA: até cobrir 4 áreas (objetivo+KPIs, canais+horários,
+        //   dados+tabelas, escalation+handoff) OU o user pedir pra avançar.
+        // - PLANO: quando user mandou ≥ 3 mensagens com conteúdo OU pediu plano.
+        // - CRIACAO: só após confirmação explícita ("sim", "pode", "manda", etc).
+        // Fallback: ≥ 8 mensagens do user força avanço pra PLANO; confirmação
+        // explícita em qualquer momento avança pra CRIACAO.
+        const userMsgs = incomingMessages.filter((m) => m.role === "user");
+        const userMessageCount = userMsgs.length;
+        const lastUserMsg = (userMsgs[userMsgs.length - 1]?.content ?? "").toLowerCase().trim();
+        const confirmRegex = /\b(sim|pode|manda(\s+bala)?|confirma(do)?|ok|vai|perfeito|cria(r)?|beleza|fechou|t[áa]\s+(bom|certo)|simbora)\b/;
+        const askPlanRegex = /\b(plano|monta|resume|resumo|mostra|partir(\s+pra)?\s+cria|pode\s+criar)\b/;
+        const isConfirm = confirmRegex.test(lastUserMsg) && lastUserMsg.length < 80;
+        const isAskPlan = askPlanRegex.test(lastUserMsg);
         wizardPhase =
           userMessageCount <= 1 ? "DESCOBERTA"
-          : userMessageCount === 2 ? "PLANO"
-          : "CRIACAO";
+          : isConfirm && userMessageCount >= 3 ? "CRIACAO"
+          : isAskPlan || userMessageCount >= 6 ? "PLANO"
+          : userMessageCount >= 8 ? "PLANO"
+          : "DESCOBERTA";
         const phase = wizardPhase;
+
 
         // Busca agency_name do user — usado como default pra "empresa" do agente
         // (agencyName está declarado no escopo externo pra ser visível também no
@@ -1509,8 +1559,8 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           agentId,
           agencyId: authResult.agencyId,
           messages: chatMessages,
-          maxTokens: 5000, // Instructions ≥1200 chars + outras tools + resposta
-          maxIterations: 8,
+          maxTokens: 6000, // Instructions ≥1200 chars + tabelas + KBs + tools + resposta
+          maxIterations: 14, // suporta até 8 tabelas + 5 KBs + tools de identidade
           userJwt,
         });
         content = wizContent;
