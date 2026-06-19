@@ -1559,8 +1559,8 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           agentId,
           agencyId: authResult.agencyId,
           messages: chatMessages,
-          maxTokens: 5000, // Instructions ≥1200 chars + outras tools + resposta
-          maxIterations: 8,
+          maxTokens: 6000, // Instructions ≥1200 chars + tabelas + KBs + tools + resposta
+          maxIterations: 14, // suporta até 8 tabelas + 5 KBs + tools de identidade
           userJwt,
         });
         content = wizContent;
