@@ -87,7 +87,7 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
   // Frase principal varia conforme progresso
   const headline =
     currentIdx === -1
-      ? "Agente quase pronto..."
+      ? "✨ Agente pronto — escrevendo resumo"
       : pct < 25
       ? "Iniciando construção..."
       : pct < 60
@@ -168,10 +168,21 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
           </ul>
 
           {/* Subtítulo motivacional embaixo */}
-          {currentIdx !== -1 && (
+          {currentIdx !== -1 ? (
             <p className="text-[10px] text-muted-foreground/70 mt-3 italic">
               Isso leva uns 20-30 segundos — montando tudo direitinho.
             </p>
+          ) : (
+            // Estado final: todos steps done. LLM ainda terminando de escrever
+            // a resposta. Mostra "Finalizando saída..." com 3 dots animados.
+            <div className="mt-3 flex items-center gap-2 text-[11px] text-foreground/80">
+              <span className="font-medium">Escrevendo o resumo</span>
+              <span className="flex gap-1">
+                <span className="w-1 h-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1 h-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1 h-1 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+              </span>
+            </div>
           )}
         </div>
       </div>
