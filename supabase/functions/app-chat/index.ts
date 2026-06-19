@@ -751,7 +751,7 @@ Exemplo conteúdo Instagram (mais simples):
 
 # TOOLS DISPONÍVEIS
 
-set_agent_name · set_agent_description · set_agent_type · set_avatar · set_company_name · set_niche · set_tone_of_voice · set_objective · set_instructions · set_greeting_message · set_capability · set_channel · add_tool · request_external_integration · commit_draft
+set_agent_name · set_agent_description · set_agent_type · set_avatar · set_company_name · set_niche · set_tone_of_voice · set_objective · set_instructions · set_greeting_message · set_capability · set_channel · add_tool · request_external_integration · create_client_table · create_knowledge_base · commit_draft
 
 # REGRAS
 
