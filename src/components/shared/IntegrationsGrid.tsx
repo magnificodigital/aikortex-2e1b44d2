@@ -56,7 +56,19 @@ export type IntegrationTag =
   | "dev"
   | "arquivos"
   | "reunioes"
-  | "marketing";
+  | "marketing"
+  // Tags por nicho — integrações específicas de setor
+  | "imobiliaria"
+  | "saude"
+  | "odontologia"
+  | "advocacia"
+  | "contabilidade"
+  | "estetica"
+  | "ecommerce"
+  | "food"
+  | "pet"
+  | "educacao"
+  | "seguros";
 
 export const TAG_LABELS: Record<IntegrationTag, string> = {
   llm: "IA / LLM",
@@ -69,6 +81,17 @@ export const TAG_LABELS: Record<IntegrationTag, string> = {
   arquivos: "Arquivos",
   reunioes: "Reuniões",
   marketing: "Marketing",
+  imobiliaria: "Imobiliária",
+  saude: "Saúde",
+  odontologia: "Odontologia",
+  advocacia: "Advocacia",
+  contabilidade: "Contabilidade",
+  estetica: "Estética",
+  ecommerce: "E-commerce",
+  food: "Food",
+  pet: "Pet",
+  educacao: "Educação",
+  seguros: "Seguros",
 };
 
 export interface IntegrationProvider {
@@ -80,6 +103,9 @@ export interface IntegrationProvider {
   apiKeyUrl?: string;
   apiKeyUrlLabel?: string;
   tags?: IntegrationTag[];
+  /** Integração ainda não implementada — mostra com badge "Em breve" e
+   *  desabilita interação. LLM continua sabendo dela via niche-integrations. */
+  comingSoon?: boolean;
 }
 
 export const LLM_PROVIDERS: IntegrationProvider[] = [
@@ -151,6 +177,48 @@ export const SERVICE_PROVIDERS: IntegrationProvider[] = [
   { label: "GitHub", provider: "github", description: "Repos, issues e PRs.", logo: githubLogo, tags: ["dev"] },
   { label: "LinkedIn", provider: "linkedin", description: "Posts e mensagens profissionais.", logo: linkedinLogo, tags: ["comunicacao", "marketing"] },
   { label: "Zoom", provider: "zoom", description: "Reuniões e gravações.", logo: zoomLogo, tags: ["reunioes", "comunicacao"] },
+
+  // ── CRMs genéricos BR (top 2 que faltavam) ──────────────────────────────
+  { label: "RD Station CRM", provider: "rd_station_crm", description: "CRM líder no SMB brasileiro.", logo: "https://cdn.simpleicons.org/rdstation/24D366", tags: ["crm", "vendas", "marketing"], comingSoon: true },
+  { label: "Pipedrive", provider: "pipedrive", description: "CRM focado em vendas B2B.", logo: "https://cdn.simpleicons.org/pipedrive/000000", tags: ["crm", "vendas"], comingSoon: true },
+
+  // ── Imobiliária ─────────────────────────────────────────────────────────
+  { label: "Vista CRM", provider: "vista_crm", description: "CRM imobiliário mais usado no Brasil.", logo: "https://cdn.simpleicons.org/buildkite/14CC80", tags: ["imobiliaria", "crm"], comingSoon: true },
+  { label: "Zap Imóveis", provider: "zap_imoveis", description: "Marketplace de imóveis #1 do Brasil.", logo: "https://cdn.simpleicons.org/zerodha/387ED1", tags: ["imobiliaria", "marketing"], comingSoon: true },
+
+  // ── Saúde / Odontologia ─────────────────────────────────────────────────
+  { label: "iClinic", provider: "iclinic", description: "Prontuário eletrônico e agendamento líder BR.", logo: "https://cdn.simpleicons.org/oraclecloud/FF0000", tags: ["saude"], comingSoon: true },
+  { label: "Doctoralia", provider: "doctoralia", description: "Marketplace e agendamento de consultas.", logo: "https://cdn.simpleicons.org/teladoc/00A4D9", tags: ["saude"], comingSoon: true },
+  { label: "ClinicDent", provider: "clinicdent", description: "Gestão de clínica odontológica.", logo: "https://cdn.simpleicons.org/dental/00A4D9", tags: ["odontologia"], comingSoon: true },
+
+  // ── Advocacia ───────────────────────────────────────────────────────────
+  { label: "Astrea", provider: "astrea", description: "Software jurídico líder em escritórios SMB.", logo: "https://cdn.simpleicons.org/ankermake/8B5CF6", tags: ["advocacia"], comingSoon: true },
+  { label: "Projuris", provider: "projuris", description: "Plataforma jurídica enterprise.", logo: "https://cdn.simpleicons.org/protocols/0066CC", tags: ["advocacia"], comingSoon: true },
+
+  // ── Contabilidade ───────────────────────────────────────────────────────
+  { label: "Conta Azul", provider: "conta_azul", description: "Gestão financeira pra pequenas empresas.", logo: "https://cdn.simpleicons.org/contactlesspayment/0066FF", tags: ["contabilidade"], comingSoon: true },
+  { label: "Domínio Sistemas", provider: "dominio_sistemas", description: "Sistema contábil/fiscal mais usado no Brasil.", logo: "https://cdn.simpleicons.org/dominos/006491", tags: ["contabilidade"], comingSoon: true },
+
+  // ── Estética ────────────────────────────────────────────────────────────
+  { label: "Belezix", provider: "belezix", description: "Agendamento líder pra estética e salão.", logo: "https://cdn.simpleicons.org/buffer/168EEA", tags: ["estetica"], comingSoon: true },
+
+  // ── E-commerce ──────────────────────────────────────────────────────────
+  { label: "Shopify", provider: "shopify", description: "Plataforma de e-commerce global.", logo: "https://cdn.simpleicons.org/shopify/96BF48", tags: ["ecommerce"], comingSoon: true },
+  { label: "Nuvemshop", provider: "nuvemshop", description: "E-commerce líder SMB BR.", logo: "https://cdn.simpleicons.org/nuxt/00DC82", tags: ["ecommerce"], comingSoon: true },
+
+  // ── Food / Restaurante ──────────────────────────────────────────────────
+  { label: "iFood", provider: "ifood", description: "Marketplace #1 de delivery.", logo: "https://cdn.simpleicons.org/ifood/EA1D2C", tags: ["food"], comingSoon: true },
+  { label: "Anota AI", provider: "anota_ai", description: "Pedidos via WhatsApp pra restaurantes.", logo: "https://cdn.simpleicons.org/anonymous/000000", tags: ["food"], comingSoon: true },
+
+  // ── Pet / Veterinária ───────────────────────────────────────────────────
+  { label: "SimplesVet", provider: "simplesvet", description: "Gestão de clínica veterinária líder BR.", logo: "https://cdn.simpleicons.org/petsathome/00A859", tags: ["pet"], comingSoon: true },
+
+  // ── Educação ────────────────────────────────────────────────────────────
+  { label: "Hotmart", provider: "hotmart", description: "Marketplace de cursos digitais #1 BR.", logo: "https://cdn.simpleicons.org/hotjar/FD3A5C", tags: ["educacao"], comingSoon: true },
+  { label: "Sponte", provider: "sponte", description: "Gestão de cursos e escolas BR.", logo: "https://cdn.simpleicons.org/spotify/1ED760", tags: ["educacao"], comingSoon: true },
+
+  // ── Seguros ─────────────────────────────────────────────────────────────
+  { label: "Sigecorr", provider: "sigecorr", description: "Sistema de corretora de seguros líder BR.", logo: "https://cdn.simpleicons.org/securityscorecard/1F95DA", tags: ["seguros"], comingSoon: true },
 ];
 
 export const ALL_PROVIDERS = [...LLM_PROVIDERS, ...SERVICE_PROVIDERS];
@@ -668,18 +736,25 @@ export function IntegrationsGrid({
 
             // ── Variant: card (padrão Zaia/Composio) ───────────────────────
             if (variant === "card") {
+              const disabled = p.native || p.comingSoon;
               return (
                 <button
                   key={p.provider}
                   type="button"
-                  onClick={() => !p.native && openDialog(p)}
-                  disabled={p.native}
+                  onClick={() => !disabled && openDialog(p)}
+                  disabled={disabled}
                   className={`group relative aspect-[5/4] flex flex-col items-center justify-center gap-2 p-4 rounded-xl border bg-card transition-all text-center ${
-                    p.native ? "cursor-default opacity-90" : "hover:border-primary/50 hover:bg-muted/30 hover:-translate-y-0.5 cursor-pointer"
-                  } ${connected ? "border-emerald-500/40" : "border-border"}`}
-                  title={p.description}
+                    p.comingSoon ? "cursor-not-allowed opacity-60"
+                    : p.native ? "cursor-default opacity-90"
+                    : "hover:border-primary/50 hover:bg-muted/30 hover:-translate-y-0.5 cursor-pointer"
+                  } ${connected ? "border-emerald-500/40" : p.comingSoon ? "border-border border-dashed" : "border-border"}`}
+                  title={p.comingSoon ? `${p.description} (em breve)` : p.description}
                 >
-                  {connected && (
+                  {p.comingSoon ? (
+                    <span className="absolute top-2 right-2 text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded-full">
+                      Em breve
+                    </span>
+                  ) : connected && (
                     <span className="absolute top-2 right-2 flex items-center gap-0.5 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded-full">
                       <Check className="w-2.5 h-2.5" />
                       {p.native ? "Nativo" : "Conectado"}
@@ -702,14 +777,20 @@ export function IntegrationsGrid({
             return (
               <div
                 key={p.provider}
-                className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors"
+                className={`flex items-center justify-between py-3 px-3 rounded-lg transition-colors ${
+                  p.comingSoon ? "opacity-60" : "hover:bg-muted/50"
+                }`}
               >
                 <div className="flex items-center gap-3">
                   {renderLogo("sm")}
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-foreground">{p.label}</p>
-                      {connected && (
+                      {p.comingSoon ? (
+                        <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded-full">
+                          Em breve
+                        </span>
+                      ) : connected && (
                         <span className="flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
                           <Check className="w-2.5 h-2.5" /> {p.native ? "Nativo" : "Conectado"}
                         </span>
@@ -718,7 +799,7 @@ export function IntegrationsGrid({
                     <p className="text-xs text-muted-foreground">{p.description}</p>
                   </div>
                 </div>
-                {!p.native && (
+                {!p.native && !p.comingSoon && (
                   <Button
                     variant={connected ? "outline" : "ghost"}
                     size="sm"
