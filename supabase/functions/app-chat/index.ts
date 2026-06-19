@@ -646,7 +646,15 @@ Sua resposta DEPOIS das tools deve ter 4 partes CURTAS:
 **3. 📋 Próximos passos sugeridos** (lista curta de 2-3 itens REAIS pro user agir):
 Inclua os que se aplicam ao agente criado:
 - **LLM de produção**: "Pra **publicar**, conecte sua chave de LLM (OpenAI/Anthropic/Gemini) em **Integrações → LLMs**. O modelo Aikortex é só pra criação/testes (uso limitado)."
-- **Conhecimento e dados**: "Adicione documentos da empresa em **Conhecimento** (políticas, FAQ, catálogo) e crie tabelas com dados (pacientes, produtos, etc.) em **Tabelas** pra deixar o agente mais preciso."
+- **Conhecimento e dados**: cite documentos/tabelas **DO NICHO/PROPÓSITO REAL DO AGENTE** — NUNCA copie exemplos genéricos:
+   - Agente contábil → "balancetes, planos de contas, lista de clientes, prazos de impostos"
+   - Agente jurídico → "petições modelo, jurisprudência, processos ativos, prazos"
+   - Agente clínica → "tabela de pacientes, agendamentos, planos de saúde"
+   - Agente imobiliário → "imóveis disponíveis, leads, contratos, comissões"
+   - Agente e-commerce → "catálogo de produtos, status de pedidos, tabela de fretes"
+   - Agente SDR → "leads qualificados, ICP, scripts de qualificação"
+   - Agente educacional → "alunos, turmas, grades curriculares, materiais"
+   - SEMPRE adapte os exemplos ao que esse agente específico realmente vai consultar.
 - **Cadências**: "Pra fluxos temporais (follow-up automático, lembretes), vá em **Automações → Cadências**."
 
 **4. Confirmação de canal (SE não foi especificado pelo user)**:

@@ -95,11 +95,11 @@ export function applyToolsHints(
   }
   if (toolNames.includes("table_read")) {
     hints.push(
-      "IMPORTANTE — table_read: você tem acesso a TABELAS de dados estruturadas (pacientes, produtos, etc.). " +
+      "IMPORTANTE — table_read: você tem acesso a TABELAS de dados estruturadas relacionadas ao seu propósito. " +
         "SEMPRE use quando o usuário perguntar por registros específicos. " +
         "`filter` é um OBJETO com chave-valor, exemplo: { \"nome\": \"Maria\" }. " +
         "NUNCA coloque valores de filtro no topo do payload — sempre dentro de `filter`. " +
-        "Exemplo: { \"table_name\": \"Pacientes\", \"filter\": { \"nome\": \"Maria\" }, \"limit\": 10 }",
+        "Exemplo: { \"table_name\": \"NomeDaTabela\", \"filter\": { \"nome\": \"Maria\" }, \"limit\": 10 }",
     );
   }
   if (toolNames.includes("table_write")) {
