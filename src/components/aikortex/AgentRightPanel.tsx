@@ -267,6 +267,7 @@ export interface AgentConfig {
   apiConfig: ApiConfig;
   voiceConfig?: VoiceConfig;
   capabilities?: AgentCapabilities;
+  guardrails?: string[];
 }
 
 // FIX: presetData adicionada para receber dados do wizard
