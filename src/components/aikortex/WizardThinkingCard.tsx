@@ -65,6 +65,9 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
 
   // Calcula status real de cada step a partir do savedConfig vivo
   const statuses = STEPS.map((s) => s.done(savedConfig));
+  const doneCount = statuses.filter(Boolean).length;
+  const totalCount = STEPS.length;
+  const pct = Math.round((doneCount / totalCount) * 100);
   // current = primeiro pendente APÓS o último feito (steps pulados não travam).
   const lastDoneIdx = statuses.lastIndexOf(true);
   const currentIdx = (() => {
@@ -81,58 +84,96 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
     if (!statuses[i]) skippedSet.add(i);
   }
 
+  // Frase principal varia conforme progresso
+  const headline =
+    currentIdx === -1
+      ? "Agente quase pronto..."
+      : pct < 25
+      ? "Iniciando construção..."
+      : pct < 60
+      ? "Construindo seu agente..."
+      : pct < 90
+      ? "Finalizando detalhes..."
+      : "Quase lá, finalizando...";
+
   return (
-    <div className="flex gap-3">
-      {/* Ícone Aikortex pulsante (theme-aware) */}
-      <div className="relative w-9 h-9 shrink-0 mt-0.5">
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/5 ring-1 ring-primary/30 animate-pulse" />
-        <div className="absolute inset-0 rounded-full bg-primary/15 blur-md animate-pulse" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <img
-            src={isDark ? aikortexIconWhite : aikortexIconBlack}
-            alt="Aikortex"
-            className="w-5 h-5 object-contain"
-          />
+    <div className="relative rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card/60 to-card/40 p-4 shadow-lg shadow-primary/10 overflow-hidden">
+      {/* Shimmer ambient pra dar vida */}
+      <div className="absolute -top-12 -left-12 w-40 h-40 rounded-full bg-primary/20 blur-3xl animate-pulse pointer-events-none" />
+      <div className="absolute -bottom-12 -right-12 w-40 h-40 rounded-full bg-primary/15 blur-3xl animate-pulse pointer-events-none" style={{ animationDelay: "1s" }} />
+
+      <div className="relative z-10 flex gap-3">
+        {/* Ícone Aikortex pulsante grande */}
+        <div className="relative w-12 h-12 shrink-0 mt-0.5">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 to-primary/10 ring-2 ring-primary/40 animate-pulse" />
+          <div className="absolute inset-0 rounded-full bg-primary/20 blur-md animate-pulse" />
+          {/* Spinner ring */}
+          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary border-r-primary/60 animate-spin" style={{ animationDuration: "1.5s" }} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <img
+              src={isDark ? aikortexIconWhite : aikortexIconBlack}
+              alt="Aikortex"
+              className="w-6 h-6 object-contain"
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground mb-3">
-          {currentIdx === -1 ? "Agente quase pronto..." : "Construindo seu agente..."}
-        </p>
+        <div className="flex-1 min-w-0">
+          {/* Headline + porcentagem */}
+          <div className="flex items-baseline justify-between mb-1">
+            <p className="text-sm font-bold text-foreground">{headline}</p>
+            <span className="text-xs font-mono font-bold text-primary tabular-nums">{pct}%</span>
+          </div>
 
-        {/* Lista flat de steps (sem labels de fase pra não duplicar "PENSANDO/PLANEJANDO") */}
-        <ul className="space-y-1 ml-0.5 border-l border-border/40 pl-3">
-          {STEPS.map((step, idx) => {
-            const done = statuses[idx];
-            const isSkipped = skippedSet.has(idx);
-            // Skipped → NÃO renderiza. Só aparece o que de fato aconteceu.
-            if (isSkipped) return null;
-            const reached = done || idx === currentIdx || idx < currentIdx;
-            if (!reached) return null;
-            const isCurrent = idx === currentIdx;
-            return (
-              <li
-                key={step.id}
-                className={`flex items-center gap-2 text-xs transition-all duration-300 ${
-                  isCurrent ? "text-foreground" : "text-muted-foreground/70"
-                }`}
-              >
-                <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
-                  {isCurrent ? (
-                    <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                  ) : (
-                    <Check className="w-3 h-3 text-emerald-500" />
-                  )}
-                </span>
-                <span>
-                  {step.label}
-                  {isCurrent ? "..." : "."}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+          {/* Barra de progresso animada */}
+          <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden mb-3">
+            <div
+              className="h-full bg-gradient-to-r from-primary via-primary to-primary/70 transition-all duration-700 ease-out relative"
+              style={{ width: `${pct}%` }}
+            >
+              <div className="absolute inset-0 bg-white/20 animate-pulse" />
+            </div>
+          </div>
+
+          {/* Lista flat de steps */}
+          <ul className="space-y-1 ml-0.5 border-l border-border/40 pl-3">
+            {STEPS.map((step, idx) => {
+              const done = statuses[idx];
+              const isSkipped = skippedSet.has(idx);
+              if (isSkipped) return null;
+              const reached = done || idx === currentIdx || idx < currentIdx;
+              if (!reached) return null;
+              const isCurrent = idx === currentIdx;
+              return (
+                <li
+                  key={step.id}
+                  className={`flex items-center gap-2 text-xs transition-all duration-300 ${
+                    isCurrent ? "text-foreground font-medium" : "text-muted-foreground/80"
+                  }`}
+                >
+                  <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
+                    {isCurrent ? (
+                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                    ) : (
+                      <Check className="w-3 h-3 text-emerald-500" />
+                    )}
+                  </span>
+                  <span>
+                    {step.label}
+                    {isCurrent ? "..." : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Subtítulo motivacional embaixo */}
+          {currentIdx !== -1 && (
+            <p className="text-[10px] text-muted-foreground/70 mt-3 italic">
+              Isso leva uns 20-30 segundos — montando tudo direitinho.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
