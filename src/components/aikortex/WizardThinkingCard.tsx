@@ -87,7 +87,7 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
   // Frase principal varia conforme progresso
   const headline =
     currentIdx === -1
-      ? "✨ Agente pronto — escrevendo resumo"
+      ? "Aguarde enquanto estamos criando seu agente..."
       : pct < 25
       ? "Iniciando construção..."
       : pct < 60
