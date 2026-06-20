@@ -224,11 +224,75 @@ export const WIZARD_TOOL_DEFS = [
       },
     },
   },
+  // ── Tools do catálogo NICHE_ASSETS (Master v7.4 §13.5) ────────────────
+  // Permitem que o Vibe crie um agente COMPLETO (tabelas + cadências + KB +
+  // guardrails contextuais), não só identidade. Slugs vêm de
+  // supabase/functions/_shared/niche-assets.ts.
+  {
+    type: "function",
+    function: {
+      name: "create_niche_table",
+      description: "Cria uma tabela padrão do catálogo do nicho atual (Master v7.4 §13.5). Slugs válidos por nicho: Contabilidade → clientes_contabeis|prazos_impostos|documentos_solicitados; Saúde → pacientes|agendamentos|planos_aceitos; Advocacia → clientes_juridicos|processos_ativos|prazos_juridicos; Imobiliária → imoveis_disponiveis|leads|visitas_agendadas. Requer agente com client_id (vinculado a cliente da agência).",
+      parameters: {
+        type: "object",
+        properties: { table_slug: { type: "string", description: "Slug da tabela no catálogo NICHE_ASSETS do nicho atual." } },
+        required: ["table_slug"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_niche_cadence",
+      description: "Cria uma cadência padrão do catálogo do nicho. Cadência = sequência de mensagens automáticas disparada por trigger (novo_lead, agendamento, vencimento_prazo). Slugs: Contabilidade → onboarding_cliente_contabil|lembrete_prazo_imposto; Saúde → confirmacao_consulta|pos_consulta; Advocacia → lembrete_prazo_juridico|update_processo_semanal; Imobiliária → nutricao_lead_imobiliario|pos_visita.",
+      parameters: {
+        type: "object",
+        properties: { cadence_slug: { type: "string", description: "Slug da cadência no catálogo NICHE_ASSETS." } },
+        required: ["cadence_slug"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "seed_kb_topic",
+      description: "Cria uma base de conhecimento vazia para um tópico padrão do nicho (placeholder pra agência preencher depois). Slugs: Contabilidade → regimes_tributarios|documentos_abertura|calendario_fiscal|faq_contabil|tabela_honorarios; Saúde → especialidades|planos_aceitos|politica_cancelamento|preparos_exames|faq_saude|horarios_atendimento; Advocacia → areas_atuacao|tabela_honorarios|documentos_procuracao|politica_lgpd|faq_juridico; Imobiliária → regioes_atendidas|documentos_compra|documentos_aluguel|financiamento|faq_imobiliario.",
+      parameters: {
+        type: "object",
+        properties: { topic_slug: { type: "string", description: "Slug do tópico de KB no catálogo NICHE_ASSETS." } },
+        required: ["topic_slug"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_guardrail",
+      description: "Adiciona um guardrail contextual ao agente (regra do que o agente NÃO deve fazer). Use frase no infinitivo afirmativo (ex: 'Dar parecer fiscal definitivo'). Em fase CRIAÇÃO, chame para cada item do bloco 'Guardrails contextuais' do nicho.",
+      parameters: {
+        type: "object",
+        properties: { guardrail: { type: "string", description: "Frase curta no infinitivo descrevendo o que o agente NÃO deve fazer." } },
+        required: ["guardrail"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "mark_pending_table",
+      description: "Marca a INTENÇÃO de criar tabela do nicho quando o agente está em rascunho SEM cliente atribuído (modo personalizado). A tabela vira pendente em config.pendingNicheTables[] e será criada quando o cliente for atribuído. USE em vez de create_niche_table só quando o agente NÃO tem client_id.",
+      parameters: {
+        type: "object",
+        properties: { table_slug: { type: "string", description: "Slug da tabela no catálogo NICHE_ASSETS." } },
+        required: ["table_slug"],
+      },
+    },
+  },
   {
     type: "function",
     function: {
       name: "commit_draft",
-      description: "Marca o wizard como concluído. CHAME por ÚLTIMO, depois de criar identidade + instruções + tools + canais + tabelas + KBs + integrações.",
+      description: "Marca o wizard como concluído. CHAME por ÚLTIMO, depois de criar identidade + instruções + tools + canais + tabelas + KBs + integrações + guardrails.",
       parameters: { type: "object", properties: {} },
     },
   },

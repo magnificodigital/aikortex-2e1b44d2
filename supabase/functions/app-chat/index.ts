@@ -16,6 +16,7 @@ import {
   type ArchetypeSpec,
 } from "../_shared/agent-blueprint.ts";
 import { buildNicheIntegrationsBlock } from "../_shared/niche-integrations.ts";
+import { buildNicheAssetsBlock } from "../_shared/niche-assets.ts";
 
 function streamText(text: string): ReadableStream {
   const encoder = new TextEncoder();
@@ -447,6 +448,7 @@ ${agencyName ? `# CONTEXTO DA CONTA\nAgência/empresa do user: **${agencyName}**
 Tipo do agente: **${normalizedType}** — foco em ${focus}.
 ${nicheContext}
 ${buildNicheIntegrationsBlock(niche)}
+${buildNicheAssetsBlock(niche)}
 
 # FLUXO POR FASE
 
@@ -671,27 +673,33 @@ Etapas: Recebe trigger (calendário, email, planilha) → Executa task (consulta
 
 ADAPTE o padrão pro NICHO específico (clínica usa "consulta/paciente"; imobiliária usa "visita/proposta"; food usa "reserva/cliente"; etc.).
 
-**DADOS — Estrutura de tabelas e conhecimento:**
-15. create_client_table — pra CADA tabela do plano. Use colunas REAIS do nicho:
-   - Clínica → Pacientes (nome:text*, telefone:phone*, email:email, nascimento:date, plano:text, observacoes:text)
-   - Clínica → Agendamentos (paciente:text*, data:date*, horario:text*, status:text, profissional:text)
-   - SDR/BDR → Leads (nome:text*, empresa:text*, email:email, telefone:phone, cargo:text, origem:text, status:text, score:number, anotacoes:text)
-   - SAC/CS → Tickets (cliente:text*, assunto:text*, prioridade:text, status:text, abertura:date, sla:text, resolucao:text)
-   - Imobiliária → Imóveis (codigo:text*, tipo:text, bairro:text, valor:number, quartos:number, status:text)
-   - Imobiliária → Visitas (lead:text*, imovel:text*, data:date*, status:text)
-   - E-commerce → Pedidos (numero:text*, cliente:text, valor:number, status:text, data:date, tracking:text)
-   - Educacional → Alunos (nome:text*, turma:text, email:email, telefone:phone, status:text)
-   - Adapte os nomes ao nicho. Marque "required:true" nas colunas essenciais. Máx 8 tabelas.
+**DADOS — Estrutura COMPLETA via catálogo NICHE_ASSETS (Master v7.4 §13.5):**
 
-16. create_knowledge_base — pra CADA KB do plano (vazia, user adiciona docs depois). Sugestões por nicho:
-   - Clínica → "FAQ atendimento", "Protocolos clínicos"
-   - SDR → "Discovery scripts", "Casos de sucesso", "Objeções"
-   - SAC → "FAQ produto", "Procedimentos de troca"
-   - Imobiliária → "FAQ financiamento", "Bairros e regiões"
-   - Sempre cite no plano antes de criar. Máx 5 KBs.
+Quando o nicho tem catálogo (Contabilidade/Saúde/Advocacia/Imobiliária), você DEVE construir o agente COMPLETO chamando as tools determinísticas do catálogo — NÃO improvise nomes/colunas. Siga ESTA ordem:
+
+15. create_niche_table — pra CADA \`table_slug\` listado no bloco "ASSETS DETERMINÍSTICOS DO NICHO" acima. A tool resolve schema (colunas + tipos) do catálogo sozinha; você só passa o slug.
+   - ⚠️ Se o agente está em rascunho personalizado SEM cliente atribuído, a tool já trata: vira pendente automaticamente.
+   - Se o nicho NÃO está no catálogo (genérico), use \`create_client_table\` com colunas manuais (formato legado):
+     - SDR/BDR → Leads (nome:text*, empresa:text*, email:email, telefone:phone, cargo:text, origem:text, status:text, score:number)
+     - SAC/CS → Tickets (cliente:text*, assunto:text*, prioridade:text, status:text, abertura:date, sla:text)
+     - E-commerce → Pedidos (numero:text*, cliente:text, valor:number, status:text, data:date, tracking:text)
+     - Educacional → Alunos (nome:text*, turma:text, email:email, telefone:phone, status:text)
+     - Máx 8 tabelas.
+
+16. create_niche_cadence — pra CADA \`cadence_slug\` listado no bloco. Cria sequência de mensagens com triggers (onboarding, lembrete de prazo, pós-consulta, etc).
+   - Se o nicho NÃO está no catálogo, pule essa tool (cadências ficam pra config manual depois).
+
+17. seed_kb_topic — pra CADA \`topic_slug\` listado. Cria KB VAZIA pra agência preencher.
+   - Se nicho fora do catálogo: use \`create_knowledge_base\` com nomes do nicho:
+     - SDR → "Discovery scripts", "Casos de sucesso", "Objeções"
+     - SAC → "FAQ produto", "Procedimentos de troca"
+     - Conteúdo → "Referências de marca", "Tom de voz"
+   - Máx 5 KBs.
+
+18. add_guardrail — pra CADA item do bloco "Guardrails contextuais" do nicho. Somam aos universais (LGPD, sem inventar preço, etc).
 
 **FINALIZAÇÃO:**
-17. commit_draft (SEMPRE por último — marca wizard concluído)
+19. commit_draft (SEMPRE por último — marca wizard concluído)
 
 # RESPOSTA DE TEXTO — SUCINTA, HONESTA E ÚTIL
 
@@ -751,7 +759,7 @@ Exemplo conteúdo Instagram (mais simples):
 
 # TOOLS DISPONÍVEIS
 
-set_agent_name · set_agent_description · set_agent_type · set_avatar · set_company_name · set_niche · set_tone_of_voice · set_objective · set_instructions · set_greeting_message · set_capability · set_channel · add_tool · request_external_integration · create_client_table · create_knowledge_base · commit_draft
+set_agent_name · set_agent_description · set_agent_type · set_avatar · set_company_name · set_niche · set_tone_of_voice · set_objective · set_instructions · set_greeting_message · set_capability · set_channel · add_tool · request_external_integration · create_client_table · create_knowledge_base · create_niche_table · create_niche_cadence · seed_kb_topic · add_guardrail · mark_pending_table · commit_draft
 
 # REGRAS
 

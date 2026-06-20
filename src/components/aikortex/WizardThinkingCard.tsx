@@ -15,7 +15,15 @@ interface ThinkingStep {
   id: string;
   label: string;
   done: (cfg: any) => boolean;
+  /** Opcional. Se retorna false, step é REMOVIDO antes do cálculo de pct.
+   * Usado pros asset steps que só fazem sentido em nichos com catálogo. */
+  applicable?: (cfg: any) => boolean;
 }
+
+// Nichos com catálogo NICHE_ASSETS (espelha _shared/niche-assets.ts).
+// Hardcoded pra não puxar edge-function code no frontend.
+const NICHES_WITH_CATALOG = ["Contabilidade", "Saúde", "Advocacia", "Imobiliária"];
+const hasCatalog = (cfg: any) => NICHES_WITH_CATALOG.includes(cfg?.businessContext?.niche);
 
 const STEPS: ThinkingStep[] = [
   // ── 🧠 PENSANDO (2 steps) — entendimento do contexto ──
@@ -56,6 +64,22 @@ const STEPS: ThinkingStep[] = [
     },
   },
   { id: "greeting",     label: "Criando a mensagem de saudação",        done: (cfg) => !!(cfg?.businessContext?.greetingMessage || cfg?.greetingMessage) },
+
+  // ── 📊 ASSETS DETERMINÍSTICOS (Master v7.4 §13.5) ──
+  // Aplicáveis APENAS quando nicho tem catálogo (Contabilidade/Saúde/Advocacia/
+  // Imobiliária). Pra nichos genéricos, esses 4 steps são removidos antes do
+  // cálculo de pct pra não travar o currentIdx em "Criando tabelas..." pra
+  // sempre.
+  { id: "tables",     label: "Criando as tabelas de dados",         applicable: hasCatalog, done: (cfg) => {
+      const created = Array.isArray(cfg?.createdTables) ? cfg.createdTables.length : 0;
+      const pending = Array.isArray(cfg?.pendingNicheTables) ? cfg.pendingNicheTables.length : 0;
+      return created + pending > 0;
+    },
+  },
+  { id: "cadences",   label: "Estruturando as cadências automáticas", applicable: hasCatalog, done: (cfg) => Array.isArray(cfg?.createdCadences) && cfg.createdCadences.length > 0 },
+  { id: "kb_topics",  label: "Preparando os tópicos de conhecimento", applicable: hasCatalog, done: (cfg) => Array.isArray(cfg?.createdKbs) && cfg.createdKbs.length > 0 },
+  { id: "guardrails", label: "Aplicando guardrails do nicho",         applicable: hasCatalog, done: (cfg) => Array.isArray(cfg?.guardrails) && cfg.guardrails.length > 0 },
+
   { id: "finalize",     label: "Finalizando o agente",                  done: (cfg) => !!cfg?.wizard_completed },
 ];
 
@@ -63,10 +87,14 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
+  // Filtra steps INAPLICÁVEIS (ex: asset steps quando nicho não tem catálogo).
+  // Sem isso, currentIdx ficaria travado em "Criando tabelas..." pra nichos
+  // genéricos onde a LLM nunca chama create_niche_table.
+  const activeSteps = STEPS.filter((s) => !s.applicable || s.applicable(savedConfig));
   // Calcula status real de cada step a partir do savedConfig vivo
-  const statuses = STEPS.map((s) => s.done(savedConfig));
+  const statuses = activeSteps.map((s) => s.done(savedConfig));
   const doneCount = statuses.filter(Boolean).length;
-  const totalCount = STEPS.length;
+  const totalCount = activeSteps.length;
   const pct = Math.round((doneCount / totalCount) * 100);
   // current = primeiro pendente APÓS o último feito (steps pulados não travam).
   const lastDoneIdx = statuses.lastIndexOf(true);
@@ -130,7 +158,7 @@ export default function WizardThinkingCard({ savedConfig }: WizardThinkingCardPr
 
           {/* Lista flat de steps */}
           <ul className="space-y-1 ml-0.5 border-l border-border/40 pl-3">
-            {STEPS.map((step, idx) => {
+            {activeSteps.map((step, idx) => {
               const done = statuses[idx];
               const isSkipped = skippedSet.has(idx);
               if (isSkipped) return null;

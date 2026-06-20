@@ -8,6 +8,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { NICHE_ASSETS } from "../_shared/niche-assets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,6 +34,11 @@ type MutateAction =
   | "request_external_integration"
   | "create_client_table"
   | "create_knowledge_base"
+  | "create_niche_table"
+  | "create_niche_cadence"
+  | "seed_kb_topic"
+  | "add_guardrail"
+  | "mark_pending_table"
   | "commit_draft";
 
 type MutateRequest = {
@@ -400,6 +406,11 @@ serve(async (req) => {
         if (insErr) {
           return jsonRes({ error: "INSERT_FAILED", details: insErr.message }, 500);
         }
+        // Denorm pra polling do WizardThinkingCard ver o progresso
+        const createdTables: string[] = Array.isArray(newConfig.createdTables) ? newConfig.createdTables : [];
+        if (!createdTables.includes(name)) {
+          newConfig = { ...newConfig, createdTables: [...createdTables, name] };
+        }
         logMessage = `Tabela "${name}" criada (${normalizedCols.length} colunas)`;
         break;
       }
@@ -423,7 +434,212 @@ serve(async (req) => {
         if (insErr) {
           return jsonRes({ error: "INSERT_FAILED", details: insErr.message }, 500);
         }
+        const createdKbs: string[] = Array.isArray(newConfig.createdKbs) ? newConfig.createdKbs : [];
+        if (!createdKbs.includes(name)) {
+          newConfig = { ...newConfig, createdKbs: [...createdKbs, name] };
+        }
         logMessage = `Knowledge base "${name}" criada`;
+        break;
+      }
+      case "create_niche_table": {
+        // Cria tabela do catálogo NICHE_ASSETS pra cliente vinculado ao agente.
+        // Reusa lógica de create_client_table — apenas resolve schema do catálogo.
+        const tableSlug = String(params.table_slug ?? "").trim();
+        const niche = (currentConfig.businessContext?.niche ?? "") as string;
+        if (!niche) {
+          return jsonRes({ error: "NICHE_NOT_SET", message: "Defina o nicho antes de criar tabelas do catálogo." }, 400);
+        }
+        const spec = NICHE_ASSETS[niche];
+        if (!spec) {
+          return jsonRes({ error: "NICHE_NO_CATALOG", message: `Nicho "${niche}" ainda não tem catálogo de assets. Use create_client_table com colunas manuais.` }, 400);
+        }
+        const table = spec.tables.find((t) => t.slug === tableSlug);
+        if (!table) {
+          return jsonRes({
+            error: "TABLE_NOT_IN_CATALOG",
+            message: `Tabela "${tableSlug}" não está no catálogo do nicho "${niche}".`,
+            availableSlugs: spec.tables.map((t) => t.slug),
+          }, 400);
+        }
+        const { data: agentFull } = await admin
+          .from("user_agents")
+          .select("client_id, user_id")
+          .eq("id", agentId)
+          .maybeSingle();
+        const clientId = (agentFull as any)?.client_id ?? null;
+        if (!clientId) {
+          // Sem cliente → marca pendente em vez de falhar
+          const pending = Array.isArray(newConfig.pendingNicheTables) ? newConfig.pendingNicheTables : [];
+          if (!pending.includes(tableSlug)) {
+            newConfig = { ...newConfig, pendingNicheTables: [...pending, tableSlug] };
+          }
+          logMessage = `Tabela "${table.label}" marcada como pendente (cliente não atribuído)`;
+          break;
+        }
+        const { count } = await admin
+          .from("client_tables")
+          .select("id", { count: "exact", head: true })
+          .eq("client_id", clientId);
+        if ((count ?? 0) >= 8) {
+          return jsonRes({ ok: true, log: `Tabela "${table.label}" não criada (limite de 8 atingido)`, warning: "MAX_TABLES" });
+        }
+        const cols = table.columns.map((c) => ({
+          name: c.name,
+          type: c.type === "json" || c.type === "boolean" ? c.type : (c.type === "date" ? "date" : (c.type === "number" ? "number" : "text")),
+          required: !!c.required,
+        }));
+        const { error: insErr } = await admin.from("client_tables").insert({
+          client_id: clientId,
+          name: table.label,
+          description: table.description,
+          columns: cols,
+          enabled: true,
+        });
+        if (insErr) {
+          if (String(insErr.message).match(/duplicate|unique/i)) {
+            logMessage = `Tabela "${table.label}" já existia (ignorada)`;
+            break;
+          }
+          return jsonRes({ error: "INSERT_FAILED", details: insErr.message }, 500);
+        }
+        const createdTablesN: string[] = Array.isArray(newConfig.createdTables) ? newConfig.createdTables : [];
+        if (!createdTablesN.includes(table.label)) {
+          newConfig = { ...newConfig, createdTables: [...createdTablesN, table.label] };
+        }
+        logMessage = `Tabela "${table.label}" criada (${cols.length} colunas)`;
+        break;
+      }
+      case "create_niche_cadence": {
+        // Cria cadência do catálogo NICHE_ASSETS. trigger_type mapeia
+        // 'manual' → 'manual', resto → 'auto' (schema só aceita esses 2).
+        const cadenceSlug = String(params.cadence_slug ?? "").trim();
+        const niche = (currentConfig.businessContext?.niche ?? "") as string;
+        if (!niche) {
+          return jsonRes({ error: "NICHE_NOT_SET", message: "Defina o nicho antes de criar cadências." }, 400);
+        }
+        const spec = NICHE_ASSETS[niche];
+        if (!spec) {
+          return jsonRes({ error: "NICHE_NO_CATALOG", message: `Nicho "${niche}" não tem catálogo.` }, 400);
+        }
+        const cadence = spec.cadences.find((c) => c.slug === cadenceSlug);
+        if (!cadence) {
+          return jsonRes({
+            error: "CADENCE_NOT_IN_CATALOG",
+            message: `Cadência "${cadenceSlug}" não está no catálogo do nicho "${niche}".`,
+            availableSlugs: spec.cadences.map((c) => c.slug),
+          }, 400);
+        }
+        // Schema só aceita 'manual' ou 'auto'; tudo que não é manual vira auto
+        const triggerType = cadence.trigger === "manual" ? "manual" : "auto";
+        const steps = cadence.steps.map((s, idx) => ({
+          order: idx,
+          day_offset: s.day,
+          label: s.label,
+          message: s.messageTemplate,
+          channel: "whatsapp",
+        }));
+        const { error: insErr } = await admin.from("agent_cadences").insert({
+          agent_id: agentId,
+          name: cadence.name,
+          description: cadence.description,
+          steps,
+          trigger_type: triggerType,
+          enabled: true,
+        });
+        if (insErr) {
+          if (String(insErr.message).match(/duplicate|unique/i)) {
+            logMessage = `Cadência "${cadence.name}" já existia (ignorada)`;
+            break;
+          }
+          return jsonRes({ error: "INSERT_FAILED", details: insErr.message }, 500);
+        }
+        const createdCadences: string[] = Array.isArray(newConfig.createdCadences) ? newConfig.createdCadences : [];
+        if (!createdCadences.includes(cadence.name)) {
+          newConfig = { ...newConfig, createdCadences: [...createdCadences, cadence.name] };
+        }
+        logMessage = `Cadência "${cadence.name}" criada (${steps.length} passos)`;
+        break;
+      }
+      case "seed_kb_topic": {
+        // Cria KB vazia com tema do catálogo. Documentos são adicionados depois.
+        const topicSlug = String(params.topic_slug ?? "").trim();
+        const niche = (currentConfig.businessContext?.niche ?? "") as string;
+        if (!niche) {
+          return jsonRes({ error: "NICHE_NOT_SET" }, 400);
+        }
+        const spec = NICHE_ASSETS[niche];
+        if (!spec) {
+          return jsonRes({ error: "NICHE_NO_CATALOG", message: `Nicho "${niche}" não tem catálogo.` }, 400);
+        }
+        const topic = spec.kbTopics.find((k) => k.slug === topicSlug);
+        if (!topic) {
+          return jsonRes({
+            error: "TOPIC_NOT_IN_CATALOG",
+            message: `Tópico "${topicSlug}" não está no catálogo do nicho "${niche}".`,
+            availableSlugs: spec.kbTopics.map((k) => k.slug),
+          }, 400);
+        }
+        const { count } = await admin
+          .from("agent_knowledge_bases")
+          .select("id", { count: "exact", head: true })
+          .eq("agent_id", agentId);
+        if ((count ?? 0) >= 5) {
+          return jsonRes({ ok: true, log: `KB "${topic.title}" não criada (limite de 5)`, warning: "MAX_KBS" });
+        }
+        const { error: insErr } = await admin.from("agent_knowledge_bases").insert({
+          agent_id: agentId,
+          name: topic.title,
+          description: topic.description,
+        });
+        if (insErr) {
+          if (String(insErr.message).match(/duplicate|unique/i)) {
+            logMessage = `KB "${topic.title}" já existia (ignorada)`;
+            break;
+          }
+          return jsonRes({ error: "INSERT_FAILED", details: insErr.message }, 500);
+        }
+        const createdKbsN: string[] = Array.isArray(newConfig.createdKbs) ? newConfig.createdKbs : [];
+        if (!createdKbsN.includes(topic.title)) {
+          newConfig = { ...newConfig, createdKbs: [...createdKbsN, topic.title] };
+        }
+        logMessage = `Base de conhecimento "${topic.title}" criada`;
+        break;
+      }
+      case "add_guardrail": {
+        // Acumula em config.guardrails[]. Dedup case-insensitive.
+        const text = String(params.guardrail ?? params.text ?? "").trim();
+        if (!text || text.length < 4) {
+          return jsonRes({ error: "INVALID_PARAMS", message: "guardrail vazio ou curto demais" }, 400);
+        }
+        const existing: string[] = Array.isArray(newConfig.guardrails) ? newConfig.guardrails : [];
+        const norm = text.toLowerCase();
+        if (existing.some((g) => g.toLowerCase() === norm)) {
+          logMessage = `Guardrail já existia: "${text}"`;
+          break;
+        }
+        newConfig = { ...newConfig, guardrails: [...existing, text] };
+        logMessage = `Guardrail adicionado: "${text}"`;
+        break;
+      }
+      case "mark_pending_table": {
+        // Quando agente é rascunho/personalizado SEM cliente, marca intenção.
+        // Quando cliente for atribuído depois, fluxo de bind pode criar as
+        // tabelas pendentes.
+        const tableSlug = String(params.table_slug ?? "").trim();
+        const niche = (currentConfig.businessContext?.niche ?? "") as string;
+        if (!niche || !tableSlug) {
+          return jsonRes({ error: "INVALID_PARAMS" }, 400);
+        }
+        const spec = NICHE_ASSETS[niche];
+        const table = spec?.tables.find((t) => t.slug === tableSlug);
+        if (!table) {
+          return jsonRes({ error: "TABLE_NOT_IN_CATALOG", availableSlugs: spec?.tables.map((t) => t.slug) ?? [] }, 400);
+        }
+        const pending: string[] = Array.isArray(newConfig.pendingNicheTables) ? newConfig.pendingNicheTables : [];
+        if (!pending.includes(tableSlug)) {
+          newConfig = { ...newConfig, pendingNicheTables: [...pending, tableSlug] };
+        }
+        logMessage = `Tabela "${table.label}" marcada como pendente`;
         break;
       }
       case "commit_draft": {
