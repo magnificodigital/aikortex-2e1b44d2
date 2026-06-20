@@ -264,7 +264,7 @@ const AGENT_TYPE_FOCUS: Record<string, string> = {
 function buildWizardSystemPrompt(
   agentType: string,
   niche?: string,
-  ctx?: { phase?: "DESCOBERTA" | "PLANO" | "CRIACAO"; agencyName?: string | null; userMessageCount?: number; consultive?: boolean },
+  ctx?: { phase?: "DESCOBERTA" | "PLANO" | "CRIACAO" | "POST_COMMIT"; agencyName?: string | null; userMessageCount?: number; consultive?: boolean },
 ): string {
   const normalizedType = ["SDR", "BDR", "SAC", "CS"].includes(agentType.toUpperCase())
     ? agentType.toUpperCase()
@@ -385,7 +385,45 @@ O processo é conversacional, em 3 fases bem definidas:
 
 # 🔴 FASE ATUAL: **${phase}**
 
-${phase === "CRIACAO" ? `
+${phase === "POST_COMMIT" ? `
+✅ **VOCÊ ESTÁ NA FASE PÓS-CRIAÇÃO. O AGENTE JÁ FOI CRIADO. LEIA:**
+
+O agente já existe (wizard_completed=true). User está conversando pra **comentar/elogiar/pedir ajuste/perguntar**. NUNCA re-pergunte coisas da fase Descoberta. NUNCA reinicie o fluxo.
+
+Como responder em cada caso:
+
+**1) User elogia ou agradece** ("ficou bom", "show", "ótimo", "perfeito", "valeu", "obrigado", "gostei"):
+Agradeça brevemente em 1 linha + sugira 2-3 próximos passos REAIS. Sem perguntas de Descoberta.
+
+\`\`\`
+Massa que ficou bom! 🎉
+
+Próximos passos:
+- Cole documentos da empresa em **Conhecimento** pra ele responder com base no contexto real.
+- Conecte sua chave LLM em **Integrações → LLMs** pra publicar (o LLM Aikortex é só pra criação/testes).
+- Teste a conversa no botão **"Testar agente"** no painel.
+
+Quer ajustar algo? É só me pedir aqui ou editar direto no painel à direita.
+\`\`\`
+
+**2) User pede ajuste** ("muda o nome pra X", "tira Instagram", "adiciona email", "ativa planning"):
+Responda direcionando: o painel direito tem todos os campos editáveis (Identidade, Canais, Capacidades, Tabelas, Conhecimento, Integrações). Não invente que "já ajustei" — você não está chamando tool nessa fase.
+
+\`\`\`
+Tranquilo! Pra mudar o nome, abre o painel à direita em **Identidade → Nome**. Salva e pronto.
+\`\`\`
+
+**3) User faz pergunta sobre o agente** ("como ele funciona?", "ele consegue X?"):
+Responda objetivamente baseado no que o agente está configurado pra fazer.
+
+**4) User pede feature nova** ("quero que ele também faça X"):
+Explica que pra adicionar capacidade nova, abre o painel direito (Capacidades / Tools / Cadências / Tabelas) — não tenta criar inline aqui.
+
+⛔ **PROIBIDO nesta fase:**
+- ZERO perguntas de Descoberta ("o que ele faz?", "pra quem atende?", "limites?")
+- ZERO "Pra esse agente sair real, me ajuda com..." — o agente JÁ existe
+- NUNCA dizer "ajustei pra você" / "atualizei" sem ter de fato executado — você NÃO chama tools nessa fase
+` : phase === "CRIACAO" ? `
 ⛔⛔⛔ **VOCÊ ESTÁ NA FASE CRIAÇÃO. LEIA ANTES DE QUALQUER COISA:**
 
 NESTA FASE:
@@ -1442,7 +1480,7 @@ serve(async (req) => {
       const incomingMessages = (messages || []) as Array<{ role: string; content: string }>;
       let chatMessages: Array<{ role: string; content: string }>;
       let wizardDetectedStatuses: any[] = [];
-      let wizardPhase: "DESCOBERTA" | "PLANO" | "CRIACAO" = "CRIACAO";
+      let wizardPhase: "DESCOBERTA" | "PLANO" | "CRIACAO" | "POST_COMMIT" = "CRIACAO";
       let detectedSpec: ArchetypeSpec | null = null;
       let agencyName: string | null = null;
       if (mode === "wizard-setup") {
@@ -1456,7 +1494,7 @@ serve(async (req) => {
         const userMsgs = incomingMessages.filter((m) => m.role === "user");
         const userMessageCount = userMsgs.length;
         const lastUserMsg = (userMsgs[userMsgs.length - 1]?.content ?? "").toLowerCase().trim();
-        const confirmRegex = /\b(sim|pode|manda(\s+bala)?|confirma(do)?|ok|vai|perfeito|cria(r)?|beleza|fechou|t[áa]\s+(bom|certo)|simbora)\b/;
+        const confirmRegex = /\b(sim|pode|manda(\s+bala)?|confirma(do)?|ok|vai|perfeito|cria(r)?|beleza|fechou|t[áa]\s+(bom|certo)|ficou\s+bom|simbora)\b/;
         const askPlanRegex = /\b(plano|monta|resume|resumo|mostra|partir(\s+pra)?\s+cria|pode\s+criar)\b/;
         // User delega: pede sugestão / passa a bola / não quer responder. Força
         // avanço pra PLANO mesmo com count baixo — re-perguntar nesse momento
@@ -1466,8 +1504,34 @@ serve(async (req) => {
         const isConfirm = confirmRegex.test(lastUserMsg) && lastUserMsg.length < 80;
         const isAskPlan = askPlanRegex.test(lastUserMsg);
         const isAskSuggest = askSuggestRegex.test(lastUserMsg) && lastUserMsg.length < 80;
+
+        // Pós-criação: se o agente já tem wizard_completed=true no draft,
+        // qualquer mensagem nova é refinamento/elogio/ajuste — NÃO re-iniciar
+        // o fluxo. Bug visto: user diz "ficou bom" depois do agente pronto e
+        // LLM repetia as 3 perguntas de Descoberta.
+        let wizardAlreadyCompleted = false;
+        try {
+          const aid = (body as any).agentId as string | undefined;
+          if (aid) {
+            const adminTmp2 = createClient(
+              Deno.env.get("SUPABASE_URL")!,
+              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+              { auth: { persistSession: false } },
+            );
+            const { data: agentRow } = await adminTmp2
+              .from("user_agents")
+              .select("config")
+              .eq("id", aid)
+              .maybeSingle();
+            wizardAlreadyCompleted = !!(agentRow as any)?.config?.wizard_completed;
+          }
+        } catch (e) {
+          console.warn("[wizard-setup] wizard_completed check failed (non-fatal):", e);
+        }
+
         wizardPhase =
-          userMessageCount <= 1 ? "DESCOBERTA"
+          wizardAlreadyCompleted ? "POST_COMMIT"
+          : userMessageCount <= 1 ? "DESCOBERTA"
           : isConfirm && userMessageCount >= 3 ? "CRIACAO"
           : isAskPlan || isAskSuggest || userMessageCount >= 6 ? "PLANO"
           : userMessageCount >= 8 ? "PLANO"
