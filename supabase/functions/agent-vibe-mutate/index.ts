@@ -466,15 +466,12 @@ serve(async (req) => {
           .select("client_id, user_id")
           .eq("id", agentId)
           .maybeSingle();
-        const clientId = (agentFull as any)?.client_id ?? null;
+        // Fallback compat: modo personalizado/rascunho não tem client_id —
+        // usa user_id (mesma lógica de create_client_table). Tabela vira do
+        // dono do agente até bind formal com cliente.
+        const clientId = (agentFull as any)?.client_id ?? (agentFull as any)?.user_id ?? null;
         if (!clientId) {
-          // Sem cliente → marca pendente em vez de falhar
-          const pending = Array.isArray(newConfig.pendingNicheTables) ? newConfig.pendingNicheTables : [];
-          if (!pending.includes(tableSlug)) {
-            newConfig = { ...newConfig, pendingNicheTables: [...pending, tableSlug] };
-          }
-          logMessage = `Tabela "${table.label}" marcada como pendente (cliente não atribuído)`;
-          break;
+          return jsonRes({ error: "NO_CLIENT_ID" }, 400);
         }
         const { count } = await admin
           .from("client_tables")
