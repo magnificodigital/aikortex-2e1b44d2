@@ -41,6 +41,10 @@ export interface NicheKbTopic {
   slug: string;
   title: string;
   description: string;
+  /** Conteúdo starter opcional. Quando preenchido, o seed_kb_topic insere
+   * um kb_documents com esse texto pra agência personalizar/sobrescrever.
+   * Texto em markdown com headings ## P: ... \n R: ... */
+  seedContent?: string;
 }
 
 export interface NicheAssetSpec {
@@ -121,7 +125,38 @@ export const NICHE_ASSETS: Record<string, NicheAssetSpec> = {
       { slug: "regimes_tributarios", title: "Regimes tributários", description: "Simples, Lucro Presumido, Lucro Real — quando cada um cabe" },
       { slug: "documentos_abertura", title: "Documentos para abertura de empresa", description: "Lista de documentos necessários por tipo de empresa" },
       { slug: "calendario_fiscal", title: "Calendário fiscal anual", description: "Datas de DAS, DARF, ECF, DCTF, etc" },
-      { slug: "faq_contabil", title: "FAQ — perguntas frequentes", description: "10 perguntas que mais aparecem no WhatsApp" },
+      {
+        slug: "faq_contabil",
+        title: "FAQ — perguntas frequentes",
+        description: "8 perguntas que mais aparecem no WhatsApp",
+        seedContent: `# FAQ Contábil — Perguntas Frequentes
+
+> ✏️ **Personalize esse conteúdo** com a realidade do seu escritório. Esse é um starter genérico.
+
+## P: Qual a diferença entre MEI, Simples Nacional, Lucro Presumido e Lucro Real?
+R: O **MEI** é pra faturamento até R$ 81 mil/ano, paga DAS fixo mensal. **Simples Nacional** é pra empresas até R$ 4,8 mi/ano com tributação unificada (DAS conforme tabela). **Lucro Presumido** é pra empresas até R$ 78 mi/ano, presume margem fixa de lucro. **Lucro Real** é obrigatório acima de R$ 78 mi ou pra atividades específicas (financeiras, factoring) — apura tributo sobre lucro real apurado contabilmente.
+
+## P: Quais documentos preciso enviar mensalmente pro contador?
+R: Em geral: notas fiscais emitidas (saída) e recebidas (entrada), extratos bancários do mês, comprovantes de pagamentos (folha, fornecedores, despesas), guias pagas (DAS, INSS, FGTS) e qualquer contrato/aditivo novo. O ideal é enviar até o dia 5 do mês seguinte pra apuração dentro do prazo.
+
+## P: Como faço pra abrir uma empresa?
+R: Os passos básicos são: (1) definir tipo societário (MEI, LTDA, SLU), (2) consulta de viabilidade na prefeitura, (3) elaboração do contrato social, (4) registro na Junta Comercial, (5) CNPJ na Receita Federal, (6) alvará e inscrições estaduais/municipais quando aplicáveis. Conte com nosso escritório do início ao fim — pedimos a lista exata de documentos conforme o caso.
+
+## P: O que acontece se eu atrasar o pagamento do DAS?
+R: O atraso gera **multa de 0,33% ao dia** (limite 20%) + **juros pela taxa SELIC**. Em geral, o MEI inadimplente acumula débitos e pode ter o CNPJ baixado se o atraso passar de 12 meses. Pra empresa do Simples, o atraso pode causar a exclusão do regime no ano seguinte. Sempre alinhe com a gente antes de deixar passar.
+
+## P: Posso emitir nota fiscal sendo MEI?
+R: Sim, o MEI emite NFS-e (serviço) ou NFC-e/NF-e (produto) dependendo da atividade. Pra PJ, a emissão é **obrigatória**. Pra PF, é opcional mas recomendada (cliente pode pedir). O acesso é via prefeitura (NFS-e) ou portal estadual (NF-e). A gente pode te ajudar a configurar o emissor.
+
+## P: Como funciona o pró-labore?
+R: É a remuneração do sócio pelo trabalho na empresa — tipo um salário. **Não é obrigatório**, mas se o sócio trabalha, o INSS pode exigir contribuição (11% sobre o pró-labore). O valor mínimo é o salário mínimo vigente. Valor distribuído como pró-labore é dedutível do IR da empresa; já lucros distribuídos são isentos pro sócio.
+
+## P: Qual o prazo pra entregar o Imposto de Renda da empresa?
+R: Pra **Lucro Presumido**: ECD até último dia útil de maio do ano seguinte, ECF até último dia útil de julho. Pra **Lucro Real**: ECF até último dia útil de julho. Pra **MEI**: DASN-SIMEI até 31 de maio. Pra **Simples Nacional**: DEFIS junto com a DASN-SIMEI. Manda os dados financeiros até abril pra gente conseguir entregar com folga.
+
+## P: Quando preciso virar Lucro Presumido?
+R: É obrigatório quando o faturamento passa de **R$ 4,8 milhões/ano**. Antes disso, o Simples Nacional costuma ser mais vantajoso (alíquotas menores). Mas há casos onde Lucro Presumido compensa antes — quando a margem de lucro real é menor que a presumida (8% comércio, 32% serviço). A gente faz uma análise comparativa anual pra ver qual regime cabe melhor pra você.`,
+      },
       { slug: "tabela_honorarios", title: "Tabela de honorários", description: "Valor por tipo de serviço (revisão, abertura, mensal, etc)" },
     ],
     contextualGuardrails: [
@@ -199,7 +234,38 @@ export const NICHE_ASSETS: Record<string, NicheAssetSpec> = {
       { slug: "planos_aceitos", title: "Planos de saúde aceitos", description: "Convênios cobertos + condições" },
       { slug: "politica_cancelamento", title: "Política de cancelamento", description: "Prazo pra cancelar/remarcar sem custo" },
       { slug: "preparos_exames", title: "Preparos para exames", description: "Jejum, suspensão de medicamentos, etc" },
-      { slug: "faq_saude", title: "FAQ — perguntas frequentes", description: "Dúvidas mais comuns dos pacientes" },
+      {
+        slug: "faq_saude",
+        title: "FAQ — perguntas frequentes",
+        description: "Dúvidas mais comuns dos pacientes",
+        seedContent: `# FAQ Clínica — Perguntas Frequentes
+
+> ✏️ **Personalize com os dados reais da sua clínica** (telefones, planos aceitos, horários, etc).
+
+## P: Como faço pra marcar uma consulta?
+R: Você pode marcar pelo WhatsApp aqui mesmo, pelo nosso site ou ligando pra recepção. Pra agilizar, já me passa: especialidade desejada, plano de saúde (ou particular) e uma janela de horário que prefere. A confirmação chega aqui em até 1 dia útil.
+
+## P: Posso remarcar ou cancelar a consulta?
+R: Sim, sem problema. **Pra remarcar/cancelar sem custo**, avise com no mínimo 24h de antecedência. Cancelamentos em cima da hora podem gerar taxa (depende do plano/clínica). Me chama por aqui que eu te ajudo a achar nova data.
+
+## P: Quais planos de saúde a clínica aceita?
+R: Atendemos os principais planos da região. Pra confirmar se o seu está na lista, me passa o nome do convênio + tipo de plano (ambulatorial/hospitalar/empresarial). Se não cobrir, oferecemos valor particular com pacotes pra retorno e exames associados.
+
+## P: Quanto tempo dura uma consulta?
+R: Primeira consulta dura em média **40-50 minutos** (anamnese completa + exame). Retornos costumam ser **20-30 minutos**. Consultas de urgência/triagem podem ser mais rápidas. Recomendamos chegar 15 minutos antes pra preencher fichas e atualizar dados.
+
+## P: Preciso fazer algum preparo antes do exame?
+R: Depende do exame solicitado. **Sangue em jejum**: 8-12 horas (água liberada). **Ultrassom de abdome**: 6h jejum. **Endoscopia**: 8h jejum + suspensão de alguns medicamentos. Pra cada exame, mandamos as instruções específicas por aqui após o agendamento. Sempre confirme com a gente antes.
+
+## P: Como recebo os resultados dos exames?
+R: Os resultados ficam disponíveis no nosso portal/app em **3-7 dias úteis** (varia por exame). Você recebe um link aqui no WhatsApp assim que ficar pronto. Pra exames urgentes (alteração crítica), o médico entra em contato direto.
+
+## P: A clínica atende crianças/pediatria?
+R: Pra saber, me confirma a idade e o que está acontecendo. Temos especialistas que atendem todas as faixas etárias dependendo da área. Pediatria específica e atendimento a recém-nascidos podem exigir agendamento com profissional certo.
+
+## P: Em caso de emergência, o que faço?
+R: **Em caso de emergência grave (dor no peito, falta de ar, perda de consciência, hemorragia), ligue 192 (SAMU) ou vá direto ao pronto-socorro mais próximo — NÃO espere atendimento aqui.** Pra urgências não graves, podemos encaixar você no mesmo dia se houver disponibilidade.`,
+      },
       { slug: "horarios_atendimento", title: "Horários de atendimento", description: "Dias e horários por especialidade" },
     ],
     contextualGuardrails: [
@@ -277,7 +343,38 @@ export const NICHE_ASSETS: Record<string, NicheAssetSpec> = {
       { slug: "tabela_honorarios", title: "Tabela de honorários", description: "Por área e tipo de causa" },
       { slug: "documentos_procuracao", title: "Documentos pra procuração", description: "Lista do que o cliente precisa trazer" },
       { slug: "politica_lgpd", title: "Política LGPD", description: "Como dados de cliente são tratados" },
-      { slug: "faq_juridico", title: "FAQ — perguntas frequentes", description: "Dúvidas comuns no atendimento" },
+      {
+        slug: "faq_juridico",
+        title: "FAQ — perguntas frequentes",
+        description: "Dúvidas comuns no atendimento",
+        seedContent: `# FAQ Jurídico — Perguntas Frequentes
+
+> ✏️ **Personalize com a realidade do seu escritório** (áreas atendidas, faixa de honorários, formas de pagamento).
+
+## P: Como funciona a primeira consulta jurídica?
+R: A primeira consulta dura cerca de **30-60 minutos** e serve pra entender o caso, analisar documentos iniciais e indicar o caminho jurídico (acordo, ação, defesa). Pode ser presencial ou online. O valor varia por área e pode ser abatido caso você contrate o escritório pra seguir o caso.
+
+## P: Quais documentos preciso levar na primeira consulta?
+R: Documentos pessoais (RG, CPF, comprovante de residência) + tudo que tiver relação com o caso (contratos, e-mails, mensagens, recibos, fotos, laudos, protocolos). Quanto mais material, melhor a análise. Se não tem certeza do que é relevante, traz tudo — a gente filtra.
+
+## P: Como são cobrados os honorários?
+R: Trabalhamos em 3 formatos: (1) **honorário fixo** por serviço (contrato, parecer, defesa específica), (2) **honorário mensal** pra consultoria contínua, (3) **honorário de êxito** (percentual sobre o ganho da causa, conforme tabela da OAB). Pra cada caso, fechamos contrato escrito antes de qualquer ação.
+
+## P: Em quanto tempo o processo é resolvido?
+R: Depende muito da área. **Trabalhista** costuma fechar em 1-3 anos. **Cível** varia (despejo 6 meses; indenização 2-5 anos). **Família** (divórcio consensual: 2-6 meses; litigioso: 1-3 anos). **Tributário/previdenciário** pode passar de 5 anos com recursos. A gente atualiza você a cada andamento relevante.
+
+## P: Posso entrar com processo sem advogado?
+R: Em causas até **20 salários mínimos** (Juizado Especial), você pode entrar sozinho — mas ainda assim recomendamos consultoria pra organizar o pedido. **Acima desse valor** ou em qualquer ação contra a União, o advogado é obrigatório. Em causas trabalhistas, o jus postulandi existe mas o índice de êxito sem advogado é muito menor.
+
+## P: Vocês atendem em qual área do Direito?
+R: Pra saber se atendemos seu caso, me descreve em poucas linhas o que aconteceu — eu encaminho pro advogado da área certa. Normalmente cobrimos as áreas mais demandadas: trabalhista, cível (contratos, indenizações), família, consumidor, previdenciário e empresarial.
+
+## P: Como funciona a assistência judiciária gratuita?
+R: Se você não tem condições de pagar honorários sem prejuízo do sustento, pode pedir o **benefício da justiça gratuita** dentro do processo (suspende custas e despesas). Pra defensoria pública, o atendimento é por região — me passa sua cidade que indico o caminho. O escritório também faz casos pro bono em situações específicas (avalie com a gente).
+
+## P: Qual o prazo pra entrar com ação contra empresa?
+R: Os prazos variam: **trabalhista** 2 anos depois da demissão (limite total: 5 anos retroativos). **Consumidor** 5 anos pra problemas de produto/serviço. **Cobrança de dívida** 5 anos (dívida prescrita). **Indenização por dano moral/material** 3 anos. Se está perto do limite, prioriza marcar consulta logo — perder o prazo é irreversível.`,
+      },
     ],
     contextualGuardrails: [
       "Dar parecer jurídico definitivo sobre caso específico",
@@ -358,7 +455,38 @@ export const NICHE_ASSETS: Record<string, NicheAssetSpec> = {
       { slug: "documentos_compra", title: "Documentos pra compra", description: "Lista do que comprador precisa apresentar" },
       { slug: "documentos_aluguel", title: "Documentos pra aluguel", description: "Lista de fiador, comprovante, etc" },
       { slug: "financiamento", title: "Linhas de financiamento", description: "Caixa, Itaú, BB — condições típicas" },
-      { slug: "faq_imobiliario", title: "FAQ — perguntas frequentes", description: "Dúvidas mais comuns de compradores e locatários" },
+      {
+        slug: "faq_imobiliario",
+        title: "FAQ — perguntas frequentes",
+        description: "Dúvidas mais comuns de compradores e locatários",
+        seedContent: `# FAQ Imobiliário — Perguntas Frequentes
+
+> ✏️ **Personalize com as regras da sua imobiliária** (regiões, garantias aceitas, comissão).
+
+## P: Quais documentos preciso pra alugar um imóvel?
+R: Em geral: RG, CPF, comprovante de residência atual, **3 últimos contracheques** (ou DECORE/IR pra autônomos), extratos bancários, comprovante de renda do cônjuge se aplicável. Renda mínima costuma ser **3x o valor do aluguel + condomínio**. Com garantia (fiador/seguro/caução), os critérios mudam um pouco — me passa qual modalidade pretende.
+
+## P: Quanto custa a entrada num financiamento imobiliário?
+R: Os bancos exigem entrada de **20% a 30% do valor do imóvel** em média (financiam 70-80%). Programas como Minha Casa Minha Vida têm regras diferentes (entrada menor, subsídio). Além da entrada, conta: ITBI (~3% do valor), registro em cartório (~1,5%), avaliação do banco (~R$ 3-5 mil). Posso fazer uma simulação pra você.
+
+## P: Aceita fiador, seguro fiança ou caução?
+R: Sim, trabalhamos com os 3 formatos. **Fiador**: precisa ser proprietário no município, renda 3x o aluguel, sem restrição. **Seguro fiança**: empresa aprova após análise (mais ágil, custa ~1 aluguel/ano). **Caução**: depósito equivalente a 3 aluguéis em conta vinculada. **Título de capitalização** também é aceito em alguns contratos.
+
+## P: Como funciona a vistoria?
+R: A vistoria é feita **antes da entrada** com o locatário presente. Registra estado de paredes, pisos, louças, instalações, eletrodomésticos (se mobiliado), com fotos. O documento assinado é a referência pra entrega — você devolve o imóvel no mesmo estado (descontado o desgaste natural). Vistoria de saída é feita também no final do contrato.
+
+## P: Posso visitar o imóvel sem agendar?
+R: **Não** — visitas são sempre agendadas pra garantir que o corretor esteja disponível e o imóvel preparado. Me passa: código do imóvel ou bairro de interesse + 2-3 janelas de horário, eu confirmo com o corretor responsável e te mando a confirmação.
+
+## P: Tem imóvel pra alugar sem garantia?
+R: Casos sem garantia são exceção e dependem do proprietário. Em geral, são aluguéis curtos (1-6 meses), imóveis menos disputados ou com depósito de 1-3 aluguéis adiantados. Me passa sua faixa de orçamento e perfil que eu verifico opções.
+
+## P: Quanto tempo demora a aprovação do financiamento?
+R: Da análise inicial à liberação, varia de **30 a 60 dias** em média. Depende de: agilidade na entrega de documentos, avaliação do imóvel (10-15 dias), aprovação do crédito (variável), assinatura do contrato e registro em cartório. Conte com 60-90 dias até as chaves na sua mão.
+
+## P: A comissão é por minha conta ou da imobiliária?
+R: **Compra/venda**: a comissão (~6%) é por conta do vendedor, salvo acordo diferente em contrato. **Locação**: a primeira mensalidade é geralmente do locatário (intermediação), mas administração mensal é descontada do locador. Cada caso confirma em contrato — sem surpresa.`,
+      },
     ],
     contextualGuardrails: [
       "Prometer aprovação de financiamento ou crédito",

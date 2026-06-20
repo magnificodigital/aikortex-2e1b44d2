@@ -583,11 +583,15 @@ serve(async (req) => {
         if ((count ?? 0) >= 5) {
           return jsonRes({ ok: true, log: `KB "${topic.title}" não criada (limite de 5)`, warning: "MAX_KBS" });
         }
-        const { error: insErr } = await admin.from("agent_knowledge_bases").insert({
-          agent_id: agentId,
-          name: topic.title,
-          description: topic.description,
-        });
+        const { data: kbRow, error: insErr } = await admin
+          .from("agent_knowledge_bases")
+          .insert({
+            agent_id: agentId,
+            name: topic.title,
+            description: topic.description,
+          })
+          .select("id")
+          .maybeSingle();
         if (insErr) {
           if (String(insErr.message).match(/duplicate|unique/i)) {
             logMessage = `KB "${topic.title}" já existia (ignorada)`;
@@ -599,7 +603,36 @@ serve(async (req) => {
         if (!createdKbsN.includes(topic.title)) {
           newConfig = { ...newConfig, createdKbs: [...createdKbsN, topic.title] };
         }
-        logMessage = `Base de conhecimento "${topic.title}" criada`;
+        // Seed: se o catálogo tem conteúdo starter, dispara ingest-document
+        // pra criar kb_documents + chunks + embeddings (RAG funcional desde o
+        // dia 1). Sem ingest, agente.knowledge_search não acharia o starter.
+        let seedNote = "";
+        if (topic.seedContent && kbRow?.id) {
+          try {
+            const ingResp = await fetch(`${SUPABASE_URL}/functions/v1/ingest-document`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                kb_id: kbRow.id,
+                source_type: "text",
+                title: `${topic.title} — Conteúdo starter`,
+                raw_content: topic.seedContent,
+              }),
+            });
+            if (ingResp.ok) {
+              seedNote = " + conteúdo starter ingerido";
+            } else {
+              const msg = await ingResp.text().catch(() => "");
+              console.warn("[seed_kb_topic] ingest failed:", ingResp.status, msg);
+            }
+          } catch (e) {
+            console.warn("[seed_kb_topic] ingest exception:", e);
+          }
+        }
+        logMessage = `Base de conhecimento "${topic.title}" criada${seedNote}`;
         break;
       }
       case "add_guardrail": {
