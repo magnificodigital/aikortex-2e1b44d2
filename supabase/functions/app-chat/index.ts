@@ -16,7 +16,28 @@ import {
   type ArchetypeSpec,
 } from "../_shared/agent-blueprint.ts";
 import { buildNicheIntegrationsBlock, NICHE_INTEGRATIONS } from "../_shared/niche-integrations.ts";
-import { buildNicheAssetsBlock, NICHE_ASSETS, resolveNicheKey } from "../_shared/niche-assets.ts";
+import { buildNicheAssetsBlock, NICHE_ASSETS, resolveNicheKey, inferNicheFromMessage } from "../_shared/niche-assets.ts";
+
+/** Remove raw tool-call JSON que o LLM às vezes cospe como texto em vez de
+ * invocar via tool_calls. Bug visto: usuário recebia "{ "tool": "set_agent_name",
+ * "params": {"name": "Sofia"} }" como mensagem do bot. Acontece tipicamente
+ * em fases sem tool execution (POST_COMMIT, fallback de erro) onde Qwen 3
+ * ignora a instrução do prompt. */
+function stripRawToolJson(content: string): string {
+  if (!content) return content;
+  let out = content;
+  // Bloco ```json { "tool": "...", ... } ```
+  out = out.replace(/```(?:json)?\s*\{[^`]*?"tool"\s*:[^`]*?\}\s*```/g, "");
+  // Inline { "tool": "X", "params": {...} } — também aceita "name" em vez de "tool"
+  out = out.replace(/\{\s*"(?:tool|name)"\s*:\s*"\w+"\s*,\s*"(?:params|arguments)"\s*:\s*\{[^{}]*(?:\{[^}]*\}[^{}]*)*\}\s*\}/g, "");
+  // <tool_call>...</tool_call> (formato de alguns modelos)
+  out = out.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "");
+  // <|tool|>...<|/tool|>
+  out = out.replace(/<\|tool\|>[\s\S]*?<\|\/tool\|>/g, "");
+  // Trim de linhas vazias residuais
+  out = out.replace(/\n{3,}/g, "\n\n").trim();
+  return out;
+}
 
 function streamText(text: string): ReadableStream {
   const encoder = new TextEncoder();
@@ -425,6 +446,7 @@ Explica que pra adicionar capacidade nova, abre o painel direito (Capacidades / 
 - ZERO perguntas de Descoberta ("o que ele faz?", "pra quem atende?", "limites?")
 - ZERO "Pra esse agente sair real, me ajuda com..." — o agente JÁ existe
 - NUNCA dizer "ajustei pra você" / "atualizei" sem ter de fato executado — você NÃO chama tools nessa fase
+- **NUNCA imprima JSON cru de tool-call no texto.** Coisas tipo \`{ "tool": "set_agent_name", "params": {...} }\` ou \`<tool_call>...\` NÃO devem aparecer na resposta. Você não tem tools disponíveis aqui — responda só com texto natural direcionando o user pro painel.
 ` : phase === "CRIACAO" ? `
 ⛔⛔⛔ **VOCÊ ESTÁ NA FASE CRIAÇÃO. LEIA ANTES DE QUALQUER COISA:**
 
@@ -1904,7 +1926,16 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           // cima do que LLM fez não causa conflito.
           // Bug 2: LLM setava niche="Finanças" pra contabilidade. resolveNicheKey
           // normaliza aliases (financas/financeiro/contábil → Contabilidade).
-          const resolvedNiche = resolveNicheKey(currentNiche);
+          // Bug 3: LLM oscila → não chama set_niche → currentNiche fica null →
+          // catálogo nunca dispara. Fallback: infere da primeira mensagem do user.
+          let resolvedNiche = resolveNicheKey(currentNiche);
+          if (!resolvedNiche) {
+            const firstUserMsg = incomingMessages.find((m) => m.role === "user")?.content ?? "";
+            resolvedNiche = inferNicheFromMessage(firstUserMsg);
+            if (resolvedNiche) {
+              console.log(`[wizard-setup] niche inferido da 1ª msg ("${firstUserMsg.slice(0, 60)}…"): ${resolvedNiche}`);
+            }
+          }
           if (resolvedNiche && NICHE_ASSETS[resolvedNiche]) {
             const spec = NICHE_ASSETS[resolvedNiche];
             // Se o nicho foi resolvido a partir de alias diferente, persiste
@@ -2246,6 +2277,9 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
         content = await bufferFromPlatform(chatMessages, preferred, adminClient);
       }
 
+      // Sanitiza conteúdo antes de devolver pro usuário — remove JSON cru de
+      // tool-call que LLM às vezes vaza em texto (Qwen 3 oscila).
+      content = stripRawToolJson(content);
       if (streamMode === false) {
         return new Response(
           JSON.stringify({ response: content || "Não foi possível gerar resposta." }),

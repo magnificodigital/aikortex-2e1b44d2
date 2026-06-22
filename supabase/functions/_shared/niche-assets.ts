@@ -869,6 +869,20 @@ R: **Compra/venda**: a comissão (~6%) é por conta do vendedor, salvo acordo di
   },
 };
 
+/** Infere nicho do catálogo a partir de keywords na descrição inicial do
+ * agente. Usado como fallback quando o LLM oscilou e não chamou set_niche.
+ * Retorna null se nenhuma keyword bate com catálogo. */
+export function inferNicheFromMessage(text: string | undefined | null): string | null {
+  if (!text) return null;
+  const t = text.toLowerCase();
+  // Ordem importa: mais específico primeiro
+  if (/\b(cont[áa]bil|contador|contadora|escrit[óo]rio cont[áa]bil|cont[áa]beis|fiscal|tributari|impostos|simples nacional|lucro presumido|das|darf|mei)\b/.test(t)) return "Contabilidade";
+  if (/\b(cl[íi]nica|m[ée]dic[ao]|dentista|consult[óo]rio|paciente|consulta m[ée]dica|odonto|fisioterap|psic[óo]log|nutricion|sa[úu]de|ambulat[óo]ri|enfermag)\b/.test(t)) return "Saúde";
+  if (/\b(advogad[ao]|jur[íi]dic|advocacia|processo judicial|tribunal|escrit[óo]rio de advocacia|peti[çc][ãa]o|audi[êe]ncia|prazos processuais|forense|cliente jur[íi]dico)\b/.test(t)) return "Advocacia";
+  if (/\b(imobili[áa]ri|im[óo]vel|im[óo]veis|corretor|corretora|aluguel|loca[çc][ãa]o|venda de im[óo]vel|apartamento|casa pra alugar|fian[çc]a locat[íi]cia|financiamento imobili[áa]rio)\b/.test(t)) return "Imobiliária";
+  return null;
+}
+
 /** Normaliza aliases de nicho pro key correto do catálogo. LLM às vezes
  * setou niche="Finanças" pra escritório contábil (≠ fintech) ou variações
  * de capitalização/acentuação. Esta função mapeia tudo pra key do catálogo.
