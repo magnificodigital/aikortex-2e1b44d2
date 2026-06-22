@@ -433,6 +433,23 @@ serve(async (req) => {
         if (normalizedCols.length === 0) {
           return jsonRes({ error: "INVALID_COLUMNS" }, 400);
         }
+
+        // Quando o nicho tem catálogo (Contabilidade/Saúde/Advocacia/Imobiliária),
+        // BLOQUEIA create_client_table improvisado. Bug visto: LLM ignorava
+        // catálogo e criava 5+ tabelas inventadas com nomes redundantes
+        // ("Documentos Contábeis", "Interações com Clientes", "Dúvidas
+        // Frequentes (FAQ)" — última devia ser KB, não tabela!).
+        // Força o LLM a usar create_niche_table com os slugs do catálogo.
+        const nicheForGate = (currentConfig.businessContext?.niche ?? "") as string;
+        const nicheKey = resolveNicheKey(nicheForGate);
+        if (nicheKey && NICHE_ASSETS[nicheKey]) {
+          const catalogSlugs = NICHE_ASSETS[nicheKey].tables.map((t) => t.slug);
+          return jsonRes({
+            error: "USE_NICHE_CATALOG",
+            message: `Nicho "${nicheKey}" tem catálogo. NÃO crie tabelas improvisadas via create_client_table. Use create_niche_table com um destes slugs: ${catalogSlugs.join(", ")}. KBs (FAQ, etc) vão em seed_kb_topic, NÃO em tabela.`,
+            availableSlugs: catalogSlugs,
+          }, 400);
+        }
         // client_tables.client_id é FK pra agency_clients(id). Em modo
         // personalizado (sem cliente), usa o Sandbox da agência (find-or-create
         // lazy). Mesmo padrão do create_niche_table.
