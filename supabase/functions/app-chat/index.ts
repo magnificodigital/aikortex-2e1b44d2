@@ -1511,7 +1511,11 @@ serve(async (req) => {
         // avanço pra PLANO mesmo com count baixo — re-perguntar nesse momento
         // gera loop frustrante (bug visto: user diz "o que vc sugere" e LLM
         // repete as mesmas 3 perguntas).
-        const askSuggestRegex = /\b(o\s+que\s+(vc|voc[êe])\s+sugere|(vc|voc[êe])\s+decide|n[ãa]o\s+sei|tanto\s+faz|vai\s+(vc|voc[êe])|qualquer\s+(coisa|um)|sei\s+l[áa]|surpreende|escolhe\s+(vc|voc[êe])|me\s+sugere|me\s+ajuda)\b/;
+        // Expandido pra cobrir "qual a sua sugestão", "qual sua opinião",
+        // "me sugere", "pode sugerir" etc. Bug visto: "Qual a sua sugestão"
+        // não casava o regex antigo (só pegava "o que vc sugere"). Agente
+        // ficou repetindo as mesmas 3 perguntas em loop.
+        const askSuggestRegex = /\b(o\s+que\s+(vc|voc[êe])\s+sugere|qual\s+(a\s+|o\s+|é\s+a\s+|é\s+o\s+|s[eã]ria\s+)?(sua|tua|seu|teu)\s+(sugest[ãa]o|opini[ãa]o|recomenda[çc][ãa]o|escolha|ideia|palpite)|qual\s+(a\s+)?melhor(\s+(op[çc][ãa]o|escolha))?|sugest[ãa]o\s*\??$|(vc|voc[êe])\s+decide|n[ãa]o\s+sei|tanto\s+faz|vai\s+(vc|voc[êe])|qualquer\s+(coisa|um)|sei\s+l[áa]|surpreende|escolhe\s+(vc|voc[êe])|me\s+sugere|me\s+ajuda|me\s+d[áa]\s+(uma\s+)?sugest|pode\s+sugerir|sugere\s+a[ií]|o\s+que\s+(vc|voc[êe])\s+acha)\b/;
         const isConfirm = confirmRegex.test(lastUserMsg) && lastUserMsg.length < 80;
         const isAskPlan = askPlanRegex.test(lastUserMsg);
         const isAskSuggest = askSuggestRegex.test(lastUserMsg) && lastUserMsg.length < 80;
