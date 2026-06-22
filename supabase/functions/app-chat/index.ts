@@ -1738,6 +1738,16 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           userJwt,
         });
         content = wizContent;
+        const llmFailed = !content || content.trim().length === 0;
+        if (llmFailed) {
+          // LLM oscilou (free tier muitas vezes morre em rajadas). O dispatch
+          // determinístico abaixo AINDA roda — capacidades+tools+canal+greeting+
+          // commit_draft do spec do arquétipo são garantidos. Sintetiza
+          // resposta humana pra user não ver "Serviço indisponível".
+          console.warn(`[wizard-setup] LLM retornou vazio em CRIACAO — sintetizando resposta a partir do spec ${detectedSpec?.archetype ?? "(none)"}`);
+          const archetypeLabel = detectedSpec?.label ?? "agente";
+          content = `Pronto! Montei o **${archetypeLabel}** com a estrutura padrão do tipo detectado — capacidades, canais e ferramentas configuradas. O serviço de IA tava oscilando agora, então usei o spec determinístico pra garantir que o agente nasceu pronto.\n\nConfere no painel à direita — pode ajustar qualquer detalhe lá.`;
+        }
 
         // Injeção determinística do marker OAuth: se houve bloqueador com botão
         // inline disponível e o LLM não incluiu o marker (Qwen 3 ignora às vezes),
