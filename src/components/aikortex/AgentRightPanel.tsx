@@ -512,6 +512,33 @@ const AgentRightPanel = ({
         return merged.length === prev.length && prev.every(c => merged.includes(c)) ? prev : merged;
       });
     }
+    // Capabilities: agent-vibe-mutate dispatcha set_capability deterministicamente
+    // mas useState(()=>mergeCapabilities(saved)) só rodou 1x no mount. Sync aqui
+    // pra UI refletir reasoning+memory ON quando wizard termina (bug: toggles
+    // ficavam OFF apesar de capabilities[k].enabled=true no DB).
+    if ((savedConfig as any)?.capabilities) {
+      const incomingCaps = mergeCapabilities((savedConfig as any).capabilities);
+      // Só atualiza se algum bit MUDOU pra evitar loop com edit manual em curso
+      const changed =
+        incomingCaps.planning.enabled !== capabilities.planning.enabled ||
+        incomingCaps.reasoning.enabled !== capabilities.reasoning.enabled ||
+        incomingCaps.memory.enabled !== capabilities.memory.enabled ||
+        incomingCaps.code_runtime.enabled !== capabilities.code_runtime.enabled ||
+        incomingCaps.auto_integration.enabled !== capabilities.auto_integration.enabled;
+      if (changed) setCapabilities(incomingCaps);
+    }
+    // Guardrails: add_guardrail (universais + contextuais) salva em
+    // savedConfig.guardrails[]. UI tinha o mesmo bug de só ler no mount.
+    if (Array.isArray((savedConfig as any)?.guardrails)) {
+      const incomingGr = (savedConfig as any).guardrails as string[];
+      setAgentGuardrails(prev => {
+        // Merge: mantém os manuais que user adicionou + adiciona vindos do draft
+        const merged = Array.from(new Set([...prev, ...incomingGr]));
+        return merged.length === prev.length && prev.every((g) => merged.includes(g))
+          ? prev
+          : merged;
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedConfig]);
 
