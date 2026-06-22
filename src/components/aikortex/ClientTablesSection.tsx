@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { useClientTables, type ClientTable } from "@/hooks/use-client-tables";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import ClientTableCard from "./ClientTableCard";
 import CreateClientTableDialog from "./CreateClientTableDialog";
 import ClientTableEditor from "./ClientTableEditor";
@@ -14,15 +15,11 @@ interface Props {
 }
 
 export default function ClientTablesSection({ isFreshNew }: Props) {
-  const { activeClientId, activeClientName, isAgencyMode, clients, setActiveClientId } = useActiveClient();
+  const { activeClientId, activeClientName, isAgencyMode } = useActiveClient();
+  const { sandboxClient, switchToClient } = useWorkspace();
   const { data: tables = [], isLoading } = useClientTables(activeClientId);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<ClientTable | null>(null);
-
-  // Sandbox client = atalho pra modo personalizado. O agent-vibe-mutate cria
-  // tabelas de teste lá quando o agente não tem cliente vinculado. UI oferece
-  // botão pra mudar workspace direto sem precisar usar o seletor superior.
-  const sandboxClient = clients.find((c) => c.client_name === "Sandbox / Testes");
 
   // Keep editingTable in sync with latest table data (e.g. after rename)
   const liveEditing = editingTable ? tables.find((t) => t.id === editingTable.id) ?? null : null;
@@ -75,7 +72,7 @@ export default function ClientTablesSection({ isFreshNew }: Props) {
                 size="sm"
                 variant="outline"
                 className="gap-1.5"
-                onClick={() => setActiveClientId(sandboxClient.id)}
+                onClick={() => switchToClient(sandboxClient)}
               >
                 <FlaskConical className="w-3.5 h-3.5" /> Abrir Sandbox / Testes
               </Button>

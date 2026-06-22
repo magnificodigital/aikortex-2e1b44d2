@@ -19,6 +19,9 @@ interface WorkspaceContextType {
   agencyName: string;
   agencyProfileId: string | null;
   clients: AgencyClient[];
+  /** Cliente Sandbox da agência (status='sandbox'). Carregado separado pra
+   * não poluir o dropdown de clientes reais. NULL se ainda não foi criado. */
+  sandboxClient: AgencyClient | null;
   activeWorkspace: ActiveWorkspace;
   switchToAgency: () => void;
   switchToClient: (client: AgencyClient) => void;
@@ -35,6 +38,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const [agencyName, setAgencyName] = useState("Meu Workspace");
   const [agencyProfileId, setAgencyProfileId] = useState<string | null>(null);
   const [clients, setClients] = useState<AgencyClient[]>([]);
+  const [sandboxClient, setSandboxClient] = useState<AgencyClient | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeWorkspace, setActiveWorkspace] = useState<ActiveWorkspace>({
     type: "agency", id: "", name: "Meu Workspace",
@@ -65,6 +69,16 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
             .order("client_name");
           loadedClients = data ?? [];
           setClients(loadedClients);
+
+          // Sandbox carregado separado pra não poluir o dropdown de
+          // clientes reais. Acessado via sandboxClient prop.
+          const { data: sandbox } = await supabase
+            .from("agency_clients")
+            .select("id, client_name, client_email, status")
+            .eq("agency_id", agency.id)
+            .eq("status", "sandbox")
+            .maybeSingle();
+          setSandboxClient(sandbox ?? null);
         }
 
         // Restore saved workspace — apenas se pertence ao user logado
@@ -120,7 +134,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <WorkspaceContext.Provider value={{
-      agencyName, agencyProfileId, clients,
+      agencyName, agencyProfileId, clients, sandboxClient,
       activeWorkspace, switchToAgency, switchToClient,
       loading, refreshClients,
     }}>

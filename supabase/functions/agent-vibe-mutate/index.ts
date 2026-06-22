@@ -70,23 +70,35 @@ async function getOrCreateSandboxClient(admin: any, agentUserId: string): Promis
     .maybeSingle();
   if (!agency?.id) return null;
 
-  // 2. Sandbox client da agência (find)
+  // 2. Sandbox client da agência (find) — status="sandbox" pra ficar OUT do
+  // dropdown de clientes reais (WorkspaceContext filtra por status="active").
   const { data: existing } = await admin
     .from("agency_clients")
-    .select("id")
+    .select("id, status")
     .eq("agency_id", agency.id)
     .eq("client_name", "Sandbox / Testes")
     .maybeSingle();
-  if (existing?.id) return existing.id as string;
+  if (existing?.id) {
+    // Migra rows antigas que foram criadas com status="active" — não devem
+    // mais poluir o dropdown de clientes. Operação idempotente.
+    if (existing.status !== "sandbox") {
+      await admin
+        .from("agency_clients")
+        .update({ status: "sandbox" })
+        .eq("id", existing.id);
+      console.log(`[sandbox-client] migrado status pra "sandbox" em ${existing.id}`);
+    }
+    return existing.id as string;
+  }
 
-  // 3. Sandbox não existe → cria
+  // 3. Sandbox não existe → cria com status="sandbox"
   const { data: created, error } = await admin
     .from("agency_clients")
     .insert({
       agency_id: agency.id,
       client_name: "Sandbox / Testes",
       client_email: "sandbox@aikortex.local",
-      status: "active",
+      status: "sandbox",
     })
     .select("id")
     .maybeSingle();
