@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Loader2, Database, FileText, Globe, Type, HelpCircle } from "lucide-react";
+import { Settings, Loader2, Database, FileText, Globe, Type, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { useKnowledgeDocuments, useUpdateKb, type AgentKnowledgeBase } from "@/hooks/use-agent-knowledge-bases";
 import DocumentListItem from "./DocumentListItem";
 import AddDocumentDialog from "./AddDocumentDialog";
@@ -31,6 +31,10 @@ export default function KnowledgeBaseCard({ kb, agentId }: Props) {
   const [addDocOpen, setAddDocOpen] = useState(false);
   const [initialTab, setInitialTab] = useState<"text" | "faq" | "file" | "url">("text");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Accordion: KB começa colapsada pra lista não ficar imensa. Click expande.
+  // Default true só quando KB está vazia (engagement: mostrar CTA de adicionar
+  // doc). Caso contrário, default false.
+  const [expanded, setExpanded] = useState(false);
 
   const totalChunks = docs.reduce((sum, d) => sum + (d.chunks_count ?? 0), 0);
 
@@ -41,25 +45,45 @@ export default function KnowledgeBaseCard({ kb, agentId }: Props) {
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="p-4 border-b border-border flex items-start justify-between gap-3">
+      {/* Header clicável vira toggle do accordion. Não interfere com switch
+          e botão de settings (stopPropagation). */}
+      <div
+        className={`p-4 flex items-start justify-between gap-3 cursor-pointer hover:bg-accent/30 transition-colors ${expanded ? "border-b border-border" : ""}`}
+        onClick={() => setExpanded((v) => !v)}
+        role="button"
+        aria-expanded={expanded}
+      >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <Database className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground truncate">{kb.name}</h3>
             {!kb.enabled && <Badge variant="outline" className="text-[10px]">Desabilitada</Badge>}
+            {docs.length > 0 && (
+              <Badge variant="secondary" className="text-[10px]">
+                {docs.length} doc{docs.length !== 1 ? "s" : ""}
+              </Badge>
+            )}
+            {docs.length === 0 && (
+              <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-600">vazia</Badge>
+            )}
           </div>
-          {kb.description && (
+          {kb.description && !expanded && (
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{kb.description}</p>
+          )}
+          {kb.description && expanded && (
             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{kb.description}</p>
           )}
-          <p className="text-[11px] text-muted-foreground mt-2">
-            {docs.length} documento{docs.length !== 1 ? "s" : ""}
-            {" · "}
-            {totalChunks} chunk{totalChunks !== 1 ? "s" : ""}
-            {" · "}
-            atualizado {formatRelative(kb.updated_at)}
-          </p>
+          {expanded && (
+            <p className="text-[11px] text-muted-foreground mt-2">
+              {docs.length} documento{docs.length !== 1 ? "s" : ""}
+              {" · "}
+              {totalChunks} chunk{totalChunks !== 1 ? "s" : ""}
+              {" · "}
+              atualizado {formatRelative(kb.updated_at)}
+            </p>
+          )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
           <Switch
             checked={kb.enabled}
             onCheckedChange={(v) => updateKb.mutate({ id: kb.id, agent_id: agentId, patch: { enabled: v } })}
@@ -68,10 +92,22 @@ export default function KnowledgeBaseCard({ kb, agentId }: Props) {
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSettingsOpen(true)}>
             <Settings className="w-4 h-4" />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded((v) => !v);
+            }}
+            aria-label={expanded ? "Recolher" : "Expandir"}
+          >
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </Button>
         </div>
       </div>
 
-      <div className="p-4 space-y-2">
+      {expanded && <div className="p-4 space-y-2">
         {isLoading && (
           <div className="flex items-center justify-center py-6 text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -111,7 +147,7 @@ export default function KnowledgeBaseCard({ kb, agentId }: Props) {
             FAQ
           </Button>
         </div>
-      </div>
+      </div>}
 
       <AddDocumentDialog
         open={addDocOpen}
