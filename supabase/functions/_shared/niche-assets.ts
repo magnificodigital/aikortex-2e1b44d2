@@ -122,8 +122,89 @@ export const NICHE_ASSETS: Record<string, NicheAssetSpec> = {
       },
     ],
     kbTopics: [
-      { slug: "regimes_tributarios", title: "Regimes tributários", description: "Simples, Lucro Presumido, Lucro Real — quando cada um cabe" },
-      { slug: "documentos_abertura", title: "Documentos para abertura de empresa", description: "Lista de documentos necessários por tipo de empresa" },
+      {
+        slug: "regimes_tributarios",
+        title: "Regimes tributários",
+        description: "Simples, Lucro Presumido, Lucro Real — quando cada um cabe",
+        seedContent: `# Regimes Tributários — Resumo Prático
+
+> ✏️ **Personalize com a análise do contador** pros casos comuns dos seus clientes.
+
+## MEI (Microempreendedor Individual)
+- **Faturamento máximo:** R$ 81 mil/ano (R$ 6.750/mês)
+- **Tributo:** DAS fixo mensal (~R$ 75 + INSS)
+- **Funcionários:** até 1 com salário mínimo ou piso da categoria
+- **CNAEs permitidos:** lista restrita (consultar Portal do Empreendedor)
+- **Vantagem:** simplicidade absoluta, 1 boleto/mês
+- **Limitação:** não pode emitir nota pra outras MEIs em mesmo CNPJ familiar
+
+## Simples Nacional
+- **Faturamento máximo:** R$ 4,8 mi/ano
+- **Tributo:** unificado (IRPJ, CSLL, PIS, COFINS, INSS, ISS/ICMS) — DAS conforme tabela
+- **Alíquota efetiva:** 4% a 33% dependendo do Anexo (I a V)
+- **Vantagem:** baixa carga + menos obrigações acessórias
+- **Quando NÃO cabe:** atividades vedadas (financeira, locação imóvel próprio etc), ou margem real < margem presumida do Anexo
+
+## Lucro Presumido
+- **Faturamento máximo:** R$ 78 mi/ano
+- **Tributo:** presume margem de lucro (8% comércio, 32% serviço) + tributa sobre essa base
+- **Periodicidade:** trimestral (IRPJ/CSLL), mensal (PIS/COFINS)
+- **Vantagem:** quando margem real é maior que a presumida → economia
+- **Quando NÃO cabe:** atividades obrigadas a Lucro Real (financeiras, factoring, equiparadas)
+
+## Lucro Real
+- **Faturamento mínimo (obrigatório):** > R$ 78 mi/ano
+- **Tributo:** sobre lucro real apurado contabilmente
+- **Vantagem:** quando há prejuízos, pode compensar
+- **Desvantagem:** alto custo de compliance (escrituração, ECD, ECF, EFD-Contribuições)
+- **Atividades obrigadas:** instituições financeiras, factoring, atividades imobiliárias específicas, empresas com lucros do exterior
+
+## Como escolher
+1. **Calcule a margem real** dos últimos 12 meses
+2. **Compare** o tributo Simples (pela tabela) vs Presumido (com sua margem real) vs Real (com balanço)
+3. **Considere** obrigações acessórias adicionais do Lucro Real
+4. **Decida em janeiro** — mudança de regime só uma vez ao ano (até último dia útil de janeiro)`,
+      },
+      {
+        slug: "documentos_abertura",
+        title: "Documentos para abertura de empresa",
+        description: "Lista de documentos necessários por tipo de empresa",
+        seedContent: `# Documentos para Abertura de Empresa
+
+> ✏️ **Confirme com a Junta Comercial do estado** se a lista mudou.
+
+## Documentos pessoais (sócios)
+- RG e CPF (cópia simples ou autenticada)
+- Comprovante de residência atualizado (≤ 90 dias)
+- Certidão de casamento ou declaração de união estável (se aplicável)
+- Comprovante de profissão (CRC, CRM, OAB etc se categoria regulamentada)
+
+## Documentos da empresa
+- **Consulta prévia de viabilidade** (prefeitura) — confirma se endereço aceita a atividade
+- **Contrato Social** (LTDA/SLU) ou Requerimento de Empresário (Empresário Individual)
+- **Comprovante de endereço da empresa** (IPTU, conta de luz/água)
+- **CCMEI** (no caso de MEI)
+- **DBE** (Documento Básico de Entrada) — gerado no portal Receita
+
+## Etapas
+1. Consulta prévia na prefeitura (1-3 dias)
+2. Registro na Junta Comercial (NIRE) — 1-3 dias úteis
+3. CNPJ na Receita Federal — automático após Junta (até 24h)
+4. Alvará de funcionamento na prefeitura
+5. Inscrição estadual (se vende mercadoria) ou municipal (se presta serviço)
+6. Alvará do bombeiro (se imóvel comercial)
+7. Cadastro INSS/CAGED/eSocial (após primeiro funcionário)
+
+## Tempo médio total
+- **MEI**: 1 dia (online)
+- **LTDA simples**: 7-15 dias úteis
+- **LTDA com atividade regulada**: 20-45 dias (depende de licenças)
+
+## Custos típicos (referência 2026)
+- Junta Comercial: R$ 130-280 dependendo do estado
+- Alvará prefeitura: R$ 100-500
+- Honorário contador pra abertura: R$ 500-2.500 (varia por complexidade)`,
+      },
       { slug: "calendario_fiscal", title: "Calendário fiscal anual", description: "Datas de DAS, DARF, ECF, DCTF, etc" },
       {
         slug: "faq_contabil",
@@ -230,8 +311,77 @@ R: É obrigatório quando o faturamento passa de **R$ 4,8 milhões/ano**. Antes 
       },
     ],
     kbTopics: [
-      { slug: "especialidades", title: "Especialidades atendidas", description: "Lista das especialidades médicas da clínica" },
-      { slug: "planos_aceitos", title: "Planos de saúde aceitos", description: "Convênios cobertos + condições" },
+      {
+        slug: "especialidades",
+        title: "Especialidades atendidas",
+        description: "Lista das especialidades médicas da clínica",
+        seedContent: `# Especialidades Atendidas
+
+> ✏️ **Substitua pela lista REAL da sua clínica.** Esse é só um starter genérico.
+
+## Clínica Médica e Atenção Primária
+- **Clínica Geral** — consulta geral, avaliação inicial, triagem
+- **Pediatria** — atendimento infantil (0-12 anos) e adolescentes
+- **Geriatria** — pacientes 60+ com foco em prevenção e tratamento crônico
+
+## Especialidades Cirúrgicas
+- **Cirurgia Geral** — avaliação pré-operatória, hérnias, vesícula
+- **Ortopedia** — fraturas, lesões esportivas, dores articulares
+- **Ginecologia/Obstetrícia** — saúde da mulher e pré-natal
+
+## Especialidades Clínicas
+- **Cardiologia** — pressão alta, arritmias, check-up cardíaco
+- **Endocrinologia** — diabetes, tireoide, obesidade
+- **Dermatologia** — estética e patologias da pele
+- **Gastroenterologia** — refluxo, gastrite, intestino
+- **Neurologia** — enxaqueca, AVC, doenças neurodegenerativas
+- **Psiquiatria** — depressão, ansiedade, transtornos
+- **Urologia** — saúde masculina, próstata, urinária
+
+## Diagnóstico por Imagem
+- Raio-X · Ultrassom · Tomografia · Ressonância (verificar disponibilidade)
+
+## Especialidades Multiprofissionais
+- Nutrição · Psicologia · Fisioterapia · Fonoaudiologia
+
+## Como informar ao paciente
+Quando paciente perguntar "vocês atendem X?", responda APENAS as especialidades acima. Se não estiver na lista: "Não atendemos {X}, mas posso te orientar pra uma clínica parceira".`,
+      },
+      {
+        slug: "planos_aceitos",
+        title: "Planos de saúde aceitos",
+        description: "Convênios cobertos + condições",
+        seedContent: `# Planos de Saúde Aceitos
+
+> ✏️ **Lista CRÍTICA — sempre confirme com a recepção antes de afirmar.** Cada operadora muda contrato de tempos em tempos.
+
+## Como funciona
+Atendemos os principais convênios da região. **Cada plano** tem regras próprias de cobertura, autorizações e procedimentos. Sempre confirmar com o paciente ANTES da consulta:
+- Nome do plano (Bradesco Saúde, Amil, Unimed, etc.)
+- Tipo (ambulatorial, hospitalar, empresarial, individual)
+- Número da carteirinha
+
+## Convênios típicos (exemplos — confirme com sua clínica)
+- **Unimed** — cobertura ampla, autorização em alguns procedimentos
+- **Bradesco Saúde** — segmentação por plano (Top, Effective, Premium)
+- **Amil** — geralmente exige autorização prévia em exames de imagem
+- **SulAmérica** — boa cobertura ambulatorial
+- **Hapvida/NotreDame Intermédica** — rede própria, atendimento específico
+- **Porto Saúde** — em crescimento, depende da região
+- **Particular** — atendimento sem convênio, valor diferenciado
+
+## Condições comuns
+- **Carência:** plano novo pode ter 24h-180 dias de carência pra certas consultas
+- **Coparticipação:** alguns planos cobram fração por consulta/exame
+- **Autorização prévia:** exames de imagem, cirurgias e tratamentos especiais
+- **Limites anuais:** algumas operadoras limitam # de consultas/ano
+
+## Como responder ao paciente
+- "Você sabe me dizer o nome exato do plano e tipo (ambulatorial/hospitalar)?"
+- "Vou confirmar a cobertura com a recepção e te respondo em até X minutos"
+- **Nunca** prometa cobertura sem confirmar
+- Se não está na lista: "Atendemos como particular também, posso te passar o valor"`,
+      },
       { slug: "politica_cancelamento", title: "Política de cancelamento", description: "Prazo pra cancelar/remarcar sem custo" },
       { slug: "preparos_exames", title: "Preparos para exames", description: "Jejum, suspensão de medicamentos, etc" },
       {
@@ -339,9 +489,126 @@ R: **Em caso de emergência grave (dor no peito, falta de ar, perda de consciên
       },
     ],
     kbTopics: [
-      { slug: "areas_atuacao", title: "Áreas de atuação", description: "Trabalhista, cível, tributário, etc" },
+      {
+        slug: "areas_atuacao",
+        title: "Áreas de atuação",
+        description: "Trabalhista, cível, tributário, etc",
+        seedContent: `# Áreas de Atuação
+
+> ✏️ **Substitua pela lista REAL do escritório.** Esse é starter genérico de um escritório full-service.
+
+## Direito Trabalhista
+- Reclamações trabalhistas (verbas rescisórias, FGTS, horas extras)
+- Defesa do empregador em processos trabalhistas
+- Consultoria preventiva (folha, contratos, demissões)
+- Assédio moral/sexual, dano moral
+- Acordos extrajudiciais
+
+## Direito Cível
+- Contratos (elaboração, revisão, rescisão)
+- Indenizações por dano moral/material
+- Cobranças e execuções
+- Imobiliário (compra/venda, locação, despejo, usucapião)
+- Responsabilidade civil
+
+## Direito de Família e Sucessões
+- Divórcio (consensual e litigioso)
+- Pensão alimentícia (revisão, exoneração, execução)
+- Guarda de filhos e direito de visita
+- Inventário e partilha
+- União estável (reconhecimento e dissolução)
+- Testamento
+
+## Direito do Consumidor
+- Problemas com produtos e serviços
+- Cobranças indevidas (bancos, operadoras, ecommerce)
+- Negativações irregulares
+- Vícios construtivos (imóveis)
+
+## Direito Previdenciário
+- Aposentadorias (idade, tempo de contribuição, especial)
+- Benefícios por incapacidade
+- Pensão por morte
+- BPC/LOAS
+- Revisões e RPV
+
+## Direito Tributário
+- Defesa em autuações fiscais
+- Restituição de impostos pagos a maior
+- Planejamento tributário
+- Parcelamentos especiais
+
+## Áreas que NÃO atendemos
+- **Criminal** (se aplicável) — indicamos parceiros
+- **Internacional** — não temos especialista
+- *Atualize conforme o foco do seu escritório*
+
+## Como triar o caso
+1. Identifique a área pela natureza do problema
+2. Se múltiplas áreas: trabalhista costuma ter prioridade por prazo prescricional
+3. Casos urgentes (audiência marcada, prisão, prazo vencendo) → atendimento imediato`,
+      },
       { slug: "tabela_honorarios", title: "Tabela de honorários", description: "Por área e tipo de causa" },
-      { slug: "documentos_procuracao", title: "Documentos pra procuração", description: "Lista do que o cliente precisa trazer" },
+      {
+        slug: "documentos_procuracao",
+        title: "Documentos pra procuração",
+        description: "Lista do que o cliente precisa trazer",
+        seedContent: `# Documentos para Procuração e Cadastro
+
+> ✏️ **Lista padrão — pode mudar conforme tipo de caso ou comarca.**
+
+## Pessoa Física (PF)
+- **RG e CPF** (cópia simples — original será conferido)
+- **Comprovante de residência** atualizado (≤ 90 dias) — conta de luz/água/telefone fixo
+- **Comprovante de profissão/renda** (3 últimos contracheques OU IR completo) — usado pra justiça gratuita
+- **Certidão de casamento** ou nascimento (relacionado ao caso)
+- **CTPS** (carteira de trabalho) — pra causas trabalhistas
+- **Estado civil completo** (informar nome, RG, CPF do cônjuge se aplicável)
+
+## Pessoa Jurídica (PJ)
+- **Contrato Social atualizado** + última alteração
+- **CNPJ** (cartão impresso pelo Portal Receita)
+- **Procuração da empresa** (representante legal autorizado)
+- **RG e CPF** do representante
+- **Comprovante de endereço** da empresa
+
+## Documentos específicos por tipo de caso
+
+### Trabalhista
+- CTPS (todas as páginas: identificação, contratos, alterações)
+- Contracheques dos últimos 24 meses
+- Termo de Rescisão (TRCT) se já demitido
+- Carta de demissão / aviso prévio
+- Conversas (WhatsApp, e-mails) que comprovem situação
+
+### Família (divórcio, alimentos, guarda)
+- Certidão de casamento atualizada (≤ 90 dias)
+- Certidões de nascimento dos filhos
+- Comprovantes de renda dos cônjuges
+- Lista de bens (escrituras, documentos de veículos)
+
+### Previdenciário
+- CNIS (Cadastro Nacional de Informações Sociais)
+- Carteiras de trabalho de toda a vida profissional
+- Carnês de INSS (autônomo)
+- Laudos médicos (auxílio-doença, aposentadoria por invalidez)
+- Documentos rurais (sindicato, contrato de comodato)
+
+### Cível (contratos, indenizações)
+- Contrato relacionado ao caso
+- Provas (notas fiscais, e-mails, fotos)
+- Boletim de Ocorrência (se houver)
+- Laudos técnicos / perícia (se houver)
+
+## Procuração padrão
+**Particular ad judicia** com poderes específicos pra:
+- Receber citação
+- Confessar, transigir, desistir
+- Receber e dar quitação
+- Substabelecer (se autorizado)
+
+*Validade: até final do processo + recursos. Renovar se mais de 5 anos.*`,
+      },
       { slug: "politica_lgpd", title: "Política LGPD", description: "Como dados de cliente são tratados" },
       {
         slug: "faq_juridico",
@@ -451,9 +718,113 @@ R: Os prazos variam: **trabalhista** 2 anos depois da demissão (limite total: 5
       },
     ],
     kbTopics: [
-      { slug: "regioes_atendidas", title: "Regiões atendidas", description: "Bairros e cidades onde temos imóveis" },
+      {
+        slug: "regioes_atendidas",
+        title: "Regiões atendidas",
+        description: "Bairros e cidades onde temos imóveis",
+        seedContent: `# Regiões Atendidas
+
+> ✏️ **Substitua pela região REAL da imobiliária.** Esse é só um esqueleto.
+
+## Como o agente deve responder
+Quando o cliente pergunta "atendem em X?" ou "tem imóvel em Y?", confira na lista abaixo. Se a região está listada, confirme tipo de imóvel disponível. Se não está, ofereça regiões próximas ou registre interesse.
+
+## Cidades atendidas
+- *[Cidade principal]* — sede do escritório, cobertura completa
+- *[Cidade 2]* — atendimento limitado a venda
+- *[Cidade 3]* — apenas locação
+
+## Bairros prioritários (com mais portfólio)
+- Bairro 1 (perfil: residencial classe média/alta)
+- Bairro 2 (perfil: comercial + apartamentos pequenos)
+- Bairro 3 (perfil: casas familiares)
+
+## Bairros atendidos sob demanda
+- Bairro 4, 5, 6 — captação ativa, portfólio menor
+
+## Bairros que NÃO atendemos
+- Regiões fora do raio definido — informe e ofereça parceiro
+
+## Tipos de imóvel por bairro (exemplo)
+- **Centro:** kitnets, 1-2 quartos, comerciais
+- **Zona Norte:** apartamentos 2-3 quartos, casas de bairro
+- **Zona Sul:** imóveis classe média/alta, novos lançamentos
+- **Praia/litoral:** temporada, segunda residência
+
+## Quando cliente pede fora da região
+1. Confirme polidamente que não cobrimos
+2. Ofereça alternativa próxima se houver
+3. Registre interesse pra futura expansão
+4. Indique parceiro/concorrente se for urgente`,
+      },
       { slug: "documentos_compra", title: "Documentos pra compra", description: "Lista do que comprador precisa apresentar" },
-      { slug: "documentos_aluguel", title: "Documentos pra aluguel", description: "Lista de fiador, comprovante, etc" },
+      {
+        slug: "documentos_aluguel",
+        title: "Documentos pra aluguel",
+        description: "Lista de fiador, comprovante, etc",
+        seedContent: `# Documentos para Aluguel
+
+> ✏️ **Confira com a administradora** se mudou política de aceitação.
+
+## Documentos do Locatário (sempre)
+- **RG e CPF** (cópia simples)
+- **Comprovante de residência atual** (≤ 90 dias)
+- **Comprovante de renda** — 3 últimos contracheques OU DECORE/IR (autônomo)
+- **Comprovante de profissão** (CTPS página inicial + última alteração, ou contrato de trabalho)
+- **Estado civil** completo (certidão de casamento ou união estável se aplicável)
+
+**Renda mínima exigida:** 3x o valor do aluguel + condomínio + IPTU
+
+## Documentos do Cônjuge (se casado/união estável)
+- RG e CPF
+- Comprovante de renda
+- Os dois assinam o contrato
+
+## Modalidades de Garantia (escolha 1)
+
+### 1. Fiador
+**Quem pode ser fiador:**
+- Proprietário de imóvel quitado no mesmo município
+- Renda comprovada (3x o aluguel)
+- Sem restrição de crédito
+
+**Documentos do fiador:**
+- RG e CPF + cônjuge (se casado)
+- Comprovante de residência
+- Comprovante de renda (3 contracheques OU IR)
+- **Matrícula atualizada do imóvel** (≤ 30 dias) — comprova propriedade e quitação
+- Certidão de casamento
+- Cônjuge também assina como avalista
+
+### 2. Seguro Fiança
+- Análise feita pela seguradora (Porto, Tokio Marine, Bradesco)
+- Não precisa de fiador
+- **Custo:** geralmente 1 aluguel/ano (parcelado em 12x)
+- Aprovação em 24-72h após enviar documentos
+- Exige consulta SPC/Serasa limpa
+
+### 3. Caução
+- Depósito em conta vinculada (poupança)
+- **Valor:** 3 aluguéis (devolvido no fim do contrato + correção)
+- Sem necessidade de fiador ou seguradora
+- Imediato
+
+### 4. Título de Capitalização
+- Aceito por algumas imobiliárias
+- Cliente compra título com valor equivalente a 3 aluguéis
+- Resgate ao fim do contrato
+
+## Tempo de análise
+- **Com seguro fiança:** 24-72h
+- **Com fiador:** 5-10 dias (análise + vistoria do imóvel do fiador)
+- **Com caução:** imediato após pagamento
+
+## Custos iniciais (no ato da assinatura)
+- Primeiro aluguel proporcional
+- Caução OU primeiro mês de seguro fiança
+- Honorários de intermediação (geralmente equivalente a 1 aluguel)
+- Vistoria + laudo`,
+      },
       { slug: "financiamento", title: "Linhas de financiamento", description: "Caixa, Itaú, BB — condições típicas" },
       {
         slug: "faq_imobiliario",

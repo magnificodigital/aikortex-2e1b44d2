@@ -15,7 +15,7 @@ import {
   inferConnectors,
   type ArchetypeSpec,
 } from "../_shared/agent-blueprint.ts";
-import { buildNicheIntegrationsBlock } from "../_shared/niche-integrations.ts";
+import { buildNicheIntegrationsBlock, NICHE_INTEGRATIONS } from "../_shared/niche-integrations.ts";
 import { buildNicheAssetsBlock } from "../_shared/niche-assets.ts";
 
 function streamText(text: string): ReadableStream {
@@ -802,7 +802,10 @@ Quando o nicho tem catálogo (Contabilidade/Saúde/Advocacia/Imobiliária), voc�
 16. create_niche_cadence — pra CADA \`cadence_slug\` listado no bloco. Cria sequência de mensagens com triggers (onboarding, lembrete de prazo, pós-consulta, etc).
    - Se o nicho NÃO está no catálogo, pule essa tool (cadências ficam pra config manual depois).
 
-17. seed_kb_topic — pra CADA \`topic_slug\` listado. Cria KB VAZIA pra agência preencher.
+17. seed_kb_topic — pra CADA \`topic_slug\` do bloco "ASSETS DETERMINÍSTICOS" do nicho. **OBRIGATÓRIO:** quando o nicho tem catálogo (Contabilidade/Saúde/Advocacia/Imobiliária), você DEVE chamar \`seed_kb_topic\` com os slugs EXATOS do catálogo — NÃO improvise via \`create_knowledge_base\` com nomes inventados.
+   - ❌ Errado: \`create_knowledge_base({name:"Prazos e Obrigações"})\` quando o nicho tem catálogo
+   - ✅ Certo: \`seed_kb_topic({topic_slug:"calendario_fiscal"})\` (puxa schema + seed content do catálogo)
+   - O catálogo já tem conteúdo starter pré-curado em vários tópicos (FAQ, especialidades, regimes tributários, áreas de atuação, regiões atendidas etc) — usar slug do catálogo aproveita isso.
    - Se nicho fora do catálogo: use \`create_knowledge_base\` com nomes do nicho:
      - SDR → "Discovery scripts", "Casos de sucesso", "Objeções"
      - SAC → "FAQ produto", "Procedimentos de troca"
@@ -1777,9 +1780,41 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
         const executedNames = new Set(toolsExecuted.map((t) => t.name));
         const deterministicCalls: Array<{ action: string; params: Record<string, unknown> }> = [];
 
-        // Capacidades cognitivas do spec — uma chamada por capability ausente
+        // ── Capacidades BASE garantidas (Master v7.4 §13.2 capability defaults).
+        // Independente do spec/arquétipo, todo agente nasce com reasoning+memory
+        // ativos. Bug visto: detectedSpec era genérico (Custom contábil) e o
+        // agente saía com TUDO desligado em Raciocínio. Esse bloco garante
+        // que nunca acontece. Planning vira true quando descrição tem ≥2 verbos
+        // de ação ("tira dúvidas E organiza coleta" etc).
+        const firstMsgRaw = (incomingMessages.find((m) => m.role === "user")?.content ?? "").toLowerCase();
+        deterministicCalls.push({ action: "set_capability", params: { key: "reasoning", enabled: true } });
+        deterministicCalls.push({ action: "set_capability", params: { key: "memory", enabled: true } });
+        // Detecta multi-action: 2+ verbos de ação distintos = planning needed.
+        const actionVerbs = [
+          "agendar", "agenda", "marcar", "marca",
+          "qualificar", "qualifica", "prospectar", "prospecta",
+          "atender", "atende", "tirar dúvida", "tira dúvida", "responder", "responde",
+          "registrar", "registra", "anotar", "anota", "organizar", "organiza",
+          "lembrar", "lembra", "enviar", "envia", "notificar", "notifica",
+          "consultar", "consulta", "pesquisar", "pesquisa",
+          "gerar", "gera", "criar conteúdo", "publicar", "publica",
+          "escalar", "escala", "encaminhar", "encaminha",
+          "cobrar", "cobra", "coletar", "coleta",
+        ];
+        const matchedVerbs = new Set<string>();
+        for (const v of actionVerbs) {
+          if (firstMsgRaw.includes(v)) matchedVerbs.add(v.split(" ")[0]); // dedup por raiz
+        }
+        if (matchedVerbs.size >= 2) {
+          deterministicCalls.push({ action: "set_capability", params: { key: "planning", enabled: true } });
+          console.log(`[wizard-setup] planning ativado (verbos detectados: ${[...matchedVerbs].join(",")})`);
+        }
+
+        // Capacidades cognitivas adicionais do spec (se houver)
         if (detectedSpec) {
           for (const cap of detectedSpec.capabilities) {
+            // Evita duplicar reasoning/memory já adicionados acima
+            if (cap === "reasoning" || cap === "memory") continue;
             deterministicCalls.push({ action: "set_capability", params: { key: cap, enabled: true } });
           }
           // Tools runtime do spec — uma chamada por tool
@@ -1925,6 +1960,27 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           const nextSteps = detectedSpec
             ? buildNextStepsBlock(detectedSpec)
             : "📚 Adicione FAQ e documentos em **Conhecimento** pra respostas mais precisas.";
+
+          // Bloco de integrações típicas do nicho — só aparece se o catálogo
+          // niche-integrations tem entradas pro nicho do agente. Marca como
+          // "em breve" ou "disponível" conforme status.
+          let agentNiche: string | null = null;
+          try {
+            const { data: agForNiche } = await adminClient
+              .from("user_agents")
+              .select("config")
+              .eq("id", agentId)
+              .maybeSingle();
+            agentNiche = ((agForNiche as { config?: { businessContext?: { niche?: string } } } | null)
+              ?.config?.businessContext?.niche) ?? null;
+          } catch {
+            /* niche fica null */
+          }
+          const nicheInts = agentNiche ? NICHE_INTEGRATIONS[agentNiche] ?? [] : [];
+          const nicheIntsLine = nicheInts.length > 0
+            ? `\n🔌 **Ferramentas típicas de ${agentNiche}:** ${nicheInts.map((i) => i.status === "available" ? `${i.name}` : `${i.name} (em breve)`).join(" · ")}`
+            : "";
+
           // Mensagem curta e escaneável — evita parede de texto que ninguém lê
           const appendix = `
 
@@ -1932,7 +1988,7 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
 
 ⚠️ **Pra publicar:** conecte sua chave LLM em **Integrações → LLMs**
 
-${nextSteps}
+${nextSteps}${nicheIntsLine}
 
 _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
           content = `${content}${appendix}`;
