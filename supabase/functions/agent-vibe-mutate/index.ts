@@ -614,12 +614,17 @@ serve(async (req) => {
         }
         // Schema só aceita 'manual' ou 'auto'; tudo que não é manual vira auto
         const triggerType = cadence.trigger === "manual" ? "manual" : "auto";
-        const steps = cadence.steps.map((s, idx) => ({
-          order: idx,
-          day_offset: s.day,
-          label: s.label,
-          message: s.messageTemplate,
-          channel: "whatsapp",
+        // Shape dos steps precisa casar com src/types/agent-cadences.ts CadenceStep:
+        // { id, day, hour, minute, channel, message_template, ... }
+        // Antes salvava { order, day_offset, label, message } e UI quebrava.
+        const steps = cadence.steps.map((s) => ({
+          id: crypto.randomUUID(),
+          day: s.day,
+          hour: 9,
+          minute: 0,
+          channel: "whatsapp" as const,
+          message_template: s.messageTemplate,
+          conditions: { skip_if_replied: true, skip_weekends: false },
         }));
         const { error: insErr } = await admin.from("agent_cadences").insert({
           agent_id: agentId,

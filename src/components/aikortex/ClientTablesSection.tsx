@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Database, Plus, Users, Sparkles, FlaskConical } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Database, Plus, Users, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { useClientTables, type ClientTable } from "@/hooks/use-client-tables";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { supabase } from "@/integrations/supabase/client";
 import ClientTableCard from "./ClientTableCard";
 import CreateClientTableDialog from "./CreateClientTableDialog";
 import ClientTableEditor from "./ClientTableEditor";
@@ -14,10 +15,40 @@ interface Props {
   isFreshNew?: boolean;
 }
 
-export default function ClientTablesSection({ isFreshNew }: Props) {
+export default function ClientTablesSection({ agentId, isFreshNew }: Props) {
   const { activeClientId, activeClientName, isAgencyMode } = useActiveClient();
-  const { sandboxClient, switchToClient } = useWorkspace();
-  const { data: tables = [], isLoading } = useClientTables(activeClientId);
+  const { sandboxClient } = useWorkspace();
+  // Resolve clientId baseado no AGENTE: se agente tem client_id (vinculado a
+  // cliente real), usa ele. Se null (modo personalizado), usa Sandbox. Assim
+  // a aba Tabelas no painel do agente mostra as tabelas certas sem depender
+  // do workspace switch. Antes, em modo agência o painel pedia "Selecione
+  // um cliente" mesmo o agente tendo tabelas no Sandbox.
+  const [agentClientId, setAgentClientId] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    if (!agentId) { setAgentClientId(null); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("user_agents")
+        .select("client_id")
+        .eq("id", agentId)
+        .maybeSingle();
+      if (cancelled) return;
+      setAgentClientId((data as { client_id?: string | null } | null)?.client_id ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [agentId]);
+
+  // Em modo agência, prefere o client_id do AGENTE sobre o workspace.
+  // Em modo workspace de cliente, mantém a seleção do workspace (caso usuário
+  // tenha trocado manualmente).
+  const effectiveClientId = isAgencyMode
+    ? (agentClientId ?? sandboxClient?.id ?? null)
+    : activeClientId;
+  const effectiveClientName = isAgencyMode
+    ? (agentClientId ? "Cliente vinculado" : (sandboxClient ? "Sandbox / Testes" : ""))
+    : activeClientName;
+  const { data: tables = [], isLoading } = useClientTables(effectiveClientId);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<ClientTable | null>(null);
 
@@ -46,7 +77,10 @@ export default function ClientTablesSection({ isFreshNew }: Props) {
     );
   }
 
-  if (isAgencyMode || !activeClientId) {
+  // Só mostra empty state se não tiver effectiveClientId (sem agente E sem
+  // workspace ativo). Quando agentId é passado, effectiveClientId resolve
+  // pra client_id do agente ou Sandbox automaticamente.
+  if (!effectiveClientId) {
     return (
       <div className="space-y-4">
         <div>
@@ -63,21 +97,6 @@ export default function ClientTablesSection({ isFreshNew }: Props) {
           <p className="text-xs text-muted-foreground">
             Entre no workspace de um cliente pelo seletor superior para ver e criar tabelas.
           </p>
-          {sandboxClient && (
-            <div className="pt-2 border-t border-border/50">
-              <p className="text-[11px] text-muted-foreground mb-2">
-                Agentes em modo personalizado guardam tabelas de teste no Sandbox:
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => switchToClient(sandboxClient)}
-              >
-                <FlaskConical className="w-3.5 h-3.5" /> Abrir Sandbox / Testes
-              </Button>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -91,7 +110,7 @@ export default function ClientTablesSection({ isFreshNew }: Props) {
             <Database className="w-5 h-5 text-primary" /> Tabelas do cliente
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Dados estruturados de <span className="font-medium text-foreground">{activeClientName}</span>, compartilhados entre todos os agentes deste cliente.
+            Dados estruturados de <span className="font-medium text-foreground">{effectiveClientName}</span>{isAgencyMode && agentClientId == null && sandboxClient ? " (modo personalizado — tabelas de teste no Sandbox)" : ""}, compartilhados entre todos os agentes deste cliente.
           </p>
         </div>
       </div>
@@ -136,7 +155,7 @@ export default function ClientTablesSection({ isFreshNew }: Props) {
         </>
       )}
 
-      <CreateClientTableDialog open={createOpen} onOpenChange={setCreateOpen} clientId={activeClientId} />
+      <CreateClientTableDialog open={createOpen} onOpenChange={setCreateOpen} clientId={effectiveClientId} />
     </div>
   );
 }
