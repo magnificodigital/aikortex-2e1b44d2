@@ -20,8 +20,18 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Activity, RefreshCcw, Loader2, AlertCircle, Plus } from "lucide-react";
+import { Activity, RefreshCcw, Loader2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import AddLLMFromCatalogDialog from "./AddLLMFromCatalogDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type LLM = {
   id: string;
@@ -51,6 +61,8 @@ const AdminLLMsTab = () => {
   const [pinging, setPinging] = useState<string | null>(null);
   const [pingingAll, setPingingAll] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<LLM | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -91,6 +103,25 @@ const AdminLLMsTab = () => {
       .eq("id", row.id);
     if (error) toast.error(error.message);
     else setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, priority: value } : r)));
+  };
+
+  const deleteModel = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("available_llms")
+        .delete()
+        .eq("id", deleteTarget.id);
+      if (error) throw error;
+      toast.success(`${deleteTarget.display_name || deleteTarget.model_id} removido`);
+      setRows((rs) => rs.filter((r) => r.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (e) {
+      toast.error("Falha ao remover: " + (e as Error).message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const runHealthcheck = async (model_id?: string) => {
@@ -210,18 +241,32 @@ const AdminLLMsTab = () => {
                     <Switch checked={row.active} onCheckedChange={(v) => toggleActive(row, v)} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => runHealthcheck(row.model_id)}
-                      disabled={pinging === row.model_id}
-                    >
-                      {pinging === row.model_id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Activity className="h-3.5 w-3.5" />
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => runHealthcheck(row.model_id)}
+                        disabled={pinging === row.model_id}
+                        title="Healthcheck"
+                      >
+                        {pinging === row.model_id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Activity className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                      {!row.active && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDeleteTarget(row)}
+                          title="Remover modelo (só inativos)"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       )}
-                    </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -270,6 +315,32 @@ const AdminLLMsTab = () => {
         alreadyAdded={alreadyAdded}
         onAdded={load}
       />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover modelo do catálogo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium">{deleteTarget?.display_name || deleteTarget?.model_id}</span>{" "}
+              será removido de <code className="text-xs bg-muted px-1 py-0.5 rounded">available_llms</code>. Isso só apaga a referência aqui no admin — você pode adicionar de volta a qualquer momento pelo catálogo OpenRouter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                deleteModel();
+              }}
+              disabled={deleting}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
