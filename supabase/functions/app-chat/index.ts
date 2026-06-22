@@ -16,7 +16,7 @@ import {
   type ArchetypeSpec,
 } from "../_shared/agent-blueprint.ts";
 import { buildNicheIntegrationsBlock, NICHE_INTEGRATIONS } from "../_shared/niche-integrations.ts";
-import { buildNicheAssetsBlock, NICHE_ASSETS } from "../_shared/niche-assets.ts";
+import { buildNicheAssetsBlock, NICHE_ASSETS, resolveNicheKey } from "../_shared/niche-assets.ts";
 
 function streamText(text: string): ReadableStream {
   const encoder = new TextEncoder();
@@ -276,18 +276,20 @@ function buildWizardSystemPrompt(
 
   const nicheContext = niche
     ? `O agente vai operar no nicho de **${niche}**. Adapte exemplos, terminologia e integrações ao contexto brasileiro desse setor.`
-    : `Nicho não foi pré-definido. **INFIRA do contexto** da descrição do user — NUNCA pergunte. Exemplos:
-- "agente contábil/financeiro" → Finanças
-- "agente pra clínica/médico/dentista" → Saúde
-- "agente pra petshop/animal" → Pet
-- "agente pra imobiliária/aluguel/imóveis" → Imobiliária
+    : `Nicho não foi pré-definido. **INFIRA do contexto** da descrição do user — NUNCA pergunte. Use EXATAMENTE estes valores (case-sensitive):
+- "agente contábil/contador/escritório contábil" → **Contabilidade** (NÃO "Finanças")
+- "agente pra clínica/médico/dentista/consultório" → **Saúde**
+- "agente pra petshop/animal/veterinário" → Pet
+- "agente pra imobiliária/aluguel/imóveis/corretor" → **Imobiliária**
 - "agente pra restaurante/delivery/food" → Food/Restaurante
-- "agente pra advogado/jurídico" → Advocacia
-- "agente pra escola/curso/aluno" → Educação
+- "agente pra advogado/jurídico/escritório de advocacia" → **Advocacia**
+- "agente pra escola/curso/aluno/educação" → Educação
 - "agente pra ecommerce/loja online" → Retail
-- "agente pra SaaS/software" → SaaS
-- "agente pra estética/salão" → Estética
-- "agente pra seguros" → Seguros
+- "agente pra SaaS/software/produto digital" → SaaS
+- "agente pra estética/salão/beleza" → Estética
+- "agente pra seguros/corretora" → Seguros
+- "agente pra fintech/banco/financeiro" → Finanças
+⚠️ ATENÇÃO: **Contabilidade ≠ Finanças**. Contabilidade = escritório contábil/contador (DAS, IR, folha, balancetes). Finanças = fintech/banco/cartão. Catálogo de assets só existe pros nichos **em negrito** acima (Contabilidade, Saúde, Advocacia, Imobiliária).
 Se realmente NÃO houver pista (ex: "agente que organiza minha agenda"), use "Outros". Catálogo válido: ${NICHES_AIKORTEX.join(", ")}, Outros.`;
 
   return `Você é o construtor de agentes do Aikortex (Modo Vibe — Master v7.4 §13.2).
@@ -1882,8 +1884,9 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
             .maybeSingle();
           const currentNiche = ((agForLimits as { config?: { businessContext?: { niche?: string } } } | null)
             ?.config?.businessContext?.niche) ?? null;
-          const limitsToAdd = currentNiche && NICHE_UNIVERSAL_LIMITS[currentNiche]
-            ? NICHE_UNIVERSAL_LIMITS[currentNiche]
+          const limitsNicheKey = resolveNicheKey(currentNiche) ?? currentNiche;
+          const limitsToAdd = limitsNicheKey && NICHE_UNIVERSAL_LIMITS[limitsNicheKey]
+            ? NICHE_UNIVERSAL_LIMITS[limitsNicheKey]
             : DEFAULT_UNIVERSAL_LIMITS;
           for (const label of limitsToAdd) {
             deterministicCalls.push({ action: "add_guardrail", params: { guardrail: label } });
@@ -1899,8 +1902,17 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           // Fix: backend dispatcha TUDO do catálogo sempre que há nicho. Tools
           // são idempotentes (handler skipa se duplicado), então rodar em
           // cima do que LLM fez não causa conflito.
-          if (currentNiche && NICHE_ASSETS[currentNiche]) {
-            const spec = NICHE_ASSETS[currentNiche];
+          // Bug 2: LLM setava niche="Finanças" pra contabilidade. resolveNicheKey
+          // normaliza aliases (financas/financeiro/contábil → Contabilidade).
+          const resolvedNiche = resolveNicheKey(currentNiche);
+          if (resolvedNiche && NICHE_ASSETS[resolvedNiche]) {
+            const spec = NICHE_ASSETS[resolvedNiche];
+            // Se o nicho foi resolvido a partir de alias diferente, persiste
+            // a key correta no draft pra próxima leitura ser consistente.
+            if (currentNiche !== resolvedNiche) {
+              deterministicCalls.push({ action: "set_niche", params: { niche: resolvedNiche } });
+              console.log(`[wizard-setup] niche alias "${currentNiche}" normalizado pra "${resolvedNiche}"`);
+            }
             for (const t of spec.tables) {
               deterministicCalls.push({ action: "create_niche_table", params: { table_slug: t.slug } });
             }
@@ -1913,7 +1925,7 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
             for (const g of spec.contextualGuardrails) {
               deterministicCalls.push({ action: "add_guardrail", params: { guardrail: g } });
             }
-            console.log(`[wizard-setup] catálogo ${currentNiche} agendou ${spec.tables.length} tabelas + ${spec.cadences.length} cadências + ${spec.kbTopics.length} KBs + ${spec.contextualGuardrails.length} guardrails contextuais`);
+            console.log(`[wizard-setup] catálogo ${resolvedNiche} agendou ${spec.tables.length} tabelas + ${spec.cadences.length} cadências + ${spec.kbTopics.length} KBs + ${spec.contextualGuardrails.length} guardrails contextuais`);
           }
         } catch (e) {
           console.warn("[wizard-setup] universal limits/catálogo fetch failed:", e);
@@ -1990,7 +2002,8 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
 
             // Verifica também itens do catálogo NICHE_ASSETS (se nicho aplicável)
             const cfgNiche = ((cfg as any)?.businessContext?.niche) ?? null;
-            const catalogSpec = cfgNiche ? NICHE_ASSETS[cfgNiche] : null;
+            const cfgNicheKey = resolveNicheKey(cfgNiche);
+            const catalogSpec = cfgNicheKey ? NICHE_ASSETS[cfgNicheKey] : null;
             const createdTablesD: string[] = Array.isArray((cfg as any).createdTables) ? (cfg as any).createdTables : [];
             const createdCadencesD: string[] = Array.isArray((cfg as any).createdCadences) ? (cfg as any).createdCadences : [];
             const createdKbsD: string[] = Array.isArray((cfg as any).createdKbs) ? (cfg as any).createdKbs : [];

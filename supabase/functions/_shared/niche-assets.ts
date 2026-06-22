@@ -869,11 +869,59 @@ R: **Compra/venda**: a comissão (~6%) é por conta do vendedor, salvo acordo di
   },
 };
 
+/** Normaliza aliases de nicho pro key correto do catálogo. LLM às vezes
+ * setou niche="Finanças" pra escritório contábil (≠ fintech) ou variações
+ * de capitalização/acentuação. Esta função mapeia tudo pra key do catálogo.
+ * Retorna null se o input não bate com nenhum catálogo. */
+export function resolveNicheKey(niche: string | undefined | null): string | null {
+  if (!niche) return null;
+  const norm = niche.toLowerCase().trim();
+  // Match exato (case-insensitive) com keys do NICHE_ASSETS
+  for (const key of Object.keys(NICHE_ASSETS)) {
+    if (key.toLowerCase() === norm) return key;
+  }
+  // Aliases comuns
+  const aliases: Record<string, string> = {
+    "contabil": "Contabilidade",
+    "contábil": "Contabilidade",
+    "contador": "Contabilidade",
+    "contadora": "Contabilidade",
+    "escritorio contabil": "Contabilidade",
+    "escritório contábil": "Contabilidade",
+    "financas": "Contabilidade",  // LLM costuma errar aqui — fintech é "Finanças" no Master
+    "finanças": "Contabilidade",  // (mas catalog não tem entrada própria de fintech)
+    "financeiro": "Contabilidade",
+    "saude": "Saúde",
+    "saúde": "Saúde",
+    "clinica": "Saúde",
+    "clínica": "Saúde",
+    "medico": "Saúde",
+    "médico": "Saúde",
+    "consultorio": "Saúde",
+    "consultório": "Saúde",
+    "advocacia": "Advocacia",
+    "juridico": "Advocacia",
+    "jurídico": "Advocacia",
+    "advogado": "Advocacia",
+    "advogada": "Advocacia",
+    "escritorio juridico": "Advocacia",
+    "escritório jurídico": "Advocacia",
+    "imobiliaria": "Imobiliária",
+    "imobiliária": "Imobiliária",
+    "imoveis": "Imobiliária",
+    "imóveis": "Imobiliária",
+    "corretor": "Imobiliária",
+    "corretora": "Imobiliária",
+  };
+  return aliases[norm] ?? null;
+}
+
 /** Formata bloco textual com assets do nicho pra injetar no prompt do Vibe.
  * Vai pra fase CRIAÇÃO — indica TUDO que o Vibe deve criar de uma vez. */
 export function buildNicheAssetsBlock(niche: string | undefined): string {
   if (!niche) return "";
-  const spec = NICHE_ASSETS[niche];
+  const resolvedKey = resolveNicheKey(niche);
+  const spec = resolvedKey ? NICHE_ASSETS[resolvedKey] : null;
   if (!spec) return "";
 
   const tables = spec.tables.map((t) => `- \`${t.slug}\` — ${t.label} (${t.columns.length} colunas)`).join("\n");

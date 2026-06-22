@@ -8,7 +8,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { NICHE_ASSETS } from "../_shared/niche-assets.ts";
+import { NICHE_ASSETS, resolveNicheKey } from "../_shared/niche-assets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -519,7 +519,7 @@ serve(async (req) => {
         if (!niche) {
           return jsonRes({ error: "NICHE_NOT_SET", message: "Defina o nicho antes de criar tabelas do catálogo." }, 400);
         }
-        const spec = NICHE_ASSETS[niche];
+        const spec = NICHE_ASSETS[resolveNicheKey(niche) ?? niche];
         if (!spec) {
           return jsonRes({ error: "NICHE_NO_CATALOG", message: `Nicho "${niche}" ainda não tem catálogo de assets. Use create_client_table com colunas manuais.` }, 400);
         }
@@ -600,7 +600,7 @@ serve(async (req) => {
         if (!niche) {
           return jsonRes({ error: "NICHE_NOT_SET", message: "Defina o nicho antes de criar cadências." }, 400);
         }
-        const spec = NICHE_ASSETS[niche];
+        const spec = NICHE_ASSETS[resolveNicheKey(niche) ?? niche];
         if (!spec) {
           return jsonRes({ error: "NICHE_NO_CATALOG", message: `Nicho "${niche}" não tem catálogo.` }, 400);
         }
@@ -650,7 +650,7 @@ serve(async (req) => {
         if (!niche) {
           return jsonRes({ error: "NICHE_NOT_SET" }, 400);
         }
-        const spec = NICHE_ASSETS[niche];
+        const spec = NICHE_ASSETS[resolveNicheKey(niche) ?? niche];
         if (!spec) {
           return jsonRes({ error: "NICHE_NO_CATALOG", message: `Nicho "${niche}" não tem catálogo.` }, 400);
         }
@@ -746,7 +746,7 @@ serve(async (req) => {
         if (!niche || !tableSlug) {
           return jsonRes({ error: "INVALID_PARAMS" }, 400);
         }
-        const spec = NICHE_ASSETS[niche];
+        const spec = NICHE_ASSETS[resolveNicheKey(niche) ?? niche];
         const table = spec?.tables.find((t) => t.slug === tableSlug);
         if (!table) {
           return jsonRes({ error: "TABLE_NOT_IN_CATALOG", availableSlugs: spec?.tables.map((t) => t.slug) ?? [] }, 400);
