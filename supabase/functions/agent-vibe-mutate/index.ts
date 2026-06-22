@@ -377,16 +377,23 @@ serve(async (req) => {
         if (normalizedCols.length === 0) {
           return jsonRes({ error: "INVALID_COLUMNS" }, 400);
         }
-        // client_id vem do agent.client_id; se não tiver, usa user_id como fallback
-        // (compat com agentes antigos). Precisa recarregar com client_id.
+        // client_tables.client_id é FK pra agency_clients(id). Em modo
+        // personalizado (sem cliente), salva a spec em config.pendingCustomTables[]
+        // (separado de niche pra não conflitar de slug). Materializa no bind.
         const { data: agentFull } = await admin
           .from("user_agents")
           .select("client_id, user_id")
           .eq("id", agentId)
           .maybeSingle();
-        const clientId = (agentFull as any)?.client_id ?? (agentFull as any)?.user_id;
+        const clientId = (agentFull as any)?.client_id ?? null;
         if (!clientId) {
-          return jsonRes({ error: "NO_CLIENT_ID" }, 400);
+          const pending: any[] = Array.isArray(newConfig.pendingCustomTables) ? newConfig.pendingCustomTables : [];
+          if (!pending.some((p: any) => p.name === name)) {
+            pending.push({ name, description, columns: normalizedCols });
+            newConfig = { ...newConfig, pendingCustomTables: pending };
+          }
+          logMessage = `Tabela "${name}" salva como spec — será materializada quando o agente for vinculado a um cliente`;
+          break;
         }
         // Limite: máx 8 tabelas por cliente neste agente
         const { count } = await admin
@@ -466,12 +473,18 @@ serve(async (req) => {
           .select("client_id, user_id")
           .eq("id", agentId)
           .maybeSingle();
-        // Fallback compat: modo personalizado/rascunho não tem client_id —
-        // usa user_id (mesma lógica de create_client_table). Tabela vira do
-        // dono do agente até bind formal com cliente.
-        const clientId = (agentFull as any)?.client_id ?? (agentFull as any)?.user_id ?? null;
+        // client_tables.client_id é FK pra agency_clients(id). Em modo
+        // personalizado (sem cliente vinculado), tentar criar viola a FK.
+        // Solução: salva a spec em config.pendingNicheTables[] — quando o
+        // agente for vinculado a um cliente, materialize as pendentes.
+        const clientId = (agentFull as any)?.client_id ?? null;
         if (!clientId) {
-          return jsonRes({ error: "NO_CLIENT_ID" }, 400);
+          const pending: string[] = Array.isArray(newConfig.pendingNicheTables) ? newConfig.pendingNicheTables : [];
+          if (!pending.includes(tableSlug)) {
+            newConfig = { ...newConfig, pendingNicheTables: [...pending, tableSlug] };
+          }
+          logMessage = `Tabela "${table.label}" salva como spec — será materializada quando o agente for vinculado a um cliente`;
+          break;
         }
         const { count } = await admin
           .from("client_tables")
