@@ -16,7 +16,7 @@ import {
   type ArchetypeSpec,
 } from "../_shared/agent-blueprint.ts";
 import { buildNicheIntegrationsBlock, NICHE_INTEGRATIONS } from "../_shared/niche-integrations.ts";
-import { buildNicheAssetsBlock } from "../_shared/niche-assets.ts";
+import { buildNicheAssetsBlock, NICHE_ASSETS } from "../_shared/niche-assets.ts";
 
 function streamText(text: string): ReadableStream {
   const encoder = new TextEncoder();
@@ -1889,8 +1889,34 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
             deterministicCalls.push({ action: "add_guardrail", params: { guardrail: label } });
           }
           console.log(`[wizard-setup] universal limits agendados pro nicho ${currentNiche ?? "(default)"}: ${limitsToAdd.length}`);
+
+          // ── DISPATCH DETERMINÍSTICO DO CATÁLOGO NICHE_ASSETS ──
+          // Bug visto: LLM ignorava bloco do catálogo no prompt e improvisava
+          // nomes ("Documentos Contábeis" em vez de slug clientes_contabeis;
+          // "Regulamentações e Leis Fiscais" em vez de regimes_tributarios).
+          // Resultado: tabelas/cadências/KBs do catálogo NÃO eram criadas e
+          // assets ficavam órfãos sem seed content.
+          // Fix: backend dispatcha TUDO do catálogo sempre que há nicho. Tools
+          // são idempotentes (handler skipa se duplicado), então rodar em
+          // cima do que LLM fez não causa conflito.
+          if (currentNiche && NICHE_ASSETS[currentNiche]) {
+            const spec = NICHE_ASSETS[currentNiche];
+            for (const t of spec.tables) {
+              deterministicCalls.push({ action: "create_niche_table", params: { table_slug: t.slug } });
+            }
+            for (const c of spec.cadences) {
+              deterministicCalls.push({ action: "create_niche_cadence", params: { cadence_slug: c.slug } });
+            }
+            for (const k of spec.kbTopics) {
+              deterministicCalls.push({ action: "seed_kb_topic", params: { topic_slug: k.slug } });
+            }
+            for (const g of spec.contextualGuardrails) {
+              deterministicCalls.push({ action: "add_guardrail", params: { guardrail: g } });
+            }
+            console.log(`[wizard-setup] catálogo ${currentNiche} agendou ${spec.tables.length} tabelas + ${spec.cadences.length} cadências + ${spec.kbTopics.length} KBs + ${spec.contextualGuardrails.length} guardrails contextuais`);
+          }
         } catch (e) {
-          console.warn("[wizard-setup] universal limits fetch failed:", e);
+          console.warn("[wizard-setup] universal limits/catálogo fetch failed:", e);
         }
 
         // SEMPRE re-aplica greeting — LLM frequentemente seta com "Assistente"
@@ -1936,11 +1962,12 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
         }
 
         // ── VERIFICAÇÃO DURA pós-mutations ─────────────────────────────────
-        // Lê o agente de VOLTA do DB e checa se capacidades + tools do spec
-        // foram realmente persistidas. Se faltar, RE-APLICA. Última linha de
-        // defesa: mesmo se LLM falhou + fallback falhou, isso garante que o
-        // agente NUNCA sai do wizard sem o setup completo do arquétipo.
-        if (detectedSpec) {
+        // Lê o agente de VOLTA do DB e checa se capacidades + tools + assets
+        // do nicho foram persistidos. Se faltar, RE-APLICA. Última linha de
+        // defesa: mesmo se LLM falhou + dispatch determinístico falhou em
+        // alguma chamada, isso garante que o agente NUNCA sai do wizard sem
+        // o setup completo. RODA SEMPRE (não apenas quando detectedSpec).
+        {
           try {
             const { data: agentRow } = await adminClient
               .from("user_agents")
@@ -1951,19 +1978,66 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
             const currentCaps = (cfg.capabilities ?? {}) as Record<string, { enabled?: boolean }>;
             const currentTools = Array.isArray(cfg.enabledTools) ? cfg.enabledTools as string[] : [];
 
-            const missingCaps = detectedSpec.capabilities.filter((c) =>
+            // Caps BASE garantidas pra todo agente (independente do spec)
+            const baseCaps = ["reasoning", "memory"];
+            const specCaps = detectedSpec?.capabilities ?? [];
+            const allRequiredCaps = Array.from(new Set([...baseCaps, ...specCaps]));
+            const missingCaps = allRequiredCaps.filter((c) =>
               !currentCaps[c] || currentCaps[c].enabled !== true
             );
-            const missingTools = detectedSpec.runtimeTools.filter((t) => !currentTools.includes(t));
+            const specTools = detectedSpec?.runtimeTools ?? [];
+            const missingTools = specTools.filter((t) => !currentTools.includes(t));
 
-            if (missingCaps.length > 0 || missingTools.length > 0) {
-              console.warn(`[wizard-setup] ⚠️ VERIFICAÇÃO ENCONTROU GAPS — caps faltando: ${missingCaps.join(",") || "nenhuma"} | tools faltando: ${missingTools.join(",") || "nenhuma"}`);
+            // Verifica também itens do catálogo NICHE_ASSETS (se nicho aplicável)
+            const cfgNiche = ((cfg as any)?.businessContext?.niche) ?? null;
+            const catalogSpec = cfgNiche ? NICHE_ASSETS[cfgNiche] : null;
+            const createdTablesD: string[] = Array.isArray((cfg as any).createdTables) ? (cfg as any).createdTables : [];
+            const createdCadencesD: string[] = Array.isArray((cfg as any).createdCadences) ? (cfg as any).createdCadences : [];
+            const createdKbsD: string[] = Array.isArray((cfg as any).createdKbs) ? (cfg as any).createdKbs : [];
+            const guardrailsD: string[] = Array.isArray((cfg as any).guardrails) ? (cfg as any).guardrails : [];
+            const missingNicheTables: string[] = [];
+            const missingNicheCadences: string[] = [];
+            const missingNicheKbs: string[] = [];
+            const missingNicheGuardrails: string[] = [];
+            if (catalogSpec) {
+              for (const t of catalogSpec.tables) {
+                if (!createdTablesD.includes(t.label)) missingNicheTables.push(t.slug);
+              }
+              for (const c of catalogSpec.cadences) {
+                if (!createdCadencesD.includes(c.name)) missingNicheCadences.push(c.slug);
+              }
+              for (const k of catalogSpec.kbTopics) {
+                if (!createdKbsD.includes(k.title)) missingNicheKbs.push(k.slug);
+              }
+              for (const g of catalogSpec.contextualGuardrails) {
+                if (!guardrailsD.some((x) => x.toLowerCase() === g.toLowerCase())) missingNicheGuardrails.push(g);
+              }
+            }
+
+            const hasGaps = missingCaps.length > 0 || missingTools.length > 0 ||
+              missingNicheTables.length > 0 || missingNicheCadences.length > 0 ||
+              missingNicheKbs.length > 0 || missingNicheGuardrails.length > 0;
+
+            if (hasGaps) {
+              console.warn(`[wizard-setup] ⚠️ VERIFICAÇÃO ENCONTROU GAPS — caps: ${missingCaps.join(",") || "—"} | tools: ${missingTools.join(",") || "—"} | tabelas catálogo: ${missingNicheTables.join(",") || "—"} | cadências catálogo: ${missingNicheCadences.join(",") || "—"} | KBs catálogo: ${missingNicheKbs.join(",") || "—"} | guardrails ctx: ${missingNicheGuardrails.length}`);
               const repairCalls: Array<{ action: string; params: Record<string, unknown> }> = [];
               for (const cap of missingCaps) {
                 repairCalls.push({ action: "set_capability", params: { key: cap, enabled: true } });
               }
               for (const tool of missingTools) {
                 repairCalls.push({ action: "add_tool", params: { tool_key: tool } });
+              }
+              for (const slug of missingNicheTables) {
+                repairCalls.push({ action: "create_niche_table", params: { table_slug: slug } });
+              }
+              for (const slug of missingNicheCadences) {
+                repairCalls.push({ action: "create_niche_cadence", params: { cadence_slug: slug } });
+              }
+              for (const slug of missingNicheKbs) {
+                repairCalls.push({ action: "seed_kb_topic", params: { topic_slug: slug } });
+              }
+              for (const g of missingNicheGuardrails) {
+                repairCalls.push({ action: "add_guardrail", params: { guardrail: g } });
               }
               for (const call of repairCalls) {
                 try {
@@ -1983,7 +2057,7 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
                 }
               }
             } else {
-              console.log(`[wizard-setup] ✓ verificação OK — todas as caps+tools do spec ${detectedSpec.archetype} aplicadas`);
+              console.log(`[wizard-setup] ✓ verificação OK — todas as caps+tools+assets do nicho ${cfgNiche ?? "(none)"} aplicadas`);
             }
           } catch (e) {
             console.error(`[wizard-setup] verificação dura falhou:`, e);
@@ -2016,27 +2090,6 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           const nextSteps = detectedSpec
             ? buildNextStepsBlock(detectedSpec)
             : "📚 Adicione FAQ e documentos em **Conhecimento** pra respostas mais precisas.";
-
-          // Bloco de integrações típicas do nicho — só aparece se o catálogo
-          // niche-integrations tem entradas pro nicho do agente. Marca como
-          // "em breve" ou "disponível" conforme status.
-          let agentNiche: string | null = null;
-          try {
-            const { data: agForNiche } = await adminClient
-              .from("user_agents")
-              .select("config")
-              .eq("id", agentId)
-              .maybeSingle();
-            agentNiche = ((agForNiche as { config?: { businessContext?: { niche?: string } } } | null)
-              ?.config?.businessContext?.niche) ?? null;
-          } catch {
-            /* niche fica null */
-          }
-          const nicheInts = agentNiche ? NICHE_INTEGRATIONS[agentNiche] ?? [] : [];
-          const nicheIntsLine = nicheInts.length > 0
-            ? `\n🔌 **Ferramentas típicas de ${agentNiche}:** ${nicheInts.map((i) => i.status === "available" ? `${i.name}` : `${i.name} (em breve)`).join(" · ")}`
-            : "";
-
           // Mensagem curta e escaneável — evita parede de texto que ninguém lê
           const appendix = `
 
@@ -2044,11 +2097,40 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
 
 ⚠️ **Pra publicar:** conecte sua chave LLM em **Integrações → LLMs**
 
-${nextSteps}${nicheIntsLine}
+${nextSteps}
 
 _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
           content = `${content}${appendix}`;
           console.log(`[wizard-setup] appendado seções faltantes: llmWarning=${hasLlmWarning} nextSteps=${hasNextSteps} archetype=${detectedSpec?.archetype ?? "(none)"}`);
+        }
+
+        // Bloco de integrações típicas do nicho — SEMPRE adicionado quando há
+        // entradas no catálogo niche-integrations e ainda não aparece no
+        // content. Roda independente do appendix acima pra garantir visibilidade
+        // (bug visto: LLM já tinha 'Próximos passos' → appendix pulava → user
+        // nunca via 'Conta Azul / Domínio Sistemas em breve').
+        try {
+          const { data: agForNicheInts } = await adminClient
+            .from("user_agents")
+            .select("config")
+            .eq("id", agentId)
+            .maybeSingle();
+          const agentNiche = ((agForNicheInts as { config?: { businessContext?: { niche?: string } } } | null)
+            ?.config?.businessContext?.niche) ?? null;
+          const nicheInts = agentNiche ? NICHE_INTEGRATIONS[agentNiche] ?? [] : [];
+          if (nicheInts.length > 0) {
+            // Detecta se nome de alguma integração já está no content (evita dup)
+            const alreadyMentioned = nicheInts.some((i) =>
+              new RegExp(`\\b${i.name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\b`, "i").test(content)
+            );
+            if (!alreadyMentioned) {
+              const intsBlock = `\n\n🔌 **Ferramentas típicas de ${agentNiche}:** ${nicheInts.map((i) => i.status === "available" ? i.name : `${i.name} (em breve)`).join(" · ")}`;
+              content = `${content}${intsBlock}`;
+              console.log(`[wizard-setup] appendado integrações de nicho ${agentNiche}: ${nicheInts.length}`);
+            }
+          }
+        } catch (e) {
+          console.warn("[wizard-setup] niche integrations appendix failed:", e);
         }
 
         if (toolsExecuted.length > 0) {
