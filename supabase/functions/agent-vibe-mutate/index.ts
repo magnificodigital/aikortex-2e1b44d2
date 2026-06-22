@@ -54,6 +54,50 @@ function jsonRes(body: unknown, status = 200) {
   });
 }
 
+/**
+ * Find-or-create do cliente Sandbox da agência. Usado quando o agente está em
+ * modo personalizado (sem cliente vinculado) mas precisa criar tabelas reais
+ * pro builder testar end-to-end. Tabelas Sandbox isolam dados de teste do
+ * cliente real — quando o agente for clonado/atribuído a um cliente real,
+ * cada cliente vê suas próprias tabelas (isolamento multi-tenant preservado).
+ */
+async function getOrCreateSandboxClient(admin: any, agentUserId: string): Promise<string | null> {
+  // 1. agency_profile do user
+  const { data: agency } = await admin
+    .from("agency_profiles")
+    .select("id")
+    .eq("user_id", agentUserId)
+    .maybeSingle();
+  if (!agency?.id) return null;
+
+  // 2. Sandbox client da agência (find)
+  const { data: existing } = await admin
+    .from("agency_clients")
+    .select("id")
+    .eq("agency_id", agency.id)
+    .eq("client_name", "Sandbox / Testes")
+    .maybeSingle();
+  if (existing?.id) return existing.id as string;
+
+  // 3. Sandbox não existe → cria
+  const { data: created, error } = await admin
+    .from("agency_clients")
+    .insert({
+      agency_id: agency.id,
+      client_name: "Sandbox / Testes",
+      client_email: "sandbox@aikortex.local",
+      status: "active",
+    })
+    .select("id")
+    .maybeSingle();
+  if (error) {
+    console.warn("[sandbox-client] failed to create:", error.message);
+    return null;
+  }
+  console.log(`[sandbox-client] criado pra agency ${agency.id}: ${created?.id}`);
+  return (created?.id as string) ?? null;
+}
+
 function deepSetConfig(config: Record<string, any>, path: string[], value: any): Record<string, any> {
   const next = { ...config };
   let cur: any = next;
@@ -378,21 +422,28 @@ serve(async (req) => {
           return jsonRes({ error: "INVALID_COLUMNS" }, 400);
         }
         // client_tables.client_id é FK pra agency_clients(id). Em modo
-        // personalizado (sem cliente), salva a spec em config.pendingCustomTables[]
-        // (separado de niche pra não conflitar de slug). Materializa no bind.
+        // personalizado (sem cliente), usa o Sandbox da agência (find-or-create
+        // lazy). Mesmo padrão do create_niche_table.
         const { data: agentFull } = await admin
           .from("user_agents")
           .select("client_id, user_id")
           .eq("id", agentId)
           .maybeSingle();
-        const clientId = (agentFull as any)?.client_id ?? null;
+        let clientId = (agentFull as any)?.client_id ?? null;
+        if (!clientId) {
+          const userId = (agentFull as any)?.user_id;
+          if (userId) {
+            clientId = await getOrCreateSandboxClient(admin, userId);
+            console.log(`[create_client_table] usando Sandbox client ${clientId} pro agente ${agentId}`);
+          }
+        }
         if (!clientId) {
           const pending: any[] = Array.isArray(newConfig.pendingCustomTables) ? newConfig.pendingCustomTables : [];
           if (!pending.some((p: any) => p.name === name)) {
             pending.push({ name, description, columns: normalizedCols });
             newConfig = { ...newConfig, pendingCustomTables: pending };
           }
-          logMessage = `Tabela "${name}" salva como spec — será materializada quando o agente for vinculado a um cliente`;
+          logMessage = `Tabela "${name}" salva como spec — sem agência vinculada`;
           break;
         }
         // Limite: máx 8 tabelas por cliente neste agente
@@ -474,16 +525,26 @@ serve(async (req) => {
           .eq("id", agentId)
           .maybeSingle();
         // client_tables.client_id é FK pra agency_clients(id). Em modo
-        // personalizado (sem cliente vinculado), tentar criar viola a FK.
-        // Solução: salva a spec em config.pendingNicheTables[] — quando o
-        // agente for vinculado a um cliente, materialize as pendentes.
-        const clientId = (agentFull as any)?.client_id ?? null;
+        // personalizado (sem cliente vinculado), usa o "Sandbox / Testes" da
+        // agência (find-or-create lazy). Tabelas reais nascem ali pro builder
+        // testar end-to-end. Isolamento multi-tenant preservado: quando agente
+        // for clonado/atribuído a cliente real, esse novo cliente terá suas
+        // próprias tabelas separadas.
+        let clientId = (agentFull as any)?.client_id ?? null;
         if (!clientId) {
+          const userId = (agentFull as any)?.user_id;
+          if (userId) {
+            clientId = await getOrCreateSandboxClient(admin, userId);
+            console.log(`[create_niche_table] usando Sandbox client ${clientId} pro agente ${agentId}`);
+          }
+        }
+        if (!clientId) {
+          // Fallback final: só registra como pendente (não tem agência sequer)
           const pending: string[] = Array.isArray(newConfig.pendingNicheTables) ? newConfig.pendingNicheTables : [];
           if (!pending.includes(tableSlug)) {
             newConfig = { ...newConfig, pendingNicheTables: [...pending, tableSlug] };
           }
-          logMessage = `Tabela "${table.label}" salva como spec — será materializada quando o agente for vinculado a um cliente`;
+          logMessage = `Tabela "${table.label}" salva como spec — sem agência vinculada`;
           break;
         }
         const { count } = await admin

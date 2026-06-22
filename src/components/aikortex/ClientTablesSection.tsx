@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Database, Plus, Users, Sparkles } from "lucide-react";
+import { Database, Plus, Users, Sparkles, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveClient } from "@/hooks/use-active-client";
@@ -14,10 +14,15 @@ interface Props {
 }
 
 export default function ClientTablesSection({ isFreshNew }: Props) {
-  const { activeClientId, activeClientName, isAgencyMode } = useActiveClient();
+  const { activeClientId, activeClientName, isAgencyMode, clients, setActiveClientId } = useActiveClient();
   const { data: tables = [], isLoading } = useClientTables(activeClientId);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<ClientTable | null>(null);
+
+  // Sandbox client = atalho pra modo personalizado. O agent-vibe-mutate cria
+  // tabelas de teste lá quando o agente não tem cliente vinculado. UI oferece
+  // botão pra mudar workspace direto sem precisar usar o seletor superior.
+  const sandboxClient = clients.find((c) => c.client_name === "Sandbox / Testes");
 
   // Keep editingTable in sync with latest table data (e.g. after rename)
   const liveEditing = editingTable ? tables.find((t) => t.id === editingTable.id) ?? null : null;
@@ -55,12 +60,27 @@ export default function ClientTablesSection({ isFreshNew }: Props) {
             Tabelas pertencem ao cliente e são compartilhadas entre todos os agentes desse cliente.
           </p>
         </div>
-        <div className="rounded-lg border border-dashed border-border p-8 text-center space-y-2">
+        <div className="rounded-lg border border-dashed border-border p-8 text-center space-y-3">
           <Users className="w-8 h-8 text-muted-foreground mx-auto" />
           <p className="text-sm text-foreground font-medium">Selecione um cliente</p>
           <p className="text-xs text-muted-foreground">
             Entre no workspace de um cliente pelo seletor superior para ver e criar tabelas.
           </p>
+          {sandboxClient && (
+            <div className="pt-2 border-t border-border/50">
+              <p className="text-[11px] text-muted-foreground mb-2">
+                Agentes em modo personalizado guardam tabelas de teste no Sandbox:
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => setActiveClientId(sandboxClient.id)}
+              >
+                <FlaskConical className="w-3.5 h-3.5" /> Abrir Sandbox / Testes
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );

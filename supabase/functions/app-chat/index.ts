@@ -638,18 +638,20 @@ Se uma tool retorna \`ok:false\` ou warning (tipo "pendente", "limite atingido",
 - **NÃO entre em pânico. NÃO escreva "falhei ao criar X" na resposta final.**
 - **CONTINUE chamando as próximas tools** do plano. Erro numa tabela não impede cadências; erro numa cadência não impede KB.
 - Trate o erro silenciosamente — só mencione na resposta final se for crítico (>50% das tools falharam).
-- "marcada como pendente" / **"salva como spec"** = SUCESSO. Significa que o agente está em MODO PERSONALIZADO (sem cliente vinculado), então a tabela vira spec que materializa quando o user vincular um cliente. NÃO é erro.
+- "marcada como pendente" / **"salva como spec"** = SUCESSO. Significa caso edge (agência sem perfil completo) onde a tabela vira spec até a configuração estar pronta. NÃO é erro. No fluxo normal personalizado, tabelas são criadas direto no Sandbox.
 - "duplicada" / "já existe" = SUCESSO (idempotência). Continue.
 
 NUNCA, JAMAIS, abandone o checklist no meio porque uma tool reclamou. Se você parou no meio, o agente nasce vazio.
 
 ### 📦 MODO PERSONALIZADO (sem cliente vinculado)
 
-Se você ver várias tools retornarem "salva como spec — será materializada quando vincular a um cliente", o agente está em modo PERSONALIZADO. Nesse caso, na sua resposta final mencione brevemente (1-2 linhas, sem alarde):
+Quando o agente está em modo personalizado/rascunho (sem cliente real atribuído), as tabelas são criadas no **cliente Sandbox / Testes da agência** automaticamente. O builder consegue testar end-to-end sem precisar criar cliente fake antes.
 
-> 💡 **Modo personalizado:** as tabelas (clientes, agendamentos, etc.) ficam como spec pronta. Pra ativar, vincule esse agente a um cliente em **Configurações → Cliente**. Cadências, conhecimento e demais configurações já estão funcionando.
+Na resposta final, mencione brevemente (só se for relevante, 1 linha):
 
-NÃO escreva "falhei", NÃO escreva "errei", NÃO sugira "tentar de novo". É comportamento ESPERADO.
+> 💡 **Modo personalizado:** tabelas criadas no Sandbox da agência pra teste. Quando atribuir esse agente a um cliente real, cada um terá suas próprias tabelas isoladas.
+
+NÃO escreva "falhei", NÃO escreva "errei", NÃO sugira "tentar de novo". As tabelas SÃO criadas de verdade no Sandbox.
 
 ### 🧠 MAPA DE INFERÊNCIA (LEIA ANTES DE DISPARAR TOOLS)
 
@@ -1837,6 +1839,60 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
         if (!executedNames.has("set_channel")) {
           deterministicCalls.push({ action: "set_channel", params: { channel: "whatsapp", enabled: true } });
         }
+
+        // Universal limits por nicho (Master v7.4 §13.6). Marca como checked
+        // os limites mais comuns daquele setor. Labels precisam casar EXATO
+        // com os do AgentRightPanel pra UI mostrar checked.
+        const NICHE_UNIVERSAL_LIMITS: Record<string, string[]> = {
+          // Contabilidade: dúvida fiscal/jurídica fora de escopo + prazos
+          "Contabilidade": [
+            "Responder questões jurídicas ou contratuais",
+            "Prometer prazos de entrega ou de contrato",
+            "Pedir ou divulgar dados pessoais sensíveis",
+          ],
+          // Saúde: LGPD pesado + reclamação séria (paciente bravo) + jurídico
+          "Saúde": [
+            "Pedir ou divulgar dados pessoais sensíveis",
+            "Lidar com reclamação séria",
+            "Responder questões jurídicas ou contratuais",
+          ],
+          // Advocacia: NUNCA fechar negócio sem advogado + preço varia muito
+          "Advocacia": [
+            "Falar de preços ou conceder descontos",
+            "Fechar negócio ou contrato sem aprovação",
+            "Pedir ou divulgar dados pessoais sensíveis",
+          ],
+          // Imobiliária: preço/comissão sempre humano + prazo financiamento
+          "Imobiliária": [
+            "Falar de preços ou conceder descontos",
+            "Prometer prazos de entrega ou de contrato",
+            "Fechar negócio ou contrato sem aprovação",
+          ],
+        };
+        // Default mínimo pra qualquer nicho (LGPD baseline + handoff crítico)
+        const DEFAULT_UNIVERSAL_LIMITS = [
+          "Pedir ou divulgar dados pessoais sensíveis",
+          "Lidar com reclamação séria",
+        ];
+        try {
+          const { data: agForLimits } = await adminClient
+            .from("user_agents")
+            .select("config")
+            .eq("id", agentId)
+            .maybeSingle();
+          const currentNiche = ((agForLimits as { config?: { businessContext?: { niche?: string } } } | null)
+            ?.config?.businessContext?.niche) ?? null;
+          const limitsToAdd = currentNiche && NICHE_UNIVERSAL_LIMITS[currentNiche]
+            ? NICHE_UNIVERSAL_LIMITS[currentNiche]
+            : DEFAULT_UNIVERSAL_LIMITS;
+          for (const label of limitsToAdd) {
+            deterministicCalls.push({ action: "add_guardrail", params: { guardrail: label } });
+          }
+          console.log(`[wizard-setup] universal limits agendados pro nicho ${currentNiche ?? "(default)"}: ${limitsToAdd.length}`);
+        } catch (e) {
+          console.warn("[wizard-setup] universal limits fetch failed:", e);
+        }
+
         // SEMPRE re-aplica greeting — LLM frequentemente seta com "Assistente"
         // (placeholder do template) antes do set_agent_name persistir. Aqui
         // buscamos o nome ATUAL e sobrescrevemos.
