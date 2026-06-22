@@ -88,16 +88,43 @@ async function pingModel(model_id: string, apiKey: string): Promise<PingResult> 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Auth: somente service role (chamado por cron platform admin).
-  // Antes totalmente aberto — atacante podia esgotar quota OpenRouter e
-  // marcar todos os modelos como "dead" no DB.
+  // Auth: aceita service role (cron interno) OU JWT de platform_owner/
+  // platform_admin (UI do admin clicando "Healthcheck geral").
+  // Bug visto: UI batia com JWT do user e tomava 401 porque só service
+  // role era aceito. Atacante random ainda não passa (precisa ser admin).
   const authHeader = req.headers.get("Authorization") || "";
   const callerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (callerToken !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+  if (!callerToken) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+  }
+  const isServiceRole = callerToken === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!isServiceRole) {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const { data: userData, error: userErr } = await admin.auth.getUser(callerToken);
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "INVALID_TOKEN" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("user_id", userData.user.id)
+      .maybeSingle();
+    const role = (profile as { role?: string } | null)?.role;
+    if (role !== "platform_owner" && role !== "platform_admin") {
+      return new Response(JSON.stringify({ error: "FORBIDDEN", message: "Apenas admin Aikortex" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
 
   const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
