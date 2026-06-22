@@ -421,14 +421,20 @@ serve(async (req) => {
         if (!name || cols.length === 0) {
           return jsonRes({ error: "INVALID_PARAMS", message: "name e columns são obrigatórios" }, 400);
         }
+        // Shape esperado pelo frontend: { key, label, type }. Antes salvava
+        // { name, type, required } e UI mostrava 'N colunas' mas headers
+        // ficavam vazios. label vira humanizado a partir do name.
         const validTypes = new Set(["text", "number", "date", "boolean", "email", "phone", "url", "json"]);
         const normalizedCols = cols
-          .map((c: any) => ({
-            name: String(c?.name ?? "").trim(),
-            type: validTypes.has(String(c?.type)) ? String(c.type) : "text",
-            required: !!c?.required,
-          }))
-          .filter((c: any) => c.name.length > 0)
+          .map((c: any) => {
+            const rawName = String(c?.name ?? c?.key ?? "").trim();
+            return {
+              key: rawName,
+              label: String(c?.label ?? "").trim() || rawName.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()),
+              type: validTypes.has(String(c?.type)) ? String(c.type) : "text",
+            };
+          })
+          .filter((c: any) => c.key.length > 0)
           .slice(0, 20);
         if (normalizedCols.length === 0) {
           return jsonRes({ error: "INVALID_COLUMNS" }, 400);
@@ -583,10 +589,13 @@ serve(async (req) => {
         if ((count ?? 0) >= 8) {
           return jsonRes({ ok: true, log: `Tabela "${table.label}" não criada (limite de 8 atingido)`, warning: "MAX_TABLES" });
         }
+        // Shape esperado pelo frontend: ClientTableColumn = { key, label, type }.
+        // Antes salvava { name, type, required } e UI não renderizava headers
+        // (column.label undefined). key = slug, label = nome humanizado.
         const cols = table.columns.map((c) => ({
-          name: c.name,
+          key: c.name,
+          label: c.name.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()),
           type: c.type === "json" || c.type === "boolean" ? c.type : (c.type === "date" ? "date" : (c.type === "number" ? "number" : "text")),
-          required: !!c.required,
         }));
         const { error: insErr } = await admin.from("client_tables").insert({
           client_id: clientId,
