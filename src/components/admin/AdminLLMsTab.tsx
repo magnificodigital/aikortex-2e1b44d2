@@ -20,7 +20,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Activity, RefreshCcw, Loader2, AlertCircle } from "lucide-react";
+import { Activity, RefreshCcw, Loader2, AlertCircle, Plus } from "lucide-react";
+import AddLLMFromCatalogDialog from "./AddLLMFromCatalogDialog";
 
 type LLM = {
   id: string;
@@ -49,6 +50,7 @@ const AdminLLMsTab = () => {
   const [loading, setLoading] = useState(true);
   const [pinging, setPinging] = useState<string | null>(null);
   const [pingingAll, setPingingAll] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -119,6 +121,8 @@ const AdminLLMsTab = () => {
     const paid = rows.filter((r) => r.tier === "paid");
     return { free, paid };
   }, [rows]);
+
+  const alreadyAdded = useMemo(() => new Set(rows.map((r) => r.model_id)), [rows]);
 
   const renderTable = (data: LLM[], title: string) => (
     <Card>
@@ -244,15 +248,28 @@ const AdminLLMsTab = () => {
             Fonte única de verdade para modelos OpenRouter consumidos por todas edge functions.
           </p>
         </div>
-        <Button onClick={() => runHealthcheck()} disabled={pingingAll}>
-          {pingingAll ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <RefreshCcw className="h-4 w-4 mr-2" />
-          )}
-          Healthcheck geral
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setCatalogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Adicionar modelo
+          </Button>
+          <Button onClick={() => runHealthcheck()} disabled={pingingAll}>
+            {pingingAll ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCcw className="h-4 w-4 mr-2" />
+            )}
+            Healthcheck geral
+          </Button>
+        </div>
       </div>
+
+      <AddLLMFromCatalogDialog
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        alreadyAdded={alreadyAdded}
+        onAdded={load}
+      />
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
