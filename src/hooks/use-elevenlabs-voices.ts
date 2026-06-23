@@ -22,65 +22,47 @@ export function useElevenLabsVoices() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    // 1. Try user's own key
+    // Detecta se user tem chave (afeta UI: mostra "configurar chave" se não)
     const { data: keyData } = await supabase
       .from("user_api_keys")
-      .select("api_key")
+      .select("provider")
       .eq("user_id", user.id)
       .eq("provider", "elevenlabs")
-      .single();
+      .maybeSingle();
+    setHasUserKey(!!keyData);
 
-    let apiKey = keyData?.api_key ?? null;
-    const isUserKey = !!apiKey;
-    setHasUserKey(isUserKey);
-
-    // 2. Fallback to platform key
-    if (!apiKey) {
-      const { data: platformKey } = await supabase
-        .from("platform_config")
-        .select("value")
-        .eq("key", "elevenlabs_api_key")
-        .single();
-      apiKey = platformKey?.value ?? null;
-    }
-
-    if (!apiKey) {
-      setError("Nenhuma chave ElevenLabs disponível");
+    if (!keyData) {
+      setError("Configure sua chave ElevenLabs em Canais → Voz");
       setLoading(false);
       return;
     }
 
+    // Usa voice-resources edge function — chave fica no servidor, nunca no client.
+    // Antes esse hook lia api_key do DB e fazia fetch direto pra api.elevenlabs.io,
+    // expondo a chave em devtools.
     try {
-      const res = await fetch("https://api.elevenlabs.io/v1/voices", {
-        headers: { "xi-api-key": apiKey },
+      const { data, error: invokeErr } = await supabase.functions.invoke("voice-resources", {
+        body: { provider: "elevenlabs", action: "voices" },
       });
-
-      if (!res.ok) {
-        setError("Erro ao buscar vozes da ElevenLabs");
+      if (invokeErr) throw invokeErr;
+      const d = data as { ok: boolean; voices?: Array<{ voice_id: string; name: string; preview_url?: string | null; category?: string; language?: string; gender?: string }> ; message?: string };
+      if (!d?.ok) {
+        setError(d?.message ?? "Erro ao buscar vozes");
         setLoading(false);
         return;
       }
-
-      const data = await res.json();
-      let mapped: ElevenLabsVoice[] = (data.voices || []).map((v: any) => ({
+      const mapped: ElevenLabsVoice[] = (d.voices ?? []).map((v) => ({
         voice_id: v.voice_id,
         name: v.name,
-        preview_url: v.preview_url || null,
-        category: v.category || "premade",
-        labels: v.labels || {},
+        preview_url: v.preview_url ?? null,
+        category: v.category ?? "premade",
+        labels: { language: v.language ?? "", gender: v.gender ?? "" },
       }));
-
-      // Limit platform voices to 6
-      if (!isUserKey) {
-        mapped = mapped.slice(0, 6);
-      }
-
       setVoices(mapped);
       if (mapped.length === 0) setError("Nenhuma voz encontrada");
-    } catch {
-      setError("Erro ao conectar com a ElevenLabs");
+    } catch (e) {
+      setError(`Erro: ${(e as Error).message}`);
     }
-
     setLoading(false);
   }, []);
 
