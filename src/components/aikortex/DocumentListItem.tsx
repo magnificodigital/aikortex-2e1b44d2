@@ -1,7 +1,9 @@
-import { FileText, Globe, Type, HelpCircle, FileQuestion, Trash2, Loader2, AlertCircle, Check, Clock } from "lucide-react";
+import { useState } from "react";
+import { FileText, Globe, Type, HelpCircle, FileQuestion, Trash2, Loader2, AlertCircle, Check, Clock, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDeleteDocument, type KnowledgeDocument } from "@/hooks/use-agent-knowledge-bases";
+import EditDocumentDialog from "./EditDocumentDialog";
 
 interface Props {
   doc: KnowledgeDocument;
@@ -18,6 +20,7 @@ const ICON_MAP = {
 export default function DocumentListItem({ doc, kbId }: Props) {
   const del = useDeleteDocument();
   const Icon = ICON_MAP[doc.source_type] ?? FileQuestion;
+  const [editOpen, setEditOpen] = useState(false);
 
   const statusBadge = (() => {
     switch (doc.status) {
@@ -62,6 +65,14 @@ export default function DocumentListItem({ doc, kbId }: Props) {
         )}
         {statusBadge}
         <button
+          onClick={() => setEditOpen(true)}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Editar documento"
+          title="Editar"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
+        <button
           onClick={handleDelete}
           disabled={del.isPending}
           className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-40"
@@ -70,6 +81,7 @@ export default function DocumentListItem({ doc, kbId }: Props) {
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
+      <EditDocumentDialog open={editOpen} onOpenChange={setEditOpen} doc={doc} kbId={kbId} />
     </div>
   );
 }

@@ -178,6 +178,48 @@ export function useDeleteKb() {
   });
 }
 
+/** Update title and/or raw_content do documento. Re-ingere via edge-function
+ * pra regenerar chunks + embeddings (do contrário knowledge_search continua
+ * com conteúdo antigo). Backend marca status='processing' e dispara worker. */
+export function useUpdateDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { doc_id: string; kb_id: string; title?: string; raw_content?: string }) => {
+      const patch: Record<string, unknown> = {};
+      if (vars.title !== undefined) patch.title = vars.title;
+      if (vars.raw_content !== undefined) {
+        patch.raw_content = vars.raw_content;
+        // Conteúdo mudou → chunks ficam stale. Marca pra re-processar.
+        patch.status = "pending";
+        patch.processed_at = null;
+      }
+      if (Object.keys(patch).length === 0) return;
+      const { error } = await (supabase
+        .from("kb_documents" as any)
+        .update(patch)
+        .eq("id", vars.doc_id) as any);
+      if (error) throw error;
+      // Se conteúdo mudou, re-ingere pra gerar chunks novos
+      if (vars.raw_content !== undefined) {
+        // Apaga chunks antigos primeiro pra evitar resultado RAG misturado
+        await (supabase.from("kb_chunks" as any).delete().eq("document_id", vars.doc_id) as any);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await supabase.functions.invoke("ingest-document-reprocess", {
+            body: { document_id: vars.doc_id },
+          }).catch(() => { /* edge pode não existir; status=pending fica esperando worker */ });
+        }
+      }
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["kb-documents", vars.kb_id] });
+      qc.invalidateQueries({ queryKey: ["agent-kbs"] });
+      toast.success("Documento atualizado");
+    },
+    onError: (err) => toast.error(`Falha ao atualizar: ${(err as Error).message}`),
+  });
+}
+
 export function useDeleteDocument() {
   const qc = useQueryClient();
   return useMutation({

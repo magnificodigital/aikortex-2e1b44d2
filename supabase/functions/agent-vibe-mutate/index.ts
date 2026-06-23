@@ -763,7 +763,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   kb_id: kbRow.id,
                   source_type: "text",
-                  title: `${topic.title} — Conteúdo starter`,
+                  title: topic.title,
                   raw_content: topic.seedContent,
                 }),
               });
@@ -783,7 +783,7 @@ serve(async (req) => {
             const { error: docErr } = await admin.from("kb_documents").insert({
               knowledge_base_id: kbRow.id,
               source_type: "text",
-              title: `${topic.title} — Conteúdo starter`,
+              title: topic.title,
               raw_content: topic.seedContent,
               status: "ready",
               metadata: { seeded: true, niche, topic_slug: topicSlug, no_embeddings: true },
