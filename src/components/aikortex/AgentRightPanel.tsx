@@ -3,6 +3,7 @@ import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS, type ProviderConfig
 import EmptyIntegrationSection from "@/components/settings/EmptyIntegrationSection";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import IntegrationVoiceForm from "@/components/settings/IntegrationVoiceForm";
+import VoiceProviderStatus from "./VoiceProviderStatus";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
 import { Button } from "@/components/ui/button";
 import type { AgentType } from "@/types/agent-builder";
@@ -1498,25 +1499,13 @@ const AgentRightPanel = ({
                     <Mic className="w-5 h-5 text-purple-500" /> Voz
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Configure as chaves dos provedores (Telnyx + ElevenLabs) e as preferências de voz deste agente. Configurar uma vez serve pra todos os agentes da agência.
+                    Preferências de voz, número e modo de chamada deste agente.
                   </p>
                 </div>
 
-                {/* Card 1: chaves agência (Telnyx + ElevenLabs) */}
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Chaves de provedor
-                  </h3>
-                  <IntegrationVoiceForm />
-                </div>
+                <VoiceProviderStatus />
 
-                {/* Card 2: config por agente (voz, número, callType) */}
-                <div className="pt-4 border-t border-border">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Configurações deste agente
-                  </h3>
-                  <VoiceConfigPanel config={voiceConfig} onChange={setVoiceConfig} />
-                </div>
+                <VoiceConfigPanel config={voiceConfig} onChange={setVoiceConfig} />
               </div>
             )}
 
