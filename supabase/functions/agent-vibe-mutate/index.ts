@@ -72,21 +72,21 @@ async function getOrCreateSandboxClient(admin: any, agentUserId: string): Promis
 
   // 2. Sandbox client da agência (find) — status="sandbox" pra ficar OUT do
   // dropdown de clientes reais (WorkspaceContext filtra por status="active").
+  // Aceita também o nome antigo "Sandbox / Testes" (compat) — migra pro novo.
   const { data: existing } = await admin
     .from("agency_clients")
-    .select("id, status")
+    .select("id, status, client_name")
     .eq("agency_id", agency.id)
-    .eq("client_name", "Sandbox / Testes")
+    .in("client_name", ["Testes da Agência", "Sandbox / Testes"])
     .maybeSingle();
   if (existing?.id) {
-    // Migra rows antigas que foram criadas com status="active" — não devem
-    // mais poluir o dropdown de clientes. Operação idempotente.
-    if (existing.status !== "sandbox") {
-      await admin
-        .from("agency_clients")
-        .update({ status: "sandbox" })
-        .eq("id", existing.id);
-      console.log(`[sandbox-client] migrado status pra "sandbox" em ${existing.id}`);
+    // Migra status pra "sandbox" + renomeia legacy "Sandbox / Testes"
+    const updates: Record<string, string> = {};
+    if (existing.status !== "sandbox") updates.status = "sandbox";
+    if (existing.client_name === "Sandbox / Testes") updates.client_name = "Testes da Agência";
+    if (Object.keys(updates).length > 0) {
+      await admin.from("agency_clients").update(updates).eq("id", existing.id);
+      console.log(`[sandbox-client] migrado ${existing.id}:`, updates);
     }
     return existing.id as string;
   }
@@ -96,7 +96,7 @@ async function getOrCreateSandboxClient(admin: any, agentUserId: string): Promis
     .from("agency_clients")
     .insert({
       agency_id: agency.id,
-      client_name: "Sandbox / Testes",
+      client_name: "Testes da Agência",
       client_email: "sandbox@aikortex.local",
       status: "sandbox",
     })
@@ -560,7 +560,7 @@ serve(async (req) => {
           .eq("id", agentId)
           .maybeSingle();
         // client_tables.client_id é FK pra agency_clients(id). Em modo
-        // personalizado (sem cliente vinculado), usa o "Sandbox / Testes" da
+        // personalizado (sem cliente vinculado), usa o "Testes da Agência" da
         // agência (find-or-create lazy). Tabelas reais nascem ali pro builder
         // testar end-to-end. Isolamento multi-tenant preservado: quando agente
         // for clonado/atribuído a cliente real, esse novo cliente terá suas
@@ -597,13 +597,17 @@ serve(async (req) => {
           label: c.name.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()),
           type: c.type === "json" || c.type === "boolean" ? c.type : (c.type === "date" ? "date" : (c.type === "number" ? "number" : "text")),
         }));
-        const { error: insErr } = await admin.from("client_tables").insert({
-          client_id: clientId,
-          name: table.label,
-          description: table.description,
-          columns: cols,
-          enabled: true,
-        });
+        const { data: insertedTable, error: insErr } = await admin
+          .from("client_tables")
+          .insert({
+            client_id: clientId,
+            name: table.label,
+            description: table.description,
+            columns: cols,
+            enabled: true,
+          })
+          .select("id")
+          .maybeSingle();
         if (insErr) {
           if (String(insErr.message).match(/duplicate|unique/i)) {
             logMessage = `Tabela "${table.label}" já existia (ignorada)`;
@@ -615,7 +619,22 @@ serve(async (req) => {
         if (!createdTablesN.includes(table.label)) {
           newConfig = { ...newConfig, createdTables: [...createdTablesN, table.label] };
         }
-        logMessage = `Tabela "${table.label}" criada (${cols.length} colunas)`;
+        // Insere seedRows se o catálogo definiu (2-3 linhas de exemplo realistas
+        // por tabela). Agência edita/deleta depois. Evita tabela 0-linhas vazia.
+        let rowsInserted = 0;
+        if (insertedTable?.id && Array.isArray(table.seedRows) && table.seedRows.length > 0) {
+          const rowsPayload = table.seedRows.map((row) => ({
+            table_id: insertedTable.id,
+            data: row,
+          }));
+          const { error: rowsErr } = await admin.from("client_table_rows").insert(rowsPayload);
+          if (rowsErr) {
+            console.warn(`[create_niche_table] seedRows insert failed for ${table.slug}: ${rowsErr.message}`);
+          } else {
+            rowsInserted = rowsPayload.length;
+          }
+        }
+        logMessage = `Tabela "${table.label}" criada (${cols.length} colunas${rowsInserted > 0 ? `, ${rowsInserted} linhas de exemplo` : ""})`;
         break;
       }
       case "create_niche_cadence": {

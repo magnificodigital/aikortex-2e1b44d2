@@ -20,6 +20,9 @@ export interface NicheTable {
   label: string;
   description: string;
   columns: TableColumn[];
+  /** Linhas de exemplo pré-populadas. Dão um starter pra agência editar/deletar
+   * em vez de tabela 0 linhas vazia. Keys batem com columns[].name. */
+  seedRows?: Array<Record<string, string | number | boolean | null>>;
 }
 
 export interface NicheCadenceStep {
@@ -74,6 +77,11 @@ export const NICHE_ASSETS: Record<string, NicheAssetSpec> = {
           { name: "telefone", type: "text" },
           { name: "responsavel", type: "text" },
         ],
+        seedRows: [
+          { nome: "ACME Indústria LTDA", cnpj_cpf: "12.345.678/0001-90", regime_tributario: "Simples Nacional", email: "financeiro@acme.com.br", telefone: "(11) 3000-1000", responsavel: "Maria Santos" },
+          { nome: "Padaria Bom Pão ME", cnpj_cpf: "98.765.432/0001-10", regime_tributario: "Simples Nacional", email: "contato@bompao.com.br", telefone: "(11) 99876-5432", responsavel: "José Silva" },
+          { nome: "Consultoria Alfa Ltda", cnpj_cpf: "55.111.222/0001-33", regime_tributario: "Lucro Presumido", email: "fiscal@alfa.com.br", telefone: "(11) 4002-8922", responsavel: "Ana Pereira" },
+        ],
       },
       {
         slug: "prazos_impostos",
@@ -85,6 +93,11 @@ export const NICHE_ASSETS: Record<string, NicheAssetSpec> = {
           { name: "cliente", type: "text" },
           { name: "status", type: "text" },
         ],
+        seedRows: [
+          { tipo_imposto: "DAS Simples Nacional", data_vencimento: "2026-07-20", cliente: "ACME Indústria LTDA", status: "pendente" },
+          { tipo_imposto: "DARF IRPJ Trimestral", data_vencimento: "2026-07-31", cliente: "Consultoria Alfa Ltda", status: "pendente" },
+          { tipo_imposto: "GPS INSS", data_vencimento: "2026-07-20", cliente: "Padaria Bom Pão ME", status: "pago" },
+        ],
       },
       {
         slug: "documentos_solicitados",
@@ -95,6 +108,11 @@ export const NICHE_ASSETS: Record<string, NicheAssetSpec> = {
           { name: "documento", type: "text", required: true },
           { name: "solicitado_em", type: "date" },
           { name: "recebido", type: "boolean" },
+        ],
+        seedRows: [
+          { cliente: "ACME Indústria LTDA", documento: "Notas fiscais de saída — Junho/2026", solicitado_em: "2026-07-01", recebido: false },
+          { cliente: "Padaria Bom Pão ME", documento: "Folha de pagamento — Junho/2026", solicitado_em: "2026-07-01", recebido: true },
+          { cliente: "Consultoria Alfa Ltda", documento: "Extratos bancários — Junho/2026", solicitado_em: "2026-07-02", recebido: false },
         ],
       },
     ],
@@ -264,6 +282,11 @@ R: É obrigatório quando o faturamento passa de **R$ 4,8 milhões/ano**. Antes 
           { name: "plano_saude", type: "text" },
           { name: "data_nascimento", type: "date" },
         ],
+        seedRows: [
+          { nome: "Maria Oliveira", cpf: "123.456.789-00", telefone: "(11) 98765-4321", email: "maria.oliveira@email.com", plano_saude: "Unimed Nacional", data_nascimento: "1985-04-12" },
+          { nome: "João Souza", cpf: "987.654.321-00", telefone: "(11) 91234-5678", email: "joao.souza@email.com", plano_saude: "Bradesco Saúde Top", data_nascimento: "1972-11-30" },
+          { nome: "Ana Lima", cpf: "456.789.123-00", telefone: "(11) 95555-1212", email: "ana.lima@email.com", plano_saude: "Particular", data_nascimento: "1990-08-25" },
+        ],
       },
       {
         slug: "agendamentos",
@@ -276,6 +299,11 @@ R: É obrigatório quando o faturamento passa de **R$ 4,8 milhões/ano**. Antes 
           { name: "profissional", type: "text" },
           { name: "status", type: "text" },
         ],
+        seedRows: [
+          { paciente: "Maria Oliveira", data_hora: "2026-07-10", tipo_consulta: "Consulta de rotina", profissional: "Dr. Carlos Mendes", status: "confirmado" },
+          { paciente: "João Souza", data_hora: "2026-07-11", tipo_consulta: "Retorno", profissional: "Dra. Patrícia Lima", status: "agendado" },
+          { paciente: "Ana Lima", data_hora: "2026-07-12", tipo_consulta: "Primeira consulta", profissional: "Dr. Carlos Mendes", status: "agendado" },
+        ],
       },
       {
         slug: "planos_aceitos",
@@ -285,6 +313,11 @@ R: É obrigatório quando o faturamento passa de **R$ 4,8 milhões/ano**. Antes 
           { name: "nome_plano", type: "text", required: true },
           { name: "tipos_consulta_cobertos", type: "text" },
           { name: "exige_autorizacao", type: "boolean" },
+        ],
+        seedRows: [
+          { nome_plano: "Unimed Nacional", tipos_consulta_cobertos: "Consultas, exames, internações", exige_autorizacao: false },
+          { nome_plano: "Bradesco Saúde Top", tipos_consulta_cobertos: "Consultas e exames", exige_autorizacao: true },
+          { nome_plano: "Particular", tipos_consulta_cobertos: "Todos serviços (valor de tabela)", exige_autorizacao: false },
         ],
       },
     ],
@@ -442,6 +475,11 @@ R: **Em caso de emergência grave (dor no peito, falta de ar, perda de consciên
           { name: "telefone", type: "text" },
           { name: "email", type: "text" },
         ],
+        seedRows: [
+          { nome: "Carlos Almeida", cpf_cnpj: "234.567.890-12", tipo: "Pessoa Física", telefone: "(11) 98888-7777", email: "carlos.almeida@email.com" },
+          { nome: "Tech Startup Ltda", cpf_cnpj: "33.444.555/0001-66", tipo: "Pessoa Jurídica", telefone: "(11) 3000-2000", email: "juridico@techstartup.com.br" },
+          { nome: "Beatriz Costa", cpf_cnpj: "345.678.901-23", tipo: "Pessoa Física", telefone: "(11) 97777-6666", email: "beatriz.costa@email.com" },
+        ],
       },
       {
         slug: "processos_ativos",
@@ -454,6 +492,11 @@ R: **Em caso de emergência grave (dor no peito, falta de ar, perda de consciên
           { name: "fase", type: "text" },
           { name: "proxima_audiencia", type: "date" },
         ],
+        seedRows: [
+          { numero_processo: "0012345-67.2026.5.02.0001", cliente: "Carlos Almeida", area: "Trabalhista", fase: "Instrução", proxima_audiencia: "2026-08-15" },
+          { numero_processo: "1234567-89.2025.8.26.0100", cliente: "Tech Startup Ltda", area: "Cível — Contratos", fase: "Inicial", proxima_audiencia: "2026-09-10" },
+          { numero_processo: "0009876-54.2026.8.26.0224", cliente: "Beatriz Costa", area: "Família", fase: "Sentença", proxima_audiencia: "2026-07-25" },
+        ],
       },
       {
         slug: "prazos_juridicos",
@@ -464,6 +507,11 @@ R: **Em caso de emergência grave (dor no peito, falta de ar, perda de consciên
           { name: "tipo_prazo", type: "text", required: true },
           { name: "data_vencimento", type: "date", required: true },
           { name: "responsavel", type: "text" },
+        ],
+        seedRows: [
+          { processo: "0012345-67.2026.5.02.0001", tipo_prazo: "Contestação", data_vencimento: "2026-07-15", responsavel: "Dr. Ricardo" },
+          { processo: "1234567-89.2025.8.26.0100", tipo_prazo: "Réplica", data_vencimento: "2026-07-20", responsavel: "Dra. Patrícia" },
+          { processo: "0009876-54.2026.8.26.0224", tipo_prazo: "Recurso", data_vencimento: "2026-08-05", responsavel: "Dr. Ricardo" },
         ],
       },
     ],
@@ -669,6 +717,11 @@ R: Os prazos variam: **trabalhista** 2 anos depois da demissão (limite total: 5
           { name: "area_m2", type: "number" },
           { name: "operacao", type: "text" },
         ],
+        seedRows: [
+          { codigo: "APT-001", tipo: "Apartamento", endereco: "Rua das Flores, 100 — Jardins", valor: 850000, quartos: 2, area_m2: 75, operacao: "Venda" },
+          { codigo: "CSA-002", tipo: "Casa", endereco: "Av. das Palmeiras, 250 — Vila Nova", valor: 4500, quartos: 3, area_m2: 120, operacao: "Aluguel" },
+          { codigo: "APT-003", tipo: "Apartamento", endereco: "Rua dos Lírios, 45 — Centro", valor: 320000, quartos: 1, area_m2: 42, operacao: "Venda" },
+        ],
       },
       {
         slug: "leads",
@@ -682,6 +735,11 @@ R: Os prazos variam: **trabalhista** 2 anos depois da demissão (limite total: 5
           { name: "orcamento_max", type: "number" },
           { name: "origem", type: "text" },
         ],
+        seedRows: [
+          { nome: "Pedro Henrique", telefone: "(11) 98123-4567", email: "pedro.h@email.com", perfil_imovel: "Apartamento 2 quartos, Jardins/Vila Madalena", orcamento_max: 900000, origem: "Site" },
+          { nome: "Juliana Martins", telefone: "(11) 97777-1234", email: "juliana.m@email.com", perfil_imovel: "Casa 3 quartos pra alugar, zona oeste", orcamento_max: 5500, origem: "Indicação" },
+          { nome: "Roberto Castro", telefone: "(11) 96666-9999", email: "rcastro@email.com", perfil_imovel: "Apartamento studio, centro/financiamento", orcamento_max: 400000, origem: "Zap Imóveis" },
+        ],
       },
       {
         slug: "visitas_agendadas",
@@ -692,6 +750,11 @@ R: Os prazos variam: **trabalhista** 2 anos depois da demissão (limite total: 5
           { name: "imovel", type: "text", required: true },
           { name: "data_hora", type: "date", required: true },
           { name: "corretor", type: "text" },
+        ],
+        seedRows: [
+          { lead: "Pedro Henrique", imovel: "APT-001", data_hora: "2026-07-08", corretor: "Camila Rocha" },
+          { lead: "Juliana Martins", imovel: "CSA-002", data_hora: "2026-07-09", corretor: "Fernando Dias" },
+          { lead: "Roberto Castro", imovel: "APT-003", data_hora: "2026-07-10", corretor: "Camila Rocha" },
         ],
       },
     ],

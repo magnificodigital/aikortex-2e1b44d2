@@ -46,7 +46,7 @@ export default function ClientTablesSection({ agentId, isFreshNew }: Props) {
     ? (agentClientId ?? sandboxClient?.id ?? null)
     : activeClientId;
   const effectiveClientName = isAgencyMode
-    ? (agentClientId ? "Cliente vinculado" : (sandboxClient ? "Sandbox / Testes" : ""))
+    ? (agentClientId ? "Cliente vinculado" : (sandboxClient ? "Testes da Agência" : ""))
     : activeClientName;
   const { data: tables = [], isLoading } = useClientTables(effectiveClientId);
   const [createOpen, setCreateOpen] = useState(false);
@@ -110,7 +110,7 @@ export default function ClientTablesSection({ agentId, isFreshNew }: Props) {
             <Database className="w-5 h-5 text-primary" /> Tabelas do cliente
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Dados estruturados de <span className="font-medium text-foreground">{effectiveClientName}</span>{isAgencyMode && agentClientId == null && sandboxClient ? " (modo personalizado — tabelas de teste no Sandbox)" : ""}, compartilhados entre todos os agentes deste cliente.
+            Dados estruturados de <span className="font-medium text-foreground">{effectiveClientName}</span>{isAgencyMode && agentClientId == null && sandboxClient ? " (modo personalizado — workspace interno da agência, não é cliente real)" : ""}, compartilhados entre todos os agentes deste cliente.
           </p>
         </div>
       </div>
