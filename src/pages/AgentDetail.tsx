@@ -129,21 +129,13 @@ interface LoadedAgent {
   savedConfig: Record<string, any> | null;
 }
 
+// Spread config inteiro pra não perder businessContext, capabilities,
+// guardrails, wizard_completed, pendingNicheTables etc — campos que o wizard
+// salva mas que o painel não conhece. Antes listava 14 campos explicitamente
+// e os badges (companyName/niche no header) sumiam depois de save porque
+// businessContext era recriado como undefined.
 const buildSavedConfig = (config: AgentConfig, agentType: string) => ({
-  name: config.name,
-  description: config.description,
-  objective: config.objective,
-  instructions: config.instructions,
-  toneOfVoice: config.toneOfVoice,
-  greetingMessage: config.greetingMessage,
-  avatarUrl: config.avatarUrl,
-  channels: config.channels,
-  integrations: config.integrations,
-  integrationConfigs: config.integrationConfigs,
-  knowledgeFiles: config.knowledgeFiles,
-  urls: config.urls,
-  apiConfig: config.apiConfig,
-  voiceConfig: config.voiceConfig,
+  ...(config as unknown as Record<string, unknown>),
   agentType,
 });
 
@@ -498,13 +490,22 @@ const AgentDetail = () => {
         },
       });
       if (result) {
-        setLoadedAgent({
+        // Merge com savedConfig anterior pra preservar campos que o painel
+        // não conhece (businessContext, capabilities, guardrails, wizard_
+        // completed, pendingNicheTables etc). Sem isso, badges 'Empresa' e
+        // 'Nicho' no header somem depois do primeiro save porque buildSaved-
+        // Config recria o objeto a partir do config do painel (sem esses
+        // campos).
+        setLoadedAgent((prev) => ({
           name: config.name,
           avatar: config.avatarUrl || AVATAR_BY_TYPE[config.agentType] || aikortexAvatar,
           model: config.model,
           agentType: (config.agentType as AgentType) || "Custom",
-          savedConfig: buildSavedConfig(config, config.agentType),
-        });
+          savedConfig: {
+            ...(prev?.savedConfig ?? {}),
+            ...buildSavedConfig(config, config.agentType),
+          },
+        }));
         setAgentConfig(config);
         // Promote placeholder route (new-* / template) to real UUID after first INSERT.
         // Migrate localStorage keys so wizard chat history etc. survive the URL change.
