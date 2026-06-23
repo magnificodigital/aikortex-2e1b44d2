@@ -484,6 +484,11 @@ const AgentDetail = () => {
           urls:            config.urls,
           apiConfig:       config.apiConfig,
           voiceConfig:     config.voiceConfig,
+          // BUG fix: campos vindos do painel que estavam sendo OMITIDOS aqui.
+          // Sem isso, qualquer auto-save do AgentDetail apagava capabilities
+          // (toggles Raciocínio) e guardrails (Limites) que o wizard salvou.
+          capabilities:    config.capabilities,
+          guardrails:      config.guardrails,
           wizardStep,
           wizardMessages,
           setupMessages: setupMessagesRef.current || [],

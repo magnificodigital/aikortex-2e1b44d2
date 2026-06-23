@@ -79,6 +79,23 @@ export function useUserAgents(opts?: { clientId?: string | null; isAgencyMode?: 
     if (agent.client_id !== undefined) payload.client_id = agent.client_id;
 
     if (agent.id) {
+      // BUG fix: antes fazia overwrite total do config, apagando campos que o
+      // wizard salva (businessContext.niche, wizard_completed, pendingNicheTables,
+      // createdTables, createdCadences, createdKbs, etc) e que o painel não
+      // conhece. Agora faz MERGE: lê config atual do DB, mescla com o novo,
+      // preservando chaves desconhecidas no top-level.
+      const { data: existing } = await supabase
+        .from("user_agents")
+        .select("config")
+        .eq("id", agent.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const existingCfg = (existing as { config?: Record<string, unknown> } | null)?.config ?? {};
+      const incomingCfg = (agent.config ?? {}) as Record<string, unknown>;
+      // Merge top-level: incomingCfg ganha em conflito; chaves só no existing
+      // (ex: businessContext, wizard_completed, createdTables) são preservadas.
+      payload.config = { ...existingCfg, ...incomingCfg };
+
       const { data, error } = await supabase
         .from("user_agents")
         .update(payload as any)
