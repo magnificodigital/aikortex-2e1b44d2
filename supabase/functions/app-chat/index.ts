@@ -17,6 +17,7 @@ import {
 } from "../_shared/agent-blueprint.ts";
 import { buildNicheIntegrationsBlock, NICHE_INTEGRATIONS } from "../_shared/niche-integrations.ts";
 import { buildNicheAssetsBlock, NICHE_ASSETS, resolveNicheKey, inferNicheFromMessage } from "../_shared/niche-assets.ts";
+import { detectVoiceIntent } from "../_shared/voice-detect.ts";
 
 /** Remove raw tool-call JSON que o LLM às vezes cospe como texto em vez de
  * invocar via tool_calls. Bug visto: usuário recebia "{ "tool": "set_agent_name",
@@ -704,6 +705,18 @@ Daí mapeia CADA sinal pra o asset correspondente:
 ⚠️ **REGRA DE OURO:** se a descrição cita N verbos de ação distintos, você precisa de pelo menos N assets correspondentes. "qualifica E agenda E lembra" = 3 cadeias → 3 grupos de tools. Se você só criou identidade+canais e não materializou nenhum desses verbos, o agente nasce vazio.
 
 Quando o nicho tem catálogo NICHE_ASSETS, USE os slugs (\`create_niche_table\`, \`create_niche_cadence\`, \`seed_kb_topic\`) — eles já vêm com schema correto. Pra nichos sem catálogo, monta tudo manualmente via \`create_client_table\`/\`create_knowledge_base\` com colunas que façam SENTIDO PRO CONTEXTO REAL (não copie genéricos).
+
+### 📞 VOZ (ligação telefônica)
+
+Quando a descrição inicial menciona **"ligação", "telefonema", "atende ao telefone", "voicebot", "call center", "atendimento telefônico"** OU envolve **prospecção outbound / cobrança por telefone / confirmação de consulta**, chame \`set_voice_config\` com defaults sensatos:
+- \`call_type: "inbound"\` quando atende ligações recebidas (SAC, dúvidas, primeira consulta)
+- \`call_type: "outbound"\` quando faz prospecção, cobrança ou follow-up ativo
+- \`agent_speaks_first: true\` (default — agente cumprimenta primeiro)
+- \`max_duration_minutes: 15\` (default)
+
+Pra nichos onde voz é típico (**Saúde, Imobiliária, Advocacia, Estética, Pet**) mas a descrição NÃO menciona ligação explicitamente, **NÃO ative voz automaticamente** — em vez disso, mencione na resposta final: "💡 esse tipo de agente costuma atender por ligação também — me peça aqui se quiser ativar."
+
+Aviso obrigatório na resposta final quando ativar voz: "⚠️ Pra ligações reais funcionarem, configure as chaves Telnyx + ElevenLabs em **Configurações → Voz**."
 
 
 ⛔ **REGRA CRÍTICA — NUNCA PERGUNTA EM CRIAÇÃO:**
@@ -1958,8 +1971,26 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
             }
             console.log(`[wizard-setup] catálogo ${resolvedNiche} agendou ${spec.tables.length} tabelas + ${spec.cadences.length} cadências + ${spec.kbTopics.length} KBs + ${spec.contextualGuardrails.length} guardrails contextuais`);
           }
+
+          // ── DETECÇÃO DE VOZ ──
+          // Quando descrição inicial menciona ligação/telefone explicitamente,
+          // ativa voice config deterministicamente. Nichos onde voz é típica
+          // (sinal "niche" só) NÃO ativam — agência ativa manualmente depois.
+          const firstUserMsg = incomingMessages.find((m) => m.role === "user")?.content ?? "";
+          const voiceIntent = detectVoiceIntent(firstUserMsg, resolvedNiche ?? null);
+          if (voiceIntent.signal === "strong" || voiceIntent.signal === "medium") {
+            deterministicCalls.push({
+              action: "set_voice_config",
+              params: {
+                call_type: voiceIntent.suggestedCallType,
+                agent_speaks_first: true,
+                max_duration_minutes: 15,
+              },
+            });
+            console.log(`[wizard-setup] voz ativada (sinal=${voiceIntent.signal}, tipo=${voiceIntent.suggestedCallType}): ${voiceIntent.reasons.join(" | ")}`);
+          }
         } catch (e) {
-          console.warn("[wizard-setup] universal limits/catálogo fetch failed:", e);
+          console.warn("[wizard-setup] universal limits/catálogo/voz fetch failed:", e);
         }
 
         // SEMPRE re-aplica greeting — LLM frequentemente seta com "Assistente"
@@ -2175,6 +2206,36 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
           }
         } catch (e) {
           console.warn("[wizard-setup] niche integrations appendix failed:", e);
+        }
+
+        // ── Aviso de voz: se set_voice_config foi executado mas chaves Telnyx
+        // ou ElevenLabs não estão configuradas, alerta na resposta final.
+        const voiceActivated = toolsExecuted.some((t) => t.name === "set_voice_config");
+        if (voiceActivated) {
+          try {
+            const uid = (authResult as any).user?.id;
+            if (uid) {
+              const { data: keys } = await adminClient
+                .from("user_api_keys")
+                .select("provider")
+                .eq("user_id", uid)
+                .in("provider", ["telnyx", "elevenlabs"]);
+              const haveTelnyx = (keys ?? []).some((k: any) => k.provider === "telnyx");
+              const haveEleven = (keys ?? []).some((k: any) => k.provider === "elevenlabs");
+              if (!haveTelnyx || !haveEleven) {
+                const missing: string[] = [];
+                if (!haveTelnyx) missing.push("Telnyx");
+                if (!haveEleven) missing.push("ElevenLabs");
+                const voiceWarn = `\n\n📞 **Voz ativada** — pra ligações reais funcionarem, configure ${missing.join(" + ")} em **Configurações → Voz**.`;
+                if (!content.includes("Voz ativada")) {
+                  content = `${content}${voiceWarn}`;
+                  console.log(`[wizard-setup] aviso de voz appended (missing: ${missing.join(",")})`);
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("[wizard-setup] voice keys check failed:", e);
+          }
         }
 
         if (toolsExecuted.length > 0) {

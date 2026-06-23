@@ -66,25 +66,30 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
   };
 
   const onTestEleven = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from("user_api_keys")
-      .select("api_key")
-      .eq("user_id", user.id)
-      .eq("provider", "elevenlabs")
-      .maybeSingle();
-    const key = data?.api_key;
-    if (!key) {
-      toast.error("Salve a chave ElevenLabs antes de testar");
-      return;
-    }
     try {
-      const res = await fetch("https://api.elevenlabs.io/v1/voices", {
-        headers: { "xi-api-key": key },
+      const { data, error } = await supabase.functions.invoke("voice-resources", {
+        body: { provider: "elevenlabs", action: "test" },
       });
-      if (res.ok) toast.success("ElevenLabs validada — chave funcionando");
-      else toast.error(`ElevenLabs rejeitou a chave (${res.status})`);
+      if (error) throw error;
+      if ((data as any)?.ok) toast.success("ElevenLabs validada — chave funcionando");
+      else toast.error((data as any)?.message ?? "Falhou");
+    } catch (e) {
+      toast.error(`Erro: ${(e as Error).message}`);
+    }
+  };
+
+  const onTestTelnyx = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("voice-resources", {
+        body: { provider: "telnyx", action: "test" },
+      });
+      if (error) throw error;
+      const d = data as { ok: boolean; balance?: string; currency?: string; message?: string };
+      if (d?.ok) {
+        toast.success(`Telnyx validada — saldo ${d.balance ?? "?"} ${d.currency ?? ""}`);
+      } else {
+        toast.error(d?.message ?? "Telnyx falhou");
+      }
     } catch (e) {
       toast.error(`Erro: ${(e as Error).message}`);
     }
@@ -169,17 +174,29 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
           >
             portal.telnyx.com <ExternalLink className="w-3 h-3" />
           </a>
-          {status?.telnyx_connected && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-[11px] text-destructive hover:text-destructive"
-              onClick={() => disconnect.mutate("telnyx")}
-              disabled={disconnect.isPending}
-            >
-              <Trash2 className="w-3 h-3 mr-1" /> Desconectar Telnyx
-            </Button>
-          )}
+          <div className="flex gap-1">
+            {status?.telnyx_connected && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={onTestTelnyx}
+                >
+                  Testar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-[11px] text-destructive hover:text-destructive"
+                  onClick={() => disconnect.mutate("telnyx")}
+                  disabled={disconnect.isPending}
+                >
+                  <Trash2 className="w-3 h-3 mr-1" /> Desconectar
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </Card>
 

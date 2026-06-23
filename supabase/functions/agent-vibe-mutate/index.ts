@@ -39,6 +39,7 @@ type MutateAction =
   | "seed_kb_topic"
   | "add_guardrail"
   | "mark_pending_table"
+  | "set_voice_config"
   | "commit_draft";
 
 type MutateRequest = {
@@ -830,6 +831,52 @@ serve(async (req) => {
           newConfig = { ...newConfig, pendingNicheTables: [...pending, tableSlug] };
         }
         logMessage = `Tabela "${table.label}" marcada como pendente`;
+        break;
+      }
+      case "set_voice_config": {
+        // Configura voz pro agente: callType (inbound/outbound), voiceId
+        // (ElevenLabs), phoneNumber (Telnyx). Aceita configuração parcial —
+        // os outros campos ficam com default. Wizard chama com defaults
+        // sensatos quando user confirma que agente atende ligações.
+        const callType = String(params.call_type ?? params.callType ?? "inbound");
+        const voiceId = params.voice_id ? String(params.voice_id) : null;
+        const phoneNumber = params.phone_number ? String(params.phone_number) : null;
+        const agentSpeaksFirst = params.agent_speaks_first !== undefined
+          ? Boolean(params.agent_speaks_first)
+          : true;
+        const maxDuration = typeof params.max_duration_minutes === "number"
+          ? params.max_duration_minutes
+          : 15;
+        const validCallType = ["inbound", "outbound"].includes(callType) ? callType : "inbound";
+
+        // Default voiceConfig pt-BR — voiceId "Lia" (EXAVITQu4vr4xnSDxMaL) é
+        // padrão ElevenLabs feminina BR. User troca depois no painel.
+        const existingVc = ((newConfig.voiceConfig ?? {}) as Record<string, any>);
+        const newVc = {
+          ...existingVc,
+          callType: validCallType,
+          voiceId: voiceId ?? existingVc.voiceId ?? "EXAVITQu4vr4xnSDxMaL",
+          language: existingVc.language ?? "pt-BR",
+          phoneNumber: phoneNumber ?? existingVc.phoneNumber ?? "",
+          agentSpeaksFirst,
+          maxCallDuration: maxDuration,
+          recordCalls: existingVc.recordCalls ?? false,
+          autoTranscription: existingVc.autoTranscription ?? true,
+          confirmationPhrases: existingVc.confirmationPhrases ?? true,
+        };
+        newConfig = { ...newConfig, voiceConfig: newVc };
+
+        // Marca canal "voice" como ativo (mesmo padrão de set_channel)
+        const channels = { ...(newConfig.channels ?? {}), voice: true };
+        newConfig = { ...newConfig, channels };
+
+        // Marca voice_provider e telnyx_phone_number nas colunas top-level
+        // pra runtime de chamadas achar os defaults sem ter que ler config jsonb.
+        updates.voice_provider = "elevenlabs";
+        if (voiceId) updates.voice_id = voiceId;
+        if (phoneNumber) updates.telnyx_phone_number = phoneNumber;
+
+        logMessage = `Voz configurada: ${validCallType}, voz ${newVc.voiceId.slice(0, 8)}…${phoneNumber ? `, número ${phoneNumber}` : ", sem número (config no painel)"}`;
         break;
       }
       case "commit_draft": {

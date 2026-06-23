@@ -291,6 +291,32 @@ export const WIZARD_TOOL_DEFS = [
   {
     type: "function",
     function: {
+      name: "set_voice_config",
+      description: "Configura o agente pra atender ligações telefônicas via Telnyx + ElevenLabs. Chame quando o user confirmar que o agente deve atender por voz. Marca canal 'voice' como ativo. Defaults sensatos pra PT-BR. Aviso na resposta final: agência precisa configurar chaves Telnyx + ElevenLabs em Configurações → Voz.",
+      parameters: {
+        type: "object",
+        properties: {
+          call_type: {
+            type: "string",
+            enum: ["inbound", "outbound"],
+            description: "inbound = atende ligações recebidas. outbound = faz prospecção/follow-up automático."
+          },
+          agent_speaks_first: {
+            type: "boolean",
+            description: "Se true (default), agente cumprimenta primeiro ao atender. False = espera o caller falar."
+          },
+          max_duration_minutes: {
+            type: "number",
+            description: "Duração máxima da chamada em minutos. Default 15."
+          },
+        },
+        required: ["call_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "commit_draft",
       description: "Marca o wizard como concluído. CHAME por ÚLTIMO, depois de criar identidade + instruções + tools + canais + tabelas + KBs + integrações + guardrails.",
       parameters: { type: "object", properties: {} },
