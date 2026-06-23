@@ -742,30 +742,54 @@ serve(async (req) => {
         // Seed: se o catálogo tem conteúdo starter, dispara ingest-document
         // pra criar kb_documents + chunks + embeddings (RAG funcional desde o
         // dia 1). Sem ingest, agente.knowledge_search não acharia o starter.
+        //
+        // Bug visto antes: usava SERVICE_ROLE_KEY como Bearer pra ingest, mas
+        // ingest-document.getAuthContext faz supabase.auth.getUser() que SÓ
+        // aceita JWT de usuário, não service role. Resultado: 401 silencioso,
+        // todas as KBs nascendo com badge "vazia" mesmo tendo seedContent.
+        // Fix: usa o `token` do caller (JWT do user). Quando o caller é service
+        // role (cron raro), faz insert direto em kb_documents sem chunks
+        // (RAG não funciona, mas usuário pelo menos vê o documento).
         let seedNote = "";
         if (topic.seedContent && kbRow?.id) {
-          try {
-            const ingResp = await fetch(`${SUPABASE_URL}/functions/v1/ingest-document`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                kb_id: kbRow.id,
-                source_type: "text",
-                title: `${topic.title} — Conteúdo starter`,
-                raw_content: topic.seedContent,
-              }),
-            });
-            if (ingResp.ok) {
-              seedNote = " + conteúdo starter ingerido";
-            } else {
-              const msg = await ingResp.text().catch(() => "");
-              console.warn("[seed_kb_topic] ingest failed:", ingResp.status, msg);
+          if (!isServiceRole) {
+            try {
+              const ingResp = await fetch(`${SUPABASE_URL}/functions/v1/ingest-document`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  kb_id: kbRow.id,
+                  source_type: "text",
+                  title: `${topic.title} — Conteúdo starter`,
+                  raw_content: topic.seedContent,
+                }),
+              });
+              if (ingResp.ok) {
+                seedNote = " + conteúdo starter ingerido";
+              } else {
+                const msg = await ingResp.text().catch(() => "");
+                console.warn("[seed_kb_topic] ingest failed:", ingResp.status, msg);
+              }
+            } catch (e) {
+              console.warn("[seed_kb_topic] ingest exception:", e);
             }
-          } catch (e) {
-            console.warn("[seed_kb_topic] ingest exception:", e);
+          } else {
+            // Fallback service role: insert direto sem chunks (visível mas
+            // sem embedding pro knowledge_search). Agência pode reprocessar
+            // depois pelo painel.
+            const { error: docErr } = await admin.from("kb_documents").insert({
+              knowledge_base_id: kbRow.id,
+              source_type: "text",
+              title: `${topic.title} — Conteúdo starter`,
+              raw_content: topic.seedContent,
+              status: "ready",
+              metadata: { seeded: true, niche, topic_slug: topicSlug, no_embeddings: true },
+            });
+            if (!docErr) seedNote = " + conteúdo starter inserido (sem embeddings)";
+            else console.warn("[seed_kb_topic] direct insert failed:", docErr.message);
           }
         }
         logMessage = `Base de conhecimento "${topic.title}" criada${seedNote}`;

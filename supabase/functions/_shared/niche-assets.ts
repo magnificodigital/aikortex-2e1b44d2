@@ -223,7 +223,67 @@ export const NICHE_ASSETS: Record<string, NicheAssetSpec> = {
 - Alvará prefeitura: R$ 100-500
 - Honorário contador pra abertura: R$ 500-2.500 (varia por complexidade)`,
       },
-      { slug: "calendario_fiscal", title: "Calendário fiscal anual", description: "Datas de DAS, DARF, ECF, DCTF, etc" },
+      {
+        slug: "calendario_fiscal",
+        title: "Calendário fiscal anual",
+        description: "Datas de DAS, DARF, ECF, DCTF, etc",
+        seedContent: `# Calendário Fiscal Anual — Principais Prazos
+
+> ✏️ **Confira sempre a Receita** — alguns prazos mudam por instrução normativa.
+
+## Obrigações MENSAIS
+
+### DAS — Simples Nacional
+- **Vencimento:** todo dia 20 do mês seguinte
+- **Quem paga:** empresas no Simples Nacional
+- **Geração:** Portal Simples Nacional
+
+### GPS — INSS Empresas
+- **Vencimento:** todo dia 20 do mês seguinte
+- **Quem paga:** empresas com folha de pagamento
+- **Código:** varia por categoria
+
+### DARF — IRRF/PIS/COFINS/CSLL (Lucro Presumido/Real)
+- **Vencimento:** último dia útil do mês seguinte ao fato gerador
+
+## Obrigações TRIMESTRAIS
+
+### IRPJ/CSLL — Lucro Presumido
+- **Apuração:** trimestral (jan-mar, abr-jun, jul-set, out-dez)
+- **Vencimento:** último dia útil do mês seguinte ao trimestre
+- **2026:** abr/30, jul/31, out/31, jan/30 (do ano seguinte)
+
+## Obrigações ANUAIS
+
+### DASN-SIMEI (MEI)
+- **Vencimento:** 31 de maio
+- **O que entrega:** receita bruta do ano anterior
+
+### DEFIS (Simples Nacional)
+- **Vencimento:** 31 de março
+- **O que entrega:** declaração socioeconômica e fiscal
+
+### IRPF (Pessoa Física)
+- **Vencimento:** 30 de maio
+- **Atenção:** sócios PJ entregam IRPF separado
+
+### ECD — Escrituração Contábil Digital
+- **Vencimento:** último dia útil de maio (ano-base anterior)
+- **Quem entrega:** Lucro Presumido e Real
+
+### ECF — Escrituração Contábil Fiscal
+- **Vencimento:** último dia útil de julho (ano-base anterior)
+- **Quem entrega:** todas as PJs (exceto MEI e algumas Simples)
+
+### DIRF — Declaração de IRRF
+- **Vencimento:** último dia útil de fevereiro
+- **Quem entrega:** empresas que retiveram IRRF no ano anterior
+
+## Como avisar o cliente
+- **D-15** antes do vencimento → mensagem de prévia + lista do que precisa
+- **D-3** → cobrança dos documentos faltantes
+- **D-0** → aviso de pagamento + comprovante`,
+      },
       {
         slug: "faq_contabil",
         title: "FAQ — perguntas frequentes",
@@ -256,7 +316,69 @@ R: Pra **Lucro Presumido**: ECD até último dia útil de maio do ano seguinte, 
 ## P: Quando preciso virar Lucro Presumido?
 R: É obrigatório quando o faturamento passa de **R$ 4,8 milhões/ano**. Antes disso, o Simples Nacional costuma ser mais vantajoso (alíquotas menores). Mas há casos onde Lucro Presumido compensa antes — quando a margem de lucro real é menor que a presumida (8% comércio, 32% serviço). A gente faz uma análise comparativa anual pra ver qual regime cabe melhor pra você.`,
       },
-      { slug: "tabela_honorarios", title: "Tabela de honorários", description: "Valor por tipo de serviço (revisão, abertura, mensal, etc)" },
+      {
+        slug: "tabela_honorarios",
+        title: "Tabela de honorários",
+        description: "Valor por tipo de serviço (revisão, abertura, mensal, etc)",
+        seedContent: `# Tabela de Honorários — Escritório Contábil
+
+> ✏️ **Personalize com seus valores reais.** Esta é referência de mercado (SMB BR 2026).
+
+## Honorários Mensais (mensalidade contábil)
+
+### MEI
+- **R$ 99 a R$ 199/mês** — escritórios SMB
+- **Inclui:** DASN-SIMEI anual, dúvidas básicas via WhatsApp
+- **NÃO inclui:** emissão de NF (geralmente o MEI faz direto)
+
+### Simples Nacional
+| Faturamento mensal | Honorário típico |
+|---|---|
+| Até R$ 30 mil | R$ 350 — R$ 600/mês |
+| R$ 30k a R$ 100k | R$ 600 — R$ 1.200/mês |
+| R$ 100k a R$ 400k | R$ 1.200 — R$ 2.500/mês |
+
+### Lucro Presumido
+- **R$ 1.500 — R$ 4.000/mês** (varia por faturamento e setor)
+- **Setores complexos** (e-commerce, serviços com retenções): +30%
+
+### Lucro Real
+- **R$ 3.000 — R$ 10.000+/mês**
+- Exige mais escrituração (ECD/ECF complexo, controles internos)
+
+## Serviços PONTUAIS
+
+| Serviço | Valor médio |
+|---|---|
+| Abertura de empresa (LTDA) | R$ 800 — R$ 2.500 |
+| Abertura MEI | R$ 0 — R$ 200 |
+| Alteração contratual | R$ 500 — R$ 1.500 |
+| Baixa de empresa | R$ 1.500 — R$ 4.000 |
+| Recuperação de tributos | 30% — 50% sobre o recuperado (êxito) |
+| Parcelamento PARANÊLO/Refis | R$ 800 — R$ 3.000 |
+| Auditoria de balanço | R$ 2.500 — R$ 15.000 |
+| Defesa em autuação fiscal | R$ 3.000 — R$ 20.000+ |
+
+## Honorário de PRÓ-LABORE
+- **R$ 200 — R$ 600/sócio/mês** se for serviço separado
+- Geralmente incluído na mensalidade quando até 3 sócios
+
+## Forma de pagamento
+- **Boleto mensal** (mais comum)
+- **PIX** (escritórios menores)
+- **Cartão recorrente** (escritórios digitais)
+- Vencimento típico: dia 5 ou 10 do mês
+
+## Reajuste
+- **Anual pelo IPCA** ou **renegociação por faturamento**
+- Avise cliente 30 dias antes
+
+## Como passar valor pro lead
+1. **Pergunte primeiro:** faturamento, regime atual, tipo de negócio, # de sócios e funcionários
+2. **Faça orçamento por escrito** (proposta com escopo claro)
+3. **Apresente o que está INCLUÍDO** (não só o preço)
+4. Cliente que pergunta só preço sem contexto → pode não ser bom fit`,
+      },
     ],
     contextualGuardrails: [
       "Dar parecer fiscal definitivo sem revisão do contador",
