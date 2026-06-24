@@ -31,6 +31,10 @@ interface VoiceCallPanelProps {
   agentGreeting?: string;
   hasElevenLabsKey: boolean;
   onGoToIntegrations: () => void;
+  /** Voz pré-configurada do agente (config.voiceConfig.voiceId). Quando
+   * presente, o teste já usa essa voz e o seletor fica oculto — UX limpa,
+   * sem precisar escolher de novo. User pode trocar via "Trocar voz". */
+  defaultVoiceId?: string;
 }
 
 /* ── Animated Orb ── */
@@ -175,8 +179,13 @@ const VoiceCallPanel = ({
   agentGreeting,
   hasElevenLabsKey,
   onGoToIntegrations,
+  defaultVoiceId,
 }: VoiceCallPanelProps) => {
-  const [selectedVoice, setSelectedVoice] = useState(VOICES[0].id);
+  // Usa voz pré-configurada do agente quando disponível, fallback pro primeiro
+  // item de VOICES. User pode revelar/trocar via botão "Trocar voz".
+  const [selectedVoice, setSelectedVoice] = useState(defaultVoiceId || VOICES[0].id);
+  const [voiceSelectorOpen, setVoiceSelectorOpen] = useState(false);
+  const hasPresetVoice = !!defaultVoiceId;
 
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
   const [isMuted, setIsMuted] = useState(false);
@@ -386,20 +395,38 @@ const VoiceCallPanel = ({
         {formatTime(duration)}
       </p>
 
-      {/* Voice selector */}
+      {/* Voice selector — escondido quando agente tem voz pré-configurada.
+          User vê só uma linha com "Voz: {nome} (trocar)" e pode revelar
+          o dropdown clicando em "trocar". */}
       {(callStatus === "idle" || callStatus === "ended") && (
         <div className="mb-6 w-full max-w-[220px]">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 block">Voz</label>
-          <Select value={selectedVoice} onValueChange={setSelectedVoice}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {VOICES.map(v => (
-                <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {hasPresetVoice && !voiceSelectorOpen ? (
+            <div className="text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Voz do agente</p>
+              <button
+                type="button"
+                onClick={() => setVoiceSelectorOpen(true)}
+                className="text-xs text-foreground hover:text-primary transition-colors"
+              >
+                {VOICES.find(v => v.id === selectedVoice)?.name || "Configurada"}
+                <span className="text-muted-foreground ml-1.5 text-[10px]">· trocar</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 block">Voz</label>
+              <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VOICES.map(v => (
+                    <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
         </div>
       )}
 

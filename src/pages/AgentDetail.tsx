@@ -1448,6 +1448,7 @@ Se user falar de algum desses, diga claramente o que falta.
               agentGreeting={agentConfig?.greetingMessage || ""}
               hasElevenLabsKey={!!keys["elevenlabs"]?.configured}
               onGoToIntegrations={() => { handleCloseVoiceCall(); setRightSection("resources.integrations"); setMobileTab("config"); }}
+              defaultVoiceId={agentConfig?.voiceConfig?.voiceId}
             />
           </ConversationProvider>
         </SheetContent>
