@@ -542,6 +542,7 @@ export type Database = {
       available_llms: {
         Row: {
           active: boolean
+          completion_price_per_million_usd: number | null
           consecutive_failures: number
           context_window: number | null
           created_at: string
@@ -549,9 +550,11 @@ export type Database = {
           id: string
           last_health_check_at: string | null
           last_health_check_error: string | null
+          modality: string | null
           model_id: string
           notes: string | null
           priority: number
+          prompt_price_per_million_usd: number | null
           provider: string
           status: string
           supports_streaming: boolean
@@ -562,6 +565,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          completion_price_per_million_usd?: number | null
           consecutive_failures?: number
           context_window?: number | null
           created_at?: string
@@ -569,9 +573,11 @@ export type Database = {
           id?: string
           last_health_check_at?: string | null
           last_health_check_error?: string | null
+          modality?: string | null
           model_id: string
           notes?: string | null
           priority?: number
+          prompt_price_per_million_usd?: number | null
           provider: string
           status?: string
           supports_streaming?: boolean
@@ -582,6 +588,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          completion_price_per_million_usd?: number | null
           consecutive_failures?: number
           context_window?: number | null
           created_at?: string
@@ -589,9 +596,11 @@ export type Database = {
           id?: string
           last_health_check_at?: string | null
           last_health_check_error?: string | null
+          modality?: string | null
           model_id?: string
           notes?: string | null
           priority?: number
+          prompt_price_per_million_usd?: number | null
           provider?: string
           status?: string
           supports_streaming?: boolean
