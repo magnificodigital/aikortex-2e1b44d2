@@ -38,7 +38,9 @@ const BG_SOUNDS: Array<{ id: string; label: string; url?: string }> = [
   { id: "none", label: "Silêncio" },
   { id: "office", label: "Escritório", url: "/sounds/office.mp3" },
   { id: "callcenter", label: "Call center", url: "/sounds/callcenter.mp3" },
-  { id: "cafe", label: "Café", url: "/sounds/cafe.mp3" },
+  // Café foi externalizado via Lovable Assets (164MB > limite 10MB do repo).
+  // Pointer fica em public/sounds/cafe.mp3.asset.json apontando pra:
+  { id: "cafe", label: "Café", url: "/__l5e/assets-v1/d785fcf3-476d-4b2d-b6e7-5056dbe081f1/cafe.mp3" },
 ];
 
 // Palavras-chave que disparam encerramento client-side (fallback caso o
