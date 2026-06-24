@@ -24,6 +24,23 @@ const VOICES = [
 
 type CallStatus = "idle" | "connecting" | "connected" | "ended";
 
+// Ambient backgrounds — loops curtos em CDN público que dão "feel" de chamada
+// real. Vol baixíssimo (15%) pra não competir com voz. Silêncio = padrão.
+const BG_SOUNDS: Array<{ id: string; label: string; url?: string }> = [
+  { id: "none", label: "Silêncio" },
+  { id: "office", label: "Escritório", url: "https://cdn.pixabay.com/audio/2022/03/15/audio_2c9a2e7a5c.mp3" },
+  { id: "callcenter", label: "Call center", url: "https://cdn.pixabay.com/audio/2022/10/30/audio_6c8dc4d04e.mp3" },
+  { id: "cafe", label: "Café", url: "https://cdn.pixabay.com/audio/2022/03/24/audio_d56e83d0d4.mp3" },
+];
+
+// Palavras-chave que disparam encerramento client-side (fallback caso o
+// end_call_phrases server-side não dispare). Match em transcript do user.
+const END_CALL_KEYWORDS = [
+  "tchau", "ate logo", "até logo", "ate mais", "até mais",
+  "desligar", "encerrar", "vou desligar", "valeu, tchau",
+  "obrigado, tchau", "obrigada, tchau", "adeus",
+];
+
 interface VoiceCallPanelProps {
   agentName: string;
   agentAvatar: string;
@@ -186,6 +203,10 @@ const VoiceCallPanel = ({
   const [selectedVoice, setSelectedVoice] = useState(defaultVoiceId || VOICES[0].id);
   const [voiceSelectorOpen, setVoiceSelectorOpen] = useState(false);
   const hasPresetVoice = !!defaultVoiceId;
+  // Som de fundo da chamada — silêncio por default; user pode escolher
+  // ambient (escritório, call center, café) pra dar feel de chamada real.
+  const [bgSound, setBgSound] = useState<string>("none");
+  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
   const [isMuted, setIsMuted] = useState(false);
@@ -202,14 +223,45 @@ const VoiceCallPanel = ({
       timerRef.current = setInterval(() => {
         setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
       }, 1000);
+      // Inicia bg sound se selecionado. Usa loop infinito, volume baixo
+      // (15%) pra não competir com a voz do agente.
+      const bg = BG_SOUNDS.find(b => b.id === bgSound);
+      if (bg?.url) {
+        const audio = new Audio(bg.url);
+        audio.loop = true;
+        audio.volume = 0.15;
+        audio.play().catch((e) => console.warn("bg sound failed:", e));
+        bgAudioRef.current = audio;
+      }
     },
     onDisconnect: () => {
       setCallStatus("ended");
       if (timerRef.current) clearInterval(timerRef.current);
+      // Para bg sound
+      if (bgAudioRef.current) {
+        bgAudioRef.current.pause();
+        bgAudioRef.current = null;
+      }
     },
     onMessage: (msg: any) => {
       if (msg.type === "user_transcript") {
-        setTranscript(prev => [...prev, { role: "user", text: msg.user_transcription_event?.user_transcript || "" }]);
+        const text = msg.user_transcription_event?.user_transcript || "";
+        setTranscript(prev => [...prev, { role: "user", text }]);
+        // Fallback client-side: se user disse "tchau" e o server ainda não
+        // encerrou em 3s, força endSession. Cobre caso end_call_phrases
+        // não disparar (config server pode falhar silenciosamente).
+        const lower = text.toLowerCase().trim();
+        if (END_CALL_KEYWORDS.some(kw => lower.includes(kw))) {
+          console.log("[voice-call] palavra de encerramento detectada client-side:", text);
+          setTimeout(() => {
+            // Se ainda conectado depois de 3s (tempo pra agente responder
+            // despedida), força encerramento. Server-side handler normalmente
+            // já encerrou — esse setTimeout é só fallback.
+            if (conversation.status === "connected") {
+              conversation.endSession().catch(() => {});
+            }
+          }, 3000);
+        }
       } else if (msg.type === "agent_response") {
         setTranscript(prev => [...prev, { role: "agent", text: msg.agent_response_event?.agent_response || "" }]);
       }
@@ -219,6 +271,10 @@ const VoiceCallPanel = ({
       toast.error(typeof err === "string" ? err : err?.message || "Erro na conexão de voz");
       setCallStatus("ended");
       if (timerRef.current) clearInterval(timerRef.current);
+      if (bgAudioRef.current) {
+        bgAudioRef.current.pause();
+        bgAudioRef.current = null;
+      }
     },
   });
 
@@ -427,6 +483,21 @@ const VoiceCallPanel = ({
               </Select>
             </>
           )}
+
+          {/* Som de fundo da chamada (opcional). Só aparece pré-chamada. */}
+          <div className="mt-3">
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 block">Som de fundo</label>
+            <Select value={bgSound} onValueChange={setBgSound}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BG_SOUNDS.map(b => (
+                  <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       )}
 

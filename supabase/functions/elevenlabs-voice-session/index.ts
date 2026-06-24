@@ -57,23 +57,58 @@ serve(async (req) => {
     const agentLang = language || "pt";
     const isEnglish = agentLang === "en";
     
+    // Frases que encerram a chamada quando faladas pelo cliente. Detectadas
+    // pelo ElevenLabs server-side, agente desliga gracefully (sem precisar
+    // de tool call manual). Cobre variações em PT-BR.
+    const endCallPhrases = isEnglish
+      ? ["goodbye", "bye", "end call", "hang up", "see you later"]
+      : [
+          "tchau", "tchaau", "até logo", "ate logo", "até mais", "ate mais",
+          "encerrar ligação", "desligar", "pode desligar",
+          "obrigado, tchau", "valeu, tchau", "vou desligar",
+          "até a próxima", "ate a proxima", "adeus",
+        ];
+
     const agentBody: Record<string, unknown> = {
       name: `${agentName || "Agente"} - Sessão`,
       conversation_config: {
         agent: {
           prompt: {
-            prompt: agentPrompt || `Você é o agente ${agentName || "IA"}. Responda sempre em português brasileiro de forma profissional e amigável.`,
+            // Adiciona instrução pra agente reconhecer despedida e encerrar
+            // proativamente (além das end_call_phrases). Linguagem natural.
+            prompt: (agentPrompt || `Você é o agente ${agentName || "IA"}. Responda sempre em português brasileiro de forma profissional e amigável.`) +
+              `\n\n## ENCERRAMENTO\nQuando o cliente se despedir (tchau, até logo, valeu, vou desligar, encerrar ligação etc.), responda uma despedida curta e use a ferramenta end_call pra finalizar a chamada. Não fique pedindo "tem mais alguma coisa?" se ele já se despediu — encerra educadamente.`,
           },
           first_message: firstMessage || `Olá! Sou ${agentName || "seu agente"}. Como posso ajudar?`,
           language: agentLang,
         },
         asr: {
+          // Lower silence threshold = agente responde mais rápido (default
+          // era ~700ms). Pra conversa natural fica mais responsivo.
           ...(!isEnglish && { model: "custom" }),
+          user_input_audio_format: "pcm_16000",
         },
         tts: {
           voice_id: voiceId || "EXAVITQu4vr4xnSDxMaL",
           ...(!isEnglish && { model_id: "eleven_turbo_v2_5" }),
+          // Otimização de streaming: 4 = máxima redução de latência (sacrifica
+          // pouca qualidade). Antes era default (~2 = baixa otimização).
+          optimize_streaming_latency: 4,
+          // pcm_16000 evita encoding/decoding extra de mp3, reduz latência.
+          agent_output_audio_format: "pcm_16000",
         },
+        // Voice Activity Detection: tempo de silêncio antes do agente assumir
+        // que user terminou de falar. Default ~700-1000ms; 400ms deixa
+        // conversa muito mais responsiva (caveat: pode cortar pausas longas).
+        turn: {
+          turn_timeout: 8,
+          mode: "turn",
+        },
+      },
+      // System tools: end_call permite o LLM encerrar quando detectar despedida
+      // (combinado com end_call_phrases que detecta server-side).
+      platform_settings: {
+        end_call_phrases: endCallPhrases,
       },
     };
 
