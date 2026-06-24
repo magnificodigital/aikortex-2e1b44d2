@@ -41,10 +41,34 @@ const BG_SOUNDS: Array<{ id: string; label: string; url?: string }> = [
 // Palavras-chave que disparam encerramento client-side (fallback caso o
 // end_call_phrases server-side não dispare). Match em transcript do user.
 const END_CALL_KEYWORDS = [
-  "tchau", "ate logo", "até logo", "ate mais", "até mais",
-  "desligar", "encerrar", "vou desligar", "valeu, tchau",
-  "obrigado, tchau", "obrigada, tchau", "adeus",
+  // Variações principais
+  "tchau", "tchaau", "txau", "xau",
+  "ate logo", "até logo", "ate mais", "até mais",
+  "ate breve", "até breve", "ate a proxima", "até a próxima",
+  // Encerramento explícito
+  "desligar", "vou desligar", "pode desligar", "desliga", "desligo",
+  "encerrar", "encerra a ligacao", "encerra a ligação",
+  // Despedidas com agradecimento
+  "valeu", "valeu tchau", "valeu, tchau",
+  "obrigado tchau", "obrigada tchau",
+  "muito obrigado", "muito obrigada",
+  // Despedidas formais
+  "adeus", "ciao",
+  // Inglês comum (caso transcrição venha em EN)
+  "bye", "goodbye", "good bye",
 ];
+
+/** Normaliza texto: lowercase, remove acentos, pontuação e espaços extras
+ * pra match mais robusto contra END_CALL_KEYWORDS. "Tchau!" vira "tchau". */
+function normalizeForKeyword(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // remove acentos
+    .replace(/[^a-z0-9\s]/g, " ")    // remove pontuação
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 interface VoiceCallPanelProps {
   agentName: string;
@@ -271,26 +295,45 @@ const VoiceCallPanel = ({
       stopBgSound();
     },
     onMessage: (msg: any) => {
-      if (msg.type === "user_transcript") {
-        const text = msg.user_transcription_event?.user_transcript || "";
-        setTranscript(prev => [...prev, { role: "user", text }]);
-        // Fallback client-side: se user disse "tchau" e o server ainda não
-        // encerrou em 3s, força endSession. Cobre caso end_call_phrases
-        // não disparar (config server pode falhar silenciosamente).
-        const lower = text.toLowerCase().trim();
-        if (END_CALL_KEYWORDS.some(kw => lower.includes(kw))) {
-          console.log("[voice-call] palavra de encerramento detectada client-side:", text);
+      // Debug verboso: ElevenLabs muda formato de mensagem entre versões da SDK.
+      // Log de TODO msg pra diagnosticar quando algo não funcionar.
+      console.log("[voice-call] msg recebido:", msg?.type, msg);
+
+      // Extrai texto de várias possíveis localizações (SDK varia entre versões)
+      const extractedText =
+        msg?.user_transcription_event?.user_transcript ??
+        msg?.user_transcript ??
+        msg?.transcript ??
+        msg?.text ??
+        "";
+
+      const isUserMsg =
+        msg?.type === "user_transcript" ||
+        msg?.type === "transcript" ||
+        msg?.type === "user_message" ||
+        msg?.source === "user";
+
+      if (isUserMsg && extractedText) {
+        setTranscript(prev => [...prev, { role: "user", text: extractedText }]);
+        // Match robusto: normaliza (lower, sem acento, sem pontuação) e
+        // testa contra cada keyword.
+        const normalized = normalizeForKeyword(extractedText);
+        const matched = END_CALL_KEYWORDS.find(kw => normalized.includes(normalizeForKeyword(kw)));
+        if (matched) {
+          console.log(`[voice-call] 🛑 encerramento detectado — keyword "${matched}" em "${extractedText}". Encerrando em 2s pra agente responder despedida.`);
+          // Reduzido de 3s pra 2s — tempo pro agente dizer "Tchau, até logo!"
+          // e a gente encerra. Se agente demorar mais, perde a despedida mas
+          // ao menos não fica preso na call.
           setTimeout(() => {
-            // Se ainda conectado depois de 3s (tempo pra agente responder
-            // despedida), força encerramento. Server-side handler normalmente
-            // já encerrou — esse setTimeout é só fallback.
-            if (conversation.status === "connected") {
-              conversation.endSession().catch(() => {});
-            }
-          }, 3000);
+            console.log(`[voice-call] forçando endSession (status atual: ${conversation.status})`);
+            conversation.endSession()
+              .then(() => console.log("[voice-call] endSession OK"))
+              .catch((e) => console.warn("[voice-call] endSession falhou:", e));
+          }, 2000);
         }
-      } else if (msg.type === "agent_response") {
-        setTranscript(prev => [...prev, { role: "agent", text: msg.agent_response_event?.agent_response || "" }]);
+      } else if (msg?.type === "agent_response" || msg?.source === "ai") {
+        const agentText = msg?.agent_response_event?.agent_response ?? msg?.text ?? "";
+        if (agentText) setTranscript(prev => [...prev, { role: "agent", text: agentText }]);
       }
     },
     onError: (err: any) => {
