@@ -24,14 +24,38 @@ const VOICES = [
 
 type CallStatus = "idle" | "connecting" | "connected" | "ended";
 
-// Ambient backgrounds — loops curtos em CDN público que dão "feel" de chamada
-// real. Vol baixíssimo (15%) pra não competir com voz. Silêncio = padrão.
-const BG_SOUNDS: Array<{ id: string; label: string; url?: string }> = [
+// Ambient backgrounds — gerados via Web Audio API (pink noise + lowpass
+// filter). Sem CDN externo: 100% reliable, sem CORS, sem 404. Cada tipo
+// usa frequência diferente pra simular ambientes (office baixo/grave,
+// callcenter banda-voz, café mais brilhante).
+const BG_SOUNDS: Array<{ id: string; label: string; frequency?: number; gain?: number }> = [
   { id: "none", label: "Silêncio" },
-  { id: "office", label: "Escritório", url: "https://cdn.pixabay.com/audio/2022/03/15/audio_2c9a2e7a5c.mp3" },
-  { id: "callcenter", label: "Call center", url: "https://cdn.pixabay.com/audio/2022/10/30/audio_6c8dc4d04e.mp3" },
-  { id: "cafe", label: "Café", url: "https://cdn.pixabay.com/audio/2022/03/24/audio_d56e83d0d4.mp3" },
+  { id: "office", label: "Escritório", frequency: 600, gain: 0.04 },
+  { id: "callcenter", label: "Call center", frequency: 900, gain: 0.06 },
+  { id: "cafe", label: "Café", frequency: 1200, gain: 0.05 },
 ];
+
+/** Gera pink noise (mais natural que white) num AudioBuffer reutilizável.
+ * Algoritmo de Voss-McCartney aproximado — soa parecido com ruído ambient
+ * de fundo de chamada. Buffer de 2s loopado infinitamente. */
+function createPinkNoiseBuffer(ctx: AudioContext): AudioBuffer {
+  const bufferSize = 2 * ctx.sampleRate;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const output = buffer.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    const white = Math.random() * 2 - 1;
+    b0 = 0.99886 * b0 + white * 0.0555179;
+    b1 = 0.99332 * b1 + white * 0.0750759;
+    b2 = 0.96900 * b2 + white * 0.1538520;
+    b3 = 0.86650 * b3 + white * 0.3104856;
+    b4 = 0.55000 * b4 + white * 0.5329522;
+    b5 = -0.7616 * b5 - white * 0.0168980;
+    output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+    b6 = white * 0.115926;
+  }
+  return buffer;
+}
 
 // Palavras-chave que disparam encerramento client-side (fallback caso o
 // end_call_phrases server-side não dispare). Match em transcript do user.
@@ -206,7 +230,43 @@ const VoiceCallPanel = ({
   // Som de fundo da chamada — silêncio por default; user pode escolher
   // ambient (escritório, call center, café) pra dar feel de chamada real.
   const [bgSound, setBgSound] = useState<string>("none");
-  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
+  const bgAudioCtxRef = useRef<AudioContext | null>(null);
+  const bgNoiseSourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+  const startBgSound = useCallback((soundId: string) => {
+    const cfg = BG_SOUNDS.find(b => b.id === soundId);
+    if (!cfg || !cfg.frequency) return;
+    try {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx: AudioContext = new Ctx();
+      const buffer = createPinkNoiseBuffer(ctx);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = cfg.frequency;
+      const gain = ctx.createGain();
+      gain.gain.value = cfg.gain ?? 0.05;
+      source.connect(filter).connect(gain).connect(ctx.destination);
+      source.start();
+      bgAudioCtxRef.current = ctx;
+      bgNoiseSourceRef.current = source;
+      console.log(`[voice-call] bg sound iniciado: ${soundId} (freq=${cfg.frequency}Hz, gain=${cfg.gain})`);
+    } catch (e) {
+      console.warn("[voice-call] bg sound falhou:", e);
+    }
+  }, []);
+
+  const stopBgSound = useCallback(() => {
+    try {
+      bgNoiseSourceRef.current?.stop();
+      bgNoiseSourceRef.current?.disconnect();
+      bgAudioCtxRef.current?.close();
+    } catch { /* já parado */ }
+    bgNoiseSourceRef.current = null;
+    bgAudioCtxRef.current = null;
+  }, []);
 
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
   const [isMuted, setIsMuted] = useState(false);
@@ -223,25 +283,14 @@ const VoiceCallPanel = ({
       timerRef.current = setInterval(() => {
         setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
       }, 1000);
-      // Inicia bg sound se selecionado. Usa loop infinito, volume baixo
-      // (15%) pra não competir com a voz do agente.
-      const bg = BG_SOUNDS.find(b => b.id === bgSound);
-      if (bg?.url) {
-        const audio = new Audio(bg.url);
-        audio.loop = true;
-        audio.volume = 0.15;
-        audio.play().catch((e) => console.warn("bg sound failed:", e));
-        bgAudioRef.current = audio;
-      }
+      // Inicia bg sound se selecionado. Web Audio API gera pink noise
+      // procedural — sem CDN externo, garantido funciona.
+      startBgSound(bgSound);
     },
     onDisconnect: () => {
       setCallStatus("ended");
       if (timerRef.current) clearInterval(timerRef.current);
-      // Para bg sound
-      if (bgAudioRef.current) {
-        bgAudioRef.current.pause();
-        bgAudioRef.current = null;
-      }
+      stopBgSound();
     },
     onMessage: (msg: any) => {
       if (msg.type === "user_transcript") {
@@ -271,10 +320,7 @@ const VoiceCallPanel = ({
       toast.error(typeof err === "string" ? err : err?.message || "Erro na conexão de voz");
       setCallStatus("ended");
       if (timerRef.current) clearInterval(timerRef.current);
-      if (bgAudioRef.current) {
-        bgAudioRef.current.pause();
-        bgAudioRef.current = null;
-      }
+      stopBgSound();
     },
   });
 
