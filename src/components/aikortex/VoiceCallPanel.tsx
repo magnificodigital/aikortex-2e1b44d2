@@ -33,7 +33,7 @@ type CallStatus = "idle" | "connecting" | "connected" | "ended";
 const STORAGE_BASE = "https://jcahtniqqiaefszhgpqx.supabase.co/storage/v1/object/public/voice-ambience";
 const BG_SOUNDS: Array<{ id: string; label: string; url?: string }> = [
   { id: "none", label: "Silêncio" },
-  { id: "office", label: "Escritório", url: `${STORAGE_BASE}/office.mp3` },
+  { id: "nature", label: "Natureza", url: `${STORAGE_BASE}/nature.mp3` },
   { id: "callcenter", label: "Call center", url: `${STORAGE_BASE}/callcenter.mp3` },
   { id: "cafe", label: "Café", url: `${STORAGE_BASE}/cafe.mp3` },
 ];
