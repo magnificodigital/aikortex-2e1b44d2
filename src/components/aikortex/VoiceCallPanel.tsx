@@ -24,31 +24,22 @@ const VOICES = [
 
 type CallStatus = "idle" | "connecting" | "connected" | "ended";
 
-// Ambient backgrounds: gerados procedural via Web Audio API com múltiplas
-// camadas (brown noise base + filtros + eventos aleatórios). NÃO substitui
-// gravação real — pra qualidade studio, hospedar .mp3 em public/sounds/.
-// Mas pra "feel" de chamada com algum ambient, esses 3 perfis funcionam.
-const BG_SOUNDS: Array<{ id: string; label: string; profile?: "office" | "callcenter" | "cafe" }> = [
+// Ambient backgrounds: usa arquivos .mp3 REAIS hospedados em public/sounds/.
+// Procedural (pink/brown noise) foi tentado e descartado — soa artificial.
+// Cada perfil aponta pra arquivo local; se faltar, item fica disabled.
+//
+// PARA ATIVAR: subir 3 arquivos .mp3 (loopáveis, 1-3 min cada, < 2MB cada)
+// em public/sounds/:
+//   - office.mp3       (burburinho leve, AC, digitação distante)
+//   - callcenter.mp3   (fones, conversas múltiplas baixinho, beeps esporádicos)
+//   - cafe.mp3         (máquina café, conversa distante, copos)
+// Fontes legais: freesound.org (CC0), pixabay.com/sound-effects/ (free), mixkit.co
+const BG_SOUNDS: Array<{ id: string; label: string; url?: string }> = [
   { id: "none", label: "Silêncio" },
-  { id: "office", label: "Escritório", profile: "office" },
-  { id: "callcenter", label: "Call center", profile: "callcenter" },
-  { id: "cafe", label: "Café", profile: "cafe" },
+  { id: "office", label: "Escritório", url: "/sounds/office.mp3" },
+  { id: "callcenter", label: "Call center", url: "/sounds/callcenter.mp3" },
+  { id: "cafe", label: "Café", url: "/sounds/cafe.mp3" },
 ];
-
-/** Brown noise (mais grave que pink, parece mais com AC/HVAC distante). */
-function createBrownNoiseBuffer(ctx: AudioContext): AudioBuffer {
-  const bufferSize = 4 * ctx.sampleRate;
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const output = buffer.getChannelData(0);
-  let lastOut = 0;
-  for (let i = 0; i < bufferSize; i++) {
-    const white = Math.random() * 2 - 1;
-    output[i] = (lastOut + 0.02 * white) / 1.02;
-    lastOut = output[i];
-    output[i] *= 3.5; // amplifica
-  }
-  return buffer;
-}
 
 // Palavras-chave que disparam encerramento client-side (fallback caso o
 // end_call_phrases server-side não dispare). Match em transcript do user.
@@ -226,125 +217,36 @@ const VoiceCallPanel = ({
   const bgAudioCtxRef = useRef<AudioContext | null>(null);
   const bgNoiseSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  // Refs pra cleanup de timers de eventos aleatórios (digitação, clinks)
-  const bgEventTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  /** Toca um "click" curto (pra simular digitação no escritório). */
-  const playClick = useCallback((ctx: AudioContext, gain = 0.008) => {
-    const buffer = ctx.createBuffer(1, 0.02 * ctx.sampleRate, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (0.003 * ctx.sampleRate));
-    }
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = "highpass";
-    filter.frequency.value = 2000;
-    const g = ctx.createGain();
-    g.gain.value = gain;
-    src.connect(filter).connect(g).connect(ctx.destination);
-    src.start();
-  }, []);
-
-  /** Toca um "clink" curto (pra simular copo/xícara em café). */
-  const playClink = useCallback((ctx: AudioContext) => {
-    const osc = ctx.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.value = 1800 + Math.random() * 800;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.012, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-    osc.connect(g).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.2);
-  }, []);
+  // bg sound: usa HTML5 Audio() apontando pra arquivo .mp3 local em
+  // public/sounds/. Loopa infinitamente em volume 15%. Se 404, mostra
+  // toast suave e não trava a call.
+  const bgAudioElRef = useRef<HTMLAudioElement | null>(null);
 
   const startBgSound = useCallback((soundId: string) => {
     const cfg = BG_SOUNDS.find(b => b.id === soundId);
-    if (!cfg || !cfg.profile) return;
+    if (!cfg || !cfg.url) return;
     try {
-      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx: AudioContext = new Ctx();
-
-      // Camada 1: brown noise base (HVAC/rumble distante)
-      const noiseBuffer = createBrownNoiseBuffer(ctx);
-      const source = ctx.createBufferSource();
-      source.buffer = noiseBuffer;
-      source.loop = true;
-
-      // Filtro principal por perfil
-      const filter = ctx.createBiquadFilter();
-      const mainGain = ctx.createGain();
-
-      let eventInterval: ReturnType<typeof setInterval> | null = null;
-
-      if (cfg.profile === "office") {
-        // Escritório: rumble grave (AC) + cliques esporádicos de digitação
-        filter.type = "lowpass";
-        filter.frequency.value = 350;
-        mainGain.gain.value = 0.08;
-        eventInterval = setInterval(() => {
-          if (Math.random() < 0.6) {
-            // Salva de digitação: 2-5 cliques em rápida sucessão
-            const numClicks = 2 + Math.floor(Math.random() * 4);
-            for (let i = 0; i < numClicks; i++) {
-              setTimeout(() => playClick(ctx, 0.006 + Math.random() * 0.006), i * 90 + Math.random() * 40);
-            }
-          }
-        }, 1800 + Math.random() * 2200);
-      } else if (cfg.profile === "callcenter") {
-        // Call center: rumble + ruído banda voz (vozes muffled ao fundo) + ocasional beep
-        filter.type = "bandpass";
-        filter.frequency.value = 900;
-        filter.Q.value = 0.5;
-        mainGain.gain.value = 0.10;
-        // Sub-camada: lowpass mais grave pra simular ambient geral
-        const subBuffer = createBrownNoiseBuffer(ctx);
-        const subSrc = ctx.createBufferSource();
-        subSrc.buffer = subBuffer;
-        subSrc.loop = true;
-        const subFilter = ctx.createBiquadFilter();
-        subFilter.type = "lowpass";
-        subFilter.frequency.value = 400;
-        const subGain = ctx.createGain();
-        subGain.gain.value = 0.05;
-        subSrc.connect(subFilter).connect(subGain).connect(ctx.destination);
-        subSrc.start();
-        eventInterval = setInterval(() => {
-          if (Math.random() < 0.3) playClick(ctx, 0.005); // digitação ocasional
-        }, 1500 + Math.random() * 2500);
-      } else if (cfg.profile === "cafe") {
-        // Café: rumble + ocasional clink de copo/xícara
-        filter.type = "lowpass";
-        filter.frequency.value = 500;
-        mainGain.gain.value = 0.09;
-        eventInterval = setInterval(() => {
-          if (Math.random() < 0.4) playClink(ctx);
-        }, 3000 + Math.random() * 4000);
-      }
-
-      source.connect(filter).connect(mainGain).connect(ctx.destination);
-      source.start();
-      bgAudioCtxRef.current = ctx;
-      bgNoiseSourceRef.current = source;
-      bgEventTimerRef.current = eventInterval;
-      console.log(`[voice-call] bg sound iniciado: ${soundId} (perfil=${cfg.profile})`);
+      const audio = new Audio(cfg.url);
+      audio.loop = true;
+      audio.volume = 0.18;
+      audio.play().then(() => {
+        console.log(`[voice-call] bg sound iniciado: ${soundId} (${cfg.url})`);
+      }).catch((err) => {
+        console.warn(`[voice-call] bg sound falhou (${cfg.url}):`, err);
+        toast.info(`Som "${cfg.label}" indisponível — verifique se ${cfg.url} existe em public/`);
+      });
+      bgAudioElRef.current = audio;
     } catch (e) {
-      console.warn("[voice-call] bg sound falhou:", e);
+      console.warn("[voice-call] bg sound exception:", e);
     }
-  }, [playClick, playClink]);
+  }, []);
 
   const stopBgSound = useCallback(() => {
-    try {
-      if (bgEventTimerRef.current) clearInterval(bgEventTimerRef.current);
-      bgEventTimerRef.current = null;
-      bgNoiseSourceRef.current?.stop();
-      bgNoiseSourceRef.current?.disconnect();
-      bgAudioCtxRef.current?.close();
-    } catch { /* já parado */ }
-    bgNoiseSourceRef.current = null;
-    bgAudioCtxRef.current = null;
+    if (bgAudioElRef.current) {
+      bgAudioElRef.current.pause();
+      bgAudioElRef.current.src = "";
+      bgAudioElRef.current = null;
+    }
   }, []);
 
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
