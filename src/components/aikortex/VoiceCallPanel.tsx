@@ -24,38 +24,17 @@ const VOICES = [
 
 type CallStatus = "idle" | "connecting" | "connected" | "ended";
 
-// Ambient backgrounds — gerados via Web Audio API (pink noise + lowpass
-// filter). Sem CDN externo: 100% reliable, sem CORS, sem 404. Cada tipo
-// usa frequência diferente pra simular ambientes (office baixo/grave,
-// callcenter banda-voz, café mais brilhante).
-const BG_SOUNDS: Array<{ id: string; label: string; frequency?: number; gain?: number }> = [
+// Ambient backgrounds: feature em desenvolvimento.
+// Tentativa anterior (pink noise procedural) soava artificial — pra parecer
+// escritório/café/call center de verdade, precisa de gravações reais
+// (loops .mp3 hospedados em public/sounds/). Próximo iter quando user
+// fizer upload dos assets.
+const BG_SOUNDS: Array<{ id: string; label: string; comingSoon?: boolean }> = [
   { id: "none", label: "Silêncio" },
-  { id: "office", label: "Escritório", frequency: 600, gain: 0.04 },
-  { id: "callcenter", label: "Call center", frequency: 900, gain: 0.06 },
-  { id: "cafe", label: "Café", frequency: 1200, gain: 0.05 },
+  { id: "office", label: "Escritório (em breve)", comingSoon: true },
+  { id: "callcenter", label: "Call center (em breve)", comingSoon: true },
+  { id: "cafe", label: "Café (em breve)", comingSoon: true },
 ];
-
-/** Gera pink noise (mais natural que white) num AudioBuffer reutilizável.
- * Algoritmo de Voss-McCartney aproximado — soa parecido com ruído ambient
- * de fundo de chamada. Buffer de 2s loopado infinitamente. */
-function createPinkNoiseBuffer(ctx: AudioContext): AudioBuffer {
-  const bufferSize = 2 * ctx.sampleRate;
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const output = buffer.getChannelData(0);
-  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-  for (let i = 0; i < bufferSize; i++) {
-    const white = Math.random() * 2 - 1;
-    b0 = 0.99886 * b0 + white * 0.0555179;
-    b1 = 0.99332 * b1 + white * 0.0750759;
-    b2 = 0.96900 * b2 + white * 0.1538520;
-    b3 = 0.86650 * b3 + white * 0.3104856;
-    b4 = 0.55000 * b4 + white * 0.5329522;
-    b5 = -0.7616 * b5 - white * 0.0168980;
-    output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
-    b6 = white * 0.115926;
-  }
-  return buffer;
-}
 
 // Palavras-chave que disparam encerramento client-side (fallback caso o
 // end_call_phrases server-side não dispare). Match em transcript do user.
@@ -233,40 +212,11 @@ const VoiceCallPanel = ({
   const bgAudioCtxRef = useRef<AudioContext | null>(null);
   const bgNoiseSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  const startBgSound = useCallback((soundId: string) => {
-    const cfg = BG_SOUNDS.find(b => b.id === soundId);
-    if (!cfg || !cfg.frequency) return;
-    try {
-      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx: AudioContext = new Ctx();
-      const buffer = createPinkNoiseBuffer(ctx);
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-      const filter = ctx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.value = cfg.frequency;
-      const gain = ctx.createGain();
-      gain.gain.value = cfg.gain ?? 0.05;
-      source.connect(filter).connect(gain).connect(ctx.destination);
-      source.start();
-      bgAudioCtxRef.current = ctx;
-      bgNoiseSourceRef.current = source;
-      console.log(`[voice-call] bg sound iniciado: ${soundId} (freq=${cfg.frequency}Hz, gain=${cfg.gain})`);
-    } catch (e) {
-      console.warn("[voice-call] bg sound falhou:", e);
-    }
-  }, []);
-
-  const stopBgSound = useCallback(() => {
-    try {
-      bgNoiseSourceRef.current?.stop();
-      bgNoiseSourceRef.current?.disconnect();
-      bgAudioCtxRef.current?.close();
-    } catch { /* já parado */ }
-    bgNoiseSourceRef.current = null;
-    bgAudioCtxRef.current = null;
-  }, []);
+  // bg sound em desenvolvimento — desabilitado por enquanto. Quando hospedar
+  // arquivos de áudio reais em public/sounds/, troca esses no-ops por player
+  // de Audio() apontando pros .mp3.
+  const startBgSound = useCallback((_soundId: string) => { /* todo */ }, []);
+  const stopBgSound = useCallback(() => { /* todo */ }, []);
 
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
   const [isMuted, setIsMuted] = useState(false);
@@ -530,7 +480,9 @@ const VoiceCallPanel = ({
             </>
           )}
 
-          {/* Som de fundo da chamada (opcional). Só aparece pré-chamada. */}
+          {/* Som de fundo da chamada — em desenvolvimento. Opções marcadas
+              como "em breve" ficam disabled. Quando hospedar audio real,
+              remove o disabled. */}
           <div className="mt-3">
             <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 block">Som de fundo</label>
             <Select value={bgSound} onValueChange={setBgSound}>
@@ -539,7 +491,9 @@ const VoiceCallPanel = ({
               </SelectTrigger>
               <SelectContent>
                 {BG_SOUNDS.map(b => (
-                  <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>
+                  <SelectItem key={b.id} value={b.id} disabled={b.comingSoon}>
+                    {b.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
