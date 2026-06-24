@@ -24,23 +24,18 @@ const VOICES = [
 
 type CallStatus = "idle" | "connecting" | "connected" | "ended";
 
-// Ambient backgrounds: usa arquivos .mp3 REAIS hospedados em public/sounds/.
-// Procedural (pink/brown noise) foi tentado e descartado — soa artificial.
-// Cada perfil aponta pra arquivo local; se faltar, item fica disabled.
+// Ambient backgrounds: arquivos .mp3 hospedados em Supabase Storage (bucket
+// público voice-ambience) — fica tudo na infra da própria agência, sem
+// dependência do Lovable Assets storage.
 //
-// PARA ATIVAR: subir 3 arquivos .mp3 (loopáveis, 1-3 min cada, < 2MB cada)
-// em public/sounds/:
-//   - office.mp3       (burburinho leve, AC, digitação distante)
-//   - callcenter.mp3   (fones, conversas múltiplas baixinho, beeps esporádicos)
-//   - cafe.mp3         (máquina café, conversa distante, copos)
-// Fontes legais: freesound.org (CC0), pixabay.com/sound-effects/ (free), mixkit.co
+// Pra trocar/atualizar áudios: Supabase Dashboard → Storage → voice-ambience.
+// Permissões: só platform_owner/platform_admin podem subir (RLS).
+const STORAGE_BASE = "https://jcahtniqqiaefszhgpqx.supabase.co/storage/v1/object/public/voice-ambience";
 const BG_SOUNDS: Array<{ id: string; label: string; url?: string }> = [
   { id: "none", label: "Silêncio" },
-  { id: "office", label: "Escritório", url: "/sounds/office.mp3" },
-  { id: "callcenter", label: "Call center", url: "/sounds/callcenter.mp3" },
-  // Café foi externalizado via Lovable Assets (164MB > limite 10MB do repo).
-  // Pointer fica em public/sounds/cafe.mp3.asset.json apontando pra:
-  { id: "cafe", label: "Café", url: "/__l5e/assets-v1/d785fcf3-476d-4b2d-b6e7-5056dbe081f1/cafe.mp3" },
+  { id: "office", label: "Escritório", url: `${STORAGE_BASE}/office.mp3` },
+  { id: "callcenter", label: "Call center", url: `${STORAGE_BASE}/callcenter.mp3` },
+  { id: "cafe", label: "Café", url: `${STORAGE_BASE}/cafe.mp3` },
 ];
 
 // Palavras-chave que disparam encerramento client-side (fallback caso o
