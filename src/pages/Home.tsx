@@ -70,25 +70,22 @@ const Home = () => {
   };
 
 
-  // Fluxo unificado: identico ao botao "Novo Agente" em /aikortex/agents,
-  // so adiciona initialPrompt pro wizard ja kickar com a fala/texto do user.
-  // Sem deteccao de template SDR/SAC — wizard decide tudo a partir do prompt.
-  const navigateToNewAgent = (text: string) => {
+  // Fluxo IDENTICO ao botao "Novo Agente" em /aikortex/agents:
+  // mesmo id (new-{ts}), mesmo state, SEM initialPrompt.
+  // Sem initialPrompt, o wizard nao auto-dispara handleDiscover, abrindo
+  // em branco no passo Descobrir esperando o user falar/digitar — exatamente
+  // a experiencia de clicar "+ Novo Agente". Spark so leva ate a tela.
+  const navigateToNewAgent = () => {
     const newId = `new-${Date.now()}`;
     navigate(`/aikortex/agents/${newId}`, {
-      state: {
-        fromTemplate: false,
-        agentType: "Custom",
-        agentName: "Novo Agente",
-        initialPrompt: text,
-      },
+      state: { fromTemplate: false, agentType: "Custom", agentName: "Novo Agente" },
     });
   };
 
   const handleTextSubmit = (text: string) => {
     const detected = detectCategory(text);
     if (detected === "agentes") {
-      navigateToNewAgent(text);
+      navigateToNewAgent();
     } else {
       const channel = detectChannel(text) ?? "web";
       navigate("/app-builder", { state: { initialPrompt: text, channel } });
@@ -100,7 +97,7 @@ const Home = () => {
     console.log(`[spark→home] navegando com transcript="${text}"`);
     const detected = detectCategory(text);
     if (detected === "agentes") {
-      navigateToNewAgent(text);
+      navigateToNewAgent();
     } else {
       const channel = detectChannel(text) ?? "web";
       navigate("/app-builder", { state: { initialPrompt: text, channel } });
