@@ -138,15 +138,29 @@ Deno.serve(async (req) => {
     const finalVoiceId = (voiceOverride || "").trim() || voiceId;
     const finalSystem = (systemOverride || "").trim() || SYSTEM_PROMPT;
 
-    // LLM via Aikortex OpenRouter (com fallback de modelos do DB)
+    // LLM via Aikortex OpenRouter — voz exige modelo rapido.
+    // Bypass do DB com override pra modelos de baixa latencia, em ordem
+    // de preferencia. Se OpenRouter nao tiver acesso a um, cai pro proximo.
     const messages = [
       { role: "system" as const, content: finalSystem },
       ...history.slice(-8),
       { role: "user" as const, content: userText },
     ];
+    const FAST_VOICE_MODELS = [
+      "google/gemini-flash-1.5",
+      "google/gemini-2.0-flash-exp:free",
+      "meta-llama/llama-3.2-3b-instruct",
+      "openai/gpt-4o-mini",
+      "qwen/qwen-2.5-7b-instruct",
+    ];
     const llmResult = await callLLM(
       messages,
-      { apiKey: openrouterKey, temperature: 0.7, maxTokens: 512, tier: "free" },
+      {
+        apiKey: openrouterKey,
+        temperature: 0.7,
+        maxTokens: 220, // respostas de voz sao curtas (2-3 frases); 220 tokens ~30s de fala
+        fallbackModels: FAST_VOICE_MODELS,
+      },
       admin,
     );
     if (!llmResult.success) {

@@ -537,7 +537,7 @@ const VoiceCallPanel = ({
       vadHasSpokeRef.current = false;
       const buf = new Uint8Array(analyser.frequencyBinCount);
       const SPEECH_THRESHOLD = 18; // 0-255 média
-      const SILENCE_MS = 1200;
+      const SILENCE_MS = 700;       // antes 1200 — corta delay perceptivel pro user
       const MAX_RECORD_MS = 15000;
       const startTs = Date.now();
       const tick = () => {
