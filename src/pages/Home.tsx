@@ -40,12 +40,9 @@ function detectAgentType(text: string): { id: string; type: AgentType; name: str
 }
 
 const Home = () => {
-  const [, setPrompt] = useState("");
   const [userName, setUserName] = useState("Usuário");
-  const { user, isPlatform } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-
-
 
   useEffect(() => {
     if (!user) return;
@@ -57,10 +54,7 @@ const Home = () => {
       .then(({ data }) => {
         if (data?.full_name) setUserName(data.full_name);
       });
-
-    // Onboarding disabled — go directly to dashboard
-    setOnboardingChecked(true);
-  }, [user, isPlatform]);
+  }, [user]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -69,8 +63,6 @@ const Home = () => {
     return "Boa noite";
   };
 
-  // Heurística simples para detectar gênero a partir do primeiro nome (PT-BR).
-  // Nomes terminados em 'a' geralmente são femininos; demais exceções listadas.
   const detectHonorific = (fullName: string): "Sr" | "Sra" => {
     const first = (fullName || "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
     if (!first) return "Sr";
@@ -88,36 +80,6 @@ const Home = () => {
     return first.endsWith("a") ? "Sra" : "Sr";
   };
 
-  const handlePromptChange = (val: string) => {
-    setPrompt(val);
-    if (val.trim().length > 3) {
-      const detected = detectCategory(val);
-      if (detected !== activeCreationTab) setActiveCreationTab(detected);
-      // detect channel only when on app tab
-      if (detected === "app") {
-        setDetectedChannel(detectChannel(val));
-      } else {
-        setDetectedChannel(null);
-      }
-    } else {
-      setDetectedChannel(null);
-    }
-  };
-
-  if (!onboardingChecked) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-96">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // Onboarding disabled
-  // if (showOnboarding) {
-  //   return <AgencyOnboarding onComplete={() => setShowOnboarding(false)} />;
-  // }
 
   const handleTextSubmit = (text: string) => {
     setPrompt(text);
