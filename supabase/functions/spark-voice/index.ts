@@ -59,9 +59,9 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableKey) {
-      return json({ error: "llm_not_configured", message: "Lovable AI Gateway não está configurado." }, 500);
+    const openrouterKey = Deno.env.get("OPENROUTER_API_KEY");
+    if (!openrouterKey) {
+      return json({ error: "llm_not_configured", message: "OPENROUTER_API_KEY não configurada." }, 500);
     }
 
     const contentType = req.headers.get("content-type") ?? "";
@@ -105,26 +105,21 @@ Deno.serve(async (req) => {
       return json({ error: "empty_input", message: "Não entendi o áudio. Tente novamente." }, 400);
     }
 
-    // LLM via Lovable AI Gateway (OpenAI-compatible)
+    // LLM via Aikortex OpenRouter (com fallback de modelos do DB)
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system" as const, content: SYSTEM_PROMPT },
       ...history.slice(-8),
-      { role: "user", content: userText },
+      { role: "user" as const, content: userText },
     ];
-    const llmResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ model: LLM_MODEL, messages, temperature: 0.7 }),
-    });
-    if (!llmResp.ok) {
-      const t = await llmResp.text();
-      return json({ error: "llm_failed", status: llmResp.status, details: t }, 502);
+    const llmResult = await callLLM(
+      messages,
+      { apiKey: openrouterKey, temperature: 0.7, maxTokens: 512, tier: "free" },
+      admin,
+    );
+    if (!llmResult.success) {
+      return json({ error: "llm_failed", details: llmResult.error }, 502);
     }
-    const llmJson = await llmResp.json();
-    const reply: string = (llmJson?.choices?.[0]?.message?.content ?? "").trim();
+    const reply: string = (llmResult.content ?? "").trim();
     if (!reply) return json({ error: "empty_reply" }, 502);
 
     // ElevenLabs TTS
