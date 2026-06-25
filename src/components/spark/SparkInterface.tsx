@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ConversationProvider, useConversation } from "@elevenlabs/react";
-import { Mic, MessageSquare, Loader2, Settings, X, ArrowUp, RefreshCw } from "lucide-react";
+import { Mic, MessageSquare, Loader2, Settings, X, ArrowUp, RefreshCw, Square } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,12 +8,12 @@ import { SparkOrb } from "./SparkOrb";
 import { cn } from "@/lib/utils";
 
 type Mode = "voice" | "text";
-type OrbState = "idle" | "connecting" | "listening" | "speaking" | "error";
+type OrbState = "idle" | "recording" | "processing" | "speaking" | "error";
 
 interface TranscriptEntry {
   id: string;
-  role: "user" | "agent";
-  text: string;
+  role: "user" | "assistant";
+  content: string;
 }
 
 const TEXT_SUGGESTIONS = [
@@ -30,139 +29,193 @@ interface SparkInterfaceProps {
   onTextSubmit: (text: string) => void;
 }
 
-export function SparkInterface(props: SparkInterfaceProps) {
-  return (
-    <ConversationProvider>
-      <SparkInterfaceInner {...props} />
-    </ConversationProvider>
-  );
-}
-
-function SparkInterfaceInner({ greeting, userName, honorific, onTextSubmit }: SparkInterfaceProps) {
+export function SparkInterface({ greeting, userName, honorific, onTextSubmit }: SparkInterfaceProps) {
   const [mode, setMode] = useState<Mode>("voice");
   const [orbState, setOrbState] = useState<OrbState>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [textInput, setTextInput] = useState("");
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [intensity, setIntensity] = useState(0);
-  const rafRef = useRef<number | null>(null);
   const navigate = useNavigate();
 
-  const conversation = useConversation({
-    onConnect: () => setOrbState("listening"),
-    onDisconnect: () => setOrbState("idle"),
-    onError: (err: unknown) => {
-      console.error("[spark] elevenlabs error", err);
-      setOrbState("error");
-      toast.error("Erro na conexão com o Spark");
-    },
-    onMessage: (msg: any) => {
-      // SDK normalized message: { message, source } or { text, type }
-      const text: string | undefined = msg?.message ?? msg?.text ?? msg?.transcript;
-      const source: string | undefined = msg?.source ?? msg?.role ?? msg?.type;
-      if (!text) return;
-      const role: "user" | "agent" =
-        source === "user" || source === "user_transcript" ? "user" : "agent";
-      setTranscript((prev) => [
-        ...prev,
-        { id: `${Date.now()}-${Math.random()}`, role, text },
-      ]);
-    },
-  });
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const historyRef = useRef<Array<{ role: "user" | "assistant"; content: string }>>([]);
 
-  const isSpeaking = (conversation as any).isSpeaking as boolean | undefined;
-  const status = conversation.status;
-
-  useEffect(() => {
-    if (status === "connected") {
-      setOrbState(isSpeaking ? "speaking" : "listening");
-    } else if (status === "disconnected" && orbState !== "error") {
-      setOrbState("idle");
+  const stopStream = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    analyserRef.current = null;
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, isSpeaking]);
-
-  // Reactive audio level for orb pulsation
-  useEffect(() => {
-    if (status !== "connected") {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      setIntensity(0);
-      return;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
     }
-    const tick = () => {
-      try {
-        const input = (conversation as any).getInputVolume?.() ?? 0;
-        const output = (conversation as any).getOutputVolume?.() ?? 0;
-        setIntensity(Math.max(input, output));
-      } catch {
-        /* noop */
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [status, conversation]);
+    setIntensity(0);
+  }, []);
 
-  const startVoice = useCallback(async () => {
+  useEffect(() => () => {
+    stopStream();
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current.src = "";
+    }
+  }, [stopStream]);
+
+  const startRecording = useCallback(async () => {
     try {
-      setOrbState("connecting");
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      setOrbState("recording");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
 
-      const { data, error } = await supabase.functions.invoke("spark-token", {});
-      if (error || !data?.token) {
+      // Audio analyser for orb pulsation
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = ctx;
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) sum += data[i];
+        const avg = sum / data.length / 255;
+        setIntensity(avg);
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "";
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = rec;
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      rec.start();
+    } catch (e) {
+      console.error("[spark] mic error", e);
+      setOrbState("error");
+      toast.error("Não foi possível acessar o microfone");
+    }
+  }, []);
+
+  const sendAudio = useCallback(async (blob: Blob) => {
+    setOrbState("processing");
+    try {
+      const form = new FormData();
+      form.append("audio", blob, "audio.webm");
+      form.append("history", JSON.stringify(historyRef.current.slice(-8)));
+
+      const { data, error } = await supabase.functions.invoke("spark-voice", { body: form });
+      if (error || !data || (data as any).error) {
         const errBody = (error as any)?.context?.body;
-        let msg = (data as any)?.message ?? "Falha ao obter token";
+        let msg = (data as any)?.message ?? "Falha ao processar áudio";
         if (errBody) {
           try {
             const parsed = typeof errBody === "string" ? JSON.parse(errBody) : errBody;
             msg = parsed?.message ?? msg;
-          } catch {
-            /* noop */
-          }
+          } catch { /* noop */ }
         }
         setOrbState("error");
         toast.error(msg, {
-          action: {
-            label: "Configurar",
-            onClick: () => navigate("/settings?tab=integrations"),
-          },
+          action: msg.includes("ElevenLabs")
+            ? { label: "Configurar", onClick: () => navigate("/settings?tab=integrations") }
+            : undefined,
         });
         return;
       }
 
-      await conversation.startSession({
-        conversationToken: data.token,
-        connectionType: "webrtc",
-      });
-    } catch (e) {
-      console.error("[spark] startVoice error", e);
-      setOrbState("error");
-      toast.error("Não foi possível iniciar o Spark por voz");
-    }
-  }, [conversation, navigate]);
+      const { transcript: userText, reply, audio, audio_mime } = data as {
+        transcript: string;
+        reply: string;
+        audio: string;
+        audio_mime: string;
+      };
 
-  const stopVoice = useCallback(async () => {
-    try {
-      await Promise.resolve(conversation.endSession());
+      historyRef.current.push({ role: "user", content: userText });
+      historyRef.current.push({ role: "assistant", content: reply });
+
+      const ts = Date.now();
+      setTranscript((prev) => [
+        ...prev,
+        { id: `${ts}-u`, role: "user", content: userText },
+        { id: `${ts}-a`, role: "assistant", content: reply },
+      ]);
+
+      // Play TTS
+      const src = `data:${audio_mime};base64,${audio}`;
+      if (!audioElRef.current) audioElRef.current = new Audio();
+      audioElRef.current.src = src;
+      audioElRef.current.onplay = () => setOrbState("speaking");
+      audioElRef.current.onended = () => setOrbState("idle");
+      audioElRef.current.onerror = () => setOrbState("idle");
+      await audioElRef.current.play().catch(() => setOrbState("idle"));
     } catch (e) {
-      console.warn("[spark] endSession failed", e);
+      console.error("[spark] sendAudio error", e);
+      setOrbState("error");
+      toast.error("Erro ao processar áudio");
     }
-    setOrbState("idle");
-  }, [conversation]);
+  }, [navigate]);
+
+  const stopRecording = useCallback(async () => {
+    const rec = mediaRecorderRef.current;
+    if (!rec) return;
+    return new Promise<void>((resolve) => {
+      rec.onstop = async () => {
+        stopStream();
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        chunksRef.current = [];
+        mediaRecorderRef.current = null;
+        if (blob.size < 1000) {
+          setOrbState("idle");
+          resolve();
+          return;
+        }
+        await sendAudio(blob);
+        resolve();
+      };
+      rec.stop();
+    });
+  }, [sendAudio, stopStream]);
 
   const handleOrbClick = () => {
-    if (status === "connected") {
-      stopVoice();
-    } else if (orbState !== "connecting") {
-      startVoice();
+    if (orbState === "recording") {
+      stopRecording();
+    } else if (orbState === "processing") {
+      return;
+    } else if (orbState === "speaking") {
+      if (audioElRef.current) {
+        audioElRef.current.pause();
+        audioElRef.current.currentTime = 0;
+      }
+      setOrbState("idle");
+    } else {
+      startRecording();
     }
   };
 
   const handleSwitchToText = async () => {
-    if (status === "connected") await stopVoice();
+    if (orbState === "recording") await stopRecording();
+    if (audioElRef.current) audioElRef.current.pause();
     setMode("text");
+    setOrbState("idle");
   };
 
   const handleSwitchToVoice = () => {
@@ -178,18 +231,20 @@ function SparkInterfaceInner({ greeting, userName, honorific, onTextSubmit }: Sp
 
   const orbHint = (() => {
     switch (orbState) {
-      case "idle":
-        return "Toque na esfera para falar com o Spark";
-      case "connecting":
-        return "Conectando…";
-      case "listening":
-        return "Estou te ouvindo";
-      case "speaking":
-        return "Spark falando…";
-      case "error":
-        return "Toque para tentar novamente";
+      case "idle": return "Toque na esfera para falar com o Spark";
+      case "recording": return "Estou te ouvindo… toque de novo para enviar";
+      case "processing": return "Pensando…";
+      case "speaking": return "Spark falando… toque para interromper";
+      case "error": return "Toque para tentar novamente";
     }
   })();
+
+  const orbStateForVisual: "idle" | "connecting" | "listening" | "speaking" | "error" =
+    orbState === "recording" ? "listening"
+    : orbState === "processing" ? "connecting"
+    : orbState === "speaking" ? "speaking"
+    : orbState === "error" ? "error"
+    : "idle";
 
   const currentSuggestions = TEXT_SUGGESTIONS[suggestionIndex % TEXT_SUGGESTIONS.length];
 
@@ -232,13 +287,16 @@ function SparkInterfaceInner({ greeting, userName, honorific, onTextSubmit }: Sp
         <div className="flex flex-col items-center gap-6 w-full max-w-2xl">
           <div className="relative">
             <SparkOrb
-              state={orbState}
+              state={orbStateForVisual}
               intensity={intensity}
               onClick={handleOrbClick}
-              disabled={orbState === "connecting"}
+              disabled={orbState === "processing"}
             />
-            {orbState === "connecting" && (
-              <Loader2 className="absolute inset-0 m-auto w-6 h-6 text-primary animate-spin" />
+            {orbState === "processing" && (
+              <Loader2 className="absolute inset-0 m-auto w-6 h-6 text-primary animate-spin pointer-events-none" />
+            )}
+            {orbState === "recording" && (
+              <Square className="absolute inset-0 m-auto w-5 h-5 text-primary-foreground fill-current pointer-events-none" />
             )}
           </div>
 
@@ -257,7 +315,7 @@ function SparkInterfaceInner({ greeting, userName, honorific, onTextSubmit }: Sp
                   <span className="text-[10px] uppercase tracking-wider opacity-50 mr-2">
                     {entry.role === "user" ? "Você" : "Spark"}
                   </span>
-                  {entry.text}
+                  {entry.content}
                 </div>
               ))}
             </div>
@@ -265,10 +323,10 @@ function SparkInterfaceInner({ greeting, userName, honorific, onTextSubmit }: Sp
 
           {transcript.length > 0 && (
             <button
-              onClick={() => setTranscript([])}
+              onClick={() => { setTranscript([]); historyRef.current = []; }}
               className="text-xs text-muted-foreground/70 hover:text-foreground inline-flex items-center gap-1"
             >
-              <X className="w-3 h-3" /> Limpar transcrição
+              <X className="w-3 h-3" /> Limpar conversa
             </button>
           )}
 
@@ -276,7 +334,7 @@ function SparkInterfaceInner({ greeting, userName, honorific, onTextSubmit }: Sp
             to="/settings?tab=integrations"
             className="text-[11px] text-muted-foreground/70 hover:text-foreground inline-flex items-center gap-1"
           >
-            <Settings className="w-3 h-3" /> Configurar chave ElevenLabs
+            <Settings className="w-3 h-3" /> Configurar voz do Spark
           </Link>
         </div>
       ) : (
