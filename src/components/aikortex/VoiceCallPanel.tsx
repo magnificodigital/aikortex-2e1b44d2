@@ -284,10 +284,116 @@ const VoiceCallPanel = ({
   // Refs pra persistir call_log no onDisconnect sem dependências staleadas
   const transcriptRef = useRef<Array<{ role: string; text: string }>>([]);
   const callLogPersistedRef = useRef<boolean>(false);
+  // Recording: MediaRecorder + buffer de chunks + AudioContext mixer
+  // Mixa stream do microfone do user com stream dos <audio> que a SDK
+  // ElevenLabs cria (capturados via MutationObserver). Resultado: 1 webm
+  // com voz dos dois lados misturadas.
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingMixerCtxRef = useRef<AudioContext | null>(null);
+  const recordingDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const recordingMicStreamRef = useRef<MediaStream | null>(null);
+  const audioObserverRef = useRef<MutationObserver | null>(null);
+  const connectedAudioElsRef = useRef<Set<HTMLAudioElement>>(new Set());
 
-  /** Salva call_log em /calls com transcript + duração. Chamado ao final
-   * da call (onDisconnect ou onError). Idempotente via callLogPersistedRef
-   * pra não duplicar se ambos eventos firarem. */
+  /** Inicia gravação mixada (user mic + agente). Chamado em handleStart.
+   * Robusto: se MediaRecorder não suportar webm/opus, tenta fallbacks. */
+  const startRecording = useCallback(async () => {
+    try {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx: AudioContext = new Ctx();
+      const dest = ctx.createMediaStreamDestination();
+
+      // 1. Mic do user
+      const userStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const userSrc = ctx.createMediaStreamSource(userStream);
+      userSrc.connect(dest);
+
+      // 2. Observer pra capturar audios que ElevenLabs adiciona ao DOM
+      const tryConnectAudio = (el: HTMLAudioElement) => {
+        if (connectedAudioElsRef.current.has(el)) return;
+        try {
+          const stream = (el as any).captureStream?.() ?? (el as any).mozCaptureStream?.();
+          if (stream && stream.getAudioTracks().length > 0) {
+            const src = ctx.createMediaStreamSource(stream);
+            src.connect(dest);
+            connectedAudioElsRef.current.add(el);
+            console.log("[recording] conectou stream do <audio> da ElevenLabs");
+          }
+        } catch (e) {
+          console.warn("[recording] captureStream falhou em <audio>:", e);
+        }
+      };
+      // Audios já existentes
+      document.querySelectorAll("audio").forEach(tryConnectAudio);
+      // Audios futuros
+      const observer = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          m.addedNodes.forEach((node) => {
+            if (node instanceof HTMLAudioElement) tryConnectAudio(node);
+            // Audios podem estar dentro de containers
+            if (node instanceof HTMLElement) {
+              node.querySelectorAll?.("audio").forEach(tryConnectAudio);
+            }
+          });
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      // 3. MediaRecorder — webm/opus é leve e amplamente suportado
+      const mimeCandidates = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+      ];
+      const mime = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
+      const recorder = mime
+        ? new MediaRecorder(dest.stream, { mimeType: mime, audioBitsPerSecond: 32000 })
+        : new MediaRecorder(dest.stream);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      recorder.start(1000); // flush a cada 1s pra não perder se browser crashear
+
+      recordingMixerCtxRef.current = ctx;
+      recordingDestRef.current = dest;
+      recordingMicStreamRef.current = userStream;
+      audioObserverRef.current = observer;
+      recorderRef.current = recorder;
+      recordedChunksRef.current = [];
+      console.log(`[recording] iniciado (mime=${mime || "default"})`);
+    } catch (e) {
+      console.warn("[recording] falha ao iniciar:", e);
+    }
+  }, []);
+
+  /** Para gravação e retorna Blob final. */
+  const stopRecording = useCallback(async (): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const rec = recorderRef.current;
+      if (!rec || rec.state === "inactive") {
+        resolve(null);
+        return;
+      }
+      rec.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: rec.mimeType || "audio/webm" });
+        resolve(blob.size > 0 ? blob : null);
+      };
+      try { rec.stop(); } catch { resolve(null); }
+      // Cleanup
+      audioObserverRef.current?.disconnect();
+      audioObserverRef.current = null;
+      recordingMicStreamRef.current?.getTracks().forEach((t) => t.stop());
+      recordingMicStreamRef.current = null;
+      try { recordingMixerCtxRef.current?.close(); } catch { /* ja fechado */ }
+      recordingMixerCtxRef.current = null;
+      connectedAudioElsRef.current.clear();
+    });
+  }, []);
+
+  /** Salva call_log em /calls com transcript + duração + recording_url
+   * (se gravação foi bem-sucedida). Idempotente via callLogPersistedRef. */
   const persistCallLog = useCallback(async (status: "completed" | "failed") => {
     if (callLogPersistedRef.current) return;
     callLogPersistedRef.current = true;
@@ -297,33 +403,62 @@ const VoiceCallPanel = ({
       const durationSec = startTimeRef.current > 0
         ? Math.floor((Date.now() - startTimeRef.current) / 1000)
         : 0;
-      // Transcript salvo no formato esperado por CallLogs.tsx drawer
-      // (entry.content || entry.text). Usamos { role, content } pra
-      // compatibilidade.
       const transcriptForDb = transcriptRef.current.map(t => ({
         role: t.role,
         content: t.text,
-        text: t.text, // ambos campos pra cobrir consumers diferentes
+        text: t.text,
       }));
+
+      // Para gravação e tenta fazer upload pro bucket call-recordings.
+      // Erros aqui não impedem o save do call_log (transcript ainda fica).
+      let recordingUrl: string | null = null;
+      try {
+        const blob = await stopRecording();
+        if (blob && blob.size > 1000) { // ignora blobs vazios
+          const ts = Date.now();
+          const ext = blob.type.includes("ogg") ? "ogg"
+            : blob.type.includes("mp4") ? "mp4"
+            : "webm";
+          const path = `${user.id}/${ts}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("call-recordings")
+            .upload(path, blob, { contentType: blob.type, upsert: false });
+          if (!upErr) {
+            const { data: { publicUrl } } = supabase.storage
+              .from("call-recordings")
+              .getPublicUrl(path);
+            recordingUrl = publicUrl;
+            console.log(`[voice-call] gravação enviada (${(blob.size / 1024).toFixed(0)}KB): ${publicUrl}`);
+          } else {
+            console.warn("[voice-call] upload da gravação falhou:", upErr.message);
+          }
+        } else {
+          console.log("[voice-call] sem gravação ou vazia, skip upload");
+        }
+      } catch (e) {
+        console.warn("[voice-call] recording stop/upload exception:", e);
+      }
+
       const { error } = await supabase.from("call_logs").insert({
         user_id: user.id,
         agent_id: agentId || null,
-        direction: "outbound", // teste de ligação no browser é sempre saída do user
+        direction: "outbound",
         channel: "browser",
         duration_seconds: durationSec,
         status,
         transcript: transcriptForDb,
+        recording_url: recordingUrl,
         ended_at: new Date().toISOString(),
       });
       if (error) {
         console.warn("[voice-call] falha ao salvar call_log:", error.message);
       } else {
-        console.log(`[voice-call] call_log salvo (status=${status}, dur=${durationSec}s, ${transcriptForDb.length} msgs)`);
+        console.log(`[voice-call] call_log salvo (status=${status}, dur=${durationSec}s, ${transcriptForDb.length} msgs, audio=${recordingUrl ? "sim" : "não"})`);
       }
     } catch (e) {
       console.warn("[voice-call] persist exception:", e);
     }
-  }, [agentId]);
+  }, [agentId, stopRecording]);
 
   const conversation = useConversation({
     onConnect: () => {
@@ -416,6 +551,9 @@ const VoiceCallPanel = ({
     transcriptRef.current = [];
     callLogPersistedRef.current = false;
     setDuration(0);
+    // Inicia gravação ANTES do startSession da ElevenLabs pra capturar
+    // desde o primeiro frame. Erros aqui não bloqueiam a call.
+    startRecording().catch(() => { /* gravação opcional, segue mesmo se falhar */ });
 
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });

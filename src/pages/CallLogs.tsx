@@ -263,12 +263,33 @@ const CallLogs = () => {
         <SheetContent className="w-[400px] sm:w-[450px]">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <FileText className="w-4 h-4" /> Transcrição da Ligação
+              <FileText className="w-4 h-4" /> Detalhes da Ligação
             </SheetTitle>
           </SheetHeader>
-          <ScrollArea className="h-[calc(100vh-120px)] mt-4">
+          {/* Player de gravação (se houver) */}
+          {transcriptDrawer?.recording_url && (
+            <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Gravação</p>
+              <audio
+                src={transcriptDrawer.recording_url}
+                controls
+                preload="metadata"
+                className="w-full h-9"
+              />
+              <a
+                href={transcriptDrawer.recording_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-primary hover:underline mt-1.5 inline-block"
+              >
+                Baixar áudio
+              </a>
+            </div>
+          )}
+          <ScrollArea className="h-[calc(100vh-180px)] mt-4">
             <div className="space-y-3 pr-2">
-              {transcriptDrawer?.transcript && Array.isArray(transcriptDrawer.transcript) ? (
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider sticky top-0 bg-background pb-2">Transcrição</p>
+              {transcriptDrawer?.transcript && Array.isArray(transcriptDrawer.transcript) && transcriptDrawer.transcript.length > 0 ? (
                 transcriptDrawer.transcript.map((entry: any, i: number) => (
                   <div key={i} className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs ${
