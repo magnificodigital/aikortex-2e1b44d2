@@ -1,15 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Monitor, Sparkles, ArrowUp, RefreshCw } from "lucide-react";
-import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { AGENT_PRESETS } from "@/types/agent-presets";
 import type { AgentType } from "@/types/agent-builder";
-// AgencyOnboarding disabled for now
-// import AgencyOnboarding from "@/components/onboarding/AgencyOnboarding";
+import { SparkInterface } from "@/components/spark/SparkInterface";
 
 const suggestionsByTab = {
   app: [
