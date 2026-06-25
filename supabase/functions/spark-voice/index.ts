@@ -212,6 +212,21 @@ Deno.serve(async (req) => {
       } catch { elevenMsg = t.slice(0, 200); }
       console.error("[spark-voice] TTS failed", ttsResp.status, t);
       if (ttsResp.status === 401) {
+        // ElevenLabs reutiliza 401 pra quota_exceeded. Desambiguar.
+        let parsedDetail: any = null;
+        try { parsedDetail = JSON.parse(t)?.detail; } catch { /* noop */ }
+        const code = parsedDetail?.code || parsedDetail?.status || "";
+
+        if (code === "quota_exceeded") {
+          return json({
+            error: "elevenlabs_quota_exceeded",
+            code: "quota_exceeded",
+            message:
+              "Sem créditos no ElevenLabs. Sua conta está com 0 créditos restantes — " +
+              "esses créditos resetam no início do próximo ciclo mensal ou você pode fazer upgrade em elevenlabs.io → Subscription.",
+            details: parsedDetail?.message || elevenMsg,
+          }, 402);
+        }
         return json({
           error: "elevenlabs_unauthorized",
           code: "unauthorized",

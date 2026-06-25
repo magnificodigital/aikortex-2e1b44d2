@@ -154,6 +154,17 @@ serve(async (req) => {
           },
         );
         if (ttsResp.status === 401) {
+          // ElevenLabs reusa 401 pra quota esgotada — desambiguar.
+          const ttsText = await ttsResp.text().catch(() => "");
+          let code = "";
+          try { code = JSON.parse(ttsText)?.detail?.code || JSON.parse(ttsText)?.detail?.status || ""; } catch { /* noop */ }
+          if (code === "quota_exceeded") {
+            return jsonRes({
+              ok: false,
+              error: "QUOTA_EXCEEDED",
+              message: "Chave válida, mas sua conta ElevenLabs está sem créditos. Aguarde reset mensal ou faça upgrade do plano.",
+            }, 200);
+          }
           return jsonRes({
             ok: false,
             error: "MISSING_TTS_SCOPE",

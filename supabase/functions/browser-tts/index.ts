@@ -128,7 +128,29 @@ serve(async (req) => {
           : j?.detail?.message || j?.detail?.status || j?.message || "";
       } catch { elevenMsg = errText.slice(0, 200); }
 
+      // ElevenLabs devolve 401 pra DOIS casos distintos:
+      // (1) chave invalida / scope errado    -> code = invalid_api_key / missing_permissions
+      // (2) creditos esgotados                -> code = quota_exceeded ← cuidado!
+      // Sem desambiguar, usuario fica perdido tentando consertar a chave.
       if (resp.status === 401) {
+        let parsedDetail: any = null;
+        try { parsedDetail = JSON.parse(errText)?.detail; } catch { /* noop */ }
+        const code = parsedDetail?.code || parsedDetail?.status || "";
+
+        if (code === "quota_exceeded") {
+          return new Response(
+            JSON.stringify({
+              error: "elevenlabs_quota_exceeded",
+              code: "quota_exceeded",
+              message:
+                "Sem créditos no ElevenLabs. " +
+                "Sua conta está com 0 créditos restantes — esses créditos resetam no início do próximo ciclo mensal " +
+                "ou você pode fazer upgrade do plano em elevenlabs.io → Subscription.",
+              details: parsedDetail?.message || elevenMsg,
+            }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
         return new Response(
           JSON.stringify({
             error: "elevenlabs_unauthorized",
