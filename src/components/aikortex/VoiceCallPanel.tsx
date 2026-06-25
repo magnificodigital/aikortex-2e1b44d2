@@ -587,15 +587,12 @@ const VoiceCallPanel = ({
       }
 
       const agentLang = "pt";
-      const isEnglish = agentLang === "en";
-      const endCallPhrases = isEnglish
-        ? ["goodbye", "bye", "end call", "hang up", "see you later"]
-        : [
-            "tchau", "tchaau", "até logo", "ate logo", "até mais", "ate mais",
-            "encerrar ligação", "desligar", "pode desligar",
-            "obrigado, tchau", "valeu, tchau", "vou desligar",
-            "até a próxima", "ate a proxima", "adeus",
-          ];
+      const endCallPhrases = [
+        "tchau", "tchaau", "até logo", "ate logo", "até mais", "ate mais",
+        "encerrar ligação", "desligar", "pode desligar",
+        "obrigado, tchau", "valeu, tchau", "vou desligar",
+        "até a próxima", "ate a proxima", "adeus",
+      ];
 
       const prompt = (agentPrompt || `Você é o agente ${agentName || "IA"}. Responda sempre em português brasileiro de forma profissional e amigável.`) +
         `\n\n## ENCERRAMENTO\nQuando o cliente se despedir (tchau, até logo, valeu, vou desligar, encerrar ligação etc.), responda APENAS uma despedida curta tipo "Até logo!" ou "Tchau, obrigado pelo contato!". NÃO fique perguntando "tem mais alguma coisa?" — encerra educadamente. As frases-chave também encerram a chamada do lado do cliente.\n\nFrases que indicam encerramento: ${endCallPhrases.join(", ")}.`;
@@ -611,7 +608,7 @@ const VoiceCallPanel = ({
           },
           tts: {
             voiceId: selectedVoice || "EXAVITQu4vr4xnSDxMaL",
-            ...(isEnglish ? {} : { modelId: "eleven_turbo_v2_5" }),
+            modelId: "eleven_turbo_v2_5",
           },
         },
       });
