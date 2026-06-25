@@ -84,11 +84,10 @@ Deno.serve(async (req) => {
       if (typeof voiceRaw === "string") voiceOverride = voiceRaw;
       if (audio && audio instanceof File) {
         // ElevenLabs STT
+        const t_stt_start = Date.now();
         const sttForm = new FormData();
         sttForm.append("file", audio, audio.name || "audio.webm");
         sttForm.append("model_id", STT_MODEL);
-        // Locale hint helps when the audio is short or has accent.
-        sttForm.append("language_code", "por");
         const sttResp = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
           method: "POST",
           headers: { "xi-api-key": elevenKey },
@@ -120,6 +119,7 @@ Deno.serve(async (req) => {
         }
         const sttJson = await sttResp.json();
         userText = (sttJson?.text ?? "").trim();
+        console.log(`[spark-voice] stt_ms=${Date.now() - t_stt_start} text="${userText.slice(0, 80)}"`);
       } else {
         const text = form.get("text");
         if (typeof text === "string") userText = text.trim();
@@ -140,8 +140,9 @@ Deno.serve(async (req) => {
     const finalSystem = (systemOverride || "").trim() || SYSTEM_PROMPT;
 
     // LLM via Aikortex OpenRouter — voz exige modelo rapido.
-    // Bypass do DB com override pra modelos de baixa latencia, em ordem
-    // de preferencia. Se OpenRouter nao tiver acesso a um, cai pro proximo.
+    // Estrategia: 1) tenta modelos rapidos hardcoded (gemini flash, llama 3b, etc.)
+    //             2) se nenhum funcionar (OpenRouter sem creditos pra paid, etc.),
+    //                cai pro fluxo normal de tier=free (Qwen 30B etc. do DB).
     const messages = [
       { role: "system" as const, content: finalSystem },
       ...history.slice(-8),
@@ -149,24 +150,33 @@ Deno.serve(async (req) => {
     ];
     const FAST_VOICE_MODELS = [
       "google/gemini-flash-1.5",
-      "google/gemini-2.0-flash-exp:free",
       "meta-llama/llama-3.2-3b-instruct",
       "openai/gpt-4o-mini",
-      "qwen/qwen-2.5-7b-instruct",
     ];
-    const llmResult = await callLLM(
+    const t_llm_start = Date.now();
+    let llmResult = await callLLM(
       messages,
       {
         apiKey: openrouterKey,
         temperature: 0.7,
-        maxTokens: 220, // respostas de voz sao curtas (2-3 frases); 220 tokens ~30s de fala
+        maxTokens: 220,
         fallbackModels: FAST_VOICE_MODELS,
       },
       admin,
     );
     if (!llmResult.success) {
-      return json({ error: "llm_failed", details: llmResult.error }, 502);
+      console.warn("[spark-voice] fast models falharam, tentando tier=free do DB");
+      llmResult = await callLLM(
+        messages,
+        { apiKey: openrouterKey, temperature: 0.7, maxTokens: 220, tier: "free" },
+        admin,
+      );
     }
+    if (!llmResult.success) {
+      console.error("[spark-voice] LLM falhou em todos os fallbacks:", llmResult.error);
+      return json({ error: "llm_failed", message: "Nenhum modelo de LLM respondeu. Verifique OpenRouter.", details: llmResult.error }, 502);
+    }
+    console.log(`[spark-voice] llm_ms=${Date.now() - t_llm_start}`);
     const reply: string = (llmResult.content ?? "").trim();
     if (!reply) return json({ error: "empty_reply" }, 502);
 
@@ -256,23 +266,20 @@ Deno.serve(async (req) => {
         details: elevenMsg,
       }, 502);
     }
-    // Stream-pipe direto: audio bytes do ElevenLabs -> response do edge function
-    // -> browser. Sem base64, sem JSON wrap. transcript/reply vao nos headers
-    // pra cliente conseguir mostrar texto enquanto audio toca.
-    if (!ttsResp.body) {
-      return json({ error: "tts_empty_body" }, 502);
-    }
-    console.log(`[spark-voice] tts_start_ms=${Date.now() - t0} streaming response`);
+    // Buffer estatico: pega audio inteiro, devolve como Response binaria.
+    // Sem base64 (vs antes), sem TransformStream (mais estavel). transcript/reply
+    // vao nos headers pra cliente mostrar texto enquanto audio toca.
+    const audioBytes = new Uint8Array(await ttsResp.arrayBuffer());
+    console.log(`[spark-voice] tts_ms=${Date.now() - t0} bytes=${audioBytes.byteLength}`);
 
     const audioHeaders: Record<string, string> = {
       ...corsHeaders,
       "Content-Type": "audio/mpeg",
       "Cache-Control": "no-store",
-      "X-Accel-Buffering": "no",
       // Texto em base64 pra suportar UTF-8 nos headers HTTP sem escape hell.
       "X-Spark-Transcript": btoa(unescape(encodeURIComponent(userText))),
       "X-Spark-Reply": btoa(unescape(encodeURIComponent(reply))),
-      "X-Spark-Latency-LLM-Ms": String(Date.now() - t0),
+      "X-Spark-Total-Ms": String(Date.now() - t0),
     };
     if (usedFallback) {
       audioHeaders["X-Voice-Fallback"] = "true";
@@ -281,11 +288,7 @@ Deno.serve(async (req) => {
       )));
     }
 
-    // TransformStream + pipeTo (constraint do projeto) pra preservar streaming.
-    const { readable, writable } = new TransformStream();
-    ttsResp.body.pipeTo(writable).catch((e) => console.error("[spark-voice] pipe error:", e));
-
-    return new Response(readable, { status: 200, headers: audioHeaders });
+    return new Response(audioBytes, { status: 200, headers: audioHeaders });
   } catch (e) {
     return json({ error: "internal", message: (e as Error).message }, 500);
   }
