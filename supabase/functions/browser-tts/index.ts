@@ -93,6 +93,30 @@ serve(async (req) => {
     if (!resp.ok) {
       const errText = await resp.text();
       console.error("ElevenLabs TTS error:", resp.status, errText);
+      // Extrai mensagem util do payload do ElevenLabs ({ detail: { message }} ou
+      // { detail: "..." }) pra que o toast no front seja acionavel.
+      let elevenMsg = "";
+      try {
+        const j = JSON.parse(errText);
+        elevenMsg = typeof j?.detail === "string"
+          ? j.detail
+          : j?.detail?.message || j?.detail?.status || j?.message || "";
+      } catch { elevenMsg = errText.slice(0, 200); }
+
+      if (resp.status === 401) {
+        return new Response(
+          JSON.stringify({
+            error: "elevenlabs_unauthorized",
+            code: "unauthorized",
+            message:
+              "Chave ElevenLabs inválida ou sem permissão de Text to Speech. " +
+              "Acesse elevenlabs.io → API Keys, edite sua chave e habilite a permissão 'Text to Speech'. " +
+              "Depois re-salve em Configurações → Integrações → Voz.",
+            details: elevenMsg,
+          }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
       if (resp.status === 402) {
         return new Response(
           JSON.stringify({
@@ -100,13 +124,18 @@ serve(async (req) => {
             code: "paid_plan_required",
             message:
               "Sua chave ElevenLabs é do plano gratuito e não permite usar esta voz via API. Faça upgrade da conta ElevenLabs (Starter+) ou selecione uma voz própria (clonada) na sua conta.",
-            details: errText,
+            details: elevenMsg,
           }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       return new Response(
-        JSON.stringify({ error: `Erro TTS: ${resp.status}`, details: errText }),
+        JSON.stringify({
+          error: `tts_error`,
+          message: `ElevenLabs rejeitou o TTS (${resp.status}): ${elevenMsg || "sem detalhes"}`,
+          status: resp.status,
+          details: elevenMsg,
+        }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }

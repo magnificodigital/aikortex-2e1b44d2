@@ -187,16 +187,39 @@ Deno.serve(async (req) => {
     );
     if (!ttsResp.ok) {
       const t = await ttsResp.text();
+      let elevenMsg = "";
+      try {
+        const j = JSON.parse(t);
+        elevenMsg = typeof j?.detail === "string"
+          ? j.detail
+          : j?.detail?.message || j?.detail?.status || j?.message || "";
+      } catch { elevenMsg = t.slice(0, 200); }
+      console.error("[spark-voice] TTS failed", ttsResp.status, t);
+      if (ttsResp.status === 401) {
+        return json({
+          error: "elevenlabs_unauthorized",
+          code: "unauthorized",
+          message:
+            "Chave ElevenLabs sem permissão de Text to Speech. Em elevenlabs.io → API Keys, " +
+            "edite a chave e habilite 'Text to Speech'. Depois re-salve em Configurações → Integrações → Voz.",
+          details: elevenMsg,
+        }, 401);
+      }
       if (ttsResp.status === 402) {
         return json({
           error: "elevenlabs_paid_plan_required",
           code: "paid_plan_required",
           message:
             "Sua chave ElevenLabs é do plano gratuito e não permite usar esta voz via API. Faça upgrade (Starter+) ou use uma voz própria (clonada) da sua conta ElevenLabs.",
-          details: t,
+          details: elevenMsg,
         }, 402);
       }
-      return json({ error: "tts_failed", status: ttsResp.status, details: t }, 502);
+      return json({
+        error: "tts_failed",
+        status: ttsResp.status,
+        message: `ElevenLabs rejeitou o TTS (${ttsResp.status}): ${elevenMsg || "sem detalhes"}`,
+        details: elevenMsg,
+      }, 502);
     }
     const audioBuf = new Uint8Array(await ttsResp.arrayBuffer());
     const audioB64 = base64Encode(audioBuf);
