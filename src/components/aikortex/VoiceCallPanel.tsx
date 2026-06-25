@@ -410,8 +410,10 @@ const VoiceCallPanel = ({
       }));
 
       // Para gravação e tenta fazer upload pro bucket call-recordings.
-      // Erros aqui não impedem o save do call_log (transcript ainda fica).
-      let recordingUrl: string | null = null;
+      // Bucket é PRIVADO — guardamos o storage path em call_logs.recording_url
+      // e o front gera signed URL na hora de tocar. Erros não impedem o save
+      // do call_log (transcript ainda fica).
+      let recordingPath: string | null = null;
       try {
         const blob = await stopRecording();
         if (blob && blob.size > 1000) { // ignora blobs vazios
@@ -424,11 +426,8 @@ const VoiceCallPanel = ({
             .from("call-recordings")
             .upload(path, blob, { contentType: blob.type, upsert: false });
           if (!upErr) {
-            const { data: { publicUrl } } = supabase.storage
-              .from("call-recordings")
-              .getPublicUrl(path);
-            recordingUrl = publicUrl;
-            console.log(`[voice-call] gravação enviada (${(blob.size / 1024).toFixed(0)}KB): ${publicUrl}`);
+            recordingPath = path;
+            console.log(`[voice-call] gravação enviada (${(blob.size / 1024).toFixed(0)}KB): ${path}`);
           } else {
             console.warn("[voice-call] upload da gravação falhou:", upErr.message);
           }
@@ -447,13 +446,13 @@ const VoiceCallPanel = ({
         duration_seconds: durationSec,
         status,
         transcript: transcriptForDb,
-        recording_url: recordingUrl,
+        recording_url: recordingPath,
         ended_at: new Date().toISOString(),
       });
       if (error) {
         console.warn("[voice-call] falha ao salvar call_log:", error.message);
       } else {
-        console.log(`[voice-call] call_log salvo (status=${status}, dur=${durationSec}s, ${transcriptForDb.length} msgs, audio=${recordingUrl ? "sim" : "não"})`);
+        console.log(`[voice-call] call_log salvo (status=${status}, dur=${durationSec}s, ${transcriptForDb.length} msgs, audio=${recordingPath ? "sim" : "não"})`);
       }
     } catch (e) {
       console.warn("[voice-call] persist exception:", e);

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -41,6 +41,34 @@ const CallLogs = () => {
   const [filterDirection, setFilterDirection] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [transcriptDrawer, setTranscriptDrawer] = useState<any>(null);
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+
+  // Bucket call-recordings é privado: convertemos o storage path (ou uma URL
+  // legacy do tempo em que era público) em uma signed URL temporária só
+  // quando o drawer abre. Quem não é dono dispara erro no createSignedUrl.
+  useEffect(() => {
+    const raw = transcriptDrawer?.recording_url as string | null | undefined;
+    if (!raw) { setRecordingUrl(null); return; }
+
+    // Se já é http(s) (linha antiga), tenta extrair o path do padrão público.
+    const httpMatch = raw.match(/\/storage\/v1\/object\/(?:public|sign)\/call-recordings\/([^?]+)/);
+    const path = httpMatch ? decodeURIComponent(httpMatch[1]) : raw;
+
+    let cancelled = false;
+    supabase.storage
+      .from("call-recordings")
+      .createSignedUrl(path, 60 * 60) // 1h
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data?.signedUrl) {
+          console.warn("[calls] signed URL falhou:", error?.message);
+          setRecordingUrl(null);
+        } else {
+          setRecordingUrl(data.signedUrl);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [transcriptDrawer]);
 
   const { data: agents } = useQuery({
     queryKey: ["call-log-agents"],
@@ -266,24 +294,30 @@ const CallLogs = () => {
               <FileText className="w-4 h-4" /> Detalhes da Ligação
             </SheetTitle>
           </SheetHeader>
-          {/* Player de gravação (se houver) */}
+          {/* Player de gravação (se houver). URL assinada, expira em 1h. */}
           {transcriptDrawer?.recording_url && (
             <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Gravação</p>
-              <audio
-                src={transcriptDrawer.recording_url}
-                controls
-                preload="metadata"
-                className="w-full h-9"
-              />
-              <a
-                href={transcriptDrawer.recording_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] text-primary hover:underline mt-1.5 inline-block"
-              >
-                Baixar áudio
-              </a>
+              {recordingUrl ? (
+                <>
+                  <audio
+                    src={recordingUrl}
+                    controls
+                    preload="metadata"
+                    className="w-full h-9"
+                  />
+                  <a
+                    href={recordingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-primary hover:underline mt-1.5 inline-block"
+                  >
+                    Baixar áudio
+                  </a>
+                </>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">Gerando link…</p>
+              )}
             </div>
           )}
           <ScrollArea className="h-[calc(100vh-180px)] mt-4">
