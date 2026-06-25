@@ -241,21 +241,6 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
           </div>
         </div>
 
-        <div className="space-y-1">
-          <Label className="text-[11px] text-muted-foreground">
-            Agent ID do Spark <span className="text-muted-foreground/60">(Conversational AI)</span>
-          </Label>
-          <Input
-            value={agentId}
-            onChange={(e) => setAgentId(e.target.value)}
-            placeholder="agent_xxxxxxxxxxxxxxxxxxxxxxxx"
-            className="font-mono text-xs h-8"
-          />
-          <p className="text-[10px] text-muted-foreground">
-            Crie um agente no painel ElevenLabs (Conversational AI) e cole o ID aqui para ativar o Spark por voz.
-          </p>
-        </div>
-
         <div className="flex items-center justify-between gap-2 pt-1">
           <a
             href="https://elevenlabs.io/settings/api-keys"
