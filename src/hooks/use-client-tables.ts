@@ -117,10 +117,17 @@ export function useUpdateClientTable() {
       id,
       client_id: _client_id,
       ...patch
-    }: { id: string; client_id: string; name?: string; description?: string | null; enabled?: boolean }) => {
+    }: {
+      id: string;
+      client_id: string;
+      name?: string;
+      description?: string | null;
+      enabled?: boolean;
+      columns?: ClientTableColumn[];
+    }) => {
       const { data, error } = await supabase
         .from("client_tables")
-        .update(patch)
+        .update(patch as any)
         .eq("id", id)
         .select()
         .single();
