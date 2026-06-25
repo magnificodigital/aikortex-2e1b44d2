@@ -151,6 +151,15 @@ Deno.serve(async (req) => {
     );
     if (!ttsResp.ok) {
       const t = await ttsResp.text();
+      if (ttsResp.status === 402) {
+        return json({
+          error: "elevenlabs_paid_plan_required",
+          code: "paid_plan_required",
+          message:
+            "Sua chave ElevenLabs é do plano gratuito e não permite usar esta voz via API. Faça upgrade (Starter+) ou use uma voz própria (clonada) da sua conta ElevenLabs.",
+          details: t,
+        }, 402);
+      }
       return json({ error: "tts_failed", status: ttsResp.status, details: t }, 502);
     }
     const audioBuf = new Uint8Array(await ttsResp.arrayBuffer());

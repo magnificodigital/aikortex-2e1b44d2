@@ -609,6 +609,16 @@ const VoiceCallPanel = ({
       });
       const data = await resp.json();
       if (!resp.ok || data?.error) {
+        if (resp.status === 402 || data?.code === "paid_plan_required") {
+          toast.error(
+            data?.message ||
+            "ElevenLabs: plano gratuito não permite usar esta voz via API. Faça upgrade ou troque a voz.",
+            { duration: 9000 },
+          );
+          setIsProcessing(false);
+          handleEndRef.current?.();
+          return;
+        }
         toast.error(data?.message || "Erro ao processar áudio");
         setIsProcessing(false);
         if (callActiveRef.current) startSttRecording();
@@ -712,10 +722,28 @@ const VoiceCallPanel = ({
             audio.onerror = () => { setIsAgentSpeaking(false); resolve(); };
             audio.play().catch(() => { setIsAgentSpeaking(false); resolve(); });
           });
+        } else {
+          // Erro: tenta extrair mensagem estruturada (ex.: 402 plano grátis)
+          let errBody: any = null;
+          try { errBody = await resp.json(); } catch { /* ignore */ }
+          if (resp.status === 402 || errBody?.code === "paid_plan_required") {
+            toast.error(
+              errBody?.message ||
+              "ElevenLabs: plano gratuito não permite usar esta voz via API. Faça upgrade ou troque a voz.",
+              { duration: 9000 },
+            );
+            callActiveRef.current = false;
+            setCallStatus("ended");
+            if (timerRef.current) clearInterval(timerRef.current);
+            stopBgSound();
+            return;
+          }
+          toast.error(errBody?.message || errBody?.error || "Falha ao gerar saudação de voz.");
         }
       } catch (e) {
         console.warn("[voice-call] greeting tts failed:", e);
       }
+
 
       if (callActiveRef.current) startSttRecording();
     } catch (err: any) {
