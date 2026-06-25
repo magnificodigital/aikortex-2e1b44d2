@@ -830,7 +830,7 @@ const VoiceCallPanel = ({
       {/* Animated Orb */}
       <div className="relative mb-2">
         <VoiceOrb
-          isSpeaking={callStatus === "connected" && conversation.isSpeaking}
+          isSpeaking={callStatus === "connected" && isAgentSpeaking}
           isConnected={callStatus === "connected"}
           avatarUrl={agentAvatar}
         />
