@@ -82,9 +82,6 @@ const Home = () => {
 
 
   const handleTextSubmit = (text: string) => {
-    setPrompt(text);
-    // Reuse routing logic via handleSubmit; but handleSubmit reads prompt state.
-    // Instead, replicate the routing inline using the provided text.
     const detected = detectCategory(text);
     if (detected === "agentes") {
       const agentInfo = detectAgentType(text);
