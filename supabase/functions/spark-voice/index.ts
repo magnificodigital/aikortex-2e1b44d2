@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
 
     // ElevenLabs TTS
     const ttsResp = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(finalVoiceId)}?output_format=mp3_44100_128`,
       {
         method: "POST",
         headers: {
