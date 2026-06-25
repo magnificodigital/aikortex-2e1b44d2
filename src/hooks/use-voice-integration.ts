@@ -60,6 +60,7 @@ export function useSaveVoiceKeys() {
       telnyx_api_key?: string | null;
       telnyx_public_key?: string | null;
       elevenlabs_api_key?: string | null;
+      elevenlabs_agent_id?: string | null;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
@@ -73,6 +74,9 @@ export function useSaveVoiceKeys() {
       }
       if (payload.elevenlabs_api_key !== undefined && payload.elevenlabs_api_key !== null) {
         updates.push({ provider: "elevenlabs", api_key: payload.elevenlabs_api_key });
+      }
+      if (payload.elevenlabs_agent_id !== undefined && payload.elevenlabs_agent_id !== null) {
+        updates.push({ provider: "elevenlabs_agent_id", api_key: payload.elevenlabs_agent_id });
       }
 
       for (const u of updates) {
