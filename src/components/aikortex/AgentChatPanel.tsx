@@ -507,7 +507,10 @@ const AgentChatPanel = ({
 
   return (
     <div className="w-full h-full flex flex-col bg-background min-w-0">
-      {/* Header */}
+      {/* Header — Voltar + (toggle painel) + Configurar/Testar (quando done).
+          Antes tinha um badge 'SAC/SDR/etc' redundante (agent_type ja aparece
+          em outros lugares). Os tabs Configurar/Testar tambem estavam num
+          info bar separado abaixo — consolidado aqui pra UX mais limpa. */}
       <div className="h-12 border-b border-border flex items-center px-3 gap-2 shrink-0">
         <Button
           variant="outline"
@@ -531,10 +534,22 @@ const AgentChatPanel = ({
             {configPanelVisible ? "Esconder configuração" : "Ver configuração"}
           </button>
         )}
-        <span className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
-          <Bot className="w-3 h-3" />
-          {typeLabel[agentType] || agentType}
-        </span>
+        {wizardStep === "done" && (
+          <div className="flex items-center bg-muted rounded-lg p-0.5">
+            <button
+              onClick={() => setChatMode("setup")}
+              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${chatMode === "setup" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Configurar
+            </button>
+            <button
+              onClick={() => setChatMode("test")}
+              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${chatMode === "test" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Testar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Wizard checklist (Master v7.4 §13.2 — 4 blocos). Em desktop o
@@ -621,19 +636,15 @@ const AgentChatPanel = ({
         </div>
       )}
 
-      {/* Agent info bar — only after wizard is done.
-          Em modo Testar, vira ambiente de staging: badge persistente +
-          background levemente tonalizado pra deixar claro que é simulação. */}
-      {wizardStep === "done" && (
-        <div className={`h-10 border-b flex items-center px-3 gap-2 shrink-0 transition-colors duration-300 ${
+      {/* Info bar — só mostra quando ha algo relevante (STAGING ou Memoria).
+          Avatar+nome do agente removidos (ja aparecem no header do painel
+          direito). Tabs Configurar/Testar movidos pro header principal. */}
+      {wizardStep === "done" && (chatMode === "test" || hasMemoryActive) && (
+        <div className={`h-9 border-b flex items-center px-3 gap-2 shrink-0 transition-colors duration-300 ${
           chatMode === "test"
             ? "border-amber-500/30 bg-amber-500/5"
             : "border-border"
         }`}>
-          <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
-            <img src={agentAvatar} className={avatarImgClass(agentAvatar)} alt="" />
-          </div>
-          <span className="text-xs font-medium truncate">{agentName}</span>
           {chatMode === "test" && (
             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-400" title="Ambiente de simulação — mensagens não são enviadas a clientes reais">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
@@ -646,21 +657,6 @@ const AgentChatPanel = ({
               <span className="text-[9px] font-medium hidden sm:inline">Memória</span>
             </span>
           )}
-          <span className="flex-1" />
-          <div className="flex items-center bg-muted rounded-lg p-0.5">
-            <button
-              onClick={() => setChatMode("setup")}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${chatMode === "setup" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Configurar
-            </button>
-            <button
-              onClick={() => setChatMode("test")}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${chatMode === "test" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Testar
-            </button>
-          </div>
         </div>
       )}
 
