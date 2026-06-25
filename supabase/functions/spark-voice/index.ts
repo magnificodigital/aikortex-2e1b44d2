@@ -86,6 +86,8 @@ Deno.serve(async (req) => {
         const sttForm = new FormData();
         sttForm.append("file", audio, audio.name || "audio.webm");
         sttForm.append("model_id", STT_MODEL);
+        // Locale hint helps when the audio is short or has accent.
+        sttForm.append("language_code", "por");
         const sttResp = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
           method: "POST",
           headers: { "xi-api-key": elevenKey },
@@ -93,7 +95,27 @@ Deno.serve(async (req) => {
         });
         if (!sttResp.ok) {
           const t = await sttResp.text();
-          return json({ error: "stt_failed", status: sttResp.status, details: t }, 400);
+          // ElevenLabs returns { detail: { message, status } } or { detail: "..." }
+          // — extract the most user-friendly bit so the toast on the client is useful.
+          let elevenMsg = "";
+          try {
+            const j = JSON.parse(t);
+            elevenMsg = typeof j?.detail === "string"
+              ? j.detail
+              : j?.detail?.message || j?.detail?.status || j?.message || "";
+          } catch { elevenMsg = t.slice(0, 200); }
+          console.error("[spark-voice] STT failed", sttResp.status, t);
+          const friendly =
+            sttResp.status === 401 ? "Chave ElevenLabs inválida ou sem permissão de STT."
+            : sttResp.status === 402 ? "Plano ElevenLabs não cobre STT. Faça upgrade ou troque a chave."
+            : sttResp.status === 429 ? "Limite ElevenLabs atingido. Tente em alguns segundos."
+            : `ElevenLabs STT rejeitou o áudio: ${elevenMsg || "erro " + sttResp.status}`;
+          return json({
+            error: "stt_failed",
+            status: sttResp.status,
+            message: friendly,
+            details: t.slice(0, 500),
+          }, 400);
         }
         const sttJson = await sttResp.json();
         userText = (sttJson?.text ?? "").trim();
