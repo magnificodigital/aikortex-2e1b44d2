@@ -49,9 +49,8 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
     const telnyx = telnyxKey.trim();
     const telnyxPub = telnyxPublicKey.trim();
     const eleven = elevenKey.trim();
-    const agent = agentId.trim();
 
-    if (!telnyx && !telnyxPub && !eleven && !agent) {
+    if (!telnyx && !telnyxPub && !eleven) {
       toast.error("Informe pelo menos um campo para salvar");
       return;
     }
@@ -60,7 +59,6 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
       telnyx_api_key: telnyx || undefined,
       telnyx_public_key: telnyxPub || undefined,
       elevenlabs_api_key: eleven || undefined,
-      elevenlabs_agent_id: agent || undefined,
     });
     setTelnyxKey("");
     setTelnyxPublicKey("");
