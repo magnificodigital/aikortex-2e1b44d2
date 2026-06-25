@@ -141,7 +141,20 @@ const Home = () => {
   const handleVoiceTranscript = (text: string) => {
     // Backend (spark-voice) ja filtrou: so chega aqui se intent=creation.
     console.log(`[spark→home] navegando com transcript="${text}"`);
-    handleTextSubmit(text);
+    const detected = detectCategory(text);
+    if (detected === "agentes") {
+      // Voz SEMPRE vai pro fluxo custom (/new), nao pro template SDR/SAC.
+      // Por que? O wizard so dispara handleDiscover(initialPrompt) quando
+      // fromTemplate=false. Se eu mandasse pro template, o agente abria
+      // pre-configurado mas o wizard nao continuaria com a fala do user.
+      // No /new o wizard roda com a frase inteira como prompt inicial.
+      navigate(`/aikortex/agents/new`, {
+        state: { fromTemplate: false, initialPrompt: text, agentType: "Custom" },
+      });
+    } else {
+      const channel = detectChannel(text) ?? "web";
+      navigate("/app-builder", { state: { initialPrompt: text, channel } });
+    }
   };
 
   return (
