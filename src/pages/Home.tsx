@@ -206,120 +206,55 @@ const Home = () => {
   //   return <AgencyOnboarding onComplete={() => setShowOnboarding(false)} />;
   // }
 
+  const handleTextSubmit = (text: string) => {
+    setPrompt(text);
+    // Reuse routing logic via handleSubmit; but handleSubmit reads prompt state.
+    // Instead, replicate the routing inline using the provided text.
+    const detected = detectCategory(text);
+    if (detected === "agentes") {
+      const agentInfo = detectAgentType(text);
+      if (agentInfo) {
+        const preset = AGENT_PRESETS[agentInfo.type];
+        const storagePrefix = `agent-detail-${agentInfo.id}`;
+        try {
+          ["name", "desc", "objective", "instructions", "toneOfVoice", "greetingMessage"].forEach((k) =>
+            localStorage.removeItem(`${storagePrefix}-${k}`),
+          );
+        } catch {}
+        navigate(`/aikortex/agents/${agentInfo.id}`, {
+          state: {
+            fromTemplate: true,
+            initialPrompt: text,
+            preset: {
+              context: preset.context,
+              intents: preset.intents,
+              stages: preset.stages,
+              advancedConfig: preset.advancedConfig,
+              agentType: agentInfo.type,
+              agentName: agentInfo.name,
+              agentObjective: preset.context.targetAudienceDescription || "",
+            },
+          },
+        });
+      } else {
+        navigate(`/aikortex/agents/new`, {
+          state: { fromTemplate: false, initialPrompt: text, agentType: "Custom" },
+        });
+      }
+    } else {
+      const channel = detectChannel(text) ?? "web";
+      navigate("/app-builder", { state: { initialPrompt: text, channel } });
+    }
+  };
+
   return (
     <DashboardLayout>
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-3.5rem)] px-4">
-        {/* Greeting */}
-        <h1 className="text-3xl lg:text-5xl font-light text-foreground mb-3 text-center">
-          {getGreeting()}, {detectHonorific(userName)}. <span className="italic">{userName}</span>
-        </h1>
-        <p className="text-sm lg:text-base text-muted-foreground mb-10 text-center max-w-lg">
-          Crie Agentes inteligentes e Aplicações para Whatsapp e Web em minutos conversando com a inteligência artificial.
-        </p>
-
-        {/* Prompt Box */}
-        <div className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-xl shadow-black/5 overflow-hidden mb-8">
-          {/* Creation tabs */}
-          <div className="flex items-center gap-1 px-4 pt-3 pb-1">
-            {(["app", "agentes"] as const).map((tab) => {
-              const labels = { app: "App", agentes: "Agentes" };
-              return (
-                <button
-                  key={tab}
-                  onClick={() => handleTabChange(tab)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    activeCreationTab === tab
-                      ? "bg-primary/10 text-primary shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                  }`}
-                >
-                  {tab === "app" && <Monitor className="w-4 h-4" />}
-                  {tab === "agentes" && <Sparkles className="w-4 h-4" />}
-                  {labels[tab]}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Text area */}
-          <textarea
-            value={prompt}
-            onChange={(e) => handlePromptChange(e.target.value)}
-            placeholder={
-              activeCreationTab === "app"
-                ? "Descreva o app que você quer criar..."
-                : "Descreva o agente que você precisa..."
-            }
-            className="w-full bg-transparent border-none outline-none resize-none text-sm text-foreground placeholder:text-muted-foreground/50 px-5 py-3 min-h-[90px]"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
-            }}
-          />
-
-          {/* Bottom bar */}
-          <div className="flex items-center justify-between px-4 pb-3">
-            <div className="flex items-center gap-1.5">
-              {activeCreationTab === "app" && (
-                <>
-                  <button
-                    onClick={() => setDetectedChannel("web")}
-                    className={`flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border transition-all ${
-                      detectedChannel === "web" || !detectedChannel
-                        ? "border-primary/40 bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                    }`}
-                  >
-                    <Monitor className="w-3.5 h-3.5" />
-                    Web App
-                  </button>
-                  <button
-                    onClick={() => setDetectedChannel("whatsapp")}
-                    className={`flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border transition-all ${
-                      detectedChannel === "whatsapp"
-                        ? "border-green-500/40 bg-green-500/10 text-green-600 dark:text-green-400"
-                        : "border-border text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                    }`}
-                  >
-                    <WhatsAppIcon className="w-3.5 h-3.5" />
-                    WhatsApp
-                  </button>
-                </>
-              )}
-            </div>
-            <Button
-              size="sm"
-              className="h-9 px-5 rounded-full bg-primary hover:bg-primary/90 gap-1.5"
-              disabled={!prompt.trim()}
-              onClick={() => handleSubmit()}
-            >
-              <ArrowUp className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Suggestions */}
-        <div className="flex items-center gap-3 flex-wrap justify-center">
-          {currentSuggestions.map((label) => (
-            <button
-              key={label}
-              onClick={() => {
-                setPrompt(label);
-                handlePromptChange(label);
-              }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
-            >
-              <SuggestionIcon className="w-4 h-4" />
-              {label}
-            </button>
-          ))}
-          <button
-            onClick={refreshSuggestions}
-            className="flex items-center justify-center w-10 h-10 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+      <SparkInterface
+        greeting={getGreeting()}
+        userName={userName}
+        honorific={detectHonorific(userName)}
+        onTextSubmit={handleTextSubmit}
+      />
     </DashboardLayout>
   );
 };
