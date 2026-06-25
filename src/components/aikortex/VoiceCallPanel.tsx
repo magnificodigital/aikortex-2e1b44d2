@@ -664,68 +664,60 @@ const VoiceCallPanel = ({
     setCallStatus("connecting");
     setTranscript([]);
     transcriptRef.current = [];
+    chatHistoryRef.current = [];
     callLogPersistedRef.current = false;
     setDuration(0);
-    // Inicia gravação ANTES do startSession da ElevenLabs pra capturar
-    // desde o primeiro frame. Erros aqui não bloqueiam a call.
-    startRecording().catch(() => { /* gravação opcional, segue mesmo se falhar */ });
+    // Gravação opcional (mixer mic + tts) pra arquivar a call
+    startRecording().catch(() => { /* gravação opcional */ });
 
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Call edge function to get the user's fixed ElevenLabs agent token.
-      // We reuse the same agent for every call and customize the session
-      // via ElevenLabs overrides (prompt, first message, voice) so the
-      // dashboard doesn't get polluted with "Sofia - Sessão" agents.
-      const { data: sessionData, error: fnError } = await supabase.functions.invoke(
-        "elevenlabs-voice-session",
-        { body: {} }
-      );
+      callActiveRef.current = true;
+      setCallStatus("connected");
+      startTimeRef.current = Date.now();
+      timerRef.current = setInterval(() => {
+        setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      }, 1000);
+      startBgSound(bgSound);
 
-      if (fnError) {
-        let msg = "Erro ao iniciar sessão de voz";
-        try {
-          if (fnError.context && typeof fnError.context.json === "function") {
-            const body = await fnError.context.json();
-            msg = body?.error || msg;
-          }
-        } catch { /* ignore */ }
-        toast.error(msg);
-        setCallStatus("idle");
-        return;
-      }
+      // Saudação inicial via browser-tts -> toca, depois abre o mic.
+      const greeting = agentGreeting || `Olá! Sou ${agentName || "seu agente"}. Como posso te ajudar?`;
+      const greetingEntry = { role: "agent", text: greeting };
+      transcriptRef.current = [...transcriptRef.current, greetingEntry];
+      setTranscript(prev => [...prev, greetingEntry]);
+      chatHistoryRef.current.push({ role: "assistant", content: greeting });
 
-      if (!sessionData?.token || !sessionData?.agentId) {
-        toast.error(sessionData?.error || "Erro ao obter token de voz");
-        setCallStatus("idle");
-        return;
-      }
-
-      const agentLang = "pt";
-      const endCallPhrases = [
-        "tchau", "tchaau", "até logo", "ate logo", "até mais", "ate mais",
-        "encerrar ligação", "desligar", "pode desligar",
-        "obrigado, tchau", "valeu, tchau", "vou desligar",
-        "até a próxima", "ate a proxima", "adeus",
-      ];
-
-      const prompt = (agentPrompt || `Você é o agente ${agentName || "IA"}. Responda sempre em português brasileiro de forma profissional e amigável.`) +
-        `\n\n## ENCERRAMENTO\nQuando o cliente se despedir (tchau, até logo, valeu, vou desligar, encerrar ligação etc.), responda APENAS uma despedida curta tipo "Até logo!" ou "Tchau, obrigado pelo contato!". NÃO fique perguntando "tem mais alguma coisa?" — encerra educadamente. As frases-chave também encerram a chamada do lado do cliente.\n\nFrases que indicam encerramento: ${endCallPhrases.join(", ")}.`;
-
-      await conversation.startSession({
-        conversationToken: sessionData.token,
-        connectionType: "webrtc",
-        overrides: {
-          agent: {
-            prompt: { prompt },
-            firstMessage: agentGreeting || `Olá! Sou ${agentName || "seu agente"}. Como posso ajudar?`,
-            language: agentLang,
+      try {
+        const session = (await supabase.auth.getSession()).data.session;
+        const resp = await fetch(fnUrl("browser-tts"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token || ""}`,
           },
-          tts: {
+          body: JSON.stringify({
+            text: greeting,
             voiceId: selectedVoice || "EXAVITQu4vr4xnSDxMaL",
-          },
-        },
-      });
+          }),
+        });
+        if (resp.ok && resp.headers.get("content-type")?.includes("audio")) {
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          ttsAudioRef.current = audio;
+          setIsAgentSpeaking(true);
+          await new Promise<void>((resolve) => {
+            audio.onended = () => { URL.revokeObjectURL(url); setIsAgentSpeaking(false); resolve(); };
+            audio.onerror = () => { setIsAgentSpeaking(false); resolve(); };
+            audio.play().catch(() => { setIsAgentSpeaking(false); resolve(); });
+          });
+        }
+      } catch (e) {
+        console.warn("[voice-call] greeting tts failed:", e);
+      }
+
+      if (callActiveRef.current) startSttRecording();
     } catch (err: any) {
       console.error("Failed to start voice:", err);
       if (err?.name === "NotAllowedError") {
@@ -734,17 +726,26 @@ const VoiceCallPanel = ({
         toast.error(err?.message || "Erro ao iniciar ligação.");
       }
       setCallStatus("idle");
+      callActiveRef.current = false;
     }
-  }, [conversation, agentName, agentPrompt, agentGreeting, selectedVoice]);
+  }, [agentName, agentGreeting, selectedVoice, bgSound, startBgSound, startSttRecording, startRecording]);
 
   const handleEnd = useCallback(async () => {
-    try {
-      await conversation.endSession();
-    } catch {
-      setCallStatus("ended");
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-  }, [conversation]);
+    callActiveRef.current = false;
+    if (ttsAudioRef.current) { try { ttsAudioRef.current.pause(); } catch {} ttsAudioRef.current = null; }
+    await stopSttRecording().catch(() => null);
+    setIsAgentSpeaking(false);
+    setIsRecording(false);
+    setIsProcessing(false);
+    setCallStatus("ended");
+    if (timerRef.current) clearInterval(timerRef.current);
+    stopBgSound();
+    persistCallLog("completed");
+  }, [stopSttRecording, stopBgSound, persistCallLog]);
+
+  // Wire ref pra processAudio poder chamar handleEnd ao detectar despedida
+  useEffect(() => { handleEndRef.current = handleEnd; }, [handleEnd]);
+
 
   const handleReset = () => {
     setCallStatus("idle");
