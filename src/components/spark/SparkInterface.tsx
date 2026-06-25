@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MessageSquare, Loader2, Settings, X, ArrowUp, RefreshCw, Square } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { fnUrl } from "@/lib/supabase-url";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { SparkOrb } from "./SparkOrb";
@@ -224,8 +225,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
 
       // Raw fetch (não supabase.functions.invoke) porque a função agora
       // devolve audio binário; invoke sempre parse JSON.
-      const url = `${supabase.supabaseUrl}/functions/v1/spark-voice`;
-      const resp = await fetch(url, {
+      const resp = await fetch(fnUrl("spark-voice"), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
