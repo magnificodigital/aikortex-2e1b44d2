@@ -572,15 +572,18 @@ const VoiceCallPanel = ({
     }
   }, [isMuted, stopSttRecording]);
 
-  const playTtsBase64 = useCallback(async (audioB64: string, mime: string) => {
+  const playTtsStream = useCallback(async (resp: Response) => {
+    // Toca audio do response sem passar por base64. Blob URL ja deixa o
+    // browser iniciar playback assim que tem buffer suficiente.
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
     return new Promise<void>((resolve) => {
-      const src = `data:${mime};base64,${audioB64}`;
-      const audio = new Audio(src);
+      const audio = new Audio(url);
       ttsAudioRef.current = audio;
       audio.onplay = () => setIsAgentSpeaking(true);
-      audio.onended = () => { setIsAgentSpeaking(false); resolve(); };
-      audio.onerror = () => { setIsAgentSpeaking(false); resolve(); };
-      audio.play().catch(() => { setIsAgentSpeaking(false); resolve(); });
+      audio.onended = () => { URL.revokeObjectURL(url); setIsAgentSpeaking(false); resolve(); };
+      audio.onerror = () => { URL.revokeObjectURL(url); setIsAgentSpeaking(false); resolve(); };
+      audio.play().catch(() => { URL.revokeObjectURL(url); setIsAgentSpeaking(false); resolve(); });
     });
   }, []);
 
@@ -604,12 +607,20 @@ const VoiceCallPanel = ({
 
       const resp = await fetch(fnUrl("spark-voice"), {
         method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          Accept: "audio/mpeg",
+        },
         body: form,
       });
-      const data = await resp.json();
-      if (!resp.ok || data?.error) {
-        if (resp.status === 402 || data?.code === "paid_plan_required") {
+
+      const contentType = resp.headers.get("content-type") || "";
+
+      // Caminho de erro: backend devolve JSON (mensagem + code).
+      if (!resp.ok || !contentType.includes("audio")) {
+        let data: any = null;
+        try { data = await resp.json(); } catch { /* noop */ }
+        if (resp.status === 402 || data?.code === "paid_plan_required" || data?.code === "quota_exceeded") {
           toast.error(
             data?.message ||
             "ElevenLabs: plano gratuito não permite usar esta voz via API. Faça upgrade ou troque a voz.",
@@ -624,16 +635,18 @@ const VoiceCallPanel = ({
         if (callActiveRef.current) startSttRecording();
         return;
       }
-      const { transcript: userText, reply, audio, audio_mime, voice_fallback } = data;
-      if (voice_fallback) {
-        // Mostra so uma vez por sessao (idempotente via ref).
-        if (!voiceFallbackNotifiedRef.current) {
-          voiceFallbackNotifiedRef.current = true;
-          toast.warning(voice_fallback.reason || "Voz selecionada indisponível — usando voz padrão.", {
-            duration: 9000,
-          });
-        }
+
+      // Caminho rapido: audio binario + texto nos headers (UTF-8 via base64).
+      const decode = (b64: string) => { try { return decodeURIComponent(escape(atob(b64))); } catch { return ""; } };
+      const userText = decode(resp.headers.get("x-spark-transcript") || "");
+      const reply = decode(resp.headers.get("x-spark-reply") || "");
+      if (resp.headers.get("x-voice-fallback") === "true" && !voiceFallbackNotifiedRef.current) {
+        voiceFallbackNotifiedRef.current = true;
+        const reason = decode(resp.headers.get("x-voice-fallback-reason") || "")
+          || "Voz selecionada indisponível — usando voz padrão.";
+        toast.warning(reason, { duration: 9000 });
       }
+
       chatHistoryRef.current.push({ role: "user", content: userText });
       chatHistoryRef.current.push({ role: "assistant", content: reply });
       const userEntry = { role: "user", text: userText };
@@ -646,7 +659,7 @@ const VoiceCallPanel = ({
       const ended = END_CALL_KEYWORDS.some(kw => normalized.includes(normalizeForKeyword(kw)));
 
       setIsProcessing(false);
-      await playTtsBase64(audio, audio_mime);
+      await playTtsStream(resp);
 
       if (ended) {
         // encerra após despedida
@@ -659,7 +672,7 @@ const VoiceCallPanel = ({
       setIsProcessing(false);
       if (callActiveRef.current) startSttRecording();
     }
-  }, [agentName, agentPrompt, selectedVoice, playTtsBase64, startSttRecording]);
+  }, [agentName, agentPrompt, selectedVoice, playTtsStream, startSttRecording]);
 
   // wire ref
   useEffect(() => { processAudioRef.current = processAudio; }, [processAudio]);

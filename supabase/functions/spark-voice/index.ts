@@ -23,6 +23,7 @@ Nunca diga que é uma IA da OpenAI ou Google — você é o Spark do Aikortex.`;
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const t0 = Date.now();
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "missing_auth" }, 401);
@@ -169,12 +170,14 @@ Deno.serve(async (req) => {
     const reply: string = (llmResult.content ?? "").trim();
     if (!reply) return json({ error: "empty_reply" }, 502);
 
-    // ElevenLabs TTS
+    // ElevenLabs TTS — endpoint /stream + formato leve mp3_22050_32.
+    // Stream começa a chegar antes do audio inteiro estar gerado. Bitrate
+    // 32 cabe 5s em ~12KB (vs 50KB do 128kbps); voz fica indistinguivel.
     const SARAH = "EXAVITQu4vr4xnSDxMaL"; // voz stock disponivel em qualquer conta
-    console.log(`[spark-voice] voice=${finalVoiceId} key=${elevenKey.slice(-4)}`);
+    console.log(`[spark-voice] llm_ms=${Date.now() - t0} voice=${finalVoiceId} key=${elevenKey.slice(-4)}`);
 
     const callTts = (voice: string) => fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}?output_format=mp3_44100_128`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}/stream?output_format=mp3_22050_32`,
       {
         method: "POST",
         headers: { "xi-api-key": elevenKey, "Content-Type": "application/json" },
@@ -182,6 +185,7 @@ Deno.serve(async (req) => {
           text: reply,
           model_id: TTS_MODEL,
           voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.1, use_speaker_boost: true },
+          optimize_streaming_latency: 4, // max latencia-otima
         }),
       },
     );
@@ -252,20 +256,36 @@ Deno.serve(async (req) => {
         details: elevenMsg,
       }, 502);
     }
-    const audioBuf = new Uint8Array(await ttsResp.arrayBuffer());
-    const audioB64 = base64Encode(audioBuf);
+    // Stream-pipe direto: audio bytes do ElevenLabs -> response do edge function
+    // -> browser. Sem base64, sem JSON wrap. transcript/reply vao nos headers
+    // pra cliente conseguir mostrar texto enquanto audio toca.
+    if (!ttsResp.body) {
+      return json({ error: "tts_empty_body" }, 502);
+    }
+    console.log(`[spark-voice] tts_start_ms=${Date.now() - t0} streaming response`);
 
-    return json({
-      transcript: userText,
-      reply,
-      audio: audioB64,
-      audio_mime: "audio/mpeg",
-      voice_fallback: usedFallback ? {
-        requested: finalVoiceId,
-        used: SARAH,
-        reason: "A voz selecionada não pertence à conta ElevenLabs desta chave. Usei a voz Sarah como fallback. Re-selecione uma voz da lista em Voz do agente.",
-      } : null,
-    });
+    const audioHeaders: Record<string, string> = {
+      ...corsHeaders,
+      "Content-Type": "audio/mpeg",
+      "Cache-Control": "no-store",
+      "X-Accel-Buffering": "no",
+      // Texto em base64 pra suportar UTF-8 nos headers HTTP sem escape hell.
+      "X-Spark-Transcript": btoa(unescape(encodeURIComponent(userText))),
+      "X-Spark-Reply": btoa(unescape(encodeURIComponent(reply))),
+      "X-Spark-Latency-LLM-Ms": String(Date.now() - t0),
+    };
+    if (usedFallback) {
+      audioHeaders["X-Voice-Fallback"] = "true";
+      audioHeaders["X-Voice-Fallback-Reason"] = btoa(unescape(encodeURIComponent(
+        "A voz selecionada não pertence à conta ElevenLabs desta chave. Usei a voz Sarah como fallback. Re-selecione uma voz da lista em Voz do agente.",
+      )));
+    }
+
+    // TransformStream + pipeTo (constraint do projeto) pra preservar streaming.
+    const { readable, writable } = new TransformStream();
+    ttsResp.body.pipeTo(writable).catch((e) => console.error("[spark-voice] pipe error:", e));
+
+    return new Response(readable, { status: 200, headers: audioHeaders });
   } catch (e) {
     return json({ error: "internal", message: (e as Error).message }, 500);
   }

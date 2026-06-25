@@ -215,32 +215,31 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       form.append("audio", blob, "audio.webm");
       form.append("history", JSON.stringify(historyRef.current.slice(-8)));
 
-      const { data, error } = await supabase.functions.invoke("spark-voice", { body: form });
-      if (error || !data || (data as any).error) {
-        // supabase-js FunctionsHttpError exposes the Response on `context`.
-        // We have to await .json()/.text() to read the body — that's where
-        // spark-voice puts { error, message, details }.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setOrbState("error");
+        toast.error("Sessão expirada");
+        return;
+      }
+
+      // Raw fetch (não supabase.functions.invoke) porque a função agora
+      // devolve audio binário; invoke sempre parse JSON.
+      const url = `${supabase.supabaseUrl}/functions/v1/spark-voice`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          Accept: "audio/mpeg",
+        },
+        body: form,
+      });
+      const contentType = resp.headers.get("content-type") || "";
+
+      if (!resp.ok || !contentType.includes("audio")) {
         let parsed: any = null;
-        const ctx = (error as any)?.context;
-        if (ctx && typeof ctx.clone === "function") {
-          try {
-            parsed = await ctx.clone().json();
-          } catch {
-            try { parsed = { message: await ctx.clone().text() }; } catch { /* noop */ }
-          }
-        }
-
-        const dataAny = data as any;
-        const msg =
-          parsed?.message ||
-          parsed?.error ||
-          parsed?.details ||
-          dataAny?.message ||
-          dataAny?.error ||
-          (error as Error | undefined)?.message ||
-          "Falha ao processar áudio";
-
-        console.error("[spark] backend error", { msg, parsed, data, error });
+        try { parsed = await resp.json(); } catch { /* noop */ }
+        const msg = parsed?.message || parsed?.error || `Falha ao processar áudio (HTTP ${resp.status})`;
+        console.error("[spark] backend error", { msg, parsed, status: resp.status });
         setOrbState("error");
         toast.error(msg, {
           action: msg.includes("ElevenLabs") || parsed?.error === "elevenlabs_not_configured"
@@ -250,12 +249,10 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
         return;
       }
 
-      const { transcript: userText, reply, audio, audio_mime } = data as {
-        transcript: string;
-        reply: string;
-        audio: string;
-        audio_mime: string;
-      };
+      // Path rápido: áudio binário + transcript/reply nos headers (base64-UTF8).
+      const decode = (b64: string) => { try { return decodeURIComponent(escape(atob(b64))); } catch { return ""; } };
+      const userText = decode(resp.headers.get("x-spark-transcript") || "");
+      const reply = decode(resp.headers.get("x-spark-reply") || "");
 
       historyRef.current.push({ role: "user", content: userText });
       historyRef.current.push({ role: "assistant", content: reply });
@@ -267,21 +264,22 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
         { id: `${ts}-a`, role: "assistant", content: reply },
       ]);
 
-      // Play TTS, then forward the user's transcript to the host so it can route
-      // the same way the text mode does (e.g. open the builder).
       const dispatchTranscript = () => {
         const cb = onVoiceTranscriptRef.current;
         if (!cb) return;
         try { cb(userText); } catch { /* noop */ }
       };
 
-      // After TTS finishes, if the session is still alive we resume listening
-      // (hands-free). If endSession ran in between (stream cleared), stay idle.
       const resumeState = (): OrbState => (streamRef.current ? "listening" : "idle");
 
-      const src = `data:${audio_mime};base64,${audio}`;
+      // Blob URL toca direto, sem decode base64 — corta ~200-400ms por turno.
+      const audioBlob = await resp.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      if (audioElRef.current) {
+        try { URL.revokeObjectURL(audioElRef.current.src); } catch { /* noop */ }
+      }
       if (!audioElRef.current) audioElRef.current = new Audio();
-      audioElRef.current.src = src;
+      audioElRef.current.src = audioUrl;
       audioElRef.current.onplay = () => setOrbState("speaking");
       audioElRef.current.onended = () => { setOrbState(resumeState()); dispatchTranscript(); };
       audioElRef.current.onerror = () => { setOrbState(resumeState()); dispatchTranscript(); };
