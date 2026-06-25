@@ -217,25 +217,33 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
 
       const { data, error } = await supabase.functions.invoke("spark-voice", { body: form });
       if (error || !data || (data as any).error) {
-        // Try every shape we've seen come back so the toast shows something useful.
-        let msg = (data as any)?.message ?? "";
-        const errBody = (error as any)?.context?.body;
-        if (errBody) {
+        // supabase-js FunctionsHttpError exposes the Response on `context`.
+        // We have to await .json()/.text() to read the body — that's where
+        // spark-voice puts { error, message, details }.
+        let parsed: any = null;
+        const ctx = (error as any)?.context;
+        if (ctx && typeof ctx.clone === "function") {
           try {
-            const parsed = typeof errBody === "string" ? JSON.parse(errBody) : errBody;
-            msg = parsed?.message ?? parsed?.error ?? msg;
+            parsed = await ctx.clone().json();
           } catch {
-            if (typeof errBody === "string" && errBody.length < 240) msg = msg || errBody;
+            try { parsed = { message: await ctx.clone().text() }; } catch { /* noop */ }
           }
         }
-        if (!msg && (data as any)?.error) msg = (data as any).error;
-        if (!msg && error) msg = (error as Error).message;
-        if (!msg) msg = "Falha ao processar áudio";
 
-        console.error("[spark] backend error", { error, data });
+        const dataAny = data as any;
+        const msg =
+          parsed?.message ||
+          parsed?.error ||
+          parsed?.details ||
+          dataAny?.message ||
+          dataAny?.error ||
+          (error as Error | undefined)?.message ||
+          "Falha ao processar áudio";
+
+        console.error("[spark] backend error", { msg, parsed, data, error });
         setOrbState("error");
         toast.error(msg, {
-          action: msg.includes("ElevenLabs")
+          action: msg.includes("ElevenLabs") || parsed?.error === "elevenlabs_not_configured"
             ? { label: "Configurar", onClick: () => navigate("/settings?tab=integrations") }
             : undefined,
         });
