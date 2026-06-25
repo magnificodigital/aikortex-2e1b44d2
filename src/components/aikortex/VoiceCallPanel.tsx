@@ -558,23 +558,17 @@ const VoiceCallPanel = ({
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Call edge function to auto-create agent and get signed URL
+      // Call edge function to get the user's fixed ElevenLabs agent token.
+      // We reuse the same agent for every call and customize the session
+      // via ElevenLabs overrides (prompt, first message, voice) so the
+      // dashboard doesn't get polluted with "Sofia - Sessão" agents.
       const { data: sessionData, error: fnError } = await supabase.functions.invoke(
         "elevenlabs-voice-session",
-        {
-          body: {
-            agentName,
-            agentPrompt,
-            voiceId: selectedVoice,
-            firstMessage: agentGreeting,
-            language: "pt",
-          },
-        }
+        { body: {} }
       );
 
       if (fnError) {
-        // Try to extract detailed error from the response context
-        let msg = "Erro ao criar sessão de voz";
+        let msg = "Erro ao iniciar sessão de voz";
         try {
           if (fnError.context && typeof fnError.context.json === "function") {
             const body = await fnError.context.json();
@@ -586,14 +580,36 @@ const VoiceCallPanel = ({
         return;
       }
 
-      if (!sessionData?.signed_url) {
-        toast.error(sessionData?.error || "Erro ao obter URL de sessão");
+      if (!sessionData?.token || !sessionData?.agentId) {
+        toast.error(sessionData?.error || "Erro ao obter token de voz");
         setCallStatus("idle");
         return;
       }
 
+      const agentLang = "pt";
+      const endCallPhrases = [
+        "tchau", "tchaau", "até logo", "ate logo", "até mais", "ate mais",
+        "encerrar ligação", "desligar", "pode desligar",
+        "obrigado, tchau", "valeu, tchau", "vou desligar",
+        "até a próxima", "ate a proxima", "adeus",
+      ];
+
+      const prompt = (agentPrompt || `Você é o agente ${agentName || "IA"}. Responda sempre em português brasileiro de forma profissional e amigável.`) +
+        `\n\n## ENCERRAMENTO\nQuando o cliente se despedir (tchau, até logo, valeu, vou desligar, encerrar ligação etc.), responda APENAS uma despedida curta tipo "Até logo!" ou "Tchau, obrigado pelo contato!". NÃO fique perguntando "tem mais alguma coisa?" — encerra educadamente. As frases-chave também encerram a chamada do lado do cliente.\n\nFrases que indicam encerramento: ${endCallPhrases.join(", ")}.`;
+
       await conversation.startSession({
-        signedUrl: sessionData.signed_url,
+        conversationToken: sessionData.token,
+        connectionType: "webrtc",
+        overrides: {
+          agent: {
+            prompt: { prompt },
+            firstMessage: agentGreeting || `Olá! Sou ${agentName || "seu agente"}. Como posso ajudar?`,
+            language: agentLang,
+          },
+          tts: {
+            voiceId: selectedVoice || "EXAVITQu4vr4xnSDxMaL",
+          },
+        },
       });
     } catch (err: any) {
       console.error("Failed to start voice:", err);
