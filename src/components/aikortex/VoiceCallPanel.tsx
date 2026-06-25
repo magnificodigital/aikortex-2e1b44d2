@@ -823,7 +823,7 @@ const VoiceCallPanel = ({
       >
         {callStatus === "idle" && "Aguardando"}
         {callStatus === "connecting" && "Conectando..."}
-        {callStatus === "connected" && (conversation.isSpeaking ? "Falando..." : "Ouvindo...")}
+        {callStatus === "connected" && (isAgentSpeaking ? "Falando..." : isProcessing ? "Pensando..." : "Ouvindo...")}
         {callStatus === "ended" && "Encerrada"}
       </Badge>
 
