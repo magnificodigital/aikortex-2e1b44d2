@@ -440,13 +440,18 @@ const AgentChatPanel = ({
     onWizardMessagesChange?.(wizardMessages);
   }, [wizardMessages, onWizardMessagesChange]);
 
-  // Auto-trigger discover when initialPrompt is provided (custom agent from Home)
+  // Auto-trigger quando initialPrompt vier da Home (ex.: Spark texto/voz).
+  // CRITICO: usa wizardSendMessage (mesmo caminho do user digitando no input)
+  // em vez de handleDiscover. handleDiscover pula direto pra step "structure";
+  // wizardSendMessage mantem a conversa multi-turn em "discover" — o wizard
+  // faz as perguntas certas antes de estruturar, igual quando o user clica
+  // "Novo Agente" e digita a primeira solicitacao.
   useEffect(() => {
-    if (initialPrompt && wizardStep === "discover" && !initialPromptUsedRef.current && !isStructuring) {
+    if (initialPrompt && wizardStep === "discover" && !initialPromptUsedRef.current && !wizardIsStreaming && wizardSendMessage) {
       initialPromptUsedRef.current = true;
-      void handleDiscoverRef.current(initialPrompt);
+      wizardSendMessage(initialPrompt);
     }
-  }, [initialPrompt, wizardStep, isStructuring]);
+  }, [initialPrompt, wizardStep, wizardIsStreaming, wizardSendMessage]);
 
   /* ── Re-structure ── */
   const handleRestructure = useCallback(() => {

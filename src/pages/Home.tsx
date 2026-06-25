@@ -70,22 +70,26 @@ const Home = () => {
   };
 
 
-  // Fluxo IDENTICO ao botao "Novo Agente" em /aikortex/agents:
-  // mesmo id (new-{ts}), mesmo state, SEM initialPrompt.
-  // Sem initialPrompt, o wizard nao auto-dispara handleDiscover, abrindo
-  // em branco no passo Descobrir esperando o user falar/digitar — exatamente
-  // a experiencia de clicar "+ Novo Agente". Spark so leva ate a tela.
-  const navigateToNewAgent = () => {
+  // Fluxo igual ao botao "Novo Agente" em /aikortex/agents — mesmo id, mesmo
+  // state. Diferenca: passa initialPrompt pro wizard auto-injetar a primeira
+  // solicitacao via wizardSendMessage (mesmo caminho do user digitando),
+  // mantendo a conversa multi-turn natural.
+  const navigateToNewAgent = (text: string) => {
     const newId = `new-${Date.now()}`;
     navigate(`/aikortex/agents/${newId}`, {
-      state: { fromTemplate: false, agentType: "Custom", agentName: "Novo Agente" },
+      state: {
+        fromTemplate: false,
+        agentType: "Custom",
+        agentName: "Novo Agente",
+        initialPrompt: text,
+      },
     });
   };
 
   const handleTextSubmit = (text: string) => {
     const detected = detectCategory(text);
     if (detected === "agentes") {
-      navigateToNewAgent();
+      navigateToNewAgent(text);
     } else {
       const channel = detectChannel(text) ?? "web";
       navigate("/app-builder", { state: { initialPrompt: text, channel } });
@@ -97,7 +101,7 @@ const Home = () => {
     console.log(`[spark→home] navegando com transcript="${text}"`);
     const detected = detectCategory(text);
     if (detected === "agentes") {
-      navigateToNewAgent();
+      navigateToNewAgent(text);
     } else {
       const channel = detectChannel(text) ?? "web";
       navigate("/app-builder", { state: { initialPrompt: text, channel } });
