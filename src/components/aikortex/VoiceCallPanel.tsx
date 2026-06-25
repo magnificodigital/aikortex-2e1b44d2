@@ -609,6 +609,16 @@ const VoiceCallPanel = ({
       });
       const data = await resp.json();
       if (!resp.ok || data?.error) {
+        if (resp.status === 402 || data?.code === "paid_plan_required") {
+          toast.error(
+            data?.message ||
+            "ElevenLabs: plano gratuito não permite usar esta voz via API. Faça upgrade ou troque a voz.",
+            { duration: 9000 },
+          );
+          setIsProcessing(false);
+          handleEndRef.current?.();
+          return;
+        }
         toast.error(data?.message || "Erro ao processar áudio");
         setIsProcessing(false);
         if (callActiveRef.current) startSttRecording();
