@@ -25,6 +25,7 @@ export function useVoiceIntegrationStatus() {
           telnyx_suffix: null,
           elevenlabs_connected: false,
           elevenlabs_suffix: null,
+          elevenlabs_agent_id: null,
         };
       }
       const { data } = await supabase
@@ -38,6 +39,7 @@ export function useVoiceIntegrationStatus() {
 
       const telnyx = map.get("telnyx") ?? "";
       const elevenlabs = map.get("elevenlabs") ?? "";
+      const agentId = map.get("elevenlabs_agent_id") ?? "";
 
       return {
         telnyx_connected: telnyx.length > 0,
@@ -45,6 +47,7 @@ export function useVoiceIntegrationStatus() {
         telnyx_suffix: telnyx.length >= 4 ? telnyx.slice(-4) : null,
         elevenlabs_connected: elevenlabs.length > 0,
         elevenlabs_suffix: elevenlabs.length >= 4 ? elevenlabs.slice(-4) : null,
+        elevenlabs_agent_id: agentId.length > 0 ? agentId : null,
       };
     },
   });
