@@ -608,7 +608,6 @@ const VoiceCallPanel = ({
           },
           tts: {
             voiceId: selectedVoice || "EXAVITQu4vr4xnSDxMaL",
-            modelId: "eleven_turbo_v2_5",
           },
         },
       });
