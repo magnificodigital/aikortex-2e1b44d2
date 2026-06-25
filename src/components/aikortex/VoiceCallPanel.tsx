@@ -81,6 +81,9 @@ interface VoiceCallPanelProps {
    * presente, o teste já usa essa voz e o seletor fica oculto — UX limpa,
    * sem precisar escolher de novo. User pode trocar via "Trocar voz". */
   defaultVoiceId?: string;
+  /** ID do agente sendo testado. Usado pra persistir a call em call_logs
+   * (junto com transcript + duration) e aparecer em /calls. */
+  agentId?: string;
 }
 
 /* ── Animated Orb ── */
@@ -226,6 +229,7 @@ const VoiceCallPanel = ({
   hasElevenLabsKey,
   onGoToIntegrations,
   defaultVoiceId,
+  agentId,
 }: VoiceCallPanelProps) => {
   // Usa voz pré-configurada do agente quando disponível, fallback pro primeiro
   // item de VOICES. User pode revelar/trocar via botão "Trocar voz".
@@ -277,6 +281,49 @@ const VoiceCallPanel = ({
   const [showTranscript, setShowTranscript] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const startTimeRef = useRef<number>(0);
+  // Refs pra persistir call_log no onDisconnect sem dependências staleadas
+  const transcriptRef = useRef<Array<{ role: string; text: string }>>([]);
+  const callLogPersistedRef = useRef<boolean>(false);
+
+  /** Salva call_log em /calls com transcript + duração. Chamado ao final
+   * da call (onDisconnect ou onError). Idempotente via callLogPersistedRef
+   * pra não duplicar se ambos eventos firarem. */
+  const persistCallLog = useCallback(async (status: "completed" | "failed") => {
+    if (callLogPersistedRef.current) return;
+    callLogPersistedRef.current = true;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const durationSec = startTimeRef.current > 0
+        ? Math.floor((Date.now() - startTimeRef.current) / 1000)
+        : 0;
+      // Transcript salvo no formato esperado por CallLogs.tsx drawer
+      // (entry.content || entry.text). Usamos { role, content } pra
+      // compatibilidade.
+      const transcriptForDb = transcriptRef.current.map(t => ({
+        role: t.role,
+        content: t.text,
+        text: t.text, // ambos campos pra cobrir consumers diferentes
+      }));
+      const { error } = await supabase.from("call_logs").insert({
+        user_id: user.id,
+        agent_id: agentId || null,
+        direction: "outbound", // teste de ligação no browser é sempre saída do user
+        channel: "browser",
+        duration_seconds: durationSec,
+        status,
+        transcript: transcriptForDb,
+        ended_at: new Date().toISOString(),
+      });
+      if (error) {
+        console.warn("[voice-call] falha ao salvar call_log:", error.message);
+      } else {
+        console.log(`[voice-call] call_log salvo (status=${status}, dur=${durationSec}s, ${transcriptForDb.length} msgs)`);
+      }
+    } catch (e) {
+      console.warn("[voice-call] persist exception:", e);
+    }
+  }, [agentId]);
 
   const conversation = useConversation({
     onConnect: () => {
@@ -293,6 +340,8 @@ const VoiceCallPanel = ({
       setCallStatus("ended");
       if (timerRef.current) clearInterval(timerRef.current);
       stopBgSound();
+      // Persiste em /calls (idempotente via flag)
+      persistCallLog("completed");
     },
     onMessage: (msg: any) => {
       // @elevenlabs/react v1.0.1 manda { message: string, source: "user" | "ai" }
@@ -317,7 +366,9 @@ const VoiceCallPanel = ({
       if (!text) return;
 
       if (source === "user") {
-        setTranscript(prev => [...prev, { role: "user", text }]);
+        const newEntry = { role: "user", text };
+        transcriptRef.current = [...transcriptRef.current, newEntry];
+        setTranscript(prev => [...prev, newEntry]);
         // Match robusto: normaliza (lower, sem acento, sem pontuação) e
         // testa contra cada keyword.
         const normalized = normalizeForKeyword(text);
@@ -332,7 +383,9 @@ const VoiceCallPanel = ({
           }, 2000);
         }
       } else if (source === "ai") {
-        setTranscript(prev => [...prev, { role: "agent", text }]);
+        const newEntry = { role: "agent", text };
+        transcriptRef.current = [...transcriptRef.current, newEntry];
+        setTranscript(prev => [...prev, newEntry]);
       }
     },
     onError: (err: any) => {
@@ -341,6 +394,7 @@ const VoiceCallPanel = ({
       setCallStatus("ended");
       if (timerRef.current) clearInterval(timerRef.current);
       stopBgSound();
+      persistCallLog("failed");
     },
   });
 
@@ -359,6 +413,8 @@ const VoiceCallPanel = ({
   const handleStart = useCallback(async () => {
     setCallStatus("connecting");
     setTranscript([]);
+    transcriptRef.current = [];
+    callLogPersistedRef.current = false;
     setDuration(0);
 
     try {

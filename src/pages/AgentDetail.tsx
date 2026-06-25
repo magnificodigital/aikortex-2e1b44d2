@@ -1449,6 +1449,7 @@ Se user falar de algum desses, diga claramente o que falta.
               hasElevenLabsKey={!!keys["elevenlabs"]?.configured}
               onGoToIntegrations={() => { handleCloseVoiceCall(); setRightSection("resources.integrations"); setMobileTab("config"); }}
               defaultVoiceId={agentConfig?.voiceConfig?.voiceId}
+              agentId={agentId && !agentId.startsWith("new-") && agentId !== "new" ? agentId : undefined}
             />
           </ConversationProvider>
         </SheetContent>
