@@ -93,9 +93,21 @@ serve(async (req) => {
     if (!resp.ok) {
       const errText = await resp.text();
       console.error("ElevenLabs TTS error:", resp.status, errText);
+      if (resp.status === 402) {
+        return new Response(
+          JSON.stringify({
+            error: "elevenlabs_paid_plan_required",
+            code: "paid_plan_required",
+            message:
+              "Sua chave ElevenLabs é do plano gratuito e não permite usar esta voz via API. Faça upgrade da conta ElevenLabs (Starter+) ou selecione uma voz própria (clonada) na sua conta.",
+            details: errText,
+          }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
       return new Response(
-        JSON.stringify({ error: `Erro TTS: ${resp.status}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: `Erro TTS: ${resp.status}`, details: errText }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
