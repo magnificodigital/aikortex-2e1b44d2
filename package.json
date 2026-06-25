@@ -13,7 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@elevenlabs/react": "^1.0.1",
+    "@elevenlabs/react": "^1.9.0",
     "@hello-pangea/dnd": "17.0.0",
     "@hookform/resolvers": "^3.10.0",
     "@livekit/components-react": "^2.9.20",

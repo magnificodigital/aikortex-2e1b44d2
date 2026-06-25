@@ -512,9 +512,9 @@ const VoiceCallPanel = ({
           console.log(`[voice-call] 🛑 encerramento detectado — keyword "${matched}" em "${text}". Encerrando em 2s.`);
           setTimeout(() => {
             console.log(`[voice-call] forçando endSession (status: ${conversation.status})`);
-            conversation.endSession()
+            Promise.resolve(conversation.endSession())
               .then(() => console.log("[voice-call] endSession OK"))
-              .catch((e) => console.warn("[voice-call] endSession falhou:", e));
+              .catch((e: unknown) => console.warn("[voice-call] endSession falhou:", e));
           }, 2000);
         }
       } else if (source === "ai") {

@@ -34,6 +34,7 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
   const [telnyxKey, setTelnyxKey] = useState("");
   const [telnyxPublicKey, setTelnyxPublicKey] = useState("");
   const [elevenKey, setElevenKey] = useState("");
+  const [agentId, setAgentId] = useState("");
   const [showTelnyx, setShowTelnyx] = useState(false);
   const [showTelnyxPub, setShowTelnyxPub] = useState(false);
   const [showEleven, setShowEleven] = useState(false);
@@ -43,15 +44,17 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
     setTelnyxKey("");
     setTelnyxPublicKey("");
     setElevenKey("");
-  }, [status?.telnyx_connected, status?.elevenlabs_connected]);
+    setAgentId(status?.elevenlabs_agent_id ?? "");
+  }, [status?.telnyx_connected, status?.elevenlabs_connected, status?.elevenlabs_agent_id]);
 
   const onSave = async () => {
     const telnyx = telnyxKey.trim();
     const telnyxPub = telnyxPublicKey.trim();
     const eleven = elevenKey.trim();
+    const agent = agentId.trim();
 
-    if (!telnyx && !telnyxPub && !eleven) {
-      toast.error("Informe pelo menos uma chave para salvar");
+    if (!telnyx && !telnyxPub && !eleven && !agent) {
+      toast.error("Informe pelo menos um campo para salvar");
       return;
     }
 
@@ -59,6 +62,7 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
       telnyx_api_key: telnyx || undefined,
       telnyx_public_key: telnyxPub || undefined,
       elevenlabs_api_key: eleven || undefined,
+      elevenlabs_agent_id: agent || undefined,
     });
     setTelnyxKey("");
     setTelnyxPublicKey("");
@@ -241,6 +245,21 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
           </div>
         </div>
 
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">
+            Agent ID do Spark <span className="text-muted-foreground/60">(Conversational AI)</span>
+          </Label>
+          <Input
+            value={agentId}
+            onChange={(e) => setAgentId(e.target.value)}
+            placeholder="agent_xxxxxxxxxxxxxxxxxxxxxxxx"
+            className="font-mono text-xs h-8"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Crie um agente no painel ElevenLabs (Conversational AI) e cole o ID aqui para ativar o Spark por voz.
+          </p>
+        </div>
+
         <div className="flex items-center justify-between gap-2 pt-1">
           <a
             href="https://elevenlabs.io/settings/api-keys"
@@ -278,7 +297,7 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
 
       <div className="flex justify-end gap-2 pt-2 border-t border-border">
         <Button size="sm" variant="ghost" onClick={onClose}>Fechar</Button>
-        <Button size="sm" onClick={onSave} disabled={save.isPending || (!telnyxKey.trim() && !telnyxPublicKey.trim() && !elevenKey.trim())}>
+        <Button size="sm" onClick={onSave} disabled={save.isPending || (!telnyxKey.trim() && !telnyxPublicKey.trim() && !elevenKey.trim() && !agentId.trim())}>
           {save.isPending ? "Salvando..." : "Salvar chaves"}
         </Button>
       </div>
