@@ -7,6 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  // CRITICO: sem Expose-Headers o browser ESCONDE qualquer header custom em
+  // respostas cross-origin. Front leria null nos X-Spark-* e nao navegava.
+  "Access-Control-Expose-Headers": "x-spark-intent, x-spark-transcript, x-spark-reply, x-spark-total-ms, x-voice-fallback, x-voice-fallback-reason",
 };
 
 // Multilingual default voice (Sarah). User can override via user_api_keys.provider='elevenlabs_voice_id'.
@@ -280,6 +283,9 @@ Deno.serve(async (req) => {
       "Content-Type": "audio/mpeg",
       "Cache-Control": "no-store",
       // Texto em base64 pra suportar UTF-8 nos headers HTTP sem escape hell.
+      // Backend eh fonte da verdade pro intent. Front confia neste flag e dispara
+      // navegacao quando = creation. Evita divergencia entre regex front e back.
+      "X-Spark-Intent": fastAckIntent ? "creation" : "chat",
       "X-Spark-Transcript": btoa(unescape(encodeURIComponent(userText))),
       "X-Spark-Reply": btoa(unescape(encodeURIComponent(reply))),
       "X-Spark-Total-Ms": String(Date.now() - t0),

@@ -139,9 +139,9 @@ const Home = () => {
   };
 
   const handleVoiceTranscript = (text: string) => {
-    const isCreation = looksLikeCreationIntent(text);
-    console.log(`[spark→home] transcript="${text}" isCreationIntent=${isCreation}`);
-    if (isCreation) handleTextSubmit(text);
+    // Backend (spark-voice) ja filtrou: so chega aqui se intent=creation.
+    console.log(`[spark→home] navegando com transcript="${text}"`);
+    handleTextSubmit(text);
   };
 
   return (

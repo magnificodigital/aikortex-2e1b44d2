@@ -253,7 +253,8 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       const decode = (b64: string) => { try { return decodeURIComponent(escape(atob(b64))); } catch { return ""; } };
       const userText = decode(resp.headers.get("x-spark-transcript") || "");
       const reply = decode(resp.headers.get("x-spark-reply") || "");
-      console.log("[spark] transcript recebido:", userText, "| reply:", reply.slice(0, 60));
+      const intent = resp.headers.get("x-spark-intent") || "chat";
+      console.log("[spark] transcript:", userText, "| intent:", intent, "| reply:", reply.slice(0, 60));
 
       historyRef.current.push({ role: "user", content: userText });
       historyRef.current.push({ role: "assistant", content: reply });
@@ -267,12 +268,15 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
 
       const resumeState = (): OrbState => (streamRef.current ? "listening" : "idle");
 
-      // Dispara IMEDIATAMENTE pro host (Home). Se for intent de criação,
-      // a Home navega — mais Jarvis-style: ele já age enquanto fala "ok".
-      // Se não for intent, dispatch é no-op e audio toca normalmente.
-      const cb = onVoiceTranscriptRef.current;
-      if (cb) {
-        try { cb(userText); } catch (e) { console.error("[spark] onVoiceTranscript falhou:", e); }
+      // Backend decidiu se eh creation ou chat. Front confia (evita divergencia
+      // entre dois regex). Se creation, dispara navegacao agora — Jarvis-style.
+      if (intent === "creation") {
+        const cb = onVoiceTranscriptRef.current;
+        if (cb) {
+          try { cb(userText); } catch (e) { console.error("[spark] onVoiceTranscript falhou:", e); }
+        } else {
+          console.warn("[spark] intent=creation mas onVoiceTranscript nao registrado");
+        }
       }
 
       // Blob URL toca direto, sem decode base64 — corta ~200-400ms por turno.
