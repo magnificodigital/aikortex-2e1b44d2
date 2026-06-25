@@ -327,10 +327,10 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
   const orbHint = (() => {
     switch (orbState) {
       case "idle": return "Toque na esfera para iniciar a conversa";
-      case "listening": return "Pode falar — toque para encerrar";
-      case "recording": return "Capturando… solte uma pausa quando terminar";
-      case "processing": return "Pensando…";
-      case "speaking": return "Spark falando…";
+      case "listening": return "Pode falar";
+      case "recording": return "";
+      case "processing": return "";
+      case "speaking": return "";
       case "error": return "Toque para tentar novamente";
     }
   })();

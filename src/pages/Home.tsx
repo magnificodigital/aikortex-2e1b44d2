@@ -35,13 +35,18 @@ function detectCategory(text: string): "app" | "agentes" {
   return "app";
 }
 
+const QUESTION_RE = /\b(como|por\s*qu[eê]|porqu[eê]|onde|quando|qual|quais|quem|o\s*que|que\s+(eh|é))\b/i;
+
 function looksLikeCreationIntent(text: string): boolean {
   const lower = text.toLowerCase().trim();
   if (lower.length < 4) return false;
-  const hasVerb = CREATION_VERB_RE.test(lower);
+  // Pergunta nao eh criacao (ex.: "como funciona um agente?")
+  if (/[?]/.test(lower) || QUESTION_RE.test(lower)) return false;
+  // Basta mencionar um substantivo de produto. Em PT-BR falado o verbo cai
+  // em muitos casos ("agente SDR pra WhatsApp", "um app pra estoque").
   const hasAgentNoun = AGENT_KEYWORDS.some((k) => lower.includes(k));
   const hasAppNoun = APP_NOUNS.some((k) => lower.includes(k));
-  return hasVerb && (hasAgentNoun || hasAppNoun);
+  return hasAgentNoun || hasAppNoun;
 }
 
 function detectAgentType(text: string): { id: string; type: AgentType; name: string } | null {

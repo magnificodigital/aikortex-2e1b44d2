@@ -139,52 +139,55 @@ Deno.serve(async (req) => {
     const finalVoiceId = (voiceOverride || "").trim() || voiceId;
     const finalSystem = (systemOverride || "").trim() || SYSTEM_PROMPT;
 
-    // LLM via Aikortex OpenRouter — voz exige modelo rapido.
-    // Estrategia: 1) tenta modelos rapidos hardcoded (gemini flash, llama 3b, etc.)
-    //             2) se nenhum funcionar (OpenRouter sem creditos pra paid, etc.),
-    //                cai pro fluxo normal de tier=free (Qwen 30B etc. do DB).
-    const messages = [
-      { role: "system" as const, content: finalSystem },
-      ...history.slice(-8),
-      { role: "user" as const, content: userText },
-    ];
-    const FAST_VOICE_MODELS = [
-      "google/gemini-flash-1.5",
-      "meta-llama/llama-3.2-3b-instruct",
-      "openai/gpt-4o-mini",
-    ];
+    // Fast-path: se a fala do user soa como pedido de criacao (Jarvis-style
+    // 'cria um agente SDR'), pula o LLM e usa ack curto canned. Economiza
+    // 600-1500ms do LLM + 300-500ms de TTS extra (resposta menor).
+    // Frontend ja navega assim que recebe headers — usuario nem ouve o LLM
+    // dizer 'beleza, vou abrir' porque a pagina ja trocou.
+    const CREATION_FAST_PATH = /\b(cri[ae][r]?|construa|construir|monte|montar|fa[çc][aoe][rm]?|fa[zc]|abre|abrir|abra|quero|queria|preciso|bora|vamos)\b.{0,40}\b(agente|agentes|app|aplicativo|aplica[çc][aã]o|site|dashboard|painel|portal|landing|sistema|crm|sdr|sac|bdr|chatbot|construtor)\b/i;
+    let reply: string;
+    const fastAckIntent = CREATION_FAST_PATH.test(userText);
     const t_llm_start = Date.now();
-    let llmResult = await callLLM(
-      messages,
-      {
-        apiKey: openrouterKey,
-        temperature: 0.7,
-        maxTokens: 220,
-        fallbackModels: FAST_VOICE_MODELS,
-      },
-      admin,
-    );
-    if (!llmResult.success) {
-      console.warn("[spark-voice] fast models falharam, tentando tier=free do DB");
-      llmResult = await callLLM(
+
+    if (fastAckIntent) {
+      reply = "Beleza, abrindo agora.";
+      console.log(`[spark-voice] FAST_ACK pra creation intent — LLM bypassed`);
+    } else {
+      // LLM via Aikortex OpenRouter — fluxo normal pra chat / pergunta solta.
+      const messages = [
+        { role: "system" as const, content: finalSystem },
+        ...history.slice(-8),
+        { role: "user" as const, content: userText },
+      ];
+      const FAST_VOICE_MODELS = [
+        "google/gemini-flash-1.5",
+        "meta-llama/llama-3.2-3b-instruct",
+        "openai/gpt-4o-mini",
+      ];
+      let llmResult = await callLLM(
         messages,
-        { apiKey: openrouterKey, temperature: 0.7, maxTokens: 220, tier: "free" },
+        { apiKey: openrouterKey, temperature: 0.7, maxTokens: 120, fallbackModels: FAST_VOICE_MODELS },
         admin,
       );
+      if (!llmResult.success) {
+        console.warn("[spark-voice] fast models falharam, tentando tier=free do DB");
+        llmResult = await callLLM(
+          messages,
+          { apiKey: openrouterKey, temperature: 0.7, maxTokens: 120, tier: "free" },
+          admin,
+        );
+      }
+      if (!llmResult.success) {
+        console.error("[spark-voice] LLM falhou em todos os fallbacks:", llmResult.error);
+        return json({ error: "llm_failed", message: "Nenhum modelo de LLM respondeu. Verifique OpenRouter.", details: llmResult.error }, 502);
+      }
+      reply = (llmResult.content ?? "").trim();
+      if (!reply) return json({ error: "empty_reply" }, 502);
     }
-    if (!llmResult.success) {
-      console.error("[spark-voice] LLM falhou em todos os fallbacks:", llmResult.error);
-      return json({ error: "llm_failed", message: "Nenhum modelo de LLM respondeu. Verifique OpenRouter.", details: llmResult.error }, 502);
-    }
-    console.log(`[spark-voice] llm_ms=${Date.now() - t_llm_start}`);
-    const reply: string = (llmResult.content ?? "").trim();
-    if (!reply) return json({ error: "empty_reply" }, 502);
+    console.log(`[spark-voice] llm_ms=${Date.now() - t_llm_start} fast_ack=${fastAckIntent}`);
 
     // ElevenLabs TTS — endpoint /stream + formato leve mp3_22050_32.
-    // Stream começa a chegar antes do audio inteiro estar gerado. Bitrate
-    // 32 cabe 5s em ~12KB (vs 50KB do 128kbps); voz fica indistinguivel.
-    const SARAH = "EXAVITQu4vr4xnSDxMaL"; // voz stock disponivel em qualquer conta
-    console.log(`[spark-voice] llm_ms=${Date.now() - t0} voice=${finalVoiceId} key=${elevenKey.slice(-4)}`);
+    const SARAH = "EXAVITQu4vr4xnSDxMaL";
 
     const callTts = (voice: string) => fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}/stream?output_format=mp3_22050_32`,
