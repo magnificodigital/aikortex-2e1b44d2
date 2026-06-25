@@ -1,6 +1,7 @@
-// Spark voice loop: ElevenLabs STT -> Lovable AI Gateway LLM -> ElevenLabs TTS.
+// Spark voice loop: ElevenLabs STT -> Aikortex LLM (OpenRouter via llm-fallback) -> ElevenLabs TTS.
 // Returns transcript, assistant reply text, and TTS audio (base64 mp3).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callLLM } from "../_shared/llm-fallback.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +13,6 @@ const corsHeaders = {
 const DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 const TTS_MODEL = "eleven_flash_v2_5";
 const STT_MODEL = "scribe_v1";
-const LLM_MODEL = "google/gemini-3-flash-preview";
 
 const SYSTEM_PROMPT = `Você é o Spark, o copiloto por voz do Aikortex — funciona como o Jarvis do Tony Stark para a pessoa que está falando.
 Estilo: respostas curtas, naturais, em português do Brasil, soando como uma conversa real (não como texto formal).
