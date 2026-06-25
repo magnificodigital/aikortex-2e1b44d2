@@ -17,6 +17,7 @@ const VAD_SILENCE_THRESHOLD = 0.03;
 const VAD_SILENCE_MS = 1300;     // stop utterance after this much silence
 const VAD_MIN_RECORD_MS = 500;   // ignore ultra-short blips
 const VAD_MIN_BLOB_BYTES = 1500; // discard near-empty recordings
+const INTENSITY_UPDATE_MS = 80;  // throttle React state updates from the rAF loop (~12fps)
 
 interface TranscriptEntry {
   id: string;
@@ -161,20 +162,30 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       setOrbState("listening");
 
       const data = new Uint8Array(analyser.frequencyBinCount);
+      let lastIntensityUpdate = 0;
       const tick = () => {
         if (!analyserRef.current) return;
         analyserRef.current.getByteFrequencyData(data);
         let sum = 0;
         for (let i = 0; i < data.length; i++) sum += data[i];
         const avg = sum / data.length / 255;
-        setIntensity(avg);
 
         const state = orbStateRef.current;
+        const now = performance.now();
+
+        // Throttle the React state update — 60fps of setState was making
+        // the whole tree re-render every frame, which felt like jank/freeze.
+        // Also skip during processing/speaking where the orb relies on CSS
+        // animations rather than the intensity-driven scale.
+        if ((state === "listening" || state === "recording") && now - lastIntensityUpdate > INTENSITY_UPDATE_MS) {
+          setIntensity(avg);
+          lastIntensityUpdate = now;
+        }
+
         // Only run VAD while we're free to capture. While processing or
-        // speaking we keep the analyser running for visuals but don't
-        // start/stop utterances (avoids feedback loops from TTS playback).
+        // speaking we still tick (cheap) but skip start/stop logic to avoid
+        // feedback loops from TTS playback.
         if (state === "listening" || state === "recording") {
-          const now = performance.now();
           if (avg > VAD_SPEECH_THRESHOLD) {
             lastSpeechRef.current = now;
             if (!isCapturingRef.current) startUtterance();
@@ -206,14 +217,22 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
 
       const { data, error } = await supabase.functions.invoke("spark-voice", { body: form });
       if (error || !data || (data as any).error) {
+        // Try every shape we've seen come back so the toast shows something useful.
+        let msg = (data as any)?.message ?? "";
         const errBody = (error as any)?.context?.body;
-        let msg = (data as any)?.message ?? "Falha ao processar áudio";
         if (errBody) {
           try {
             const parsed = typeof errBody === "string" ? JSON.parse(errBody) : errBody;
-            msg = parsed?.message ?? msg;
-          } catch { /* noop */ }
+            msg = parsed?.message ?? parsed?.error ?? msg;
+          } catch {
+            if (typeof errBody === "string" && errBody.length < 240) msg = msg || errBody;
+          }
         }
+        if (!msg && (data as any)?.error) msg = (data as any).error;
+        if (!msg && error) msg = (error as Error).message;
+        if (!msg) msg = "Falha ao processar áudio";
+
+        console.error("[spark] backend error", { error, data });
         setOrbState("error");
         toast.error(msg, {
           action: msg.includes("ElevenLabs")
