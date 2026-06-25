@@ -648,7 +648,7 @@ const AgentChatPanel = ({
           {chatMode === "test" && (
             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-400" title="Ambiente de simulação — mensagens não são enviadas a clientes reais">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-[9px] font-bold tracking-widest">STAGING</span>
+              <span className="text-[9px] font-bold tracking-widest">TESTANDO</span>
             </span>
           )}
           {hasMemoryActive && (
