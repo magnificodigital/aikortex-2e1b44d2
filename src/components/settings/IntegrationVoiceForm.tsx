@@ -34,7 +34,6 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
   const [telnyxKey, setTelnyxKey] = useState("");
   const [telnyxPublicKey, setTelnyxPublicKey] = useState("");
   const [elevenKey, setElevenKey] = useState("");
-  const [agentId, setAgentId] = useState("");
   const [showTelnyx, setShowTelnyx] = useState(false);
   const [showTelnyxPub, setShowTelnyxPub] = useState(false);
   const [showEleven, setShowEleven] = useState(false);
@@ -44,8 +43,7 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
     setTelnyxKey("");
     setTelnyxPublicKey("");
     setElevenKey("");
-    setAgentId(status?.elevenlabs_agent_id ?? "");
-  }, [status?.telnyx_connected, status?.elevenlabs_connected, status?.elevenlabs_agent_id]);
+  }, [status?.telnyx_connected, status?.elevenlabs_connected]);
 
   const onSave = async () => {
     const telnyx = telnyxKey.trim();
