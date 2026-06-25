@@ -1,3 +1,6 @@
+// Edge function: retorna token WebRTC para o agente ElevenLabs fixo do usuário.
+// NÃO cria agente por sessão — reusa o agente_id salvo em user_api_keys
+// (provider = elevenlabs_agent_id), evitando poluir o dashboard ElevenLabs.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
@@ -11,13 +14,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Authenticate user using service role to verify the JWT token
     const authHeader = req.headers.get("Authorization") || "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
 
-    // Use service role client to verify the user's JWT
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await adminClient.auth.getUser(token);
@@ -30,130 +31,60 @@ serve(async (req) => {
       });
     }
 
-    // User-context client for RLS queries
     const supabase = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { agentName, agentPrompt, voiceId, firstMessage, language } = await req.json();
-
-    // Get user's ElevenLabs API key
-    const { data: keyRow } = await supabase
+    // Busca chave API + agente fixo do usuário
+    const { data: keys } = await supabase
       .from("user_api_keys")
-      .select("api_key")
+      .select("provider, api_key")
       .eq("user_id", user.id)
-      .eq("provider", "elevenlabs")
-      .maybeSingle();
+      .in("provider", ["elevenlabs", "elevenlabs_agent_id"]);
 
-    const elevenLabsKey = keyRow?.api_key;
-    if (!elevenLabsKey) {
+    const map = new Map<string, string>();
+    (keys ?? []).forEach((row: any) => map.set(row.provider, row.api_key ?? ""));
+
+    const apiKey = map.get("elevenlabs") ?? "";
+    const agentId = map.get("elevenlabs_agent_id") ?? "";
+
+    if (!apiKey) {
       return new Response(
         JSON.stringify({ error: "Chave de API da ElevenLabs não configurada. Vá em Integrações para adicionar." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Step 1: Create a temporary conversational AI agent
-    const agentLang = language || "pt";
-    const isEnglish = agentLang === "en";
-    
-    // Frases que encerram a chamada quando faladas pelo cliente. Detectadas
-    // pelo ElevenLabs server-side, agente desliga gracefully (sem precisar
-    // de tool call manual). Cobre variações em PT-BR.
-    const endCallPhrases = isEnglish
-      ? ["goodbye", "bye", "end call", "hang up", "see you later"]
-      : [
-          "tchau", "tchaau", "até logo", "ate logo", "até mais", "ate mais",
-          "encerrar ligação", "desligar", "pode desligar",
-          "obrigado, tchau", "valeu, tchau", "vou desligar",
-          "até a próxima", "ate a proxima", "adeus",
-        ];
+    if (!agentId) {
+      return new Response(
+        JSON.stringify({ error: "Agent ID da ElevenLabs não configurado. Vá em Configurações → Voz e informe o ID do agente." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Conservative agent body — só campos confirmados pela API ElevenLabs
-    // Convai. Antes adicionei platform_settings/agent_output_audio_format/
-    // turn que podem não existir, causando agent_create 400 silencioso.
-    const agentBody: Record<string, unknown> = {
-      name: `${agentName || "Agente"} - Sessão`,
-      conversation_config: {
-        agent: {
-          prompt: {
-            // Adiciona instrução pra agente reconhecer despedida e encerrar
-            // proativamente. Como ElevenLabs Convai pode não ter end_call
-            // phrases nativo confiável, deixamos o LLM reconhecer e o
-            // client-side detector encerra a conexão.
-            prompt: (agentPrompt || `Você é o agente ${agentName || "IA"}. Responda sempre em português brasileiro de forma profissional e amigável.`) +
-              `\n\n## ENCERRAMENTO\nQuando o cliente se despedir (tchau, até logo, valeu, vou desligar, encerrar ligação etc.), responda APENAS uma despedida curta tipo "Até logo!" ou "Tchau, obrigado pelo contato!". NÃO fique perguntando "tem mais alguma coisa?" — encerra educadamente. As frases-chave também encerram a chamada do lado do cliente.\n\nFrases que indicam encerramento: ${endCallPhrases.join(", ")}.`,
-          },
-          first_message: firstMessage || `Olá! Sou ${agentName || "seu agente"}. Como posso ajudar?`,
-          language: agentLang,
-        },
-        asr: {
-          ...(!isEnglish && { model: "custom" }),
-        },
-        tts: {
-          voice_id: voiceId || "EXAVITQu4vr4xnSDxMaL",
-          ...(!isEnglish && { model_id: "eleven_turbo_v2_5" }),
-          // Otimização de streaming: 4 = máxima redução de latência. Esse
-          // campo é seguro/documentado na ElevenLabs Convai API.
-          optimize_streaming_latency: 4,
-        },
-      },
-    };
+    // Reusa o agente fixo: gera token de conversa WebRTC
+    const tokenResp = await fetch(
+      `https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=${encodeURIComponent(agentId)}`,
+      { headers: { "xi-api-key": apiKey } }
+    );
 
-    const createResp = await fetch("https://api.elevenlabs.io/v1/convai/agents/create", {
-      method: "POST",
-      headers: {
-        "xi-api-key": elevenLabsKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(agentBody),
-    });
-
-    if (!createResp.ok) {
-      const errText = await createResp.text();
-      console.error("ElevenLabs create agent error:", createResp.status, errText);
-      
-      // Check for permission error
-      let userMessage = `Erro ao criar agente ElevenLabs: ${createResp.status}`;
-      if (errText.includes("missing_permissions") || errText.includes("convai_write")) {
+    if (!tokenResp.ok) {
+      const errText = await tokenResp.text();
+      console.error("ElevenLabs token error:", tokenResp.status, errText);
+      let userMessage = `Erro ao obter token de conversa: ${tokenResp.status}`;
+      if (errText.includes("missing_permissions") || errText.includes("convai")) {
         userMessage = "Sua chave de API da ElevenLabs não tem permissão para Conversational AI. Acesse elevenlabs.io → API Keys → edite sua chave e habilite a permissão 'Conversational AI'.";
       }
-      
       return new Response(
         JSON.stringify({ error: userMessage }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { agent_id } = await createResp.json();
-    if (!agent_id) {
-      return new Response(
-        JSON.stringify({ error: "Não foi possível obter o ID do agente criado" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Step 2: Get a conversation token for the agent
-    const tokenResp = await fetch(
-      `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${agent_id}`,
-      {
-        headers: { "xi-api-key": elevenLabsKey },
-      }
-    );
-
-    if (!tokenResp.ok) {
-      const errText = await tokenResp.text();
-      console.error("ElevenLabs token error:", tokenResp.status, errText);
-      return new Response(
-        JSON.stringify({ error: `Erro ao obter token de conversa: ${tokenResp.status}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const { signed_url } = await tokenResp.json();
+    const { token: conversationToken } = await tokenResp.json();
 
     return new Response(
-      JSON.stringify({ agent_id, signed_url }),
+      JSON.stringify({ agentId, token: conversationToken }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
