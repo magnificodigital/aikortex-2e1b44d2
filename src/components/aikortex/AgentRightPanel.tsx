@@ -715,13 +715,10 @@ const AgentRightPanel = ({
     [activeSection]
   );
 
-  /* ── Vibe Mode toggle (Master v7.4 §13.2) ── */
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(() => {
-    try { return localStorage.getItem(SHOW_ADVANCED_LS_KEY) === "1"; } catch { return false; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem(SHOW_ADVANCED_LS_KEY, showAdvanced ? "1" : "0"); } catch {}
-  }, [showAdvanced]);
+  /* "Opções avançadas" removida — não tinha função real (só escondia
+   * 'system.advanced' que não existe mais). showAdvanced fica sempre true
+   * pra manter o filtro funcionando sem mexer no resto da lógica. */
+  const showAdvanced = true;
 
   /* ── Canais ativados pela agência (Settings → Canais) ── */
   const { data: enabledChannelsList = [] } = useEnabledChannels();
@@ -798,15 +795,6 @@ const AgentRightPanel = ({
 
       {/* ── Hierarchical sidenav (Vibe Mode by default) ── */}
       <aside className="w-56 border-r border-border bg-card/30 shrink-0 overflow-y-auto py-3 hidden md:block">
-        <div className="px-3 mb-3">
-          <label className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground cursor-pointer">
-            <span className="flex items-center gap-2">
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Opções avançadas</span>
-            </span>
-            <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} />
-          </label>
-        </div>
         {visibleNav.map((g) => (
           <div key={g.group} className="px-3 mb-4">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-2 flex items-center gap-1.5">
@@ -880,10 +868,6 @@ const AgentRightPanel = ({
               ))}
             </SelectContent>
           </Select>
-          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
-            <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} />
-            <span>Avançado</span>
-          </label>
         </div>
 
         <ScrollArea className="flex-1">
