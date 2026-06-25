@@ -34,6 +34,7 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
   const [telnyxKey, setTelnyxKey] = useState("");
   const [telnyxPublicKey, setTelnyxPublicKey] = useState("");
   const [elevenKey, setElevenKey] = useState("");
+  const [agentId, setAgentId] = useState("");
   const [showTelnyx, setShowTelnyx] = useState(false);
   const [showTelnyxPub, setShowTelnyxPub] = useState(false);
   const [showEleven, setShowEleven] = useState(false);
@@ -43,15 +44,17 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
     setTelnyxKey("");
     setTelnyxPublicKey("");
     setElevenKey("");
-  }, [status?.telnyx_connected, status?.elevenlabs_connected]);
+    setAgentId(status?.elevenlabs_agent_id ?? "");
+  }, [status?.telnyx_connected, status?.elevenlabs_connected, status?.elevenlabs_agent_id]);
 
   const onSave = async () => {
     const telnyx = telnyxKey.trim();
     const telnyxPub = telnyxPublicKey.trim();
     const eleven = elevenKey.trim();
+    const agent = agentId.trim();
 
-    if (!telnyx && !telnyxPub && !eleven) {
-      toast.error("Informe pelo menos uma chave para salvar");
+    if (!telnyx && !telnyxPub && !eleven && !agent) {
+      toast.error("Informe pelo menos um campo para salvar");
       return;
     }
 
@@ -59,6 +62,7 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
       telnyx_api_key: telnyx || undefined,
       telnyx_public_key: telnyxPub || undefined,
       elevenlabs_api_key: eleven || undefined,
+      elevenlabs_agent_id: agent || undefined,
     });
     setTelnyxKey("");
     setTelnyxPublicKey("");
