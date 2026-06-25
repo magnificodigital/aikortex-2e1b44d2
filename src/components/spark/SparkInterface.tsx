@@ -30,7 +30,15 @@ interface SparkInterfaceProps {
   onTextSubmit: (text: string) => void;
 }
 
-export function SparkInterface({ greeting, userName, honorific, onTextSubmit }: SparkInterfaceProps) {
+export function SparkInterface(props: SparkInterfaceProps) {
+  return (
+    <ConversationProvider>
+      <SparkInterfaceInner {...props} />
+    </ConversationProvider>
+  );
+}
+
+function SparkInterfaceInner({ greeting, userName, honorific, onTextSubmit }: SparkInterfaceProps) {
   const [mode, setMode] = useState<Mode>("voice");
   const [orbState, setOrbState] = useState<OrbState>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
