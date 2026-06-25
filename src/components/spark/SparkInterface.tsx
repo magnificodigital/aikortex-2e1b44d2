@@ -253,6 +253,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       const decode = (b64: string) => { try { return decodeURIComponent(escape(atob(b64))); } catch { return ""; } };
       const userText = decode(resp.headers.get("x-spark-transcript") || "");
       const reply = decode(resp.headers.get("x-spark-reply") || "");
+      console.log("[spark] transcript recebido:", userText, "| reply:", reply.slice(0, 60));
 
       historyRef.current.push({ role: "user", content: userText });
       historyRef.current.push({ role: "assistant", content: reply });
@@ -264,13 +265,15 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
         { id: `${ts}-a`, role: "assistant", content: reply },
       ]);
 
-      const dispatchTranscript = () => {
-        const cb = onVoiceTranscriptRef.current;
-        if (!cb) return;
-        try { cb(userText); } catch { /* noop */ }
-      };
-
       const resumeState = (): OrbState => (streamRef.current ? "listening" : "idle");
+
+      // Dispara IMEDIATAMENTE pro host (Home). Se for intent de criação,
+      // a Home navega — mais Jarvis-style: ele já age enquanto fala "ok".
+      // Se não for intent, dispatch é no-op e audio toca normalmente.
+      const cb = onVoiceTranscriptRef.current;
+      if (cb) {
+        try { cb(userText); } catch (e) { console.error("[spark] onVoiceTranscript falhou:", e); }
+      }
 
       // Blob URL toca direto, sem decode base64 — corta ~200-400ms por turno.
       const audioBlob = await resp.blob();
@@ -281,13 +284,12 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       if (!audioElRef.current) audioElRef.current = new Audio();
       audioElRef.current.src = audioUrl;
       audioElRef.current.onplay = () => setOrbState("speaking");
-      audioElRef.current.onended = () => { setOrbState(resumeState()); dispatchTranscript(); };
-      audioElRef.current.onerror = () => { setOrbState(resumeState()); dispatchTranscript(); };
+      audioElRef.current.onended = () => setOrbState(resumeState());
+      audioElRef.current.onerror = () => setOrbState(resumeState());
       try {
         await audioElRef.current.play();
       } catch {
         setOrbState(resumeState());
-        dispatchTranscript();
       }
     } catch (e) {
       console.error("[spark] sendAudio error", e);

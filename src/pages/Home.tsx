@@ -25,7 +25,9 @@ function detectChannel(text: string): AppChannel {
 const AGENT_KEYWORDS = ["agente", "agent", "sdr", "bdr", "sac", "suporte", "atendimento", "qualificação", "qualificacao", "qualificador", "prospecção", "prospeccao", "captura de lead", "captação", "captacao", "cobranças", "cobranca", "onboarding", "customer success", "cs ", "assistente", "diagnóstico", "diagnostico", "agendador", "agendamento", "chatbot", "bot", "vendas", "vender", "retenção", "retencao", "pós-venda", "pos-venda"];
 
 const APP_NOUNS = ["app", "aplicativo", "aplicacao", "aplicação", "site", "website", "dashboard", "painel", "portal", "landing", "sistema", "plataforma", "formulario", "formulário", "crm", "loja", "blog"];
-const CREATION_VERB_RE = /\b(cri[ae][r]?|construa|construir|constroi|constr[óo]i|monte|montar|monto|ger[ae][r]?|fa[çc]a|fa[zc]er|fa[çc]o|fa[zc]e[mr]?|abr[ae]?|abrir|quero|preciso|precisamos|bora|vamos)\b/i;
+// Regex amplo: pega cri/cria/criar/crie, faz/faça/fazer, monta/monte/montar, etc.
+// Inclui "preciso de", "quero", "bora", "vamos", "podemos" — gatilhos comuns em PT-BR falado.
+const CREATION_VERB_RE = /\b(cri[ae][r]?|construa|construir|constroi|constr[óo]i|monte|montar|monto|ger[ae][r]?|fa[çc][aoe][rm]?|fa[zc]|abr[ae]?|abrir|quero|queria|preciso|precisamos|pode[mr]?|podemos|bora|vamos|me\s+ajuda)\b/i;
 
 function detectCategory(text: string): "app" | "agentes" {
   const lower = text.toLowerCase();
@@ -132,7 +134,9 @@ const Home = () => {
   };
 
   const handleVoiceTranscript = (text: string) => {
-    if (looksLikeCreationIntent(text)) handleTextSubmit(text);
+    const isCreation = looksLikeCreationIntent(text);
+    console.log(`[spark→home] transcript="${text}" isCreationIntent=${isCreation}`);
+    if (isCreation) handleTextSubmit(text);
   };
 
   return (
