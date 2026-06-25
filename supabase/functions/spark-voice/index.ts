@@ -170,14 +170,14 @@ Deno.serve(async (req) => {
     if (!reply) return json({ error: "empty_reply" }, 502);
 
     // ElevenLabs TTS
-    const ttsResp = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(finalVoiceId)}?output_format=mp3_44100_128`,
+    const SARAH = "EXAVITQu4vr4xnSDxMaL"; // voz stock disponivel em qualquer conta
+    console.log(`[spark-voice] voice=${finalVoiceId} key=${elevenKey.slice(-4)}`);
+
+    const callTts = (voice: string) => fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}?output_format=mp3_44100_128`,
       {
         method: "POST",
-        headers: {
-          "xi-api-key": elevenKey,
-          "Content-Type": "application/json",
-        },
+        headers: { "xi-api-key": elevenKey, "Content-Type": "application/json" },
         body: JSON.stringify({
           text: reply,
           model_id: TTS_MODEL,
@@ -185,6 +185,22 @@ Deno.serve(async (req) => {
         }),
       },
     );
+
+    let ttsResp = await callTts(finalVoiceId);
+    let usedFallback = false;
+    // Disambigua: se 401 com voz custom, tenta Sarah. Se Sarah funciona, o
+    // problema NAO eh a chave — eh a voz custom que nao pertence a conta.
+    if (ttsResp.status === 401 && finalVoiceId !== SARAH) {
+      console.log(`[spark-voice] 401 com ${finalVoiceId}, tentando Sarah pra disambiguar`);
+      const sarahResp = await callTts(SARAH);
+      if (sarahResp.ok) {
+        console.warn(`[spark-voice] voz ${finalVoiceId} sem acesso; usando Sarah como fallback`);
+        ttsResp = sarahResp;
+        usedFallback = true;
+      } else {
+        ttsResp = sarahResp; // Sarah tambem falhou — chave/scope problema mesmo
+      }
+    }
     if (!ttsResp.ok) {
       const t = await ttsResp.text();
       let elevenMsg = "";
@@ -229,6 +245,11 @@ Deno.serve(async (req) => {
       reply,
       audio: audioB64,
       audio_mime: "audio/mpeg",
+      voice_fallback: usedFallback ? {
+        requested: finalVoiceId,
+        used: SARAH,
+        reason: "A voz selecionada não pertence à conta ElevenLabs desta chave. Usei a voz Sarah como fallback. Re-selecione uma voz da lista em Voz do agente.",
+      } : null,
     });
   } catch (e) {
     return json({ error: "internal", message: (e as Error).message }, 500);

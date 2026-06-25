@@ -69,15 +69,15 @@ serve(async (req) => {
       );
     }
 
-    const voice = voiceId || "EXAVITQu4vr4xnSDxMaL";
-    const resp = await fetch(
+    const SARAH = "EXAVITQu4vr4xnSDxMaL"; // voz stock disponivel em qualquer conta
+    const requestedVoice = voiceId || SARAH;
+    console.log(`[browser-tts] voice=${requestedVoice} key=${apiKey.slice(-4)}`);
+
+    const callTts = (voice: string) => fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`,
       {
         method: "POST",
-        headers: {
-          "xi-api-key": apiKey,
-          "Content-Type": "application/json",
-        },
+        headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
         body: JSON.stringify({
           text,
           model_id: "eleven_turbo_v2_5",
@@ -89,6 +89,31 @@ serve(async (req) => {
         }),
       },
     );
+
+    let resp = await callTts(requestedVoice);
+    // Se 401 com voz custom, testa se a chave funciona com Sarah (stock).
+    // Se Sarah funciona, o problema NAO eh a chave — eh a voz selecionada
+    // que nao existe ou nao tem acesso permitido. Falha em ambos = chave/scope.
+    if (resp.status === 401 && requestedVoice !== SARAH) {
+      console.log(`[browser-tts] 401 com ${requestedVoice}, tentando Sarah pra disambiguar`);
+      const sarahResp = await callTts(SARAH);
+      if (sarahResp.ok) {
+        // Chave OK, voz que estava salva eh o problema. Usa Sarah pra nao quebrar
+        // a ligacao agora e avisa o user em proximo header.
+        console.warn(`[browser-tts] voz ${requestedVoice} sem acesso; usando Sarah como fallback`);
+        const audioBuffer = await sarahResp.arrayBuffer();
+        return new Response(audioBuffer, {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "audio/mpeg",
+            "X-Voice-Fallback": "true",
+            "X-Voice-Requested": requestedVoice,
+          },
+        });
+      }
+      // Sarah tambem falhou — entao eh chave/scope. Reusa o erro original.
+      resp = sarahResp;
+    }
 
     if (!resp.ok) {
       const errText = await resp.text();

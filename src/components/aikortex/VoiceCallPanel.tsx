@@ -284,6 +284,7 @@ const VoiceCallPanel = ({
   // Refs pra persistir call_log no onDisconnect sem dependências staleadas
   const transcriptRef = useRef<Array<{ role: string; text: string }>>([]);
   const callLogPersistedRef = useRef<boolean>(false);
+  const voiceFallbackNotifiedRef = useRef<boolean>(false);
   // Recording: MediaRecorder + buffer de chunks + AudioContext mixer
   // Mixa stream do microfone do user com stream dos <audio> que a SDK
   // ElevenLabs cria (capturados via MutationObserver). Resultado: 1 webm
@@ -623,7 +624,16 @@ const VoiceCallPanel = ({
         if (callActiveRef.current) startSttRecording();
         return;
       }
-      const { transcript: userText, reply, audio, audio_mime } = data;
+      const { transcript: userText, reply, audio, audio_mime, voice_fallback } = data;
+      if (voice_fallback) {
+        // Mostra so uma vez por sessao (idempotente via ref).
+        if (!voiceFallbackNotifiedRef.current) {
+          voiceFallbackNotifiedRef.current = true;
+          toast.warning(voice_fallback.reason || "Voz selecionada indisponível — usando voz padrão.", {
+            duration: 9000,
+          });
+        }
+      }
       chatHistoryRef.current.push({ role: "user", content: userText });
       chatHistoryRef.current.push({ role: "assistant", content: reply });
       const userEntry = { role: "user", text: userText };
@@ -675,6 +685,7 @@ const VoiceCallPanel = ({
     transcriptRef.current = [];
     chatHistoryRef.current = [];
     callLogPersistedRef.current = false;
+    voiceFallbackNotifiedRef.current = false;
     setDuration(0);
     // Gravação opcional (mixer mic + tts) pra arquivar a call
     startRecording().catch(() => { /* gravação opcional */ });
