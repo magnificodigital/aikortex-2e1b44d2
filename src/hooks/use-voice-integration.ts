@@ -95,7 +95,7 @@ export function useDisconnectVoiceProvider() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
 
-      const providers = provider === "telnyx" ? ["telnyx", "telnyx_public"] : ["elevenlabs", "elevenlabs_agent_id"];
+      const providers = provider === "telnyx" ? ["telnyx", "telnyx_public"] : ["elevenlabs"];
       const { error } = await supabase
         .from("user_api_keys")
         .delete()
