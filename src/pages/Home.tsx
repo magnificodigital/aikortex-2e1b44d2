@@ -7,21 +7,6 @@ import { AGENT_PRESETS } from "@/types/agent-presets";
 import type { AgentType } from "@/types/agent-builder";
 import { SparkInterface } from "@/components/spark/SparkInterface";
 
-const suggestionsByTab = {
-  app: [
-    ["Construtor de Formulários", "Dashboard de Vendas", "Landing Page"],
-    ["Sistema de Tarefas", "Painel Financeiro", "CRM Completo"],
-    ["E-commerce Simples", "Blog com IA", "Portal de Clientes"],
-  ],
-  agentes: [
-    ["Agente SDR para WhatsApp", "Agente de Suporte 24/7", "Agente de Qualificação"],
-    ["Agente BDR LinkedIn", "Agente CS Pós-Venda", "Agente de Pesquisa"],
-    ["Agente de Onboarding", "Agente Cobranças", "Agente Agendamento"],
-  ],
-};
-
-const tabIcons = { app: Monitor, agentes: Sparkles };
-
 const WHATSAPP_KEYWORDS = ["whatsapp", "wpp", "zap", "zapzap", "mensagem", "conversa", "chat", "atendimento", "sac", "suporte ao cliente", "cliente pelo whatsapp", "whats"];
 const WEB_KEYWORDS = ["web", "site", "website", "dashboard", "portal", "painel", "landing", "página", "pagina", "sistema web", "plataforma", "saas", "aplicativo web", "app web"];
 
@@ -33,102 +18,34 @@ function detectChannel(text: string): AppChannel {
   const hasWeb = WEB_KEYWORDS.some((k) => lower.includes(k));
   if (hasWa && !hasWeb) return "whatsapp";
   if (hasWeb && !hasWa) return "web";
-  if (hasWa && hasWeb) return "whatsapp"; // default to whatsapp if both
+  if (hasWa && hasWeb) return "whatsapp";
+  return null;
+}
+
+const AGENT_KEYWORDS = ["agente", "agent", "sdr", "bdr", "sac", "suporte", "atendimento", "qualificação", "qualificacao", "qualificador", "prospecção", "prospeccao", "captura de lead", "captação", "captacao", "cobranças", "cobranca", "onboarding", "customer success", "cs ", "assistente", "diagnóstico", "diagnostico", "agendador", "agendamento", "chatbot", "bot", "vendas", "vender", "retenção", "retencao", "pós-venda", "pos-venda"];
+
+function detectCategory(text: string): "app" | "agentes" {
+  const lower = text.toLowerCase();
+  if (AGENT_KEYWORDS.some((k) => lower.includes(k))) return "agentes";
+  return "app";
+}
+
+function detectAgentType(text: string): { id: string; type: AgentType; name: string } | null {
+  const lower = text.toLowerCase();
+  if (lower.includes("sdr") || lower.includes("qualificação") || lower.includes("qualificacao") || lower.includes("qualificador"))
+    return { id: "sdr-1", type: "SDR", name: "Agente SDR" };
+  if (lower.includes("sac") || lower.includes("suporte") || lower.includes("atendimento") || lower.includes("customer success") || lower.includes("cs "))
+    return { id: "sac-1", type: "SAC", name: "Agente SAC" };
   return null;
 }
 
 const Home = () => {
-  const [prompt, setPrompt] = useState("");
-  const [activeCreationTab, setActiveCreationTab] = useState<"app" | "agentes">("app");
-  const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [, setPrompt] = useState("");
   const [userName, setUserName] = useState("Usuário");
-  const [detectedChannel, setDetectedChannel] = useState<AppChannel>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { user, isPlatform } = useAuth();
   const navigate = useNavigate();
 
-  const AGENT_KEYWORDS = ["agente", "agent", "sdr", "bdr", "sac", "suporte", "atendimento", "qualificação", "qualificacao", "qualificador", "prospecção", "prospeccao", "captura de lead", "captação", "captacao", "cobranças", "cobranca", "onboarding", "customer success", "cs ", "assistente", "diagnóstico", "diagnostico", "agendador", "agendamento", "chatbot", "bot", "vendas", "vender", "retenção", "retencao", "pós-venda", "pos-venda"];
 
-  const detectCategory = (text: string): "app" | "agentes" => {
-    const lower = text.toLowerCase();
-    if (AGENT_KEYWORDS.some((k) => lower.includes(k))) return "agentes";
-    return "app";
-  };
-
-  const detectAgentType = (text: string): { id: string; type: AgentType; name: string } | null => {
-    const lower = text.toLowerCase();
-    if (lower.includes("sdr") || lower.includes("qualificação") || lower.includes("qualificacao") || lower.includes("qualificador"))
-      return { id: "sdr-1", type: "SDR", name: "Agente SDR" };
-    if (lower.includes("sac") || lower.includes("suporte") || lower.includes("atendimento") || lower.includes("customer success") || lower.includes("cs "))
-      return { id: "sac-1", type: "SAC", name: "Agente SAC" };
-    return null; // Custom agent — no template match
-  };
-
-  const handleSubmit = () => {
-    const text = prompt.trim();
-    if (!text) return;
-
-    const detected = detectCategory(text);
-    if (detected !== activeCreationTab) setActiveCreationTab(detected);
-
-    if (detected === "agentes") {
-      const agentInfo = detectAgentType(text);
-
-      if (agentInfo) {
-        // Template match — navigate with preset
-        const preset = AGENT_PRESETS[agentInfo.type];
-
-        // Clear stale localStorage
-        const storagePrefix = `agent-detail-${agentInfo.id}`;
-        try {
-          ["name", "desc", "objective", "instructions", "toneOfVoice", "greetingMessage"].forEach(k =>
-            localStorage.removeItem(`${storagePrefix}-${k}`)
-          );
-        } catch {}
-
-        navigate(`/aikortex/agents/${agentInfo.id}`, {
-          state: {
-            fromTemplate: true,
-            initialPrompt: text,
-            preset: {
-              context: preset.context,
-              intents: preset.intents,
-              stages: preset.stages,
-              advancedConfig: preset.advancedConfig,
-              agentType: agentInfo.type,
-              agentName: agentInfo.name,
-              agentObjective: preset.context.targetAudienceDescription || "",
-            },
-          },
-        });
-      } else {
-        // No template — custom agent via wizard with user prompt
-        navigate(`/aikortex/agents/new`, {
-          state: {
-            fromTemplate: false,
-            initialPrompt: text,
-            agentType: "Custom",
-          },
-        });
-      }
-    } else {
-      const channel = detectedChannel || "web";
-      navigate("/app-builder", { state: { initialPrompt: text, channel } });
-    }
-  };
-
-  const currentSuggestions = suggestionsByTab[activeCreationTab][suggestionIndex];
-  const SuggestionIcon = tabIcons[activeCreationTab];
-
-  const refreshSuggestions = useCallback(() => {
-    setSuggestionIndex((prev) => (prev + 1) % suggestionsByTab[activeCreationTab].length);
-  }, [activeCreationTab]);
-
-  const handleTabChange = (tab: "app" | "agentes") => {
-    setActiveCreationTab(tab);
-    setSuggestionIndex(0);
-  };
 
   useEffect(() => {
     if (!user) return;
