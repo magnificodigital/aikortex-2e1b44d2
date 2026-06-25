@@ -8,7 +8,15 @@ import { SparkOrb } from "./SparkOrb";
 import { cn } from "@/lib/utils";
 
 type Mode = "voice" | "text";
-type OrbState = "idle" | "recording" | "processing" | "speaking" | "error";
+type OrbState = "idle" | "listening" | "recording" | "processing" | "speaking" | "error";
+
+// VAD (voice activity detection) thresholds — tuned for typical desktop/laptop mics.
+// Values are normalized 0..1 from analyser.getByteFrequencyData average.
+const VAD_SPEECH_THRESHOLD = 0.05;
+const VAD_SILENCE_THRESHOLD = 0.03;
+const VAD_SILENCE_MS = 1300;     // stop utterance after this much silence
+const VAD_MIN_RECORD_MS = 500;   // ignore ultra-short blips
+const VAD_MIN_BLOB_BYTES = 1500; // discard near-empty recordings
 
 interface TranscriptEntry {
   id: string;
@@ -48,9 +56,74 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const historyRef = useRef<Array<{ role: "user" | "assistant"; content: string }>>([]);
 
-  const stopStream = useCallback(() => {
+  // Hands-free VAD bookkeeping. Refs (not state) because the rAF loop runs
+  // off the render cycle and we don't want to retrigger it every frame.
+  const orbStateRef = useRef<OrbState>("idle");
+  const isCapturingRef = useRef(false);     // a MediaRecorder is currently running
+  const recordingStartRef = useRef(0);      // performance.now() when current utterance started
+  const lastSpeechRef = useRef(0);          // performance.now() of last frame above threshold
+  useEffect(() => { orbStateRef.current = orbState; }, [orbState]);
+
+  // Keep the latest onVoiceTranscript in a ref so sendAudio can stay stable
+  // (otherwise startUtterance, memoized with [], would capture a stale prop).
+  const onVoiceTranscriptRef = useRef(onVoiceTranscript);
+  useEffect(() => { onVoiceTranscriptRef.current = onVoiceTranscript; }, [onVoiceTranscript]);
+
+  const pickMime = () =>
+    MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? "audio/webm;codecs=opus"
+      : MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "";
+
+  // Start a fresh utterance recorder on the persistent mic stream.
+  const startUtterance = useCallback(() => {
+    const stream = streamRef.current;
+    if (!stream || isCapturingRef.current) return;
+    const mime = pickMime();
+    const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    mediaRecorderRef.current = rec;
+    chunksRef.current = [];
+    rec.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+    };
+    rec.onstop = async () => {
+      const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+      chunksRef.current = [];
+      mediaRecorderRef.current = null;
+      isCapturingRef.current = false;
+      if (blob.size < VAD_MIN_BLOB_BYTES) {
+        // Too short — drop it and return to listening if session is still active.
+        if (orbStateRef.current !== "idle" && orbStateRef.current !== "error") {
+          setOrbState("listening");
+        }
+        return;
+      }
+      await sendAudio(blob);
+    };
+    rec.start();
+    isCapturingRef.current = true;
+    recordingStartRef.current = performance.now();
+    lastSpeechRef.current = performance.now();
+    setOrbState("recording");
+  }, []);
+
+  // Finalize the current utterance (VAD-triggered or session end).
+  const stopUtterance = useCallback(() => {
+    const rec = mediaRecorderRef.current;
+    if (!rec || !isCapturingRef.current) return;
+    try { rec.stop(); } catch { /* noop */ }
+  }, []);
+
+  const endSession = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
+    if (isCapturingRef.current && mediaRecorderRef.current) {
+      try { mediaRecorderRef.current.stop(); } catch { /* noop */ }
+    }
+    mediaRecorderRef.current = null;
+    isCapturingRef.current = false;
+    chunksRef.current = [];
     analyserRef.current = null;
     if (audioContextRef.current) {
       audioContextRef.current.close().catch(() => {});
@@ -60,24 +133,23 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    setIntensity(0);
-  }, []);
-
-  useEffect(() => () => {
-    stopStream();
     if (audioElRef.current) {
       audioElRef.current.pause();
       audioElRef.current.src = "";
     }
-  }, [stopStream]);
+    setIntensity(0);
+    setOrbState("idle");
+  }, []);
 
-  const startRecording = useCallback(async () => {
+  useEffect(() => () => { endSession(); }, [endSession]);
+
+  const startSession = useCallback(async () => {
     try {
-      setOrbState("recording");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
       streamRef.current = stream;
 
-      // Audio analyser for orb pulsation
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       audioContextRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
@@ -85,6 +157,8 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       analyser.fftSize = 256;
       source.connect(analyser);
       analyserRef.current = analyser;
+
+      setOrbState("listening");
 
       const data = new Uint8Array(analyser.frequencyBinCount);
       const tick = () => {
@@ -94,28 +168,34 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
         for (let i = 0; i < data.length; i++) sum += data[i];
         const avg = sum / data.length / 255;
         setIntensity(avg);
+
+        const state = orbStateRef.current;
+        // Only run VAD while we're free to capture. While processing or
+        // speaking we keep the analyser running for visuals but don't
+        // start/stop utterances (avoids feedback loops from TTS playback).
+        if (state === "listening" || state === "recording") {
+          const now = performance.now();
+          if (avg > VAD_SPEECH_THRESHOLD) {
+            lastSpeechRef.current = now;
+            if (!isCapturingRef.current) startUtterance();
+          } else if (isCapturingRef.current && avg < VAD_SILENCE_THRESHOLD) {
+            const silenceFor = now - lastSpeechRef.current;
+            const recordedFor = now - recordingStartRef.current;
+            if (silenceFor > VAD_SILENCE_MS && recordedFor > VAD_MIN_RECORD_MS) {
+              stopUtterance();
+            }
+          }
+        }
+
         rafRef.current = requestAnimationFrame(tick);
       };
       rafRef.current = requestAnimationFrame(tick);
-
-      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "";
-      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-      mediaRecorderRef.current = rec;
-      chunksRef.current = [];
-      rec.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      rec.start();
     } catch (e) {
       console.error("[spark] mic error", e);
       setOrbState("error");
       toast.error("Não foi possível acessar o microfone");
     }
-  }, []);
+  }, [startUtterance, stopUtterance]);
 
   const sendAudio = useCallback(async (blob: Blob) => {
     setOrbState("processing");
@@ -163,20 +243,25 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       // Play TTS, then forward the user's transcript to the host so it can route
       // the same way the text mode does (e.g. open the builder).
       const dispatchTranscript = () => {
-        if (!onVoiceTranscript) return;
-        try { onVoiceTranscript(userText); } catch { /* noop */ }
+        const cb = onVoiceTranscriptRef.current;
+        if (!cb) return;
+        try { cb(userText); } catch { /* noop */ }
       };
+
+      // After TTS finishes, if the session is still alive we resume listening
+      // (hands-free). If endSession ran in between (stream cleared), stay idle.
+      const resumeState = (): OrbState => (streamRef.current ? "listening" : "idle");
 
       const src = `data:${audio_mime};base64,${audio}`;
       if (!audioElRef.current) audioElRef.current = new Audio();
       audioElRef.current.src = src;
       audioElRef.current.onplay = () => setOrbState("speaking");
-      audioElRef.current.onended = () => { setOrbState("idle"); dispatchTranscript(); };
-      audioElRef.current.onerror = () => { setOrbState("idle"); dispatchTranscript(); };
+      audioElRef.current.onended = () => { setOrbState(resumeState()); dispatchTranscript(); };
+      audioElRef.current.onerror = () => { setOrbState(resumeState()); dispatchTranscript(); };
       try {
         await audioElRef.current.play();
       } catch {
-        setOrbState("idle");
+        setOrbState(resumeState());
         dispatchTranscript();
       }
     } catch (e) {
@@ -184,50 +269,21 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       setOrbState("error");
       toast.error("Erro ao processar áudio");
     }
-  }, [navigate, onVoiceTranscript]);
+  }, [navigate]);
 
-  const stopRecording = useCallback(async () => {
-    const rec = mediaRecorderRef.current;
-    if (!rec) return;
-    return new Promise<void>((resolve) => {
-      rec.onstop = async () => {
-        stopStream();
-        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
-        chunksRef.current = [];
-        mediaRecorderRef.current = null;
-        if (blob.size < 1000) {
-          setOrbState("idle");
-          resolve();
-          return;
-        }
-        await sendAudio(blob);
-        resolve();
-      };
-      rec.stop();
-    });
-  }, [sendAudio, stopStream]);
+  const sessionActive = orbState !== "idle" && orbState !== "error";
 
   const handleOrbClick = () => {
-    if (orbState === "recording") {
-      stopRecording();
-    } else if (orbState === "processing") {
-      return;
-    } else if (orbState === "speaking") {
-      if (audioElRef.current) {
-        audioElRef.current.pause();
-        audioElRef.current.currentTime = 0;
-      }
-      setOrbState("idle");
+    if (sessionActive) {
+      endSession();
     } else {
-      startRecording();
+      startSession();
     }
   };
 
-  const handleSwitchToText = async () => {
-    if (orbState === "recording") await stopRecording();
-    if (audioElRef.current) audioElRef.current.pause();
+  const handleSwitchToText = () => {
+    endSession();
     setMode("text");
-    setOrbState("idle");
   };
 
   const handleSwitchToVoice = () => {
@@ -243,16 +299,17 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
 
   const orbHint = (() => {
     switch (orbState) {
-      case "idle": return "Toque na esfera para falar com o Spark";
-      case "recording": return "Estou te ouvindo… toque de novo para enviar";
+      case "idle": return "Toque na esfera para iniciar a conversa";
+      case "listening": return "Pode falar — toque para encerrar";
+      case "recording": return "Capturando… solte uma pausa quando terminar";
       case "processing": return "Pensando…";
-      case "speaking": return "Spark falando… toque para interromper";
+      case "speaking": return "Spark falando…";
       case "error": return "Toque para tentar novamente";
     }
   })();
 
   const orbStateForVisual: "idle" | "connecting" | "listening" | "speaking" | "error" =
-    orbState === "recording" ? "listening"
+    orbState === "recording" || orbState === "listening" ? "listening"
     : orbState === "processing" ? "connecting"
     : orbState === "speaking" ? "speaking"
     : orbState === "error" ? "error"
@@ -307,8 +364,8 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
             {orbState === "processing" && (
               <Loader2 className="absolute inset-0 m-auto w-6 h-6 text-primary animate-spin pointer-events-none" />
             )}
-            {orbState === "recording" && (
-              <Square className="absolute inset-0 m-auto w-5 h-5 text-primary-foreground fill-current pointer-events-none" />
+            {sessionActive && orbState !== "processing" && (
+              <Square className="absolute inset-0 m-auto w-4 h-4 text-primary-foreground/80 fill-current pointer-events-none" />
             )}
           </div>
 
