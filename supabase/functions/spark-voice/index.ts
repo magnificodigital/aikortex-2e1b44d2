@@ -1,6 +1,7 @@
-// Spark voice loop: ElevenLabs STT -> Lovable AI Gateway LLM -> ElevenLabs TTS.
+// Spark voice loop: ElevenLabs STT -> Aikortex LLM (OpenRouter via llm-fallback) -> ElevenLabs TTS.
 // Returns transcript, assistant reply text, and TTS audio (base64 mp3).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callLLM } from "../_shared/llm-fallback.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +13,6 @@ const corsHeaders = {
 const DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 const TTS_MODEL = "eleven_flash_v2_5";
 const STT_MODEL = "scribe_v1";
-const LLM_MODEL = "google/gemini-3-flash-preview";
 
 const SYSTEM_PROMPT = `Você é o Spark, o copiloto por voz do Aikortex — funciona como o Jarvis do Tony Stark para a pessoa que está falando.
 Estilo: respostas curtas, naturais, em português do Brasil, soando como uma conversa real (não como texto formal).
@@ -59,9 +59,9 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableKey) {
-      return json({ error: "llm_not_configured", message: "Lovable AI Gateway não está configurado." }, 500);
+    const openrouterKey = Deno.env.get("OPENROUTER_API_KEY");
+    if (!openrouterKey) {
+      return json({ error: "llm_not_configured", message: "OPENROUTER_API_KEY não configurada." }, 500);
     }
 
     const contentType = req.headers.get("content-type") ?? "";
@@ -105,26 +105,21 @@ Deno.serve(async (req) => {
       return json({ error: "empty_input", message: "Não entendi o áudio. Tente novamente." }, 400);
     }
 
-    // LLM via Lovable AI Gateway (OpenAI-compatible)
+    // LLM via Aikortex OpenRouter (com fallback de modelos do DB)
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system" as const, content: SYSTEM_PROMPT },
       ...history.slice(-8),
-      { role: "user", content: userText },
+      { role: "user" as const, content: userText },
     ];
-    const llmResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ model: LLM_MODEL, messages, temperature: 0.7 }),
-    });
-    if (!llmResp.ok) {
-      const t = await llmResp.text();
-      return json({ error: "llm_failed", status: llmResp.status, details: t }, 502);
+    const llmResult = await callLLM(
+      messages,
+      { apiKey: openrouterKey, temperature: 0.7, maxTokens: 512, tier: "free" },
+      admin,
+    );
+    if (!llmResult.success) {
+      return json({ error: "llm_failed", details: llmResult.error }, 502);
     }
-    const llmJson = await llmResp.json();
-    const reply: string = (llmJson?.choices?.[0]?.message?.content ?? "").trim();
+    const reply: string = (llmResult.content ?? "").trim();
     if (!reply) return json({ error: "empty_reply" }, 502);
 
     // ElevenLabs TTS
