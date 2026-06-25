@@ -24,10 +24,22 @@ function detectChannel(text: string): AppChannel {
 
 const AGENT_KEYWORDS = ["agente", "agent", "sdr", "bdr", "sac", "suporte", "atendimento", "qualificação", "qualificacao", "qualificador", "prospecção", "prospeccao", "captura de lead", "captação", "captacao", "cobranças", "cobranca", "onboarding", "customer success", "cs ", "assistente", "diagnóstico", "diagnostico", "agendador", "agendamento", "chatbot", "bot", "vendas", "vender", "retenção", "retencao", "pós-venda", "pos-venda"];
 
+const APP_NOUNS = ["app", "aplicativo", "aplicacao", "aplicação", "site", "website", "dashboard", "painel", "portal", "landing", "sistema", "plataforma", "formulario", "formulário", "crm", "loja", "blog"];
+const CREATION_VERB_RE = /\b(cri[ae][r]?|construa|construir|constroi|constr[óo]i|monte|montar|monto|ger[ae][r]?|fa[çc]a|fa[zc]er|fa[çc]o|fa[zc]e[mr]?|abr[ae]?|abrir|quero|preciso|precisamos|bora|vamos)\b/i;
+
 function detectCategory(text: string): "app" | "agentes" {
   const lower = text.toLowerCase();
   if (AGENT_KEYWORDS.some((k) => lower.includes(k))) return "agentes";
   return "app";
+}
+
+function looksLikeCreationIntent(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  if (lower.length < 4) return false;
+  const hasVerb = CREATION_VERB_RE.test(lower);
+  const hasAgentNoun = AGENT_KEYWORDS.some((k) => lower.includes(k));
+  const hasAppNoun = APP_NOUNS.some((k) => lower.includes(k));
+  return hasVerb && (hasAgentNoun || hasAppNoun);
 }
 
 function detectAgentType(text: string): { id: string; type: AgentType; name: string } | null {
@@ -119,6 +131,10 @@ const Home = () => {
     }
   };
 
+  const handleVoiceTranscript = (text: string) => {
+    if (looksLikeCreationIntent(text)) handleTextSubmit(text);
+  };
+
   return (
     <DashboardLayout>
       <SparkInterface
@@ -126,6 +142,7 @@ const Home = () => {
         userName={userName}
         honorific={detectHonorific(userName)}
         onTextSubmit={handleTextSubmit}
+        onVoiceTranscript={handleVoiceTranscript}
       />
     </DashboardLayout>
   );

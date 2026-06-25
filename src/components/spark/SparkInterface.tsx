@@ -27,9 +27,10 @@ interface SparkInterfaceProps {
   userName: string;
   honorific: string;
   onTextSubmit: (text: string) => void;
+  onVoiceTranscript?: (text: string) => void;
 }
 
-export function SparkInterface({ greeting, userName, honorific, onTextSubmit }: SparkInterfaceProps) {
+export function SparkInterface({ greeting, userName, honorific, onTextSubmit, onVoiceTranscript }: SparkInterfaceProps) {
   const [mode, setMode] = useState<Mode>("voice");
   const [orbState, setOrbState] = useState<OrbState>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
@@ -159,20 +160,31 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit }: 
         { id: `${ts}-a`, role: "assistant", content: reply },
       ]);
 
-      // Play TTS
+      // Play TTS, then forward the user's transcript to the host so it can route
+      // the same way the text mode does (e.g. open the builder).
+      const dispatchTranscript = () => {
+        if (!onVoiceTranscript) return;
+        try { onVoiceTranscript(userText); } catch { /* noop */ }
+      };
+
       const src = `data:${audio_mime};base64,${audio}`;
       if (!audioElRef.current) audioElRef.current = new Audio();
       audioElRef.current.src = src;
       audioElRef.current.onplay = () => setOrbState("speaking");
-      audioElRef.current.onended = () => setOrbState("idle");
-      audioElRef.current.onerror = () => setOrbState("idle");
-      await audioElRef.current.play().catch(() => setOrbState("idle"));
+      audioElRef.current.onended = () => { setOrbState("idle"); dispatchTranscript(); };
+      audioElRef.current.onerror = () => { setOrbState("idle"); dispatchTranscript(); };
+      try {
+        await audioElRef.current.play();
+      } catch {
+        setOrbState("idle");
+        dispatchTranscript();
+      }
     } catch (e) {
       console.error("[spark] sendAudio error", e);
       setOrbState("error");
       toast.error("Erro ao processar áudio");
     }
-  }, [navigate]);
+  }, [navigate, onVoiceTranscript]);
 
   const stopRecording = useCallback(async () => {
     const rec = mediaRecorderRef.current;
