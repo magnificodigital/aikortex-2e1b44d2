@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useConversation } from "@elevenlabs/react";
 import {
   Phone, PhoneOff, Mic, MicOff, FileText, AlertTriangle, ExternalLink, Loader2,
 } from "lucide-react";
@@ -8,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { fnUrl } from "@/lib/supabase-url";
 
 const VOICES = [
   { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah" },
@@ -460,78 +460,193 @@ const VoiceCallPanel = ({
     }
   }, [agentId, stopRecording]);
 
-  const conversation = useConversation({
-    onConnect: () => {
-      setCallStatus("connected");
-      startTimeRef.current = Date.now();
-      timerRef.current = setInterval(() => {
-        setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
-      }, 1000);
-      // Inicia bg sound se selecionado. Web Audio API gera pink noise
-      // procedural — sem CDN externo, garantido funciona.
-      startBgSound(bgSound);
-    },
-    onDisconnect: () => {
-      setCallStatus("ended");
-      if (timerRef.current) clearInterval(timerRef.current);
-      stopBgSound();
-      // Persiste em /calls (idempotente via flag)
-      persistCallLog("completed");
-    },
-    onMessage: (msg: any) => {
-      // @elevenlabs/react v1.0.1 manda { message: string, source: "user" | "ai" }
-      // Antes eu checava msg.type === "user_transcript" (SDK velho) — nunca
-      // batia, por isso o detector nunca firava. Agora aceita ambos shapes
-      // pra cobrir update futuro também.
-      console.log("[voice-call] msg recebido:", msg);
+  // Estado custom (substitui useConversation da ElevenLabs Conversational AI).
+  // Loop: gravar voz do user -> spark-voice (STT+LLM+TTS) -> tocar áudio -> repete.
+  const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const sttMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const sttChunksRef = useRef<Blob[]>([]);
+  const sttStreamRef = useRef<MediaStream | null>(null);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const chatHistoryRef = useRef<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const callActiveRef = useRef(false);
+  // VAD: detecta silêncio pra auto-enviar quando user para de falar
+  const vadCtxRef = useRef<AudioContext | null>(null);
+  const vadAnalyserRef = useRef<AnalyserNode | null>(null);
+  const vadRafRef = useRef<number | null>(null);
+  const vadSilenceStartRef = useRef<number | null>(null);
+  const vadHasSpokeRef = useRef(false);
 
-      const text: string =
-        msg?.message ??                                       // SDK v1.x (atual)
-        msg?.user_transcription_event?.user_transcript ??     // SDK legacy
-        msg?.user_transcript ??
-        msg?.transcript ??
-        msg?.text ??
-        "";
-
-      const source: string =
-        msg?.source ??                                        // SDK v1.x
-        (msg?.type === "user_transcript" ? "user" :           // SDK legacy
-         msg?.type === "agent_response" ? "ai" : "unknown");
-
-      if (!text) return;
-
-      if (source === "user") {
-        const newEntry = { role: "user", text };
-        transcriptRef.current = [...transcriptRef.current, newEntry];
-        setTranscript(prev => [...prev, newEntry]);
-        // Match robusto: normaliza (lower, sem acento, sem pontuação) e
-        // testa contra cada keyword.
-        const normalized = normalizeForKeyword(text);
-        const matched = END_CALL_KEYWORDS.find(kw => normalized.includes(normalizeForKeyword(kw)));
-        if (matched) {
-          console.log(`[voice-call] 🛑 encerramento detectado — keyword "${matched}" em "${text}". Encerrando em 2s.`);
-          setTimeout(() => {
-            console.log(`[voice-call] forçando endSession (status: ${conversation.status})`);
-            Promise.resolve(conversation.endSession())
-              .then(() => console.log("[voice-call] endSession OK"))
-              .catch((e: unknown) => console.warn("[voice-call] endSession falhou:", e));
-          }, 2000);
-        }
-      } else if (source === "ai") {
-        const newEntry = { role: "agent", text };
-        transcriptRef.current = [...transcriptRef.current, newEntry];
-        setTranscript(prev => [...prev, newEntry]);
+  const stopSttRecording = useCallback(async (): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const rec = sttMediaRecorderRef.current;
+      if (vadRafRef.current) cancelAnimationFrame(vadRafRef.current);
+      vadRafRef.current = null;
+      vadAnalyserRef.current = null;
+      try { vadCtxRef.current?.close(); } catch { /* */ }
+      vadCtxRef.current = null;
+      if (!rec || rec.state === "inactive") {
+        sttStreamRef.current?.getTracks().forEach(t => t.stop());
+        sttStreamRef.current = null;
+        resolve(null);
+        return;
       }
-    },
-    onError: (err: any) => {
-      console.error("ElevenLabs error:", err);
-      toast.error(typeof err === "string" ? err : err?.message || "Erro na conexão de voz");
-      setCallStatus("ended");
-      if (timerRef.current) clearInterval(timerRef.current);
-      stopBgSound();
-      persistCallLog("failed");
-    },
-  });
+      rec.onstop = () => {
+        const blob = new Blob(sttChunksRef.current, { type: rec.mimeType || "audio/webm" });
+        sttChunksRef.current = [];
+        sttStreamRef.current?.getTracks().forEach(t => t.stop());
+        sttStreamRef.current = null;
+        sttMediaRecorderRef.current = null;
+        setIsRecording(false);
+        resolve(blob.size > 500 ? blob : null);
+      };
+      try { rec.stop(); } catch { resolve(null); }
+    });
+  }, []);
+
+  // Forward declaration via ref pra evitar circular dependency entre
+  // startSttRecording e processAudio
+  const processAudioRef = useRef<(blob: Blob) => Promise<void>>(async () => {});
+
+  const startSttRecording = useCallback(async () => {
+    if (!callActiveRef.current) return;
+    if (isMuted) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      sttStreamRef.current = stream;
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      sttChunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data.size > 0) sttChunksRef.current.push(e.data); };
+      sttMediaRecorderRef.current = rec;
+      rec.start();
+      setIsRecording(true);
+
+      // VAD via analyser
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx: AudioContext = new Ctx();
+      vadCtxRef.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      src.connect(analyser);
+      vadAnalyserRef.current = analyser;
+      vadSilenceStartRef.current = null;
+      vadHasSpokeRef.current = false;
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const SPEECH_THRESHOLD = 18; // 0-255 média
+      const SILENCE_MS = 1200;
+      const MAX_RECORD_MS = 15000;
+      const startTs = Date.now();
+      const tick = () => {
+        if (!vadAnalyserRef.current) return;
+        vadAnalyserRef.current.getByteFrequencyData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) sum += buf[i];
+        const avg = sum / buf.length;
+        const now = Date.now();
+        if (avg > SPEECH_THRESHOLD) {
+          vadHasSpokeRef.current = true;
+          vadSilenceStartRef.current = null;
+        } else if (vadHasSpokeRef.current) {
+          if (vadSilenceStartRef.current === null) vadSilenceStartRef.current = now;
+          else if (now - vadSilenceStartRef.current > SILENCE_MS) {
+            // silêncio detectado -> envia
+            stopSttRecording().then(b => { if (b) processAudioRef.current(b); else if (callActiveRef.current) startSttRecording(); });
+            return;
+          }
+        }
+        if (now - startTs > MAX_RECORD_MS) {
+          stopSttRecording().then(b => { if (b && vadHasSpokeRef.current) processAudioRef.current(b); else if (callActiveRef.current) startSttRecording(); });
+          return;
+        }
+        vadRafRef.current = requestAnimationFrame(tick);
+      };
+      vadRafRef.current = requestAnimationFrame(tick);
+    } catch (e) {
+      console.error("[voice-call] mic error", e);
+      toast.error("Não foi possível acessar o microfone");
+    }
+  }, [isMuted, stopSttRecording]);
+
+  const playTtsBase64 = useCallback(async (audioB64: string, mime: string) => {
+    return new Promise<void>((resolve) => {
+      const src = `data:${mime};base64,${audioB64}`;
+      const audio = new Audio(src);
+      ttsAudioRef.current = audio;
+      audio.onplay = () => setIsAgentSpeaking(true);
+      audio.onended = () => { setIsAgentSpeaking(false); resolve(); };
+      audio.onerror = () => { setIsAgentSpeaking(false); resolve(); };
+      audio.play().catch(() => { setIsAgentSpeaking(false); resolve(); });
+    });
+  }, []);
+
+  const processAudio = useCallback(async (blob: Blob) => {
+    setIsProcessing(true);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session?.access_token) {
+        toast.error("Sessão expirada");
+        setIsProcessing(false);
+        return;
+      }
+      const form = new FormData();
+      form.append("audio", blob, "audio.webm");
+      form.append("history", JSON.stringify(chatHistoryRef.current.slice(-8)));
+      const sysPrompt = agentPrompt
+        ? `${agentPrompt}\n\nResponda sempre em português brasileiro, frases curtas e naturais (no máximo 2-3 frases). Quando o cliente se despedir, encerre educadamente.`
+        : `Você é ${agentName}. Responda em português brasileiro de forma curta e natural.`;
+      form.append("system_prompt", sysPrompt);
+      form.append("voice_id", selectedVoice || "EXAVITQu4vr4xnSDxMaL");
+
+      const resp = await fetch(fnUrl("spark-voice"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: form,
+      });
+      const data = await resp.json();
+      if (!resp.ok || data?.error) {
+        toast.error(data?.message || "Erro ao processar áudio");
+        setIsProcessing(false);
+        if (callActiveRef.current) startSttRecording();
+        return;
+      }
+      const { transcript: userText, reply, audio, audio_mime } = data;
+      chatHistoryRef.current.push({ role: "user", content: userText });
+      chatHistoryRef.current.push({ role: "assistant", content: reply });
+      const userEntry = { role: "user", text: userText };
+      const agentEntry = { role: "agent", text: reply };
+      transcriptRef.current = [...transcriptRef.current, userEntry, agentEntry];
+      setTranscript(prev => [...prev, userEntry, agentEntry]);
+
+      // Detecta encerramento na fala do user
+      const normalized = normalizeForKeyword(userText);
+      const ended = END_CALL_KEYWORDS.some(kw => normalized.includes(normalizeForKeyword(kw)));
+
+      setIsProcessing(false);
+      await playTtsBase64(audio, audio_mime);
+
+      if (ended) {
+        // encerra após despedida
+        setTimeout(() => { handleEndRef.current?.(); }, 500);
+      } else if (callActiveRef.current) {
+        startSttRecording();
+      }
+    } catch (e) {
+      console.error("[voice-call] processAudio error", e);
+      setIsProcessing(false);
+      if (callActiveRef.current) startSttRecording();
+    }
+  }, [agentName, agentPrompt, selectedVoice, playTtsBase64, startSttRecording]);
+
+  // wire ref
+  useEffect(() => { processAudioRef.current = processAudio; }, [processAudio]);
+
+  const handleEndRef = useRef<() => void>();
+
 
   useEffect(() => {
     return () => {
@@ -549,68 +664,60 @@ const VoiceCallPanel = ({
     setCallStatus("connecting");
     setTranscript([]);
     transcriptRef.current = [];
+    chatHistoryRef.current = [];
     callLogPersistedRef.current = false;
     setDuration(0);
-    // Inicia gravação ANTES do startSession da ElevenLabs pra capturar
-    // desde o primeiro frame. Erros aqui não bloqueiam a call.
-    startRecording().catch(() => { /* gravação opcional, segue mesmo se falhar */ });
+    // Gravação opcional (mixer mic + tts) pra arquivar a call
+    startRecording().catch(() => { /* gravação opcional */ });
 
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Call edge function to get the user's fixed ElevenLabs agent token.
-      // We reuse the same agent for every call and customize the session
-      // via ElevenLabs overrides (prompt, first message, voice) so the
-      // dashboard doesn't get polluted with "Sofia - Sessão" agents.
-      const { data: sessionData, error: fnError } = await supabase.functions.invoke(
-        "elevenlabs-voice-session",
-        { body: {} }
-      );
+      callActiveRef.current = true;
+      setCallStatus("connected");
+      startTimeRef.current = Date.now();
+      timerRef.current = setInterval(() => {
+        setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      }, 1000);
+      startBgSound(bgSound);
 
-      if (fnError) {
-        let msg = "Erro ao iniciar sessão de voz";
-        try {
-          if (fnError.context && typeof fnError.context.json === "function") {
-            const body = await fnError.context.json();
-            msg = body?.error || msg;
-          }
-        } catch { /* ignore */ }
-        toast.error(msg);
-        setCallStatus("idle");
-        return;
-      }
+      // Saudação inicial via browser-tts -> toca, depois abre o mic.
+      const greeting = agentGreeting || `Olá! Sou ${agentName || "seu agente"}. Como posso te ajudar?`;
+      const greetingEntry = { role: "agent", text: greeting };
+      transcriptRef.current = [...transcriptRef.current, greetingEntry];
+      setTranscript(prev => [...prev, greetingEntry]);
+      chatHistoryRef.current.push({ role: "assistant", content: greeting });
 
-      if (!sessionData?.token || !sessionData?.agentId) {
-        toast.error(sessionData?.error || "Erro ao obter token de voz");
-        setCallStatus("idle");
-        return;
-      }
-
-      const agentLang = "pt";
-      const endCallPhrases = [
-        "tchau", "tchaau", "até logo", "ate logo", "até mais", "ate mais",
-        "encerrar ligação", "desligar", "pode desligar",
-        "obrigado, tchau", "valeu, tchau", "vou desligar",
-        "até a próxima", "ate a proxima", "adeus",
-      ];
-
-      const prompt = (agentPrompt || `Você é o agente ${agentName || "IA"}. Responda sempre em português brasileiro de forma profissional e amigável.`) +
-        `\n\n## ENCERRAMENTO\nQuando o cliente se despedir (tchau, até logo, valeu, vou desligar, encerrar ligação etc.), responda APENAS uma despedida curta tipo "Até logo!" ou "Tchau, obrigado pelo contato!". NÃO fique perguntando "tem mais alguma coisa?" — encerra educadamente. As frases-chave também encerram a chamada do lado do cliente.\n\nFrases que indicam encerramento: ${endCallPhrases.join(", ")}.`;
-
-      await conversation.startSession({
-        conversationToken: sessionData.token,
-        connectionType: "webrtc",
-        overrides: {
-          agent: {
-            prompt: { prompt },
-            firstMessage: agentGreeting || `Olá! Sou ${agentName || "seu agente"}. Como posso ajudar?`,
-            language: agentLang,
+      try {
+        const session = (await supabase.auth.getSession()).data.session;
+        const resp = await fetch(fnUrl("browser-tts"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token || ""}`,
           },
-          tts: {
+          body: JSON.stringify({
+            text: greeting,
             voiceId: selectedVoice || "EXAVITQu4vr4xnSDxMaL",
-          },
-        },
-      });
+          }),
+        });
+        if (resp.ok && resp.headers.get("content-type")?.includes("audio")) {
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          ttsAudioRef.current = audio;
+          setIsAgentSpeaking(true);
+          await new Promise<void>((resolve) => {
+            audio.onended = () => { URL.revokeObjectURL(url); setIsAgentSpeaking(false); resolve(); };
+            audio.onerror = () => { setIsAgentSpeaking(false); resolve(); };
+            audio.play().catch(() => { setIsAgentSpeaking(false); resolve(); });
+          });
+        }
+      } catch (e) {
+        console.warn("[voice-call] greeting tts failed:", e);
+      }
+
+      if (callActiveRef.current) startSttRecording();
     } catch (err: any) {
       console.error("Failed to start voice:", err);
       if (err?.name === "NotAllowedError") {
@@ -619,17 +726,26 @@ const VoiceCallPanel = ({
         toast.error(err?.message || "Erro ao iniciar ligação.");
       }
       setCallStatus("idle");
+      callActiveRef.current = false;
     }
-  }, [conversation, agentName, agentPrompt, agentGreeting, selectedVoice]);
+  }, [agentName, agentGreeting, selectedVoice, bgSound, startBgSound, startSttRecording, startRecording]);
 
   const handleEnd = useCallback(async () => {
-    try {
-      await conversation.endSession();
-    } catch {
-      setCallStatus("ended");
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-  }, [conversation]);
+    callActiveRef.current = false;
+    if (ttsAudioRef.current) { try { ttsAudioRef.current.pause(); } catch {} ttsAudioRef.current = null; }
+    await stopSttRecording().catch(() => null);
+    setIsAgentSpeaking(false);
+    setIsRecording(false);
+    setIsProcessing(false);
+    setCallStatus("ended");
+    if (timerRef.current) clearInterval(timerRef.current);
+    stopBgSound();
+    persistCallLog("completed");
+  }, [stopSttRecording, stopBgSound, persistCallLog]);
+
+  // Wire ref pra processAudio poder chamar handleEnd ao detectar despedida
+  useEffect(() => { handleEndRef.current = handleEnd; }, [handleEnd]);
+
 
   const handleReset = () => {
     setCallStatus("idle");
@@ -707,14 +823,14 @@ const VoiceCallPanel = ({
       >
         {callStatus === "idle" && "Aguardando"}
         {callStatus === "connecting" && "Conectando..."}
-        {callStatus === "connected" && (conversation.isSpeaking ? "Falando..." : "Ouvindo...")}
+        {callStatus === "connected" && (isAgentSpeaking ? "Falando..." : isProcessing ? "Pensando..." : "Ouvindo...")}
         {callStatus === "ended" && "Encerrada"}
       </Badge>
 
       {/* Animated Orb */}
       <div className="relative mb-2">
         <VoiceOrb
-          isSpeaking={callStatus === "connected" && conversation.isSpeaking}
+          isSpeaking={callStatus === "connected" && isAgentSpeaking}
           isConnected={callStatus === "connected"}
           avatarUrl={agentAvatar}
         />

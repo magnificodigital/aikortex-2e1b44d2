@@ -67,14 +67,20 @@ Deno.serve(async (req) => {
     const contentType = req.headers.get("content-type") ?? "";
     let userText = "";
     let history: Array<{ role: "user" | "assistant"; content: string }> = [];
+    let systemOverride = "";
+    let voiceOverride = "";
 
     if (contentType.includes("multipart/form-data")) {
       const form = await req.formData();
       const audio = form.get("audio");
       const historyRaw = form.get("history");
+      const sysRaw = form.get("system_prompt");
+      const voiceRaw = form.get("voice_id");
       if (historyRaw && typeof historyRaw === "string") {
         try { history = JSON.parse(historyRaw); } catch { /* ignore */ }
       }
+      if (typeof sysRaw === "string") systemOverride = sysRaw;
+      if (typeof voiceRaw === "string") voiceOverride = voiceRaw;
       if (audio && audio instanceof File) {
         // ElevenLabs STT
         const sttForm = new FormData();
@@ -99,15 +105,20 @@ Deno.serve(async (req) => {
       const body = await req.json().catch(() => ({}));
       userText = String(body?.text ?? "").trim();
       if (Array.isArray(body?.history)) history = body.history;
+      if (typeof body?.system_prompt === "string") systemOverride = body.system_prompt;
+      if (typeof body?.voice_id === "string") voiceOverride = body.voice_id;
     }
 
     if (!userText) {
       return json({ error: "empty_input", message: "Não entendi o áudio. Tente novamente." }, 400);
     }
 
+    const finalVoiceId = (voiceOverride || "").trim() || voiceId;
+    const finalSystem = (systemOverride || "").trim() || SYSTEM_PROMPT;
+
     // LLM via Aikortex OpenRouter (com fallback de modelos do DB)
     const messages = [
-      { role: "system" as const, content: SYSTEM_PROMPT },
+      { role: "system" as const, content: finalSystem },
       ...history.slice(-8),
       { role: "user" as const, content: userText },
     ];
@@ -124,7 +135,7 @@ Deno.serve(async (req) => {
 
     // ElevenLabs TTS
     const ttsResp = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(finalVoiceId)}?output_format=mp3_44100_128`,
       {
         method: "POST",
         headers: {
