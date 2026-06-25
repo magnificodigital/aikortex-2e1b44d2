@@ -295,45 +295,44 @@ const VoiceCallPanel = ({
       stopBgSound();
     },
     onMessage: (msg: any) => {
-      // Debug verboso: ElevenLabs muda formato de mensagem entre versões da SDK.
-      // Log de TODO msg pra diagnosticar quando algo não funcionar.
-      console.log("[voice-call] msg recebido:", msg?.type, msg);
+      // @elevenlabs/react v1.0.1 manda { message: string, source: "user" | "ai" }
+      // Antes eu checava msg.type === "user_transcript" (SDK velho) — nunca
+      // batia, por isso o detector nunca firava. Agora aceita ambos shapes
+      // pra cobrir update futuro também.
+      console.log("[voice-call] msg recebido:", msg);
 
-      // Extrai texto de várias possíveis localizações (SDK varia entre versões)
-      const extractedText =
-        msg?.user_transcription_event?.user_transcript ??
+      const text: string =
+        msg?.message ??                                       // SDK v1.x (atual)
+        msg?.user_transcription_event?.user_transcript ??     // SDK legacy
         msg?.user_transcript ??
         msg?.transcript ??
         msg?.text ??
         "";
 
-      const isUserMsg =
-        msg?.type === "user_transcript" ||
-        msg?.type === "transcript" ||
-        msg?.type === "user_message" ||
-        msg?.source === "user";
+      const source: string =
+        msg?.source ??                                        // SDK v1.x
+        (msg?.type === "user_transcript" ? "user" :           // SDK legacy
+         msg?.type === "agent_response" ? "ai" : "unknown");
 
-      if (isUserMsg && extractedText) {
-        setTranscript(prev => [...prev, { role: "user", text: extractedText }]);
+      if (!text) return;
+
+      if (source === "user") {
+        setTranscript(prev => [...prev, { role: "user", text }]);
         // Match robusto: normaliza (lower, sem acento, sem pontuação) e
         // testa contra cada keyword.
-        const normalized = normalizeForKeyword(extractedText);
+        const normalized = normalizeForKeyword(text);
         const matched = END_CALL_KEYWORDS.find(kw => normalized.includes(normalizeForKeyword(kw)));
         if (matched) {
-          console.log(`[voice-call] 🛑 encerramento detectado — keyword "${matched}" em "${extractedText}". Encerrando em 2s pra agente responder despedida.`);
-          // Reduzido de 3s pra 2s — tempo pro agente dizer "Tchau, até logo!"
-          // e a gente encerra. Se agente demorar mais, perde a despedida mas
-          // ao menos não fica preso na call.
+          console.log(`[voice-call] 🛑 encerramento detectado — keyword "${matched}" em "${text}". Encerrando em 2s.`);
           setTimeout(() => {
-            console.log(`[voice-call] forçando endSession (status atual: ${conversation.status})`);
+            console.log(`[voice-call] forçando endSession (status: ${conversation.status})`);
             conversation.endSession()
               .then(() => console.log("[voice-call] endSession OK"))
               .catch((e) => console.warn("[voice-call] endSession falhou:", e));
           }, 2000);
         }
-      } else if (msg?.type === "agent_response" || msg?.source === "ai") {
-        const agentText = msg?.agent_response_event?.agent_response ?? msg?.text ?? "";
-        if (agentText) setTranscript(prev => [...prev, { role: "agent", text: agentText }]);
+      } else if (source === "ai") {
+        setTranscript(prev => [...prev, { role: "agent", text }]);
       }
     },
     onError: (err: any) => {
