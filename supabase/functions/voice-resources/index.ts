@@ -127,14 +127,53 @@ serve(async (req) => {
       if (!apiKey) return jsonRes({ error: "KEY_MISSING", message: "Chave ElevenLabs não configurada" }, 400);
 
       if (action === "test") {
-        // Healthcheck: GET /v1/voices é o endpoint mais leve que valida a chave
-        const resp = await fetch("https://api.elevenlabs.io/v1/voices", {
+        // Validação 2-em-1:
+        // (1) GET /v1/voices  — checa que a chave é aceita pelo ElevenLabs
+        // (2) POST /v1/text-to-speech/{sarah} com 1 char — checa que tem o
+        //     SCOPE 'text_to_speech' habilitado. Sem isso, agente quebra com
+        //     401 na hora da ligação mesmo a chave sendo "válida".
+        const voicesResp = await fetch("https://api.elevenlabs.io/v1/voices", {
           headers: { "xi-api-key": apiKey },
         });
-        if (resp.status === 401) return jsonRes({ ok: false, error: "INVALID_KEY", message: "Chave ElevenLabs rejeitada" }, 200);
-        if (!resp.ok) {
-          const text = await resp.text().catch(() => "");
-          return jsonRes({ ok: false, error: "ELEVENLABS_ERROR", message: `HTTP ${resp.status}: ${text.slice(0, 150)}` }, 200);
+        if (voicesResp.status === 401) {
+          return jsonRes({ ok: false, error: "INVALID_KEY", message: "Chave ElevenLabs rejeitada" }, 200);
+        }
+        if (!voicesResp.ok) {
+          const text = await voicesResp.text().catch(() => "");
+          return jsonRes({ ok: false, error: "ELEVENLABS_ERROR", message: `HTTP ${voicesResp.status}: ${text.slice(0, 150)}` }, 200);
+        }
+
+        // Dry-run TTS com Sarah (voz default, disponivel em qualquer conta).
+        // 1 char = 1 credit. Custo despreziveis pro feedback que entrega.
+        const ttsResp = await fetch(
+          "https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL?output_format=mp3_44100_128",
+          {
+            method: "POST",
+            headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+            body: JSON.stringify({ text: ".", model_id: "eleven_flash_v2_5" }),
+          },
+        );
+        if (ttsResp.status === 401) {
+          return jsonRes({
+            ok: false,
+            error: "MISSING_TTS_SCOPE",
+            message: "Chave válida, mas SEM permissão de Text to Speech. Em elevenlabs.io → API Keys, edite a chave e marque 'Text to Speech'.",
+          }, 200);
+        }
+        if (ttsResp.status === 402) {
+          return jsonRes({
+            ok: false,
+            error: "PAID_PLAN_REQUIRED",
+            message: "Chave válida, mas o plano gratuito ElevenLabs não permite TTS via API. Faça upgrade para Starter+ ou use uma voz clonada da sua conta.",
+          }, 200);
+        }
+        if (!ttsResp.ok) {
+          const text = await ttsResp.text().catch(() => "");
+          return jsonRes({
+            ok: false,
+            error: "TTS_FAILED",
+            message: `Voices OK, mas TTS falhou (HTTP ${ttsResp.status}): ${text.slice(0, 150)}`,
+          }, 200);
         }
         return jsonRes({ ok: true });
       }
