@@ -297,7 +297,7 @@ export default function IntegrationVoiceForm({ onClose }: Props) {
 
       <div className="flex justify-end gap-2 pt-2 border-t border-border">
         <Button size="sm" variant="ghost" onClick={onClose}>Fechar</Button>
-        <Button size="sm" onClick={onSave} disabled={save.isPending || (!telnyxKey.trim() && !telnyxPublicKey.trim() && !elevenKey.trim())}>
+        <Button size="sm" onClick={onSave} disabled={save.isPending || (!telnyxKey.trim() && !telnyxPublicKey.trim() && !elevenKey.trim() && !agentId.trim())}>
           {save.isPending ? "Salvando..." : "Salvar chaves"}
         </Button>
       </div>
