@@ -8,9 +8,10 @@ export type VoiceIntegrationStatus = {
   telnyx_suffix: string | null;
   elevenlabs_connected: boolean;
   elevenlabs_suffix: string | null;
+  elevenlabs_agent_id: string | null;
 };
 
-const VOICE_PROVIDERS = ["telnyx", "telnyx_public", "elevenlabs"] as const;
+const VOICE_PROVIDERS = ["telnyx", "telnyx_public", "elevenlabs", "elevenlabs_agent_id"] as const;
 
 export function useVoiceIntegrationStatus() {
   return useQuery({
