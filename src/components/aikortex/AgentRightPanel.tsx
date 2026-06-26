@@ -1551,15 +1551,45 @@ const AgentRightPanel = ({
                       </Button>
                     </div>
                   ) : (
-                    <IntegrationsGrid
-                      providers={activeProviders}
-                      variant="card"
-                      showTitle={false}
-                      onConnectedProvidersChange={(providers) => setSavedIntegrations(prev => Array.from(new Set([...prev.filter((provider) => !SERVICE_PROVIDERS.some((service) => service.provider === provider)), ...providers])))}
-                      onProviderConfigsChange={(configs) => setIntegrationConfigs(prev => ({ ...prev, ...configs }))}
-                      initialProviderConfigs={integrationConfigs}
-                      storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
-                    />
+                    <div className="space-y-2">
+                      {activeProviders.map((p) => (
+                        <div
+                          key={p.provider}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 hover:bg-accent/30 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {p.logo ? (
+                              <img src={p.logo} alt={p.label} className="w-8 h-8 rounded object-contain shrink-0" />
+                            ) : (
+                              <div className="w-8 h-8 rounded bg-muted shrink-0 grid place-items-center">
+                                <Plug className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{p.label}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {p.description?.split(".")[0]}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Ativo</span>
+                            <Switch
+                              checked={true}
+                              onCheckedChange={(checked) => {
+                                if (!checked) {
+                                  // Desativa o conector neste agente — chave da
+                                  // agencia permanece intacta em user_api_keys.
+                                  setSavedIntegrations((prev) =>
+                                    prev.filter((x) => x !== p.provider),
+                                  );
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
 
                   {/* Picker (Sheet) com conectores nao-ativos pro user habilitar pra este agente */}
