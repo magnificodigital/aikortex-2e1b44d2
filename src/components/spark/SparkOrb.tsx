@@ -170,6 +170,12 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
           0%   { transform: translate(-2%, -1.5%); }
           100% { transform: translate( 2%,  1.5%); }
         }
+        @keyframes plasma-speak-pulse {
+          0%, 100% { transform: scale(1);    filter: brightness(1) blur(2px); }
+          25%      { transform: scale(1.022); filter: brightness(1.18) blur(2.2px); }
+          50%      { transform: scale(1.035); filter: brightness(1.26) blur(2.4px); }
+          75%      { transform: scale(1.018); filter: brightness(1.12) blur(2.1px); }
+        }
       `}</style>
     </button>
   );
