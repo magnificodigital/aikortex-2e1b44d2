@@ -42,6 +42,7 @@ import dropboxLogo from "@/assets/connectors/dropbox.svg";
 import githubLogo from "@/assets/connectors/github.svg";
 import linkedinLogo from "@/assets/connectors/linkedin.svg";
 import zoomLogo from "@/assets/connectors/zoom.svg";
+import telnyxLogo from "@/assets/connectors/telnyx-logo.png.asset.json";
 
 
 // Tags semânticas pra categorizar integrações no marketplace. Permite filtros
