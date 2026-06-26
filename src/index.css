@@ -547,17 +547,18 @@ body::after {
 }
 .orb-arc-2 { animation-delay: -1.5s; }
 
-/* HUD de micro points ao redor — explosão sutil radial */
+/* HUD de micro points ao redor — explosão sutil radial, mais visível */
 .orb-hud {
   animation: orb-hud-pulse 5s ease-in-out infinite;
 }
 .orb-point {
-  fill: rgba(var(--orb-tint), 0.22);
+  fill: rgba(var(--orb-tint), 0.38);
   transform-origin: 130px 130px;
   animation: orb-point-pulse 2.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 2px rgba(var(--orb-tint), 0.45));
 }
 .orb-point:nth-child(4n) {
-  fill: rgba(var(--orb-white), 0.32);
+  fill: rgba(var(--orb-white), 0.52);
   animation-duration: 2s;
 }
 .orb-point:nth-child(7n) {
