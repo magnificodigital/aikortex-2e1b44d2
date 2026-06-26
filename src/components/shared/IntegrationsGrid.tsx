@@ -33,6 +33,8 @@ import googleCalendarLogo from "@/assets/connectors/google-calendar.svg";
 import googleDriveLogo from "@/assets/connectors/google-drive.svg";
 import hubspotLogoLight from "@/assets/connectors/hubspot-light.png.asset.json";
 import hubspotLogoDark from "@/assets/connectors/hubspot-dark.png.asset.json";
+import asaasLogoLight from "@/assets/connectors/asaas-light.png.asset.json";
+import asaasLogoDark from "@/assets/connectors/asaas-dark.png.asset.json";
 import notionLogo from "@/assets/connectors/notion.svg";
 import slackLogo from "@/assets/connectors/slack.svg";
 import airtableLogo from "@/assets/connectors/airtable.svg";
@@ -180,7 +182,7 @@ export const SERVICE_PROVIDERS: IntegrationProvider[] = [
     label: "Asaas",
     provider: "asaas",
     description: "Cobrança e pagamentos (Pix, boleto, cartão) — o agente pode gerar links de pagamento e fechar vendas direto no chat.",
-    logo: "https://cdn.simpleicons.org/asaas/_/00B96B",
+    logo: asaasLogoLight.url,
     apiKeyUrl: "https://www.asaas.com/integracao-api",
     apiKeyUrlLabel: "asaas.com",
     tags: ["pagamentos", "vendas"],
@@ -727,7 +729,7 @@ export function IntegrationsGrid({
           {displayProviders.map((p) => {
             const connected = isConnected(p);
             const renderLogo = (size: "sm" | "lg") => {
-              const isLargeBrand = p.provider === "telnyx" || p.provider === "hubspot";
+              const isLargeBrand = p.provider === "telnyx" || p.provider === "hubspot" || p.provider === "asaas";
               const isElevenLabs = p.provider === "elevenlabs";
               const dim =
                 size === "lg" ? (isLargeBrand ? "w-16 h-16" : isElevenLabs ? "w-7 h-7" : "w-9 h-9")
@@ -747,6 +749,14 @@ export function IntegrationsGrid({
                   <>
                     <img src={hubspotLogoLight.url} alt="HubSpot" className={`${cls} block dark:hidden`} />
                     <img src={hubspotLogoDark.url} alt="HubSpot" className={`${cls} hidden dark:block`} />
+                  </>
+                );
+              }
+              if (p.provider === "asaas") {
+                return (
+                  <>
+                    <img src={asaasLogoLight.url} alt="Asaas" className={`${cls} block dark:hidden`} />
+                    <img src={asaasLogoDark.url} alt="Asaas" className={`${cls} hidden dark:block`} />
                   </>
                 );
               }
@@ -876,10 +886,16 @@ export function IntegrationsGrid({
                   <img src={hubspotLogoDark.url} alt={dialogProvider.label} className="w-14 h-14 hidden dark:block object-contain" />
                 </>
               )}
+              {dialogProvider?.provider === "asaas" && (
+                <>
+                  <img src={asaasLogoLight.url} alt={dialogProvider.label} className="w-14 h-14 block dark:hidden object-contain" />
+                  <img src={asaasLogoDark.url} alt={dialogProvider.label} className="w-14 h-14 hidden dark:block object-contain" />
+                </>
+              )}
               {dialogProvider?.provider === "telnyx" && dialogProvider.logo && (
                 <img src={dialogProvider.logo} alt={dialogProvider.label} className="w-14 h-14 object-contain" />
               )}
-              {dialogProvider?.logo && !["hubspot", "telnyx"].includes(dialogProvider.provider) && (
+              {dialogProvider?.logo && !["hubspot", "telnyx", "asaas"].includes(dialogProvider.provider) && (
                 <img src={dialogProvider.logo} alt={dialogProvider.label} className={`w-8 h-8 rounded object-contain ${dialogProvider.provider === "openai" ? "dark:invert" : ""}`} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               )}
               <div>
