@@ -495,13 +495,22 @@ const AdminConfigTab = () => {
                   <DialogTitle className="flex items-center gap-3">
                     {openProvider.logo && (
                       <div className="w-9 h-9 rounded-lg bg-muted/50 grid place-items-center">
-                        <img
-                          src={openProvider.logo}
-                          alt={openProvider.label}
-                          className={`w-6 h-6 object-contain ${
-                            ["openai", "elevenlabs", "livekit"].includes(openProvider.id) ? "dark:invert" : ""
-                          }`}
-                        />
+                        {openProvider.id === "asaas" ? (
+                          <>
+                            <img src={asaasLogoLight.url} alt={openProvider.label} className="w-6 h-6 object-contain block dark:hidden" />
+                            <img src={asaasLogoDark.url} alt={openProvider.label} className="w-6 h-6 object-contain hidden dark:block" />
+                          </>
+                        ) : openProvider.id === "telnyx" ? (
+                          <img src={telnyxLogo.url} alt={openProvider.label} className="w-8 h-8 object-contain" />
+                        ) : (
+                          <img
+                            src={openProvider.logo}
+                            alt={openProvider.label}
+                            className={`w-6 h-6 object-contain ${
+                              ["openai", "elevenlabs", "livekit"].includes(openProvider.id) ? "dark:invert" : ""
+                            }`}
+                          />
+                        )}
                       </div>
                     )}
                     {openProvider.label}
