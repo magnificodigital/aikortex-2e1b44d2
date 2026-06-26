@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MessageSquare, Loader2, Settings, X, ArrowUp, RefreshCw, Sparkles, BarChart3 } from "lucide-react";
+import { Mic, MicOff, MessageSquare, Settings, X, ArrowUp, RefreshCw, Sparkles, BarChart3, Pause, Play, Square } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
@@ -50,6 +50,8 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
   const [textInput, setTextInput] = useState("");
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [intensity, setIntensity] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [paused, setPaused] = useState(false);
   const navigate = useNavigate();
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -544,12 +546,55 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
               onClick={handleOrbClick}
               disabled={orbState === "processing"}
             />
-            {orbState === "processing" && (
-              <Loader2 className="absolute inset-0 m-auto w-6 h-6 text-primary animate-spin pointer-events-none" />
-            )}
           </div>
 
           <p className="text-sm text-muted-foreground text-center min-h-[1.5rem]">{orbHint}</p>
+
+          {/* Spark controls: pause, stop, mute, settings */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const a = audioElRef.current;
+                if (!a) return;
+                if (a.paused) { a.play().catch(() => {}); setPaused(false); }
+                else { a.pause(); setPaused(true); }
+              }}
+              disabled={!sessionActive}
+              title={paused ? "Retomar" : "Pausar"}
+              className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={endSession}
+              disabled={!sessionActive}
+              title="Encerrar"
+              className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Square className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                const stream = streamRef.current;
+                if (!stream) return;
+                const next = !muted;
+                stream.getAudioTracks().forEach((t) => { t.enabled = !next; });
+                setMuted(next);
+              }}
+              disabled={!sessionActive}
+              title={muted ? "Reativar microfone" : "Mudo"}
+              className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+            <Link
+              to="/settings?tab=integrations"
+              title="Configurações do Spark"
+              className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+            </Link>
+          </div>
 
           {transcript.length > 0 && (
             <div className="w-full max-h-64 overflow-y-auto rounded-2xl border border-border bg-card/40 backdrop-blur-sm px-4 py-3 space-y-2">
@@ -578,13 +623,6 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
               <X className="w-3 h-3" /> Limpar conversa
             </button>
           )}
-
-          <Link
-            to="/settings?tab=integrations"
-            className="text-[11px] text-muted-foreground/70 hover:text-foreground inline-flex items-center gap-1"
-          >
-            <Settings className="w-3 h-3" /> Configurar voz do Spark
-          </Link>
         </div>
       ) : (
         <div className="w-full max-w-2xl">
