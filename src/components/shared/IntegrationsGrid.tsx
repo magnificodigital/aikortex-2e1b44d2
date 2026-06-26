@@ -189,7 +189,7 @@ export const SERVICE_PROVIDERS: IntegrationProvider[] = [
   { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: googleDriveLogo, tags: ["arquivos", "produtividade"] },
   { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: outlookCalendarIcon, tags: ["calendario", "produtividade"] },
   { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly/006BFF", tags: ["calendario", "reunioes"] },
-  { label: "HubSpot", provider: "hubspot", description: "CRM, contatos, deals e pipelines.", logo: hubspotLogo, tags: ["crm", "vendas", "marketing"] },
+  { label: "HubSpot", provider: "hubspot", description: "CRM, contatos, deals e pipelines.", logo: hubspotLogoLight.url, tags: ["crm", "vendas", "marketing"] },
   { label: "Notion", provider: "notion", description: "Páginas, databases e blocos.", logo: notionLogo, tags: ["produtividade", "arquivos"] },
   { label: "Slack", provider: "slack", description: "Mensagens e canais de equipe.", logo: slackLogo, tags: ["comunicacao"] },
   { label: "Airtable", provider: "airtable", description: "Bases, tabelas e registros.", logo: airtableLogo, tags: ["produtividade", "arquivos"] },
