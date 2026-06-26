@@ -16,7 +16,18 @@ serve(async (req) => {
   }
 
   // ── Verify Asaas webhook signature ──────────────────────────────────────
-  const expectedToken = Deno.env.get('ASAAS_WEBHOOK_TOKEN')
+  // Cascade: platform_config (admin UI) > env vars (legacy fallback).
+  let expectedToken = ''
+  try {
+    const { data } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'asaas_webhook_token')
+      .maybeSingle()
+    expectedToken = (data as { value?: string } | null)?.value || ''
+  } catch { /* segue pro env */ }
+  if (!expectedToken) expectedToken = Deno.env.get('ASAAS_WEBHOOK_TOKEN') || ''
+
   if (expectedToken) {
     const receivedToken = req.headers.get('asaas-access-token') ?? req.headers.get('Asaas-Access-Token')
     if (receivedToken !== expectedToken) {
@@ -24,7 +35,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders })
     }
   } else {
-    console.error('asaas-webhook: ASAAS_WEBHOOK_TOKEN not configured — rejecting all requests')
+    console.error('asaas-webhook: nenhum token configurado (nem em platform_config nem env) — rejeitando todos requests')
     return new Response(JSON.stringify({ error: 'Webhook not configured' }), { status: 503, headers: corsHeaders })
   }
 

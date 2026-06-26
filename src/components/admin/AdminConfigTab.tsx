@@ -89,6 +89,24 @@ const FIELDS: ConfigField[] = [
     placeholder: "secret...",
     description: "Segredo do LiveKit para assinatura de tokens JWT",
   },
+  {
+    key: "asaas_master_api_key",
+    label: "Asaas Master API Key",
+    placeholder: "$aact_...",
+    description: "Chave da conta Asaas da plataforma (master) — usada pra criar Subscription do cliente final com split. Sandbox começa com $aact_YTUz...",
+  },
+  {
+    key: "asaas_webhook_token",
+    label: "Asaas Webhook Token",
+    placeholder: "wb_aikortex_... (mínimo 32 caracteres)",
+    description: "Token que valida webhooks vindo do Asaas. Mesmo valor que você cadastrou no Asaas → Webhooks → Token.",
+  },
+  {
+    key: "asaas_api_base",
+    label: "Asaas API Base",
+    placeholder: "https://sandbox.asaas.com/api/v3",
+    description: "Endpoint da API Asaas. Use https://sandbox.asaas.com/api/v3 pra testes e https://api.asaas.com/v3 em produção. Default = produção.",
+  },
 ];
 
 const AdminConfigTab = () => {

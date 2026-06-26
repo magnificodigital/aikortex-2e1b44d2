@@ -26,8 +26,21 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const ASAAS_BASE = Deno.env.get("ASAAS_API_BASE") || "https://api.asaas.com/v3";
-const ASAAS_KEY = Deno.env.get("ASAAS_API_KEY") || "";
+const ASAAS_BASE_DEFAULT = "https://api.asaas.com/v3";
+
+async function loadAsaasConfig(admin: any) {
+  // Cascade: platform_config > env. Admin gerencia via /admin?tab=api-keys.
+  const { data } = await admin
+    .from("platform_config")
+    .select("key, value")
+    .in("key", ["asaas_master_api_key", "asaas_api_base"]);
+  const map = new Map<string, string>();
+  (data ?? []).forEach((r: any) => map.set(r.key, r.value ?? ""));
+  return {
+    key: (map.get("asaas_master_api_key") || Deno.env.get("ASAAS_API_KEY") || "").trim(),
+    base: (map.get("asaas_api_base") || Deno.env.get("ASAAS_API_BASE") || ASAAS_BASE_DEFAULT).trim(),
+  };
+}
 
 const TIER_AGENCY_PERCENT: Record<string, number> = {
   start: 40,
@@ -46,8 +59,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    if (!ASAAS_KEY) return json({ error: "asaas_not_configured", message: "ASAAS_API_KEY ausente no projeto" }, 500);
-
     const auth = req.headers.get("Authorization");
     if (!auth) return json({ error: "missing_auth" }, 401);
 
@@ -64,6 +75,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // Cascade: platform_config (admin UI) > env vars (fallback legacy)
+    const asaasCfg = await loadAsaasConfig(admin);
+    if (!asaasCfg.key) {
+      return json({
+        error: "asaas_not_configured",
+        message: "Chave Asaas Master ausente. Admin precisa configurar em /admin → Chaves de API.",
+      }, 500);
+    }
 
     const body = await req.json() as { agent_id?: string; client_info?: ClientInfo };
     const agentId = body.agent_id;
@@ -123,7 +143,7 @@ Deno.serve(async (req) => {
     const priceReal = priceCents / 100;
 
     // 4) Asaas: cria customer (idempotente via cpfCnpj — Asaas dedupe)
-    const customerResp = await asaasReq("POST", "/customers", {
+    const customerResp = await asaasReq(asaasCfg.key, asaasCfg.base, "POST", "/customers", {
       name: client.name,
       cpfCnpj: client.cpf_cnpj.replace(/\D/g, ""),
       email: client.email,
@@ -144,7 +164,7 @@ Deno.serve(async (req) => {
     nextDueDate.setDate(nextDueDate.getDate() + 7); // trial week
     const dueDateStr = nextDueDate.toISOString().slice(0, 10);
 
-    const subResp = await asaasReq("POST", "/subscriptions", {
+    const subResp = await asaasReq(asaasCfg.key, asaasCfg.base, "POST", "/subscriptions", {
       customer: customerId,
       billingType: "UNDEFINED", // cliente escolhe (Pix/boleto/cartão) no checkout
       value: priceReal,
@@ -195,11 +215,11 @@ Deno.serve(async (req) => {
   }
 });
 
-async function asaasReq(method: "POST" | "GET", path: string, body?: unknown) {
-  const resp = await fetch(`${ASAAS_BASE}${path}`, {
+async function asaasReq(apiKey: string, baseUrl: string, method: "POST" | "GET", path: string, body?: unknown) {
+  const resp = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
-      "access_token": ASAAS_KEY,
+      "access_token": apiKey,
       "Content-Type": "application/json",
     },
     body: body ? JSON.stringify(body) : undefined,
