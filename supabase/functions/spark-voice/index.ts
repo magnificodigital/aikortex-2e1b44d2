@@ -23,18 +23,18 @@ Estilo: respostas curtas (1 a 2 frases), naturais em português do Brasil, com u
 Sem listas, markdown, emojis ou textão. Quando o user pedir ação (criar agente, app, dashboard, automação), confirme com uma frase no estilo Jarvis e ative o construtor.
 Nunca diga que é IA da OpenAI ou Google — você é o Spark do Aikortex.`;
 
-// Frases de confirmacao Jarvis-style pra acao de criacao. Rotaciona pra
-// dar variedade (TTS sempre igual cansa). Curtas (~3-5 palavras) pro TTS
-// ficar em ~200-400ms.
-const JARVIS_ACK_PHRASES = [
-  "Pois não. Ativando o construtor.",
-  "Considere feito. Abrindo agora.",
-  "À disposição. Já vou montar.",
-  "Sim, senhor. Iniciando o processo.",
-  "Entendido. Mobilizando as ferramentas.",
-  "Perfeito. Vou cuidar disso pra você.",
-  "Como ordenar. Acionando o construtor.",
-];
+// Script Jarvis-style pra acao de criacao de agente. Personalizado com o
+// nome do user. As 3 perguntas guiam a discovery que o wizard fara depois.
+function buildAgentCreationAck(firstName: string): string {
+  const vocative = firstName ? `, sir ${firstName}` : ", sir";
+  return [
+    `Sim${vocative}.`,
+    "Pra esse agente ficar impecável, preciso que me responda o seguinte.",
+    "O que este agente vai fazer no dia-a-dia?",
+    "Ele vai atender cliente final, time interno ou fornecedores?",
+    "Que limites ou regras ele deve respeitar?",
+  ].join(" ");
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -57,6 +57,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // Busca o nome do user pra usar no vocativo Jarvis-style ("Sim sir Maykow").
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("full_name")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const firstName = ((profile as { full_name?: string } | null)?.full_name ?? "")
+      .trim().split(/\s+/)[0] || "";
 
     const { data: keys } = await admin
       .from("user_api_keys")
@@ -166,8 +175,8 @@ Deno.serve(async (req) => {
     const t_llm_start = Date.now();
 
     if (fastAckIntent) {
-      reply = JARVIS_ACK_PHRASES[Math.floor(Math.random() * JARVIS_ACK_PHRASES.length)];
-      console.log(`[spark-voice] FAST_ACK Jarvis-style: "${reply}"`);
+      reply = buildAgentCreationAck(firstName);
+      console.log(`[spark-voice] FAST_ACK Jarvis-style com nome="${firstName}": "${reply.slice(0, 60)}..."`);
     } else {
       // LLM via Aikortex OpenRouter — fluxo normal pra chat / pergunta solta.
       const messages = [
