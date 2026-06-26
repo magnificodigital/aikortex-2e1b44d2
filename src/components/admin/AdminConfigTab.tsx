@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Eye, EyeOff, Save, CheckCircle2, AlertCircle, ExternalLink, Cpu, Power } from "lucide-react";
+import { Eye, EyeOff, Save, CheckCircle2, AlertCircle, ExternalLink, Cpu, Power, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -218,6 +218,7 @@ const AdminConfigTab = () => {
   // Modelos vindos de available_llms (gerenciados em /admin?tab=llms).
   // Quando admin ativa/desativa um modelo la, automaticamente reflete aqui.
   const [llmsByProvider, setLlmsByProvider] = useState<Record<string, { id: string; label: string }[]>>({});
+  const [refreshing, setRefreshing] = useState<string | null>(null);
 
   useEffect(() => { loadConfig(); loadActiveLLMs(); }, []);
 
@@ -310,6 +311,44 @@ const AdminConfigTab = () => {
     const flag = configValues[`${p.id}_active`];
     if (flag === "false") return false;
     return true; // default = active
+  };
+
+  /** Busca catalogo de modelos mais recente do provedor na API publica/auth. */
+  const refreshLlmCatalog = async (providerId: string) => {
+    setRefreshing(providerId);
+    try {
+      const { data, error } = await supabase.functions.invoke("refresh-llm-catalog", {
+        body: { provider: providerId },
+      });
+      if (error || (data as any)?.error) {
+        const msg = (data as any)?.message || (error as Error)?.message || "Falha ao buscar modelos";
+        toast.error(msg);
+        return;
+      }
+      const stats = (data as any)?.by_provider?.[providerId];
+      if (stats?.error) {
+        toast.error(`Erro: ${stats.error}`);
+        return;
+      }
+      const newCount = stats?.new ?? 0;
+      const updated = stats?.updated ?? 0;
+      const total = stats?.count ?? 0;
+      if (newCount > 0) {
+        toast.success(
+          `${newCount} modelo${newCount === 1 ? "" : "s"} novo${newCount === 1 ? "" : "s"} encontrado${newCount === 1 ? "" : "s"}! Ative em /admin?tab=llms.`,
+          { duration: 8000 },
+        );
+      } else if (updated > 0) {
+        toast.success(`${updated} modelo${updated === 1 ? "" : "s"} atualizado${updated === 1 ? "" : "s"} (${total} total)`);
+      } else {
+        toast.info(`Nenhum modelo novo (${total} total)`);
+      }
+      await loadActiveLLMs(); // re-busca pra atualizar dropdown imediato
+    } catch (e) {
+      toast.error(`Erro: ${(e as Error).message}`);
+    } finally {
+      setRefreshing(null);
+    }
   };
 
   const toggleProviderActive = async (p: ProviderGroup, e: React.MouseEvent) => {
@@ -473,6 +512,25 @@ const AdminConfigTab = () => {
                     </>
                   )}
                 </DialogDescription>
+
+                {/* Botao buscar ultimos modelos — so pra LLM providers */}
+                {openProvider.category === "llm" && (
+                  <div className="pt-2">
+                    <Button
+                      onClick={() => refreshLlmCatalog(openProvider.id)}
+                      disabled={refreshing === openProvider.id}
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 w-full"
+                    >
+                      <RefreshCw className={cn("w-3.5 h-3.5", refreshing === openProvider.id && "animate-spin")} />
+                      {refreshing === openProvider.id ? "Buscando..." : `Buscar últimos modelos do ${openProvider.label}`}
+                    </Button>
+                    <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
+                      Consulta API do provedor pra cadastrar modelos novos. Novos entram como inativos em <a href="/admin?tab=llms" className="text-primary hover:underline">Modelos LLM</a> pra você revisar.
+                    </p>
+                  </div>
+                )}
               </DialogHeader>
 
               <div className="space-y-4 mt-2">
