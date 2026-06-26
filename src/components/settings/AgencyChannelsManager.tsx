@@ -10,10 +10,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Mail, Mic, Phone, Camera, Share2, Settings, CheckCircle2, FileText } from "lucide-react";
+import { Mail, Mic, Phone, Camera, Share2, Settings, CheckCircle2, FileText, ExternalLink } from "lucide-react";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
-import IntegrationVoiceForm from "@/components/settings/IntegrationVoiceForm";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
 import EmailTemplatesPanel from "@/components/aikortex/EmailTemplatesPanel";
 import WhatsAppTemplatesPanel from "@/components/aikortex/WhatsAppTemplatesPanel";
@@ -314,23 +313,50 @@ export default function AgencyChannelsManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog da Voz (Telnyx + ElevenLabs) */}
+      {/* Dialog da Voz — redireciona pras tabs corretas (Provedores + Conectores) */}
       <Dialog open={openDialog === "voice"} onOpenChange={(o) => { if (!o) setOpenDialog(null); }}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
                 <Mic className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <DialogTitle className="text-base">Voz (Telnyx + ElevenLabs)</DialogTitle>
+                <DialogTitle className="text-base">Voz</DialogTitle>
                 <DialogDescription className="text-xs mt-0.5">
-                  Configuração do canal de voz: telefonia e síntese de fala
+                  Voz é composta por dois provedores. Configure cada um na sua aba dedicada.
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
-          <IntegrationVoiceForm onClose={() => setOpenDialog(null)} />
+
+          <div className="space-y-2 mt-2">
+            <a
+              href="/settings?tab=providers"
+              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors p-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">ElevenLabs</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Síntese de voz (TTS) — em <span className="text-foreground">Provedores</span>
+                </p>
+              </div>
+              <ExternalLink className="w-4 h-4 text-muted-foreground" />
+            </a>
+
+            <a
+              href="/settings?tab=integrations"
+              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors p-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">Telnyx</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Telefonia (números reais, inbound + outbound) — em <span className="text-foreground">Conectores</span>
+                </p>
+              </div>
+              <ExternalLink className="w-4 h-4 text-muted-foreground" />
+            </a>
+          </div>
         </DialogContent>
       </Dialog>
 
