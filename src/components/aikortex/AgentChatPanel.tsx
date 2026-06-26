@@ -446,21 +446,27 @@ const AgentChatPanel = ({
   // wizardSendMessage mantem a conversa multi-turn em "discover" — o wizard
   // faz as perguntas certas antes de estruturar, igual quando o user clica
   // "Novo Agente" e digita a primeira solicitacao.
+  //
+  // GUARD ANTI-DUPLICACAO: alem do useRef, checa se ja existe mensagem do
+  // usuario em wizardChatMessages. Em StrictMode (Lovable usa em dev) o
+  // componente monta/desmonta/remonta — useRef volta pro inicial e a guarda
+  // padrao falha. A checagem em wizardChatMessages sobrevive ao remount.
   useEffect(() => {
-    console.log("[wizard-trigger] check", {
-      hasInitialPrompt: !!initialPrompt,
-      promptLength: initialPrompt?.length,
-      wizardStep,
-      alreadyUsed: initialPromptUsedRef.current,
-      wizardIsStreaming,
-      hasSendMessage: !!wizardSendMessage,
-    });
-    if (initialPrompt && wizardStep === "discover" && !initialPromptUsedRef.current && !wizardIsStreaming && wizardSendMessage) {
-      console.log("[wizard-trigger] DISPARANDO wizardSendMessage:", initialPrompt);
+    if (!initialPrompt) return;
+    if (wizardStep !== "discover") return;
+    if (initialPromptUsedRef.current) return;
+    if (wizardIsStreaming) return;
+    if (!wizardSendMessage) return;
+    const hasUserMsg = (wizardChatMessages || []).some((m: any) => m.role === "user");
+    if (hasUserMsg) {
+      // Wizard ja recebeu uma mensagem do user antes — nao reenviar.
       initialPromptUsedRef.current = true;
-      wizardSendMessage(initialPrompt);
+      return;
     }
-  }, [initialPrompt, wizardStep, wizardIsStreaming, wizardSendMessage]);
+    console.log("[wizard-trigger] DISPARANDO wizardSendMessage:", initialPrompt);
+    initialPromptUsedRef.current = true;
+    wizardSendMessage(initialPrompt);
+  }, [initialPrompt, wizardStep, wizardIsStreaming, wizardSendMessage, wizardChatMessages]);
 
   /* ── Re-structure ── */
   const handleRestructure = useCallback(() => {
