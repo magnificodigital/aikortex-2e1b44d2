@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 type OrbState = "idle" | "connecting" | "listening" | "speaking" | "error";
@@ -10,31 +11,150 @@ interface SparkOrbProps {
   disabled?: boolean;
 }
 
-// Floating plasma light form: translúcido, sem bordas duras, brilho apenas
-// nos polos (topo/base), bandas verticais oscilando, respiração lenta.
-// Sem HUD, sem anéis, sem partículas — apenas luz volumétrica cyan/branca.
+// Esfera de pontos interconectados (constelação esférica) — mantém paleta
+// blue-white plasma do Aikortex. Pontos respiram lentamente; quando o Spark
+// fala, a rede pulsa e gira mais rápido, e as conexões ficam mais brilhantes.
 export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }: SparkOrbProps) {
-  const isError = state === "error";
-  const isListening = state === "listening";
-  const isSpeaking = state === "speaking";
-  const isConnecting = state === "connecting";
-  const isActive = isListening || isSpeaking;
-  const reactive = isActive ? Math.min(Math.max(intensity, 0), 1) : 0;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const stateRef = useRef<OrbState>(state);
+  const intensityRef = useRef<number>(intensity);
 
-  // Paleta blue-white plasma (Aikortex)
-  const white = isError ? "255 210 210" : "230 245 255";
-  const tint = isError ? "239 68 68" : "140 195 255";
-  const deep = isError ? "120 30 30" : "60 120 210";
+  useEffect(() => { stateRef.current = state; }, [state]);
+  useEffect(() => { intensityRef.current = intensity; }, [intensity]);
 
-  // Respiração lenta — movimento quase imperceptível
-  const breath = isSpeaking ? "3.2s" : isListening ? "4.8s" : isConnecting ? "4s" : "7s";
-  const bands = isSpeaking ? "8s" : isListening ? "12s" : "18s";
-  const glow = isSpeaking ? "5s" : isListening ? "6.5s" : "9s";
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-  const reactiveScale = 1 + reactive * 0.04;
-  const speakGlow = isSpeaking ? 0.32 + reactive * 0.18 : 0.14 + reactive * 0.22;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    ctx.scale(dpr, dpr);
 
+    // Gera pontos distribuídos uniformemente numa esfera (Fibonacci sphere).
+    const POINT_COUNT = 180;
+    const points: { x: number; y: number; z: number }[] = [];
+    const phi = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < POINT_COUNT; i++) {
+      const y = 1 - (i / (POINT_COUNT - 1)) * 2;
+      const radius = Math.sqrt(1 - y * y);
+      const theta = phi * i;
+      points.push({ x: Math.cos(theta) * radius, y, z: Math.sin(theta) * radius });
+    }
 
+    const cx = size / 2;
+    const cy = size / 2;
+    const R = size * 0.4;
+
+    let raf = 0;
+    let t = 0;
+
+    const draw = () => {
+      const s = stateRef.current;
+      const inten = intensityRef.current;
+      const isError = s === "error";
+      const isSpeaking = s === "speaking";
+      const isListening = s === "listening";
+      const isActive = isSpeaking || isListening;
+
+      // Paleta Aikortex (mantida)
+      const whiteRGB = isError ? "255, 210, 210" : "230, 245, 255";
+      const tintRGB = isError ? "239, 68, 68" : "140, 195, 255";
+
+      // Velocidades
+      const baseSpeed = isSpeaking ? 0.012 : isListening ? 0.006 : 0.003;
+      t += baseSpeed + inten * 0.015;
+
+      // Pulse (radial breathing) reativo
+      const pulseBase = isSpeaking ? 0.06 : isListening ? 0.035 : 0.02;
+      const pulse = 1 + Math.sin(t * 1.6) * pulseBase + (isActive ? inten * 0.08 : 0);
+
+      ctx.clearRect(0, 0, size, size);
+
+      // Halo suave de fundo
+      const haloAlpha = isSpeaking ? 0.28 + inten * 0.2 : isListening ? 0.18 : 0.12;
+      const halo = ctx.createRadialGradient(cx, cy, R * 0.4, cx, cy, R * 1.6);
+      halo.addColorStop(0, `rgba(${tintRGB}, ${haloAlpha})`);
+      halo.addColorStop(1, `rgba(${tintRGB}, 0)`);
+      ctx.fillStyle = halo;
+      ctx.fillRect(0, 0, size, size);
+
+      // Rotaciona pontos em Y e X
+      const cosY = Math.cos(t);
+      const sinY = Math.sin(t);
+      const cosX = Math.cos(t * 0.35);
+      const sinX = Math.sin(t * 0.35);
+
+      const projected: { x: number; y: number; z: number; size: number; alpha: number }[] = [];
+      for (const p of points) {
+        // Rotação Y
+        const x1 = p.x * cosY - p.z * sinY;
+        const z1 = p.x * sinY + p.z * cosY;
+        // Rotação X
+        const y2 = p.y * cosX - z1 * sinX;
+        const z2 = p.y * sinX + z1 * cosX;
+        const x2 = x1;
+
+        // Projeção perspectiva
+        const persp = 1 / (1.8 - z2 * 0.5);
+        const sx = cx + x2 * R * pulse * persp;
+        const sy = cy + y2 * R * pulse * persp;
+        // Profundidade normalizada 0..1 (1 = mais perto)
+        const depth = (z2 + 1) / 2;
+        const dotSize = (0.7 + depth * 1.8) * (isSpeaking ? 1.15 : 1);
+        const alpha = 0.25 + depth * 0.75;
+        projected.push({ x: sx, y: sy, z: z2, size: dotSize, alpha });
+      }
+
+      // Conexões entre pontos próximos
+      const maxDist = R * 0.32;
+      const lineAlphaBoost = isSpeaking ? 0.7 + inten * 0.4 : isListening ? 0.45 : 0.28;
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < projected.length; i++) {
+        const a = projected[i];
+        if (a.z < -0.4) continue; // pula pontos muito atrás
+        for (let j = i + 1; j < projected.length; j++) {
+          const b = projected[j];
+          if (b.z < -0.4) continue;
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < maxDist) {
+            const k = 1 - d / maxDist;
+            const alpha = k * k * lineAlphaBoost * Math.min(a.alpha, b.alpha);
+            ctx.strokeStyle = `rgba(${tintRGB}, ${alpha})`;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Pontos por cima das linhas
+      for (const p of projected) {
+        const color = p.z > 0.3 ? whiteRGB : tintRGB;
+        ctx.fillStyle = `rgba(${color}, ${p.alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        // Glow sutil nos pontos da frente quando falando
+        if (isSpeaking && p.z > 0.4) {
+          ctx.fillStyle = `rgba(${whiteRGB}, ${0.18 * p.alpha})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * 2.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      raf = requestAnimationFrame(draw);
+    };
+
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [size]);
 
   return (
     <button
@@ -45,144 +165,15 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
       className={cn(
         "relative grid place-items-center bg-transparent border-0 p-0 rounded-full",
         "outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-4 focus-visible:ring-offset-background",
-        "transition-transform duration-700",
+        "transition-transform duration-300",
         disabled && "opacity-60 cursor-not-allowed",
       )}
       style={{ width: size, height: size }}
     >
-      {/* Outer glow — expande e contrai suavemente */}
-      <span
-        className={cn(
-          "absolute inset-[-45%] rounded-full blur-3xl pointer-events-none",
-          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
-        )}
-        style={{
-          background: `radial-gradient(circle, rgb(${tint} / ${speakGlow}) 0%, rgb(${deep} / 0.05) 45%, transparent 72%)`,
-          animation: isSpeaking ? undefined : `plasma-glow ${glow} ease-in-out infinite`,
-        }}
+      <canvas
+        ref={canvasRef}
+        style={{ width: size, height: size, display: "block" }}
       />
-
-      {/* Volumetric fog médio */}
-      <span
-        className="absolute inset-[-15%] rounded-full blur-2xl pointer-events-none"
-        style={{
-          background: `radial-gradient(circle at 50% 50%, rgb(${tint} / 0.22) 0%, rgb(${deep} / 0.1) 50%, transparent 78%)`,
-          animation: `plasma-glow ${glow} ease-in-out infinite reverse`,
-        }}
-      />
-
-      {/* Corpo plasma — silhueta circular imperfeita, interior quase transparente.
-          Brilho concentrado APENAS nos polos (topo e base). */}
-      <span
-        className={cn(
-          "absolute rounded-full pointer-events-none overflow-hidden",
-          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
-        )}
-        style={{
-          width: "82%",
-          height: "82%",
-          transform: `scale(${reactiveScale})`,
-          transition: "transform 220ms ease-out",
-          // duas elipses brilhantes nos polos + suave membrana cyan
-          background: `
-            radial-gradient(ellipse 55% 28% at 50% 8%, rgb(${white} / ${isSpeaking ? 0.95 : 0.85}), rgb(${tint} / ${isSpeaking ? 0.45 : 0.35}) 55%, transparent 80%),
-            radial-gradient(ellipse 55% 28% at 50% 92%, rgb(${white} / ${isSpeaking ? 0.9 : 0.78}), rgb(${tint} / ${isSpeaking ? 0.4 : 0.3}) 55%, transparent 80%),
-            radial-gradient(circle at 50% 50%, rgb(${tint} / ${isSpeaking ? 0.12 : 0.08}) 0%, rgb(${tint} / ${isSpeaking ? 0.2 : 0.14}) 55%, rgb(${deep} / ${isSpeaking ? 0.1 : 0.06}) 78%, transparent 92%)
-          `,
-          filter: `blur(${2 + reactive * 1.2}px) brightness(${isSpeaking ? 1.15 : 1})`,
-          animation: isSpeaking ? undefined : `plasma-breath ${breath} ease-in-out infinite`,
-        }}
-      >
-        {/* Bandas verticais luminosas — oscilam atravessando o centro */}
-        <span
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `
-              linear-gradient(90deg, transparent 47%, rgb(${white} / ${isSpeaking ? 0.65 : 0.45}) 49.5%, rgb(${white} / ${isSpeaking ? 0.9 : 0.7}) 50%, rgb(${white} / ${isSpeaking ? 0.65 : 0.45}) 50.5%, transparent 53%),
-              linear-gradient(90deg, transparent 40%, rgb(${tint} / ${isSpeaking ? 0.34 : 0.22}) 42.5%, transparent 45%),
-              linear-gradient(90deg, transparent 55%, rgb(${tint} / ${isSpeaking ? 0.34 : 0.22}) 57.5%, transparent 60%),
-              linear-gradient(90deg, transparent 33%, rgb(${tint} / ${isSpeaking ? 0.22 : 0.14}) 35%, transparent 37%),
-              linear-gradient(90deg, transparent 63%, rgb(${tint} / ${isSpeaking ? 0.22 : 0.14}) 65%, transparent 67%)
-            `,
-            mixBlendMode: "screen",
-            filter: `blur(${2.5 + reactive * 1.5}px)`,
-            animation: `plasma-bands ${isSpeaking ? "5s" : bands} ease-in-out infinite`,
-            opacity: isSpeaking ? 0.9 : 0.75,
-          }}
-        />
-
-        {/* Sutil scattering interno — quase imperceptível */}
-        <span
-          className="absolute inset-[-8%] pointer-events-none"
-          style={{
-            background: `
-              radial-gradient(ellipse 45% 30% at 35% 30%, rgb(${white} / 0.18), transparent 75%),
-              radial-gradient(ellipse 40% 35% at 65% 70%, rgb(${tint} / 0.18), transparent 75%)
-            `,
-            mixBlendMode: "screen",
-            filter: "blur(18px)",
-            animation: `plasma-drift ${bands} ease-in-out infinite alternate`,
-          }}
-        />
-      </span>
-
-      {/* Bloom polar superior — heavy bloom */}
-      <span
-        className={cn(
-          "absolute pointer-events-none rounded-full",
-          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
-        )}
-        style={{
-          top: "8%",
-          left: "30%",
-          width: "40%",
-          height: "18%",
-          background: `radial-gradient(ellipse at center, rgb(${white} / ${isSpeaking ? 0.7 : 0.55}), transparent 75%)`,
-          filter: "blur(14px)",
-          animation: isSpeaking ? undefined : `plasma-breath ${breath} ease-in-out infinite`,
-        }}
-      />
-      {/* Bloom polar inferior */}
-      <span
-        className={cn(
-          "absolute pointer-events-none rounded-full",
-          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
-        )}
-        style={{
-          bottom: "8%",
-          left: "30%",
-          width: "40%",
-          height: "18%",
-          background: `radial-gradient(ellipse at center, rgb(${white} / ${isSpeaking ? 0.65 : 0.5}), transparent 75%)`,
-          filter: "blur(14px)",
-          animation: isSpeaking ? undefined : `plasma-breath ${breath} ease-in-out infinite reverse`,
-        }}
-      />
-
-      <style>{`
-        @keyframes plasma-breath {
-          0%, 100% { filter: brightness(0.94) blur(2px); transform: scale(1); }
-          50%      { filter: brightness(1.08) blur(2.4px); transform: scale(1.015); }
-        }
-        @keyframes plasma-glow {
-          0%, 100% { opacity: 0.85; transform: scale(0.985); }
-          50%      { opacity: 1;    transform: scale(1.02); }
-        }
-        @keyframes plasma-bands {
-          0%, 100% { transform: translateX(-1.5%) scaleY(1);    opacity: 0.65; }
-          50%      { transform: translateX( 1.5%) scaleY(1.03); opacity: 0.85; }
-        }
-        @keyframes plasma-drift {
-          0%   { transform: translate(-2%, -1.5%); }
-          100% { transform: translate( 2%,  1.5%); }
-        }
-        @keyframes plasma-speak-pulse {
-          0%, 100% { transform: scale(1);    filter: brightness(1) blur(2px); }
-          25%      { transform: scale(1.022); filter: brightness(1.18) blur(2.2px); }
-          50%      { transform: scale(1.035); filter: brightness(1.26) blur(2.4px); }
-          75%      { transform: scale(1.018); filter: brightness(1.12) blur(2.1px); }
-        }
-      `}</style>
     </button>
   );
 }
