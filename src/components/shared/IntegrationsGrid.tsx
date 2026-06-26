@@ -33,6 +33,8 @@ import googleCalendarLogo from "@/assets/connectors/google-calendar.svg";
 import googleDriveLogo from "@/assets/connectors/google-drive.svg";
 import hubspotLogoLight from "@/assets/connectors/hubspot-light.png.asset.json";
 import hubspotLogoDark from "@/assets/connectors/hubspot-dark.png.asset.json";
+import asaasLogoLight from "@/assets/connectors/asaas-light.png.asset.json";
+import asaasLogoDark from "@/assets/connectors/asaas-dark.png.asset.json";
 import notionLogo from "@/assets/connectors/notion.svg";
 import slackLogo from "@/assets/connectors/slack.svg";
 import airtableLogo from "@/assets/connectors/airtable.svg";
