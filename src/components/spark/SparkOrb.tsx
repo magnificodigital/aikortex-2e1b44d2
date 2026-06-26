@@ -70,19 +70,25 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
         <path d="M 130 232 A 102 102 0 0 1 28 130" className="orb-arc orb-arc-2" />
       </svg>
 
-      {/* HUD de ticks ao redor */}
+      {/* HUD de points ao redor — explosão sutil */}
       <svg className="orb-hud absolute inset-[-18%] w-[136%] h-[136%] pointer-events-none" viewBox="0 0 260 260" fill="none">
-        {[...Array(24)].map((_, i) => (
-          <line
-            key={i}
-            x1="130"
-            y1="12"
-            x2="130"
-            y2="22"
-            className="orb-tick"
-            style={{ transform: `rotate(${i * 15}deg)`, transformOrigin: "130px 130px" }}
-          />
-        ))}
+        {[...Array(36)].map((_, i) => {
+          const angle = (i * 10) * (Math.PI / 180);
+          const radius = 112 + (i % 4) * 14;
+          const cx = 130 + Math.cos(angle) * radius;
+          const cy = 130 + Math.sin(angle) * radius;
+          const r = 1.2 + (i % 3) * 0.6;
+          return (
+            <circle
+              key={i}
+              cx={cx}
+              cy={cy}
+              r={r}
+              className="orb-point"
+              style={{ animationDelay: `${(i * 0.12).toFixed(2)}s` }}
+            />
+          );
+        })}
       </svg>
 
       {/* Onda de scan radial */}
