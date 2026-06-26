@@ -182,7 +182,7 @@ export const SERVICE_PROVIDERS: IntegrationProvider[] = [
     label: "Asaas",
     provider: "asaas",
     description: "Cobrança e pagamentos (Pix, boleto, cartão) — o agente pode gerar links de pagamento e fechar vendas direto no chat.",
-    logo: "https://cdn.simpleicons.org/asaas/_/00B96B",
+    logo: asaasLogoLight.url,
     apiKeyUrl: "https://www.asaas.com/integracao-api",
     apiKeyUrlLabel: "asaas.com",
     tags: ["pagamentos", "vendas"],
