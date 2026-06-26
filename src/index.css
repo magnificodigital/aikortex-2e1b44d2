@@ -678,7 +678,9 @@ body::after {
 }
 .orb-speaking .orb-ring-1,
 .orb-speaking .orb-ring-2,
-.orb-speaking .orb-ring-3 {
+.orb-speaking .orb-ring-3,
+.orb-speaking .orb-outer-ring-1,
+.orb-speaking .orb-outer-ring-2 {
   animation-duration: 0.9s;
 }
 .orb-speaking .orb-point {
@@ -706,7 +708,9 @@ body::after {
 }
 .orb-listening .orb-ring-1,
 .orb-listening .orb-ring-2,
-.orb-listening .orb-ring-3 {
+.orb-listening .orb-ring-3,
+.orb-listening .orb-outer-ring-1,
+.orb-listening .orb-outer-ring-2 {
   animation-duration: 1.4s;
 }
 .orb-listening .orb-point {
@@ -726,7 +730,9 @@ body::after {
 }
 .orb-connecting .orb-ring-1,
 .orb-connecting .orb-ring-2,
-.orb-connecting .orb-ring-3 {
+.orb-connecting .orb-ring-3,
+.orb-connecting .orb-outer-ring-1,
+.orb-connecting .orb-outer-ring-2 {
   animation-duration: 0.6s;
 }
 
