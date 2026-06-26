@@ -74,7 +74,10 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
       {/* Corpo plasma — silhueta circular imperfeita, interior quase transparente.
           Brilho concentrado APENAS nos polos (topo e base). */}
       <span
-        className="absolute rounded-full pointer-events-none overflow-hidden"
+        className={cn(
+          "absolute rounded-full pointer-events-none overflow-hidden",
+          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
+        )}
         style={{
           width: "82%",
           height: "82%",
@@ -82,12 +85,12 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
           transition: "transform 220ms ease-out",
           // duas elipses brilhantes nos polos + suave membrana cyan
           background: `
-            radial-gradient(ellipse 55% 28% at 50% 8%, rgb(${white} / 0.85), rgb(${tint} / 0.35) 55%, transparent 80%),
-            radial-gradient(ellipse 55% 28% at 50% 92%, rgb(${white} / 0.78), rgb(${tint} / 0.3) 55%, transparent 80%),
-            radial-gradient(circle at 50% 50%, rgb(${tint} / 0.08) 0%, rgb(${tint} / 0.14) 55%, rgb(${deep} / 0.06) 78%, transparent 92%)
+            radial-gradient(ellipse 55% 28% at 50% 8%, rgb(${white} / ${isSpeaking ? 0.95 : 0.85}), rgb(${tint} / ${isSpeaking ? 0.45 : 0.35}) 55%, transparent 80%),
+            radial-gradient(ellipse 55% 28% at 50% 92%, rgb(${white} / ${isSpeaking ? 0.9 : 0.78}), rgb(${tint} / ${isSpeaking ? 0.4 : 0.3}) 55%, transparent 80%),
+            radial-gradient(circle at 50% 50%, rgb(${tint} / ${isSpeaking ? 0.12 : 0.08}) 0%, rgb(${tint} / ${isSpeaking ? 0.2 : 0.14}) 55%, rgb(${deep} / ${isSpeaking ? 0.1 : 0.06}) 78%, transparent 92%)
           `,
-          filter: `blur(${2 + reactive * 1.2}px)`,
-          animation: `plasma-breath ${breath} ease-in-out infinite`,
+          filter: `blur(${2 + reactive * 1.2}px) brightness(${isSpeaking ? 1.15 : 1})`,
+          animation: isSpeaking ? undefined : `plasma-breath ${breath} ease-in-out infinite`,
         }}
       >
         {/* Bandas verticais luminosas — oscilam atravessando o centro */}
