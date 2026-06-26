@@ -447,7 +447,16 @@ const AgentChatPanel = ({
   // faz as perguntas certas antes de estruturar, igual quando o user clica
   // "Novo Agente" e digita a primeira solicitacao.
   useEffect(() => {
+    console.log("[wizard-trigger] check", {
+      hasInitialPrompt: !!initialPrompt,
+      promptLength: initialPrompt?.length,
+      wizardStep,
+      alreadyUsed: initialPromptUsedRef.current,
+      wizardIsStreaming,
+      hasSendMessage: !!wizardSendMessage,
+    });
     if (initialPrompt && wizardStep === "discover" && !initialPromptUsedRef.current && !wizardIsStreaming && wizardSendMessage) {
+      console.log("[wizard-trigger] DISPARANDO wizardSendMessage:", initialPrompt);
       initialPromptUsedRef.current = true;
       wizardSendMessage(initialPrompt);
     }
