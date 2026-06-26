@@ -20,8 +20,9 @@ interface SparkBubbleProps {
 
 // Espera Spark do home terminar o TTS antes de mexer (~10s + folga).
 const INITIAL_TTS_GUARD_MS = 12_000;
-// Delay curto entre Spark terminar de falar e religar mic.
-const RESUME_DELAY_MS = 400;
+// Delay curto entre Spark terminar de falar e religar mic. Generoso
+// pra TTS dar tempo de comecar (fetch + decode + play start ~400-800ms).
+const RESUME_DELAY_MS = 800;
 
 /** Limpa markdown, emoji, bullet, etc. pro TTS soar natural. */
 function cleanForTts(text: string): string {
@@ -53,6 +54,13 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
   // durante streaming).
   const spokenMessageRef = useRef<string>("");
   const ranInitialGuardRef = useRef(false);
+  // Mirror SINCRONO do estado 'speaking'. Necessario porque o setTimeout
+  // do auto-listen captura o valor de 'speaking' no momento que foi
+  // agendado; setState eh async e pode nao ter propagado ainda quando
+  // o auto-listen calcula. A ref atualiza imediato e a callback do
+  // timeout checa ela antes de start listening — evita mic capturar
+  // o proprio TTS do Spark (feedback loop).
+  const speakingRef = useRef(false);
 
   useEffect(() => { onTranscriptRef.current = onTranscript; }, [onTranscript]);
 
@@ -133,10 +141,15 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
       ttsAudioRef.current = null;
     }
 
+    // CRITICO: ref antes do setState. setSpeaking eh assincrono — entre
+    // ele e o setTimeout do auto-listen, mic poderia ligar e capturar o
+    // proprio TTS quando comecasse a tocar.
+    speakingRef.current = true;
     setSpeaking(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
+        speakingRef.current = false;
         setSpeaking(false);
         return;
       }
@@ -151,6 +164,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
       const ct = resp.headers.get("content-type") || "";
       if (!resp.ok || !ct.includes("audio")) {
         console.warn("[spark-bubble] browser-tts falhou:", resp.status);
+        speakingRef.current = false;
         setSpeaking(false);
         return;
       }
@@ -161,19 +175,23 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
       audio.onended = () => {
         URL.revokeObjectURL(url);
         if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+        speakingRef.current = false;
         setSpeaking(false);
       };
       audio.onerror = () => {
         URL.revokeObjectURL(url);
         if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+        speakingRef.current = false;
         setSpeaking(false);
       };
       await audio.play().catch(() => {
         URL.revokeObjectURL(url);
+        speakingRef.current = false;
         setSpeaking(false);
       });
     } catch (e) {
       console.warn("[spark-bubble] speakMessage exception:", e);
+      speakingRef.current = false;
       setSpeaking(false);
     }
   }, []);
@@ -213,7 +231,9 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
     const delay = ranInitialGuardRef.current ? RESUME_DELAY_MS : INITIAL_TTS_GUARD_MS;
     const t = window.setTimeout(() => {
       ranInitialGuardRef.current = true;
-      if (!recognitionRef.current && !isProcessing && !speaking && !userStopped) {
+      // Refs aqui em vez de state: speaking pode ter virado true entre o
+      // schedule e o fire deste timeout (TTS comecou). Refs sao sincronas.
+      if (!recognitionRef.current && !isProcessing && !speakingRef.current && !userStopped) {
         startListening();
       }
     }, delay);
@@ -236,6 +256,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
         try { ttsAudioRef.current.pause(); } catch { /* noop */ }
         ttsAudioRef.current = null;
       }
+      speakingRef.current = false;
       setSpeaking(false);
       return;
     }
