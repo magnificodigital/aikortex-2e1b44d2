@@ -117,7 +117,10 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
     try { rec.stop(); } catch { /* noop */ }
   }, []);
 
-  const endSession = useCallback(() => {
+  // Libera SO recursos de microfone/analyser. Nao toca no audio TTS — esse
+  // pode estar reproduzindo a frase do Spark e precisa continuar mesmo
+  // depois que o componente desmonta (caso navegacao Jarvis-style).
+  const releaseMicResources = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
     if (isCapturingRef.current && mediaRecorderRef.current) {
@@ -135,15 +138,51 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
+  }, []);
+
+  // endSession: usuario CLICA pra parar. Mata tudo incluindo audio.
+  const endSession = useCallback(() => {
+    releaseMicResources();
     if (audioElRef.current) {
       audioElRef.current.pause();
       audioElRef.current.src = "";
     }
     setIntensity(0);
     setOrbState("idle");
-  }, []);
+  }, [releaseMicResources]);
 
-  useEffect(() => () => { endSession(); }, [endSession]);
+  // Cleanup no UNMOUNT (ex.: navegacao). NAO pausa o audio TTS — usuario
+  // ainda precisa ouvir o resto da frase do Spark mesmo na proxima tela.
+  // Pra garantir que o browser nao GC o Audio element durante playback,
+  // movemos ele pra document.body com auto-remove no onended.
+  useEffect(() => () => {
+    releaseMicResources();
+    const a = audioElRef.current;
+    if (!a) return;
+    // Mata setState pendentes (componente vai desmontar).
+    a.onplay = null;
+    if (a.paused) {
+      // Nao estava tocando — pode liberar tudo.
+      a.onended = null;
+      a.onerror = null;
+      try { URL.revokeObjectURL(a.src); } catch { /* noop */ }
+      return;
+    }
+    // Estava tocando — anexa no body pra sobreviver ao unmount.
+    // onended/onerror limpam sozinhos quando terminar.
+    a.onended = () => {
+      try { a.remove(); } catch { /* noop */ }
+      try { URL.revokeObjectURL(a.src); } catch { /* noop */ }
+    };
+    a.onerror = () => {
+      try { a.remove(); } catch { /* noop */ }
+      try { URL.revokeObjectURL(a.src); } catch { /* noop */ }
+    };
+    try {
+      a.style.display = "none";
+      document.body.appendChild(a);
+    } catch { /* noop */ }
+  }, [releaseMicResources]);
 
   const startSession = useCallback(async () => {
     try {
