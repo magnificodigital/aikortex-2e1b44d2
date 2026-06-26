@@ -483,10 +483,20 @@ const AdminConfigTab = () => {
 
                   // ── Type: model (dropdown com opcoes + "Outro") ──
                   if (field.type === "model") {
-                    // Prioridade: lista de available_llms (gerenciada em /admin?tab=llms)
-                    // > lista hardcoded (fallback se nao tiver modelo cadastrado).
-                    const dynamicModels = llmsByProvider[openProvider.id] || [];
-                    const options = dynamicModels.length > 0 ? dynamicModels : (field.options || []);
+                    // OpenRouter eh gateway universal — roteia pra QUALQUER
+                    // modelo do available_llms. Demais providers (Anthropic,
+                    // OpenAI, Gemini direto) so mostram seus proprios models.
+                    const dynamicModels: { id: string; label: string }[] = openProvider.id === "openrouter"
+                      ? Object.values(llmsByProvider).flat()
+                      : (llmsByProvider[openProvider.id] || []);
+                    // Dedup por id (evita duplicado caso 2 providers tenham mesmo id)
+                    const seen = new Set<string>();
+                    const dedupedDynamic = dynamicModels.filter((m) => {
+                      if (seen.has(m.id)) return false;
+                      seen.add(m.id);
+                      return true;
+                    });
+                    const options = dedupedDynamic.length > 0 ? dedupedDynamic : (field.options || []);
                     const knownIds = options.map((o) => o.id);
                     const isCustom = !!currentValue && !knownIds.includes(currentValue);
                     const selectValue = isCustom ? CUSTOM_MODEL_OPTION : (currentValue || "");
@@ -539,9 +549,9 @@ const AdminConfigTab = () => {
                               </SelectContent>
                             </Select>
 
-                            {dynamicModels.length > 0 && (
+                            {dedupedDynamic.length > 0 && (
                               <p className="text-[9px] text-muted-foreground">
-                                {dynamicModels.length} modelo{dynamicModels.length === 1 ? "" : "s"} ativo{dynamicModels.length === 1 ? "" : "s"} — gerencie em <a href="/admin?tab=llms" className="text-primary hover:underline">Modelos LLM</a>
+                                {dedupedDynamic.length} modelo{dedupedDynamic.length === 1 ? "" : "s"} ativo{dedupedDynamic.length === 1 ? "" : "s"} — gerencie em <a href="/admin?tab=llms" className="text-primary hover:underline">Modelos LLM</a>
                               </p>
                             )}
 
