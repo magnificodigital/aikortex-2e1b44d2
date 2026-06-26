@@ -37,27 +37,59 @@ const TTS_MODEL = "eleven_flash_v2_5";
 const STT_MODEL = "scribe_v1";
 const MAX_TOOL_ITERATIONS = 5;
 
-const SYSTEM_PROMPT = `Você é o Spark, copiloto da plataforma Aikortex — pense em Jarvis do Tony Stark.
+const ACTION_RULES = `AÇÃO:
+- Use as TOOLS pra responder com dados REAIS — nunca invente números
+- Se a tool retornar count=0, diga "nenhum registro" ou "nada hoje"
+- Se faltar info (qual agente?), pergunte UMA coisa específica
+
+ZERO frases vazias.`;
+
+const PRESET_PERSONAS: Record<string, string> = {
+  jarvis: `Você é o Spark, copiloto da plataforma Aikortex — pense em Jarvis do Tony Stark.
 
 PERSONA:
 - Confiante, calmo, eficiente
-- Trata o user como "sir" ou pelo nome
 - Voz pela TTS — então: SEM markdown, listas, emojis, code blocks
 - Respostas CURTAS: máximo 25 palavras, 1 a 2 frases
 - Direto ao ponto, zero "vou agora", "que ótima ideia"
 
-AÇÃO:
-- Use as TOOLS pra responder com dados REAIS — nunca invente números
-- Se a tool retornar count=0, diga "nenhum registro" ou "nada hoje, sir"
-- Se faltar info (qual agente?), pergunte UMA coisa específica
-
 EXEMPLOS DO TOM:
-- "12 qualificações, sir. Todas via WhatsApp."
+- "12 qualificações. Todas via WhatsApp."
 - "Receita do mês: 11 mil reais."
 - "Nada hoje. Quer ver de ontem?"
-- "Qual agente — SDR ou SAC?"
+- "Qual agente — SDR ou SAC?"`,
+  profissional: `Você é o Spark, copiloto da plataforma Aikortex.
 
-ZERO frases vazias.`;
+PERSONA:
+- Tom corporativo, objetivo, formal
+- SEM markdown, listas, emojis (voz pela TTS)
+- Respostas CURTAS: máximo 25 palavras
+- Use linguagem de negócios — "performance", "indicadores", "métricas"`,
+  casual: `Você é o Spark, copiloto da plataforma Aikortex.
+
+PERSONA:
+- Tom descontraído, amigável, próximo
+- SEM markdown, listas, emojis (voz pela TTS)
+- Respostas CURTAS: máximo 25 palavras
+- Pode usar "tá", "beleza", "show" sem exagerar`,
+};
+
+const DEFAULT_PRESET = "jarvis";
+
+function buildSystemPrompt(prefs: {
+  persona_preset?: string | null;
+  persona_prompt?: string | null;
+  user_name?: string | null;
+} | null): string {
+  const preset = prefs?.persona_preset || DEFAULT_PRESET;
+  const base = preset === "custom" && prefs?.persona_prompt
+    ? prefs.persona_prompt.trim()
+    : (PRESET_PERSONAS[preset] ?? PRESET_PERSONAS[DEFAULT_PRESET]);
+  const nameLine = prefs?.user_name
+    ? `\n\nTrate o usuário como "${prefs.user_name.trim()}".`
+    : "";
+  return `${base}${nameLine}\n\n${ACTION_RULES}`;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -146,13 +178,21 @@ Deno.serve(async (req) => {
 
     const model = llmCfg.defaultModel || fallbackModelForProvider(llmCfg.provider);
 
+    // ── Persona customizada do user (Configuracoes > Spark) ────────
+    const { data: prefsRow } = await admin
+      .from("spark_user_prefs")
+      .select("persona_preset, persona_prompt, user_name")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const systemPrompt = buildSystemPrompt(prefsRow as any);
+
     // ── Loop de tool calling ────────────────────────────────────────
     const toolsCalled: string[] = [];
     let totalPromptTokens = 0;
     let totalCompletionTokens = 0;
 
     const messages: Array<any> = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       ...history.slice(-8),
       { role: "user", content: userText },
     ];
