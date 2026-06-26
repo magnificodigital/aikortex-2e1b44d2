@@ -547,9 +547,6 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
             {orbState === "processing" && (
               <Loader2 className="absolute inset-0 m-auto w-6 h-6 text-primary animate-spin pointer-events-none" />
             )}
-            {sessionActive && orbState !== "processing" && (
-              <Square className="absolute inset-0 m-auto w-4 h-4 text-primary-foreground/80 fill-current pointer-events-none" />
-            )}
           </div>
 
           <p className="text-sm text-muted-foreground text-center min-h-[1.5rem]">{orbHint}</p>
