@@ -566,14 +566,6 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
               {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
             </button>
             <button
-              onClick={endSession}
-              disabled={!sessionActive}
-              title="Encerrar"
-              className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Square className="w-4 h-4" />
-            </button>
-            <button
               onClick={() => {
                 const stream = streamRef.current;
                 if (!stream) return;
