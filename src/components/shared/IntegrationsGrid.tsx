@@ -31,7 +31,8 @@ import outlookCalendarIcon from "@/assets/outlook-calendar-icon.png";
 import gmailLogo from "@/assets/connectors/gmail.svg";
 import googleCalendarLogo from "@/assets/connectors/google-calendar.svg";
 import googleDriveLogo from "@/assets/connectors/google-drive.svg";
-import hubspotLogo from "@/assets/connectors/hubspot.svg";
+import hubspotLogoLight from "@/assets/connectors/hubspot-light.png.asset.json";
+import hubspotLogoDark from "@/assets/connectors/hubspot-dark.png.asset.json";
 import notionLogo from "@/assets/connectors/notion.svg";
 import slackLogo from "@/assets/connectors/slack.svg";
 import airtableLogo from "@/assets/connectors/airtable.svg";
@@ -188,7 +189,7 @@ export const SERVICE_PROVIDERS: IntegrationProvider[] = [
   { label: "Google Drive", provider: "google_drive", description: "Ler, enviar e gerenciar arquivos.", logo: googleDriveLogo, tags: ["arquivos", "produtividade"] },
   { label: "Outlook Calendar", provider: "outlook_calendar", description: "Gerenciar calendário Microsoft.", logo: outlookCalendarIcon, tags: ["calendario", "produtividade"] },
   { label: "Calendly", provider: "calendly", description: "Agendamento automático de reuniões.", logo: "https://cdn.simpleicons.org/calendly/006BFF", tags: ["calendario", "reunioes"] },
-  { label: "HubSpot", provider: "hubspot", description: "CRM, contatos, deals e pipelines.", logo: hubspotLogo, tags: ["crm", "vendas", "marketing"] },
+  { label: "HubSpot", provider: "hubspot", description: "CRM, contatos, deals e pipelines.", logo: hubspotLogoLight.url, tags: ["crm", "vendas", "marketing"] },
   { label: "Notion", provider: "notion", description: "Páginas, databases e blocos.", logo: notionLogo, tags: ["produtividade", "arquivos"] },
   { label: "Slack", provider: "slack", description: "Mensagens e canais de equipe.", logo: slackLogo, tags: ["comunicacao"] },
   { label: "Airtable", provider: "airtable", description: "Bases, tabelas e registros.", logo: airtableLogo, tags: ["produtividade", "arquivos"] },
@@ -726,6 +727,14 @@ export function IntegrationsGrid({
                   <>
                     <img src={aikortexIconDark} alt="Aikortex" className={`${cls} block dark:hidden`} />
                     <img src={aikortexIconLight} alt="Aikortex" className={`${cls} hidden dark:block`} />
+                  </>
+                );
+              }
+              if (p.provider === "hubspot") {
+                return (
+                  <>
+                    <img src={hubspotLogoLight.url} alt="HubSpot" className={`${cls} block dark:hidden`} />
+                    <img src={hubspotLogoDark.url} alt="HubSpot" className={`${cls} hidden dark:block`} />
                   </>
                 );
               }
