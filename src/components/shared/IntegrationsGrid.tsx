@@ -896,7 +896,14 @@ export function IntegrationsGrid({
                 <img src={dialogProvider.logo} alt={dialogProvider.label} className="w-14 h-14 object-contain" />
               )}
               {dialogProvider?.logo && !["hubspot", "telnyx", "asaas"].includes(dialogProvider.provider) && (
-                <img src={dialogProvider.logo} alt={dialogProvider.label} className={`w-8 h-8 rounded object-contain ${dialogProvider.provider === "openai" ? "dark:invert" : ""}`} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                <img
+                  src={dialogProvider.logo}
+                  alt={dialogProvider.label}
+                  className={`w-8 h-8 rounded object-contain ${
+                    dialogProvider.provider === "openai" || dialogProvider.provider === "elevenlabs" ? "dark:invert" : ""
+                  }`}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
               )}
               <div>
                 <DialogTitle className="text-base">
