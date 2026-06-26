@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ConversationProvider } from "@elevenlabs/react";
 import AgentRightPanel, { type AgentConfig } from "@/components/aikortex/AgentRightPanel";
 import AgentChatPanel, { type StructuredAgentConfig } from "@/components/aikortex/AgentChatPanel";
+import { SparkBubble } from "@/components/spark/SparkBubble";
 import WizardShowcasePanel from "@/components/aikortex/WizardShowcasePanel";
 import { computeWizardProgress } from "@/lib/wizard-progress";
 import VoiceCallPanel from "@/components/aikortex/VoiceCallPanel";
@@ -210,6 +211,9 @@ const AgentDetail = () => {
 
   const isTemplate    = !!agentId && !!TEMPLATE_MAP[agentId];
   const isNewCustomFromHome = navState?.fromTemplate === false && !!navState?.initialPrompt;
+  // Spark bubble: aparece so quando user chegou aqui via Spark (Home).
+  // Voz = bubble ativo (continua conversa). Texto = bubble desativado (so presenca).
+  const sparkBubbleMode = navState?.sparkBubbleMode as "voice" | "text" | undefined;
   const isFreshNew = !isTemplate && (!agentId || agentId === "new" || agentId.startsWith("new-"));
   const templateAgent = isTemplate ? TEMPLATE_MAP[agentId!] : null;
   const initialType: AgentType = (navState?.agentType as AgentType) || templateAgent?.agentType || "Custom";
@@ -1475,6 +1479,7 @@ Se user falar de algum desses, diga claramente o que falta.
         agentGreeting={agentConfig?.greetingMessage || ""}
         voiceId={agentConfig?.voiceConfig?.voiceId}
       />
+      {sparkBubbleMode && <SparkBubble mode={sparkBubbleMode} />}
     </div>
   );
 };
