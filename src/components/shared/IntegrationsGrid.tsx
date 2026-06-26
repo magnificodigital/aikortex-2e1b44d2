@@ -856,7 +856,16 @@ export function IntegrationsGrid({
         <DialogContent className="sm:max-w-lg max-h-[85vh]">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              {dialogProvider?.logo && (
+              {dialogProvider?.provider === "hubspot" && (
+                <>
+                  <img src={hubspotLogoLight.url} alt={dialogProvider.label} className="w-10 h-10 block dark:hidden object-contain" />
+                  <img src={hubspotLogoDark.url} alt={dialogProvider.label} className="w-10 h-10 hidden dark:block object-contain" />
+                </>
+              )}
+              {dialogProvider?.provider === "telnyx" && dialogProvider.logo && (
+                <img src={dialogProvider.logo} alt={dialogProvider.label} className="w-10 h-10 object-contain" />
+              )}
+              {dialogProvider?.logo && !["hubspot", "telnyx"].includes(dialogProvider.provider) && (
                 <img src={dialogProvider.logo} alt={dialogProvider.label} className="w-8 h-8 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               )}
               <div>
