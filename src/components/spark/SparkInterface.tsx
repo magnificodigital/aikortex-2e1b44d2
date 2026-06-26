@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MessageSquare, Loader2, Settings, X, ArrowUp, RefreshCw, Square, Sparkles, BarChart3 } from "lucide-react";
+import { Mic, MessageSquare, Loader2, Settings, X, ArrowUp, RefreshCw, Sparkles, BarChart3 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
@@ -546,9 +546,6 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
             />
             {orbState === "processing" && (
               <Loader2 className="absolute inset-0 m-auto w-6 h-6 text-primary animate-spin pointer-events-none" />
-            )}
-            {sessionActive && orbState !== "processing" && (
-              <Square className="absolute inset-0 m-auto w-4 h-4 text-primary-foreground/80 fill-current pointer-events-none" />
             )}
           </div>
 

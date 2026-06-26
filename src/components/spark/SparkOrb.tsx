@@ -32,6 +32,9 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
   const glow = isSpeaking ? "5s" : isListening ? "6.5s" : "9s";
 
   const reactiveScale = 1 + reactive * 0.04;
+  const speakGlow = isSpeaking ? 0.32 + reactive * 0.18 : 0.14 + reactive * 0.22;
+
+
 
   return (
     <button
@@ -49,10 +52,13 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
     >
       {/* Outer glow — expande e contrai suavemente */}
       <span
-        className="absolute inset-[-45%] rounded-full blur-3xl pointer-events-none"
+        className={cn(
+          "absolute inset-[-45%] rounded-full blur-3xl pointer-events-none",
+          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
+        )}
         style={{
-          background: `radial-gradient(circle, rgb(${tint} / ${0.14 + reactive * 0.22}) 0%, rgb(${deep} / 0.05) 45%, transparent 72%)`,
-          animation: `plasma-glow ${glow} ease-in-out infinite`,
+          background: `radial-gradient(circle, rgb(${tint} / ${speakGlow}) 0%, rgb(${deep} / 0.05) 45%, transparent 72%)`,
+          animation: isSpeaking ? undefined : `plasma-glow ${glow} ease-in-out infinite`,
         }}
       />
 
@@ -68,7 +74,10 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
       {/* Corpo plasma — silhueta circular imperfeita, interior quase transparente.
           Brilho concentrado APENAS nos polos (topo e base). */}
       <span
-        className="absolute rounded-full pointer-events-none overflow-hidden"
+        className={cn(
+          "absolute rounded-full pointer-events-none overflow-hidden",
+          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
+        )}
         style={{
           width: "82%",
           height: "82%",
@@ -76,12 +85,12 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
           transition: "transform 220ms ease-out",
           // duas elipses brilhantes nos polos + suave membrana cyan
           background: `
-            radial-gradient(ellipse 55% 28% at 50% 8%, rgb(${white} / 0.85), rgb(${tint} / 0.35) 55%, transparent 80%),
-            radial-gradient(ellipse 55% 28% at 50% 92%, rgb(${white} / 0.78), rgb(${tint} / 0.3) 55%, transparent 80%),
-            radial-gradient(circle at 50% 50%, rgb(${tint} / 0.08) 0%, rgb(${tint} / 0.14) 55%, rgb(${deep} / 0.06) 78%, transparent 92%)
+            radial-gradient(ellipse 55% 28% at 50% 8%, rgb(${white} / ${isSpeaking ? 0.95 : 0.85}), rgb(${tint} / ${isSpeaking ? 0.45 : 0.35}) 55%, transparent 80%),
+            radial-gradient(ellipse 55% 28% at 50% 92%, rgb(${white} / ${isSpeaking ? 0.9 : 0.78}), rgb(${tint} / ${isSpeaking ? 0.4 : 0.3}) 55%, transparent 80%),
+            radial-gradient(circle at 50% 50%, rgb(${tint} / ${isSpeaking ? 0.12 : 0.08}) 0%, rgb(${tint} / ${isSpeaking ? 0.2 : 0.14}) 55%, rgb(${deep} / ${isSpeaking ? 0.1 : 0.06}) 78%, transparent 92%)
           `,
-          filter: `blur(${2 + reactive * 1.2}px)`,
-          animation: `plasma-breath ${breath} ease-in-out infinite`,
+          filter: `blur(${2 + reactive * 1.2}px) brightness(${isSpeaking ? 1.15 : 1})`,
+          animation: isSpeaking ? undefined : `plasma-breath ${breath} ease-in-out infinite`,
         }}
       >
         {/* Bandas verticais luminosas — oscilam atravessando o centro */}
@@ -89,16 +98,16 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
           className="absolute inset-0 pointer-events-none"
           style={{
             background: `
-              linear-gradient(90deg, transparent 47%, rgb(${white} / 0.45) 49.5%, rgb(${white} / 0.7) 50%, rgb(${white} / 0.45) 50.5%, transparent 53%),
-              linear-gradient(90deg, transparent 40%, rgb(${tint} / 0.22) 42.5%, transparent 45%),
-              linear-gradient(90deg, transparent 55%, rgb(${tint} / 0.22) 57.5%, transparent 60%),
-              linear-gradient(90deg, transparent 33%, rgb(${tint} / 0.14) 35%, transparent 37%),
-              linear-gradient(90deg, transparent 63%, rgb(${tint} / 0.14) 65%, transparent 67%)
+              linear-gradient(90deg, transparent 47%, rgb(${white} / ${isSpeaking ? 0.65 : 0.45}) 49.5%, rgb(${white} / ${isSpeaking ? 0.9 : 0.7}) 50%, rgb(${white} / ${isSpeaking ? 0.65 : 0.45}) 50.5%, transparent 53%),
+              linear-gradient(90deg, transparent 40%, rgb(${tint} / ${isSpeaking ? 0.34 : 0.22}) 42.5%, transparent 45%),
+              linear-gradient(90deg, transparent 55%, rgb(${tint} / ${isSpeaking ? 0.34 : 0.22}) 57.5%, transparent 60%),
+              linear-gradient(90deg, transparent 33%, rgb(${tint} / ${isSpeaking ? 0.22 : 0.14}) 35%, transparent 37%),
+              linear-gradient(90deg, transparent 63%, rgb(${tint} / ${isSpeaking ? 0.22 : 0.14}) 65%, transparent 67%)
             `,
             mixBlendMode: "screen",
             filter: `blur(${2.5 + reactive * 1.5}px)`,
-            animation: `plasma-bands ${bands} ease-in-out infinite`,
-            opacity: 0.75,
+            animation: `plasma-bands ${isSpeaking ? "5s" : bands} ease-in-out infinite`,
+            opacity: isSpeaking ? 0.9 : 0.75,
           }}
         />
 
@@ -119,28 +128,34 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
 
       {/* Bloom polar superior — heavy bloom */}
       <span
-        className="absolute pointer-events-none rounded-full"
+        className={cn(
+          "absolute pointer-events-none rounded-full",
+          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
+        )}
         style={{
           top: "8%",
           left: "30%",
           width: "40%",
           height: "18%",
-          background: `radial-gradient(ellipse at center, rgb(${white} / 0.55), transparent 75%)`,
+          background: `radial-gradient(ellipse at center, rgb(${white} / ${isSpeaking ? 0.7 : 0.55}), transparent 75%)`,
           filter: "blur(14px)",
-          animation: `plasma-breath ${breath} ease-in-out infinite`,
+          animation: isSpeaking ? undefined : `plasma-breath ${breath} ease-in-out infinite`,
         }}
       />
       {/* Bloom polar inferior */}
       <span
-        className="absolute pointer-events-none rounded-full"
+        className={cn(
+          "absolute pointer-events-none rounded-full",
+          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
+        )}
         style={{
           bottom: "8%",
           left: "30%",
           width: "40%",
           height: "18%",
-          background: `radial-gradient(ellipse at center, rgb(${white} / 0.5), transparent 75%)`,
+          background: `radial-gradient(ellipse at center, rgb(${white} / ${isSpeaking ? 0.65 : 0.5}), transparent 75%)`,
           filter: "blur(14px)",
-          animation: `plasma-breath ${breath} ease-in-out infinite reverse`,
+          animation: isSpeaking ? undefined : `plasma-breath ${breath} ease-in-out infinite reverse`,
         }}
       />
 
@@ -160,6 +175,12 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
         @keyframes plasma-drift {
           0%   { transform: translate(-2%, -1.5%); }
           100% { transform: translate( 2%,  1.5%); }
+        }
+        @keyframes plasma-speak-pulse {
+          0%, 100% { transform: scale(1);    filter: brightness(1) blur(2px); }
+          25%      { transform: scale(1.022); filter: brightness(1.18) blur(2.2px); }
+          50%      { transform: scale(1.035); filter: brightness(1.26) blur(2.4px); }
+          75%      { transform: scale(1.018); filter: brightness(1.12) blur(2.1px); }
         }
       `}</style>
     </button>
