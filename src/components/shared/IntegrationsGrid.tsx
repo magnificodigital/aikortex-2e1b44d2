@@ -886,10 +886,16 @@ export function IntegrationsGrid({
                   <img src={hubspotLogoDark.url} alt={dialogProvider.label} className="w-14 h-14 hidden dark:block object-contain" />
                 </>
               )}
+              {dialogProvider?.provider === "asaas" && (
+                <>
+                  <img src={asaasLogoLight.url} alt={dialogProvider.label} className="w-14 h-14 block dark:hidden object-contain" />
+                  <img src={asaasLogoDark.url} alt={dialogProvider.label} className="w-14 h-14 hidden dark:block object-contain" />
+                </>
+              )}
               {dialogProvider?.provider === "telnyx" && dialogProvider.logo && (
                 <img src={dialogProvider.logo} alt={dialogProvider.label} className="w-14 h-14 object-contain" />
               )}
-              {dialogProvider?.logo && !["hubspot", "telnyx"].includes(dialogProvider.provider) && (
+              {dialogProvider?.logo && !["hubspot", "telnyx", "asaas"].includes(dialogProvider.provider) && (
                 <img src={dialogProvider.logo} alt={dialogProvider.label} className={`w-8 h-8 rounded object-contain ${dialogProvider.provider === "openai" ? "dark:invert" : ""}`} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               )}
               <div>
