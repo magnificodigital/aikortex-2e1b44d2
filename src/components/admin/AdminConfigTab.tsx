@@ -12,6 +12,9 @@ import { Switch } from "@/components/ui/switch";
 import { Eye, EyeOff, Save, CheckCircle2, AlertCircle, ExternalLink, Cpu, Power, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import telnyxLogo from "@/assets/connectors/telnyx-logo.png.asset.json";
+import asaasLogoLight from "@/assets/connectors/asaas-light.png.asset.json";
+import asaasLogoDark from "@/assets/connectors/asaas-dark.png.asset.json";
 
 interface ConfigField {
   key: string;
@@ -147,7 +150,7 @@ const PROVIDERS: ProviderGroup[] = [
     label: "Telnyx",
     category: "telefonia",
     description: "Números telefônicos reais (BR + global), webhooks de chamadas inbound/outbound.",
-    logo: "https://cdn.simpleicons.org/telnyx/_/00E3AA",
+    logo: telnyxLogo.url,
     apiKeyUrl: "https://portal.telnyx.com/#/app/api-keys",
     apiKeyUrlLabel: "portal.telnyx.com",
     fields: [
@@ -187,7 +190,7 @@ const PROVIDERS: ProviderGroup[] = [
     label: "Asaas (Master)",
     category: "pagamentos",
     description: "Conta master da Aikortex — cobrança recorrente dos clientes finais com split nativo pras agências.",
-    logo: "https://cdn.simpleicons.org/asaas/_/00B96B",
+    logo: asaasLogoLight.url,
     apiKeyUrl: "https://www.asaas.com/integracao-api",
     apiKeyUrlLabel: "asaas.com",
     fields: [
@@ -428,14 +431,23 @@ const AdminConfigTab = () => {
                 <div className="flex items-center gap-3 min-w-0">
                   {p.logo && (
                     <div className="w-10 h-10 rounded-lg bg-muted/50 grid place-items-center shrink-0">
-                      <img
-                        src={p.logo}
-                        alt={p.label}
-                        className={`w-7 h-7 object-contain ${
-                          ["openai", "elevenlabs", "livekit"].includes(p.id) ? "dark:invert" : ""
-                        }`}
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                      />
+                      {p.id === "asaas" ? (
+                        <>
+                          <img src={asaasLogoLight.url} alt={p.label} className="w-7 h-7 object-contain block dark:hidden" />
+                          <img src={asaasLogoDark.url} alt={p.label} className="w-7 h-7 object-contain hidden dark:block" />
+                        </>
+                      ) : p.id === "telnyx" ? (
+                        <img src={telnyxLogo.url} alt={p.label} className="w-9 h-9 object-contain" />
+                      ) : (
+                        <img
+                          src={p.logo}
+                          alt={p.label}
+                          className={`w-7 h-7 object-contain ${
+                            ["openai", "elevenlabs", "livekit"].includes(p.id) ? "dark:invert" : ""
+                          }`}
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        />
+                      )}
                     </div>
                   )}
                   <div className="min-w-0">
@@ -483,13 +495,22 @@ const AdminConfigTab = () => {
                   <DialogTitle className="flex items-center gap-3">
                     {openProvider.logo && (
                       <div className="w-9 h-9 rounded-lg bg-muted/50 grid place-items-center">
-                        <img
-                          src={openProvider.logo}
-                          alt={openProvider.label}
-                          className={`w-6 h-6 object-contain ${
-                            ["openai", "elevenlabs", "livekit"].includes(openProvider.id) ? "dark:invert" : ""
-                          }`}
-                        />
+                        {openProvider.id === "asaas" ? (
+                          <>
+                            <img src={asaasLogoLight.url} alt={openProvider.label} className="w-6 h-6 object-contain block dark:hidden" />
+                            <img src={asaasLogoDark.url} alt={openProvider.label} className="w-6 h-6 object-contain hidden dark:block" />
+                          </>
+                        ) : openProvider.id === "telnyx" ? (
+                          <img src={telnyxLogo.url} alt={openProvider.label} className="w-8 h-8 object-contain" />
+                        ) : (
+                          <img
+                            src={openProvider.logo}
+                            alt={openProvider.label}
+                            className={`w-6 h-6 object-contain ${
+                              ["openai", "elevenlabs", "livekit"].includes(openProvider.id) ? "dark:invert" : ""
+                            }`}
+                          />
+                        )}
                       </div>
                     )}
                     {openProvider.label}
