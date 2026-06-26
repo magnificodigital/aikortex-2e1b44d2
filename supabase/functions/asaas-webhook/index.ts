@@ -42,7 +42,14 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Missing event' }), { status: 400, headers: corsHeaders })
   }
 
+  // Master v7.4 §3 — billing por agente publicado. Quando a sub do payment
+  // bate com user_agents.client_subscription_id, atualiza subscription_status
+  // e insere row em agent_billing_events. Roda ANTES do switch antigo —
+  // independente da logica de template_subscriptions. Idempotente.
+  await handleAgentBillingEvent(event, payment, body)
+
   switch (event) {
+    case 'PAYMENT_CONFIRMED':
     case 'PAYMENT_RECEIVED': {
       if (!payment?.subscription) break
 
@@ -193,3 +200,76 @@ serve(async (req) => {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Handler do billing de agentes publicados (Master v7.4 §3).
+// Idempotente: insert em agent_billing_events tem unique (payment_id, event_type).
+// ─────────────────────────────────────────────────────────────────────────
+async function handleAgentBillingEvent(event: string, payment: any, rawBody: any) {
+  const subId = payment?.subscription || rawBody?.subscription?.id
+  if (!subId) return
+
+  const { data: agent } = await supabase
+    .from('user_agents')
+    .select('id, user_id, client_info')
+    .eq('client_subscription_id', subId)
+    .maybeSingle()
+
+  if (!agent) return // sub nao corresponde a nenhum agente publicado
+
+  const agentId = agent.id as string
+  const agencyUserId = agent.user_id as string
+
+  if (event === 'PAYMENT_CONFIRMED' || event === 'PAYMENT_RECEIVED') {
+    await supabase
+      .from('user_agents')
+      .update({ subscription_status: 'active' })
+      .eq('id', agentId)
+
+    const grossCents = Math.round((payment?.value || 0) * 100)
+    const splits: any[] = Array.isArray(payment?.split) ? payment.split : []
+    const agencyCents = splits.reduce(
+      (acc: number, s: any) => acc + Math.round((s?.value || 0) * 100),
+      0,
+    )
+    const platformCents = Math.max(0, grossCents - agencyCents)
+
+    const { error: insErr } = await supabase.from('agent_billing_events').insert({
+      agent_id: agentId,
+      agency_user_id: agencyUserId,
+      asaas_payment_id: payment?.id || `unknown-${Date.now()}`,
+      event_type: event,
+      gross_amount_cents: grossCents,
+      agency_amount_cents: agencyCents,
+      platform_amount_cents: platformCents,
+      client_external_ref: (agent.client_info as any)?.cpf_cnpj || null,
+      raw_payload: rawBody,
+    })
+    if (insErr && !insErr.message.includes('duplicate')) {
+      console.warn('[asaas-webhook agent] insert billing event falhou:', insErr.message)
+    }
+  } else if (event === 'PAYMENT_OVERDUE') {
+    await supabase
+      .from('user_agents')
+      .update({ subscription_status: 'overdue' })
+      .eq('id', agentId)
+  } else if (event === 'PAYMENT_REFUNDED') {
+    const grossCents = Math.round((payment?.value || 0) * 100)
+    await supabase.from('agent_billing_events').insert({
+      agent_id: agentId,
+      agency_user_id: agencyUserId,
+      asaas_payment_id: payment?.id || `unknown-${Date.now()}`,
+      event_type: event,
+      gross_amount_cents: -grossCents,
+      agency_amount_cents: 0,
+      platform_amount_cents: 0,
+      client_external_ref: (agent.client_info as any)?.cpf_cnpj || null,
+      raw_payload: rawBody,
+    })
+  } else if (event === 'SUBSCRIPTION_INACTIVATED' || event === 'SUBSCRIPTION_DELETED') {
+    await supabase
+      .from('user_agents')
+      .update({ subscription_status: 'canceled' })
+      .eq('id', agentId)
+  }
+}
