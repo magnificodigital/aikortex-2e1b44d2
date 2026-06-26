@@ -4,22 +4,34 @@ import { cn } from "@/lib/utils";
 
 interface SparkBubbleProps {
   /** Modo de chegada:
-   *  - "voice": bubble ATIVO (captura voz e manda pro wizard via onTranscript)
-   *  - "text":  bubble visivel mas DESATIVADO (so sinal de presenca) */
+   *  - "voice": bubble ATIVO HANDS-FREE — auto-escuta o user sem precisar
+   *    de click. Captura voz, manda pro wizard, espera resposta, escuta dnv.
+   *  - "text":  bubble visivel mas DESATIVADO — so sinal de presenca. */
   mode: "voice" | "text";
-  /** Wizard esta processando a mensagem anterior — mostra spinner e
-   *  bloqueia novo recording. */
+  /** Wizard esta processando a mensagem anterior. Bubble fica em hold. */
   isProcessing?: boolean;
-  /** Quando o bubble captura uma fala completa, chama isso com o texto.
-   *  Parent (AgentDetail) repassa pro wizardChat.sendMessage. */
+  /** Bubble entrega fala capturada pra parent (AgentDetail forwarda
+   *  pro wizardChat.sendMessage). */
   onTranscript?: (text: string) => void;
 }
+
+// Tempo pra esperar Spark terminar de falar o script de boas-vindas
+// antes de comecar a escutar (~10s do TTS + folga).
+const INITIAL_TTS_GUARD_MS = 12_000;
+// Delay curto entre wizard terminar de responder e bubble re-ativar.
+const RESUME_DELAY_MS = 600;
 
 export function SparkBubble({ mode, isProcessing, onTranscript }: SparkBubbleProps) {
   const [listening, setListening] = useState(false);
   const [partial, setPartial] = useState("");
+  const [userStopped, setUserStopped] = useState(false);
+
   const recognitionRef = useRef<any>(null);
   const finalTextRef = useRef("");
+  const onTranscriptRef = useRef(onTranscript);
+  const ranInitialGuardRef = useRef(false);
+
+  useEffect(() => { onTranscriptRef.current = onTranscript; }, [onTranscript]);
 
   const active = mode === "voice";
 
@@ -41,7 +53,7 @@ export function SparkBubble({ mode, isProcessing, onTranscript }: SparkBubblePro
 
     const rec = new SR();
     rec.lang = "pt-BR";
-    rec.continuous = false;       // para sozinho na pausa natural do user
+    rec.continuous = false;       // para sozinho na pausa natural
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
@@ -72,8 +84,9 @@ export function SparkBubble({ mode, isProcessing, onTranscript }: SparkBubblePro
       const text = finalTextRef.current.trim();
       finalTextRef.current = "";
       setPartial("");
-      if (text && text.length >= 2 && onTranscript) {
-        onTranscript(text);
+      if (text && text.length >= 2) {
+        const cb = onTranscriptRef.current;
+        if (cb) cb(text);
       }
     };
 
@@ -84,7 +97,30 @@ export function SparkBubble({ mode, isProcessing, onTranscript }: SparkBubblePro
     } catch (e) {
       console.warn("[spark-bubble] start falhou:", e);
     }
-  }, [onTranscript]);
+  }, []);
+
+  // Auto-listen hands-free. Dispara em 3 momentos:
+  //  1) Mount inicial em voz: espera INITIAL_TTS_GUARD_MS pra Spark terminar
+  //     de falar, depois liga (uma vez so).
+  //  2) Quando wizard acaba de responder (isProcessing transita true->false):
+  //     religa apos RESUME_DELAY_MS pro user responder o proximo turno.
+  //  3) Se user clicou pra parar (userStopped=true), NAO religa — fica off
+  //     ate o user clicar pra retomar.
+  useEffect(() => {
+    if (!active) return;
+    if (listening) return;
+    if (isProcessing) return;
+    if (userStopped) return;
+
+    const delay = ranInitialGuardRef.current ? RESUME_DELAY_MS : INITIAL_TTS_GUARD_MS;
+    const t = window.setTimeout(() => {
+      ranInitialGuardRef.current = true;
+      if (!recognitionRef.current && !isProcessing && !userStopped) {
+        startListening();
+      }
+    }, delay);
+    return () => window.clearTimeout(t);
+  }, [active, listening, isProcessing, userStopped, startListening]);
 
   // Cleanup no unmount
   useEffect(() => () => stopListening(), [stopListening]);
@@ -92,15 +128,21 @@ export function SparkBubble({ mode, isProcessing, onTranscript }: SparkBubblePro
   const handleClick = () => {
     if (!active) return;
     if (isProcessing) return;
-    if (listening) stopListening();
-    else startListening();
+    if (listening) {
+      setUserStopped(true);
+      stopListening();
+    } else {
+      setUserStopped(false);
+      startListening();
+    }
   };
 
   const labelTop = (() => {
     if (!active) return null;
     if (isProcessing) return "Wizard está pensando…";
+    if (userStopped && !listening) return "Toque pra retomar";
     if (listening) return partial || "Estou te ouvindo…";
-    return "Toque pra falar";
+    return "Aguarde…";
   })();
 
   return (
@@ -119,7 +161,7 @@ export function SparkBubble({ mode, isProcessing, onTranscript }: SparkBubblePro
         disabled={!active}
         aria-label={active ? (listening ? "Parar de ouvir" : "Falar com Spark") : "Spark desativado"}
         title={active
-          ? (isProcessing ? "Wizard pensando…" : listening ? "Toque pra parar de ouvir" : "Toque pra falar")
+          ? (isProcessing ? "Wizard pensando…" : listening ? "Toque pra parar" : userStopped ? "Toque pra retomar" : "Aguarde…")
           : "Spark desativado (você chegou aqui por texto)"}
         className={cn(
           "relative w-14 h-14 rounded-full grid place-items-center transition-all border-2 backdrop-blur-md shadow-xl",
