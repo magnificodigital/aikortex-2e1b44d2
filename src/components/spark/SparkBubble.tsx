@@ -41,6 +41,35 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
   const [speaking, setSpeaking] = useState(false);
   const [partial, setPartial] = useState("");
   const [userStopped, setUserStopped] = useState(false);
+  // Preferencias salvas em Settings > Spark. Default: Sarah, 0.5, 1.0.
+  const sparkPrefsRef = useRef<{ voiceId?: string; stability?: number; speed?: number }>({});
+
+  // Carrega preferencias do user (uma vez por sessao do bubble)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { data } = await supabase
+          .from("user_api_keys")
+          .select("provider, api_key")
+          .eq("user_id", user.id)
+          .in("provider", ["spark_voice_id", "spark_voice_stability", "spark_voice_speed"]);
+        if (cancelled) return;
+        const map = new Map<string, string>();
+        (data ?? []).forEach((row: any) => map.set(row.provider, row.api_key ?? ""));
+        const stab = parseFloat(map.get("spark_voice_stability") || "");
+        const spd = parseFloat(map.get("spark_voice_speed") || "");
+        sparkPrefsRef.current = {
+          voiceId: map.get("spark_voice_id") || undefined,
+          stability: Number.isFinite(stab) ? stab : undefined,
+          speed: Number.isFinite(spd) ? spd : undefined,
+        };
+      } catch { /* default config eh suficiente */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const recognitionRef = useRef<any>(null);
   const finalTextRef = useRef("");
@@ -170,13 +199,19 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
         setSpeaking(false);
         return;
       }
+      const prefs = sparkPrefsRef.current;
       const resp = await fetch(fnUrl("browser-tts"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ text: clean }),
+        body: JSON.stringify({
+          text: clean,
+          voiceId: prefs.voiceId,
+          stability: prefs.stability,
+          speed: prefs.speed,
+        }),
       });
       const ct = resp.headers.get("content-type") || "";
       if (!resp.ok || !ct.includes("audio")) {

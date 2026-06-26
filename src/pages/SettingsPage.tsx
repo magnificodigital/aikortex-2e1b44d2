@@ -40,12 +40,14 @@ import {
   Radio,
   DollarSign,
   Sparkles,
+  Mic,
 } from "lucide-react";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS } from "@/components/shared/IntegrationsGrid";
 import AgencyChannelsManager from "@/components/settings/AgencyChannelsManager";
 import AgencyPermissions from "@/components/settings/AgencyPermissions";
 import SubscriptionTab from "@/components/settings/SubscriptionTab";
 import AsaasConfigTab from "@/components/settings/AsaasConfigTab";
+import SparkSettingsTab from "@/components/settings/SparkSettingsTab";
 
 // ─── TYPES ──────────────────────────────────────────
 interface BrandColors {
@@ -306,6 +308,7 @@ const SettingsPage = () => {
             <TabsTrigger value="logo" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Image className="h-3.5 w-3.5" /> Logo</TabsTrigger>
             <TabsTrigger value="landing" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Globe className="h-3.5 w-3.5" /> Landing Page</TabsTrigger>
             <TabsTrigger value="biolink" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Link2 className="h-3.5 w-3.5" /> Bio Link</TabsTrigger>
+            <TabsTrigger value="spark" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Mic className="h-3.5 w-3.5" /> Spark</TabsTrigger>
             <TabsTrigger value="providers" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Sparkles className="h-3.5 w-3.5" /> Provedores</TabsTrigger>
             <TabsTrigger value="integrations" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Plug className="h-3.5 w-3.5" /> Conectores</TabsTrigger>
             <TabsTrigger value="channels" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Radio className="h-3.5 w-3.5" /> Canais</TabsTrigger>
@@ -640,6 +643,11 @@ const SettingsPage = () => {
           </TabsContent>
 
           {/* ── PROVEDORES (LLMs) ───────────────────── */}
+          {/* ── SPARK ─────────────────────────── */}
+          <TabsContent value="spark" className="space-y-6">
+            <SparkSettingsTab />
+          </TabsContent>
+
           <TabsContent value="providers" className="space-y-6">
             <IntegrationsGrid
               providers={LLM_PROVIDERS}
