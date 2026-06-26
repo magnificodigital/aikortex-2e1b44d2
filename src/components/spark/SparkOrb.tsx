@@ -70,6 +70,12 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
         <path d="M 130 232 A 102 102 0 0 1 28 130" className="orb-arc orb-arc-2" />
       </svg>
 
+      {/* Anéis externos pulsando fora da esfera */}
+      <svg className="orb-outer-rings absolute inset-[-30%] w-[160%] h-[160%] pointer-events-none" viewBox="0 0 300 300" fill="none">
+        <circle cx="150" cy="150" r="140" className="orb-outer-ring orb-outer-ring-1" />
+        <circle cx="150" cy="150" r="162" className="orb-outer-ring orb-outer-ring-2" />
+      </svg>
+
       {/* HUD de micro points ao redor — explosão sutil radial */}
       <svg className="orb-hud absolute inset-[-22%] w-[144%] h-[144%] pointer-events-none" viewBox="0 0 260 260" fill="none">
         {[...Array(72)].map((_, i) => {
