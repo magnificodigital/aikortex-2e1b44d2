@@ -889,6 +889,7 @@ export type Database = {
           duration_seconds: number | null
           ended_at: string | null
           id: string
+          outcome_tags: string[] | null
           phone_from: string | null
           phone_to: string | null
           recording_url: string | null
@@ -906,6 +907,7 @@ export type Database = {
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
+          outcome_tags?: string[] | null
           phone_from?: string | null
           phone_to?: string | null
           recording_url?: string | null
@@ -923,6 +925,7 @@ export type Database = {
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
+          outcome_tags?: string[] | null
           phone_from?: string | null
           phone_to?: string | null
           recording_url?: string | null
@@ -1163,6 +1166,7 @@ export type Database = {
       conversations: {
         Row: {
           agency_id: string
+          agent_id: string | null
           assigned_to: string | null
           channel: string
           client_id: string | null
@@ -1175,6 +1179,7 @@ export type Database = {
           last_message_at: string | null
           last_message_preview: string | null
           metadata: Json | null
+          outcome_tags: string[] | null
           status: string
           tags: string[] | null
           unread_count: number
@@ -1182,6 +1187,7 @@ export type Database = {
         }
         Insert: {
           agency_id: string
+          agent_id?: string | null
           assigned_to?: string | null
           channel?: string
           client_id?: string | null
@@ -1194,6 +1200,7 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           metadata?: Json | null
+          outcome_tags?: string[] | null
           status?: string
           tags?: string[] | null
           unread_count?: number
@@ -1201,6 +1208,7 @@ export type Database = {
         }
         Update: {
           agency_id?: string
+          agent_id?: string | null
           assigned_to?: string | null
           channel?: string
           client_id?: string | null
@@ -1213,6 +1221,7 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           metadata?: Json | null
+          outcome_tags?: string[] | null
           status?: string
           tags?: string[] | null
           unread_count?: number
@@ -1224,6 +1233,13 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agency_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_agents"
             referencedColumns: ["id"]
           },
           {
@@ -2545,6 +2561,120 @@ export type Database = {
           tenant_type?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      spark_commands: {
+        Row: {
+          created_at: string | null
+          enabled: boolean
+          icon: string | null
+          id: string
+          label: string
+          prompt: string
+          sort_order: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean
+          icon?: string | null
+          id?: string
+          label: string
+          prompt: string
+          sort_order?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean
+          icon?: string | null
+          id?: string
+          label?: string
+          prompt?: string
+          sort_order?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      spark_usage: {
+        Row: {
+          completion_tokens: number
+          created_at: string | null
+          duration_ms: number | null
+          estimated_cost_cents: number | null
+          id: string
+          llm_model: string
+          llm_provider: string
+          prompt_tokens: number
+          session_id: string | null
+          tools_called: string[] | null
+          total_tokens: number
+          user_id: string
+        }
+        Insert: {
+          completion_tokens?: number
+          created_at?: string | null
+          duration_ms?: number | null
+          estimated_cost_cents?: number | null
+          id?: string
+          llm_model: string
+          llm_provider: string
+          prompt_tokens?: number
+          session_id?: string | null
+          tools_called?: string[] | null
+          total_tokens?: number
+          user_id: string
+        }
+        Update: {
+          completion_tokens?: number
+          created_at?: string | null
+          duration_ms?: number | null
+          estimated_cost_cents?: number | null
+          id?: string
+          llm_model?: string
+          llm_provider?: string
+          prompt_tokens?: number
+          session_id?: string | null
+          tools_called?: string[] | null
+          total_tokens?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      spark_user_prefs: {
+        Row: {
+          bubble_enabled: boolean
+          created_at: string | null
+          monthly_token_limit: number | null
+          persona_preset: string
+          persona_prompt: string | null
+          updated_at: string | null
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          bubble_enabled?: boolean
+          created_at?: string | null
+          monthly_token_limit?: number | null
+          persona_preset?: string
+          persona_prompt?: string | null
+          updated_at?: string | null
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          bubble_enabled?: boolean
+          created_at?: string | null
+          monthly_token_limit?: number | null
+          persona_preset?: string
+          persona_prompt?: string | null
+          updated_at?: string | null
+          user_id?: string
+          user_name?: string | null
         }
         Relationships: []
       }
