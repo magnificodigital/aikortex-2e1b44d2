@@ -719,8 +719,8 @@ export function IntegrationsGrid({
               const isLargeBrand = p.provider === "telnyx" || p.provider === "hubspot";
               const isElevenLabs = p.provider === "elevenlabs";
               const dim =
-                size === "lg" ? (isLargeBrand ? "w-16 h-16" : isElevenLabs ? "w-8 h-8" : "w-9 h-9")
-                : isLargeBrand ? "w-14 h-14" : isElevenLabs ? "w-6 h-6" : "w-7 h-7";
+                size === "lg" ? (isLargeBrand ? "w-16 h-16" : isElevenLabs ? "w-7 h-7" : "w-9 h-9")
+                : isLargeBrand ? "w-14 h-14" : isElevenLabs ? "w-5 h-5" : "w-7 h-7";
               const cls = `${dim} object-contain`;
               const invertCls = `${dim} rounded object-contain`;
               if (p.provider === "aikortex") {
