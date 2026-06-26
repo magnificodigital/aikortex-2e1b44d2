@@ -52,6 +52,7 @@ export type IntegrationTag =
   | "llm"
   | "voz"
   | "telefonia"
+  | "pagamentos"
   | "calendario"
   | "produtividade"
   | "comunicacao"
@@ -78,6 +79,7 @@ export const TAG_LABELS: Record<IntegrationTag, string> = {
   llm: "IA / LLM",
   voz: "Voz",
   telefonia: "Telefonia",
+  pagamentos: "Pagamentos",
   calendario: "Calendário",
   produtividade: "Produtividade",
   comunicacao: "Comunicação",
@@ -174,6 +176,15 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
 // silhueta na cor da marca via simpleicons como fallback pros poucos que
 // não estão no iconify logos collection).
 export const SERVICE_PROVIDERS: IntegrationProvider[] = [
+  {
+    label: "Asaas",
+    provider: "asaas",
+    description: "Cobrança e pagamentos (Pix, boleto, cartão) — o agente pode gerar links de pagamento e fechar vendas direto no chat.",
+    logo: "https://cdn.simpleicons.org/asaas/_/00B96B",
+    apiKeyUrl: "https://www.asaas.com/integracao-api",
+    apiKeyUrlLabel: "asaas.com",
+    tags: ["pagamentos", "vendas"],
+  },
   {
     label: "Telnyx",
     provider: "telnyx",

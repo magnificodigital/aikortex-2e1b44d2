@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   User, Zap, Settings2, AlertTriangle, Mic, Mail,
   Upload, X, FileText, Image, File, Plus, Globe, Link2, Check, Camera,
@@ -571,6 +572,7 @@ const AgentRightPanel = ({
   });
   const [savedIntegrations, setSavedIntegrations] = useState<string[]>(() => savedConfig?.integrations?.length ? savedConfig.integrations : []);
   const [integrationConfigs, setIntegrationConfigs] = useState<Record<string, ProviderConfig>>(() => savedConfig?.integrationConfigs || {});
+  const [connectorPickerOpen, setConnectorPickerOpen] = useState(false);
   const [apiConfig,         setApiConfig]         = useState<ApiConfig>(() =>
     savedConfig?.apiConfig ? { ...DEFAULT_API_CONFIG, ...savedConfig.apiConfig } : DEFAULT_API_CONFIG
   );
@@ -1514,29 +1516,80 @@ const AgentRightPanel = ({
             )}
 
             {/* ── Integrações → Conectores ── */}
-            {activeSection === "integrations.apis" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">Conectores</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Conecte contas e serviços externos (Google, CRMs, agenda) que o agente pode usar durante a conversa.
-                  </p>
+            {activeSection === "integrations.apis" && (() => {
+              // So mostra os conectores ATIVADOS pra este agente. Os outros
+              // ficam num picker (Sheet) que abre via 'Adicionar conector'.
+              const activeProviders = SERVICE_PROVIDERS.filter((p) =>
+                savedIntegrations.includes(p.provider),
+              );
+              const inactiveProviders = SERVICE_PROVIDERS.filter((p) =>
+                !savedIntegrations.includes(p.provider),
+              );
+              return (
+                <div className="space-y-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-bold text-foreground">Conectores</h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Serviços externos que <strong>este agente</strong> usa nas conversas.
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={() => setConnectorPickerOpen(true)}>
+                      <Plug className="w-3.5 h-3.5" /> Adicionar conector
+                    </Button>
+                  </div>
+
+                  {activeProviders.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center">
+                      <Plug className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm font-medium text-foreground">Nenhum conector ativo</p>
+                      <p className="text-xs text-muted-foreground mt-1 mb-3">
+                        Adicione conectores pra dar superpoderes ao agente — agenda, CRM, pagamentos.
+                      </p>
+                      <Button size="sm" onClick={() => setConnectorPickerOpen(true)}>
+                        Escolher conectores
+                      </Button>
+                    </div>
+                  ) : (
+                    <IntegrationsGrid
+                      providers={activeProviders}
+                      variant="card"
+                      showTitle={false}
+                      onConnectedProvidersChange={(providers) => setSavedIntegrations(prev => Array.from(new Set([...prev.filter((provider) => !SERVICE_PROVIDERS.some((service) => service.provider === provider)), ...providers])))}
+                      onProviderConfigsChange={(configs) => setIntegrationConfigs(prev => ({ ...prev, ...configs }))}
+                      initialProviderConfigs={integrationConfigs}
+                      storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
+                    />
+                  )}
+
+                  {/* Picker (Sheet) com conectores nao-ativos pro user habilitar pra este agente */}
+                  <Sheet open={connectorPickerOpen} onOpenChange={setConnectorPickerOpen}>
+                    <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+                      <SheetHeader>
+                        <SheetTitle>Adicionar conector ao agente</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-4">
+                        {inactiveProviders.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-12">
+                            Todos os conectores já estão ativos neste agente.
+                          </p>
+                        ) : (
+                          <IntegrationsGrid
+                            providers={inactiveProviders}
+                            variant="card"
+                            showTitle={false}
+                            onConnectedProvidersChange={(providers) => setSavedIntegrations(prev => Array.from(new Set([...prev, ...providers])))}
+                            onProviderConfigsChange={(configs) => setIntegrationConfigs(prev => ({ ...prev, ...configs }))}
+                            initialProviderConfigs={integrationConfigs}
+                            storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
+                          />
+                        )}
+                      </div>
+                    </SheetContent>
+                  </Sheet>
                 </div>
-
-                <IntegrationsGrid
-                  providers={SERVICE_PROVIDERS}
-                  variant="card"
-                  showTitle={false}
-                  onConnectedProvidersChange={(providers) => setSavedIntegrations(prev => Array.from(new Set([...prev.filter((provider) => !SERVICE_PROVIDERS.some((service) => service.provider === provider)), ...providers])))}
-                  onProviderConfigsChange={(configs) => setIntegrationConfigs(prev => ({ ...prev, ...configs }))}
-                  initialProviderConfigs={integrationConfigs}
-                  storageKey={`${storagePrefix || "agent-detail"}-provider-configs`}
-                />
-
-                {/* MCPs e Webhooks escondidos por enquanto — não implementados.
-                    Quando entrarem no roadmap, reabilitar EmptyIntegrationSection. */}
-              </div>
-            )}
+              );
+            })()}
 
             {/* ── Recursos → Templates Email ── */}
             {activeSection === "resources.email_templates" && (
