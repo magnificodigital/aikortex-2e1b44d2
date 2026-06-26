@@ -743,13 +743,14 @@ export function IntegrationsGrid({
                 return <img src={p.logo} alt={p.label} className={cls} />;
               }
               if (p.logo) {
-                // Cores originais da marca. GitHub, Notion e OpenAI têm cores
+                // Cores originais da marca. GitHub, Notion, OpenAI e ElevenLabs têm cores
                 // únicas (preto/branco) que só funcionam em um theme. Inverter no
                 // theme oposto pra ficar visível em ambos.
                 const themeAdaptCls =
                   p.provider === "github" ? "dark:invert"
                   : p.provider === "notion" ? "invert dark:invert-0"
                   : p.provider === "openai" ? "dark:invert"
+                  : p.provider === "elevenlabs" ? "dark:invert"
                   : "";
                 return (
                   <img
