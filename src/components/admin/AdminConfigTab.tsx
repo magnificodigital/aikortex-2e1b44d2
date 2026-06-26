@@ -430,19 +430,19 @@ const AdminConfigTab = () => {
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3 min-w-0">
                   {p.logo && (
-                    <div className="w-10 h-10 rounded-lg bg-muted/50 grid place-items-center shrink-0">
+                    <div className="w-16 h-16 grid place-items-center shrink-0">
                       {p.id === "asaas" ? (
                         <>
-                          <img src={asaasLogoLight.url} alt={p.label} className="w-7 h-7 object-contain block dark:hidden" />
-                          <img src={asaasLogoDark.url} alt={p.label} className="w-7 h-7 object-contain hidden dark:block" />
+                          <img src={asaasLogoLight.url} alt={p.label} className="w-14 h-14 object-contain block dark:hidden" />
+                          <img src={asaasLogoDark.url} alt={p.label} className="w-14 h-14 object-contain hidden dark:block" />
                         </>
                       ) : p.id === "telnyx" ? (
-                        <img src={telnyxLogo.url} alt={p.label} className="w-9 h-9 object-contain" />
+                        <img src={telnyxLogo.url} alt={p.label} className="w-14 h-14 object-contain" />
                       ) : (
                         <img
                           src={p.logo}
                           alt={p.label}
-                          className={`w-7 h-7 object-contain ${
+                          className={`w-8 h-8 object-contain ${
                             ["openai", "elevenlabs", "livekit"].includes(p.id) ? "dark:invert" : ""
                           }`}
                           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
