@@ -150,7 +150,7 @@ const PROVIDERS: ProviderGroup[] = [
     label: "Telnyx",
     category: "telefonia",
     description: "Números telefônicos reais (BR + global), webhooks de chamadas inbound/outbound.",
-    logo: "https://cdn.simpleicons.org/telnyx/_/00E3AA",
+    logo: telnyxLogo.url,
     apiKeyUrl: "https://portal.telnyx.com/#/app/api-keys",
     apiKeyUrlLabel: "portal.telnyx.com",
     fields: [
@@ -190,7 +190,7 @@ const PROVIDERS: ProviderGroup[] = [
     label: "Asaas (Master)",
     category: "pagamentos",
     description: "Conta master da Aikortex — cobrança recorrente dos clientes finais com split nativo pras agências.",
-    logo: "https://cdn.simpleicons.org/asaas/_/00B96B",
+    logo: asaasLogoLight.url,
     apiKeyUrl: "https://www.asaas.com/integracao-api",
     apiKeyUrlLabel: "asaas.com",
     fields: [
