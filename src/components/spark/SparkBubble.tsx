@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Loader2, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { fnUrl } from "@/lib/supabase-url";
 
 interface SparkBubbleProps {
   /** Modo de chegada:
-   *  - "voice": bubble ATIVO HANDS-FREE — Spark lê resposta do wizard em
-   *    voz alta, escuta o user, manda pro wizard, ciclo continuo.
+   *  - "voice": bubble ATIVO HANDS-FREE — Spark lê resposta do wizard via
+   *    ElevenLabs (mesma voz da Spark), escuta o user, manda pro wizard.
    *  - "text":  bubble visivel mas DESATIVADO — so sinal de presenca. */
   mode: "voice" | "text";
   /** Wizard esta processando a mensagem anterior. */
   isProcessing?: boolean;
-  /** Ultima mensagem do agente no chat. Quando muda, Spark le em voz alta
-   *  e depois retoma a escuta. */
+  /** Ultima mensagem do agente no chat. Quando muda, Spark le em voz alta. */
   latestAgentMessage?: string | null;
-  /** Bubble entrega fala capturada pra parent (AgentDetail forwarda
-   *  pro wizardChat.sendMessage). */
+  /** Bubble entrega fala capturada pra parent (forwarda pro wizard.sendMessage). */
   onTranscript?: (text: string) => void;
 }
 
@@ -26,10 +26,10 @@ const RESUME_DELAY_MS = 400;
 /** Limpa markdown, emoji, bullet, etc. pro TTS soar natural. */
 function cleanForTts(text: string): string {
   return text
-    .replace(/[*_`#]/g, "")           // markdown chars
-    .replace(/^[\s•\-\*]+/gm, "")     // bullets
-    .replace(/[\u{1F300}-\u{1F9FF}]/gu, "") // emojis comuns
-    .replace(/[\u{2600}-\u{27BF}]/gu, "")   // smileys e simbolos
+    .replace(/[*_`#]/g, "")
+    .replace(/^[\s•\-\*]+/gm, "")
+    .replace(/[\u{1F300}-\u{1F9FF}]/gu, "")
+    .replace(/[\u{2600}-\u{27BF}]/gu, "")
     .replace(/\n+/g, ". ")
     .replace(/\s+/g, " ")
     .trim();
@@ -44,6 +44,13 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
   const recognitionRef = useRef<any>(null);
   const finalTextRef = useRef("");
   const onTranscriptRef = useRef(onTranscript);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  // initSeen: trava UMA vez quando o bubble ve a primeira mensagem do
+  // wizard. Essa primeira mensagem eh o GREETING que o Spark do home ja
+  // leu em voz alta — bubble NAO pode repetir.
+  const initSeenRef = useRef(false);
+  // Ultima string ja falada pelo bubble (evita falar a mesma resposta 2x
+  // durante streaming).
   const spokenMessageRef = useRef<string>("");
   const ranInitialGuardRef = useRef(false);
 
@@ -69,7 +76,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
 
     const rec = new SR();
     rec.lang = "pt-BR";
-    rec.continuous = false;       // para sozinho na pausa natural
+    rec.continuous = false;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
@@ -115,51 +122,87 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
     }
   }, []);
 
-  /** TTS local via Web Speech API (gratis, voz PT-BR nativa do SO). */
-  const speakMessage = useCallback((text: string) => {
-    try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+  /** TTS via browser-tts (ElevenLabs) — voz consistente com o Spark do home. */
+  const speakMessage = useCallback(async (text: string) => {
     const clean = cleanForTts(text);
     if (!clean) return;
 
-    const utter = new SpeechSynthesisUtterance(clean);
-    utter.lang = "pt-BR";
-    utter.rate = 1.05;
-    utter.pitch = 1.0;
-    utter.onstart = () => setSpeaking(true);
-    utter.onend = () => setSpeaking(false);
-    utter.onerror = () => setSpeaking(false);
-
-    try { window.speechSynthesis.speak(utter); } catch { setSpeaking(false); }
-  }, []);
-
-  // Inicializa spokenMessageRef com a mensagem que ja esta na tela quando o
-  // bubble monta. O greeting inicial (3 perguntas) ja foi falado pelo Spark
-  // do home — bubble NAO repete isso. So fala mensagens NOVAS do wizard.
-  useEffect(() => {
-    if (latestAgentMessage) {
-      spokenMessageRef.current = latestAgentMessage;
+    // Cancela TTS anterior se houver
+    if (ttsAudioRef.current) {
+      try { ttsAudioRef.current.pause(); } catch { /* noop */ }
+      ttsAudioRef.current = null;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    setSpeaking(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setSpeaking(false);
+        return;
+      }
+      const resp = await fetch(fnUrl("browser-tts"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ text: clean }),
+      });
+      const ct = resp.headers.get("content-type") || "";
+      if (!resp.ok || !ct.includes("audio")) {
+        console.warn("[spark-bubble] browser-tts falhou:", resp.status);
+        setSpeaking(false);
+        return;
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      ttsAudioRef.current = audio;
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+        setSpeaking(false);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+        setSpeaking(false);
+      };
+      await audio.play().catch(() => {
+        URL.revokeObjectURL(url);
+        setSpeaking(false);
+      });
+    } catch (e) {
+      console.warn("[spark-bubble] speakMessage exception:", e);
+      setSpeaking(false);
+    }
   }, []);
 
-  // Quando wizard adiciona uma resposta nova, Spark fala em voz alta.
-  // So roda em modo voz, quando nao esta streaming, e quando a mensagem
-  // mudou em relacao a ultima ja falada.
+  // Quando o wizard adiciona uma mensagem nova, Spark le em voz alta.
+  // CUIDADO: a PRIMEIRA mensagem que o bubble ve eh o greeting inicial
+  // (3 perguntas do Jarvis) que o Spark do HOME ja leu via ElevenLabs.
+  // Bubble NAO pode repetir — usa initSeenRef pra marcar isso como
+  // "ja foi falado" sem chamar speakMessage.
   useEffect(() => {
     if (!active) return;
     if (!latestAgentMessage) return;
+    if (isProcessing) return; // streaming, espera completar
+
+    // Primeira mensagem que vemos = greeting inicial. Marca como ja-falada.
+    if (!initSeenRef.current) {
+      initSeenRef.current = true;
+      spokenMessageRef.current = latestAgentMessage;
+      return;
+    }
+
     if (latestAgentMessage === spokenMessageRef.current) return;
-    if (isProcessing) return; // wizard ainda streaming, espera completar
+
     spokenMessageRef.current = latestAgentMessage;
-    // Para de ouvir antes de falar pra nao capturar o proprio TTS.
     if (recognitionRef.current) stopListening();
-    speakMessage(latestAgentMessage);
+    void speakMessage(latestAgentMessage);
   }, [latestAgentMessage, isProcessing, active, speakMessage, stopListening]);
 
-  // Auto-listen hands-free. Dispara quando bubble deveria estar ouvindo mas
-  // nao esta — ou seja:
-  //  - voice mode E nao listening E nao processing E nao speaking E nao userStopped
-  // Delay maior na primeira vez (espera Spark do home falar) e curto depois.
+  // Auto-listen hands-free. Dispara quando bubble deveria ouvir mas nao esta.
   useEffect(() => {
     if (!active) return;
     if (listening) return;
@@ -177,17 +220,22 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
     return () => window.clearTimeout(t);
   }, [active, listening, isProcessing, speaking, userStopped, startListening]);
 
-  // Cleanup no unmount: para mic E TTS
+  // Cleanup no unmount
   useEffect(() => () => {
     stopListening();
-    try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+    if (ttsAudioRef.current) {
+      try { ttsAudioRef.current.pause(); } catch { /* noop */ }
+      ttsAudioRef.current = null;
+    }
   }, [stopListening]);
 
   const handleClick = () => {
     if (!active) return;
     if (speaking) {
-      // Skip da fala atual
-      try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+      if (ttsAudioRef.current) {
+        try { ttsAudioRef.current.pause(); } catch { /* noop */ }
+        ttsAudioRef.current = null;
+      }
       setSpeaking(false);
       return;
     }
