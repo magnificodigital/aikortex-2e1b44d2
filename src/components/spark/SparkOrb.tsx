@@ -77,7 +77,7 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
           const radius = 108 + (i % 5) * 14 + (i % 7) * 3;
           const cx = 130 + Math.cos(angle) * radius;
           const cy = 130 + Math.sin(angle) * radius;
-          const r = 0.6 + (i % 3) * 0.35;
+          const r = 0.9 + (i % 3) * 0.45;
           return (
             <circle
               key={i}
