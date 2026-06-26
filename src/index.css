@@ -716,7 +716,7 @@ body::after {
 .orb-error .orb-band,
 .orb-error .orb-ring,
 .orb-error .orb-arc,
-.orb-error .orb-tick {
+.orb-error .orb-point {
   --orb-tint: 239, 68, 68;
   --orb-white: 255, 220, 220;
 }
