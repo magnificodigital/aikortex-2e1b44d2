@@ -98,16 +98,16 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
           className="absolute inset-0 pointer-events-none"
           style={{
             background: `
-              linear-gradient(90deg, transparent 47%, rgb(${white} / 0.45) 49.5%, rgb(${white} / 0.7) 50%, rgb(${white} / 0.45) 50.5%, transparent 53%),
-              linear-gradient(90deg, transparent 40%, rgb(${tint} / 0.22) 42.5%, transparent 45%),
-              linear-gradient(90deg, transparent 55%, rgb(${tint} / 0.22) 57.5%, transparent 60%),
-              linear-gradient(90deg, transparent 33%, rgb(${tint} / 0.14) 35%, transparent 37%),
-              linear-gradient(90deg, transparent 63%, rgb(${tint} / 0.14) 65%, transparent 67%)
+              linear-gradient(90deg, transparent 47%, rgb(${white} / ${isSpeaking ? 0.65 : 0.45}) 49.5%, rgb(${white} / ${isSpeaking ? 0.9 : 0.7}) 50%, rgb(${white} / ${isSpeaking ? 0.65 : 0.45}) 50.5%, transparent 53%),
+              linear-gradient(90deg, transparent 40%, rgb(${tint} / ${isSpeaking ? 0.34 : 0.22}) 42.5%, transparent 45%),
+              linear-gradient(90deg, transparent 55%, rgb(${tint} / ${isSpeaking ? 0.34 : 0.22}) 57.5%, transparent 60%),
+              linear-gradient(90deg, transparent 33%, rgb(${tint} / ${isSpeaking ? 0.22 : 0.14}) 35%, transparent 37%),
+              linear-gradient(90deg, transparent 63%, rgb(${tint} / ${isSpeaking ? 0.22 : 0.14}) 65%, transparent 67%)
             `,
             mixBlendMode: "screen",
             filter: `blur(${2.5 + reactive * 1.5}px)`,
-            animation: `plasma-bands ${bands} ease-in-out infinite`,
-            opacity: 0.75,
+            animation: `plasma-bands ${isSpeaking ? "5s" : bands} ease-in-out infinite`,
+            opacity: isSpeaking ? 0.9 : 0.75,
           }}
         />
 
