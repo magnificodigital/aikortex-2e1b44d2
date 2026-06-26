@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, EyeOff, Save, CheckCircle2, AlertCircle, ExternalLink, Cpu } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Eye, EyeOff, Save, CheckCircle2, AlertCircle, ExternalLink, Cpu, Power } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -303,6 +304,51 @@ const AdminConfigTab = () => {
     return "partial";
   };
 
+  /** Provider esta ativo? Default true (chave configurada serve por padrao).
+   *  Quando admin clica 'desativar', salva '{providerId}_active' = 'false'. */
+  const isProviderActive = (p: ProviderGroup): boolean => {
+    const flag = configValues[`${p.id}_active`];
+    if (flag === "false") return false;
+    return true; // default = active
+  };
+
+  const toggleProviderActive = async (p: ProviderGroup, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentlyActive = isProviderActive(p);
+    const newValue = currentlyActive ? "false" : "true";
+    const key = `${p.id}_active`;
+
+    // Optimistic update
+    setConfigValues((prev) => ({ ...prev, [key]: newValue }));
+
+    try {
+      const { error } = await (supabase.from("platform_config" as any) as any).upsert(
+        {
+          key,
+          value: newValue,
+          description: `Flag ativa/inativa pro provedor ${p.label}`,
+          is_secret: false,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.id,
+        },
+        { onConflict: "key" },
+      );
+      if (error) {
+        // Reverte optimistic
+        setConfigValues((prev) => ({ ...prev, [key]: currentlyActive ? "true" : "false" }));
+        toast.error(`Falha ao ${currentlyActive ? "desativar" : "ativar"} ${p.label}`);
+        return;
+      }
+      if (newValue === "true") {
+        setSavedKeys((prev) => new Set(prev).add(key));
+      }
+      toast.success(`${p.label} ${currentlyActive ? "desativado" : "ativado"}`);
+    } catch {
+      setConfigValues((prev) => ({ ...prev, [key]: currentlyActive ? "true" : "false" }));
+      toast.error("Erro inesperado");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -324,17 +370,20 @@ const AdminConfigTab = () => {
         {PROVIDERS.map((p) => {
           const status = providerStatus(p);
           const catMeta = CATEGORY_META[p.category];
+          const active = isProviderActive(p);
           return (
-            <button
+            <div
               key={p.id}
-              onClick={() => setOpenProvider(p)}
               className={cn(
-                "text-left rounded-lg border bg-card hover:bg-accent/30 transition-all p-4 group",
+                "relative rounded-lg border bg-card transition-all p-4 cursor-pointer",
                 "hover:border-primary/40 hover:shadow-md",
-                status === "configured" && "border-emerald-500/30 bg-emerald-500/[0.02]",
-                status === "partial" && "border-amber-500/30 bg-amber-500/[0.02]",
-                status === "empty" && "border-border",
+                !active && "opacity-60 grayscale",
+                active && status === "configured" && "border-emerald-500/30 bg-emerald-500/[0.02]",
+                active && status === "partial" && "border-amber-500/30 bg-amber-500/[0.02]",
+                (active && status === "empty") && "border-border",
+                !active && "border-border",
               )}
+              onClick={() => setOpenProvider(p)}
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -355,16 +404,30 @@ const AdminConfigTab = () => {
                     </Badge>
                   </div>
                 </div>
-                {status === "configured" && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
-                {status === "partial" && <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />}
+                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {active && status === "configured" && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                  {active && status === "partial" && <AlertCircle className="w-4 h-4 text-amber-500" />}
+                  <Switch
+                    checked={active}
+                    onClick={(e) => toggleProviderActive(p, e as unknown as React.MouseEvent)}
+                    title={active ? "Desativar provedor" : "Ativar provedor"}
+                  />
+                </div>
               </div>
 
               <p className="text-[11px] text-muted-foreground line-clamp-2 mb-2">{p.description}</p>
 
-              <div className="text-[10px] text-muted-foreground">
-                {p.fields.filter((f) => savedKeys.has(f.key)).length}/{p.fields.length} campo{p.fields.length === 1 ? "" : "s"} configurado{p.fields.length === 1 ? "" : "s"}
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>
+                  {p.fields.filter((f) => savedKeys.has(f.key)).length}/{p.fields.length} campo{p.fields.length === 1 ? "" : "s"} configurado{p.fields.length === 1 ? "" : "s"}
+                </span>
+                {!active && (
+                  <span className="inline-flex items-center gap-1 text-amber-500/80 font-medium">
+                    <Power className="w-2.5 h-2.5" /> Inativo
+                  </span>
+                )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -375,14 +438,25 @@ const AdminConfigTab = () => {
           {openProvider && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
-                  {openProvider.logo && (
-                    <div className="w-9 h-9 rounded-lg bg-muted/50 grid place-items-center">
-                      <img src={openProvider.logo} alt={openProvider.label} className="w-6 h-6 object-contain" />
-                    </div>
-                  )}
-                  {openProvider.label}
-                </DialogTitle>
+                <div className="flex items-start justify-between gap-3">
+                  <DialogTitle className="flex items-center gap-3">
+                    {openProvider.logo && (
+                      <div className="w-9 h-9 rounded-lg bg-muted/50 grid place-items-center">
+                        <img src={openProvider.logo} alt={openProvider.label} className="w-6 h-6 object-contain" />
+                      </div>
+                    )}
+                    {openProvider.label}
+                  </DialogTitle>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {isProviderActive(openProvider) ? "Ativo" : "Inativo"}
+                    </span>
+                    <Switch
+                      checked={isProviderActive(openProvider)}
+                      onClick={(e) => toggleProviderActive(openProvider, e as unknown as React.MouseEvent)}
+                    />
+                  </div>
+                </div>
                 <DialogDescription className="text-xs">
                   {openProvider.description}
                   {openProvider.apiKeyUrl && (
