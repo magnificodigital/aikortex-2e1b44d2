@@ -851,6 +851,9 @@ Se user falar de algum desses, diga claramente o que falta.
       // localStorage.setItem("aikortex_wizard_consultive", "1")
       // Default desligado (comportamento atual idêntico).
       consultive: (typeof window !== "undefined" && window.localStorage?.getItem("aikortex_wizard_consultive") === "1") || undefined,
+      // SparkBubble em modo voz le todas as respostas via TTS — backend
+      // injeta override Jarvis (curto, sem markdown, 1 pergunta por vez).
+      voiceMode: sparkBubbleMode === "voice",
     }
   );
 

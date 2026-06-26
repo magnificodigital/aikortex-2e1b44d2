@@ -122,6 +122,10 @@ interface UseAgentChatOptions {
   disableCrmExtraction?: boolean;
   /** G6 — modo consultivo do wizard (perguntas focadas em problema operacional). */
   consultive?: boolean;
+  /** Quando true, sinaliza pro backend que a resposta sera lida via TTS
+   *  (SparkBubble). Backend injeta override Jarvis: respostas curtas, sem
+   *  markdown, uma pergunta por vez. */
+  voiceMode?: boolean;
 }
 
 function deriveProvider(model?: string): string | undefined {
@@ -256,6 +260,7 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
         if (options.mode === "wizard-setup") {
           payload.agentType = options.agentType || "Custom";
           if (options.consultive) payload.consultive = true;
+          if (options.voiceMode) payload.voiceMode = true;
           // Master v7.4 §13.4: tipos contextualizados por nicho. Quando vem,
           // app-chat adapta exemplos/terminologia ao setor brasileiro.
           if (options.niche) payload.niche = options.niche;

@@ -283,10 +283,32 @@ const AGENT_TYPE_FOCUS: Record<string, string> = {
  * Sempre contextualizado por nicho (§13.4 + §15.2). Quando nicho não vem,
  * primeira pergunta identifica o nicho.
  */
+// Override Jarvis-style quando o user esta conversando por VOZ via Spark
+// bubble. TTS le a resposta em voz alta — markdown vira lixo audivel.
+const VOICE_MODE_OVERRIDE = `
+
+# 🎤 MODO VOZ ATIVO (SOBREPÕE FORMATAÇÃO ACIMA)
+
+O usuário está conversando contigo POR VOZ — sua resposta vai ser LIDA em voz alta via TTS ElevenLabs. As regras de markdown/headings/listas acima NÃO SE APLICAM. Em vez disso:
+
+- **ZERO markdown**: sem ##, sem **, sem listas, sem emojis, sem code blocks.
+- **MUITO curto**: 1 a 2 frases. Máximo 25 palavras por resposta. Mais que isso o user perde a atenção.
+- **UMA pergunta por vez**: foca em descobrir UMA coisa antes da próxima. Nunca múltiplas perguntas no mesmo turno.
+- **Direto ao ponto**: nada de "Vou agora...", "Que ótima ideia!", "Beleza, vamos ver...". Vá pro essencial.
+- **Tom Jarvis**: confiante, calmo, eficiente. Sem hedging ("talvez", "se possível"), sem dúvida.
+- **Termina com a pergunta** (única) no fim da resposta.
+
+Exemplos do tom certo:
+- "Entendido. Vai atender clientes finais. Qual o tipo de produto principal?"
+- "Loja de roupas. Que dúvidas o agente vai responder, tamanhos ou trocas?"
+- "Anotado. E quando o cliente pedir pra falar com humano, como sinaliza?"
+
+Quando tiver dados suficientes pra estruturar o agente, chama commit_draft normalmente — sem narrar o processo, só executa.`;
+
 function buildWizardSystemPrompt(
   agentType: string,
   niche?: string,
-  ctx?: { phase?: "DESCOBERTA" | "PLANO" | "CRIACAO" | "POST_COMMIT"; agencyName?: string | null; userMessageCount?: number; consultive?: boolean },
+  ctx?: { phase?: "DESCOBERTA" | "PLANO" | "CRIACAO" | "POST_COMMIT"; agencyName?: string | null; userMessageCount?: number; consultive?: boolean; voiceMode?: boolean },
 ): string {
   const normalizedType = ["SDR", "BDR", "SAC", "CS"].includes(agentType.toUpperCase())
     ? agentType.toUpperCase()
@@ -979,7 +1001,7 @@ Diga: "Marquei a integração X — ✓ sua conta já está conectada, então o 
 NUNCA diga "está configurada", "está pronta", "foi configurada com sucesso". Isso é MENTIRA — só a INTENÇÃO foi salva.
 Diga ALGO COMO: "Marquei o Google Agenda como integração desejada, mas ⚠️ a conexão OAuth ainda não foi feita. Pra funcionar de verdade o user precisa conectar em Configurações → Integrações → Google Calendar. Quer fazer agora ou continuamos a configuração e você conecta depois?"
 
-Se você disser "está configurada" quando o warning veio, o usuário vai testar e descobrir que não funciona — perde toda a confiança. SEMPRE leia o campo \`warning\` e repasse pro user de forma clara.`;
+Se você disser "está configurada" quando o warning veio, o usuário vai testar e descobrir que não funciona — perde toda a confiança. SEMPRE leia o campo \`warning\` e repasse pro user de forma clara.${ctx?.voiceMode ? VOICE_MODE_OVERRIDE : ""}`;
 }
 
 /* ── Structuring prompt ── */
@@ -1632,13 +1654,18 @@ serve(async (req) => {
         // consultivas focadas em problema operacional.
         const consultive = (body as any).consultive === true
           || req.headers.get("x-wizard-consultive") === "1";
+        // voiceMode = wizard esta sendo controlado pelo SparkBubble (TTS le
+        // a resposta em voz alta). Override forca respostas curtas, sem
+        // markdown, uma pergunta por vez — Jarvis-style.
+        const voiceMode = (body as any).voiceMode === true
+          || req.headers.get("x-wizard-voice-mode") === "1";
 
         let wizardSystem = buildWizardSystemPrompt(
           String((body as Record<string, unknown>).agentType || "Custom"),
           typeof (body as any).niche === "string" && (body as any).niche
             ? (body as any).niche
             : undefined,
-          { phase, agencyName, userMessageCount, consultive },
+          { phase, agencyName, userMessageCount, consultive, voiceMode },
         );
 
         // Detecta arquétipo da PRIMEIRA mensagem do user (a descrição inicial).
