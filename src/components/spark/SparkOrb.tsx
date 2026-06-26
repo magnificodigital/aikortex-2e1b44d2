@@ -77,43 +77,47 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
       </svg>
 
       {/* Anel orbital 1 — tilt X */}
-      <span
-        className="absolute inset-[6%] rounded-full pointer-events-none"
-        style={{
-          border: `1px solid rgb(${tint} / 0.45)`,
-          boxShadow: `0 0 ${10 + reactive * 20}px rgb(${tint} / 0.4), inset 0 0 ${10 + reactive * 20}px rgb(${tint} / 0.2)`,
-          transform: "rotateX(72deg)",
-          animation: `jarvis-spin ${ringSpeedFast} linear infinite`,
-        }}
-      />
+      <span className="absolute inset-[6%] pointer-events-none" style={{ transform: "rotateX(72deg)", transformStyle: "preserve-3d" }}>
+        <span
+          className="absolute inset-0 rounded-full block"
+          style={{
+            border: `1px solid rgb(${tint} / 0.45)`,
+            boxShadow: `0 0 ${10 + reactive * 20}px rgb(${tint} / 0.4), inset 0 0 ${10 + reactive * 20}px rgb(${tint} / 0.2)`,
+            animation: `jarvis-spin ${ringSpeedFast} linear infinite`,
+          }}
+        />
+      </span>
       {/* Anel orbital 2 — tilt Y */}
-      <span
-        className="absolute inset-[10%] rounded-full pointer-events-none"
-        style={{
-          border: `1px solid rgb(${tintSoft} / 0.5)`,
-          boxShadow: `0 0 ${8 + reactive * 16}px rgb(${tint} / 0.35)`,
-          transform: "rotateY(72deg)",
-          animation: `jarvis-spin ${ringSpeedMed} linear infinite reverse`,
-        }}
-      />
+      <span className="absolute inset-[10%] pointer-events-none" style={{ transform: "rotateY(72deg)", transformStyle: "preserve-3d" }}>
+        <span
+          className="absolute inset-0 rounded-full block"
+          style={{
+            border: `1px solid rgb(${tintSoft} / 0.5)`,
+            boxShadow: `0 0 ${8 + reactive * 16}px rgb(${tint} / 0.35)`,
+            animation: `jarvis-spin ${ringSpeedMed} linear infinite reverse`,
+          }}
+        />
+      </span>
       {/* Anel orbital 3 — diagonal */}
-      <span
-        className="absolute inset-[14%] rounded-full pointer-events-none"
-        style={{
-          border: `1px dashed rgb(${tint} / 0.35)`,
-          transform: "rotate3d(1, 1, 0, 70deg)",
-          animation: `jarvis-spin ${ringSpeedMed} linear infinite`,
-        }}
-      />
+      <span className="absolute inset-[14%] pointer-events-none" style={{ transform: "rotate3d(1, 1, 0, 70deg)", transformStyle: "preserve-3d" }}>
+        <span
+          className="absolute inset-0 rounded-full block"
+          style={{
+            border: `1px dashed rgb(${tint} / 0.35)`,
+            animation: `jarvis-spin ${ringSpeedMed} linear infinite`,
+          }}
+        />
+      </span>
       {/* Anel orbital 4 — outro eixo */}
-      <span
-        className="absolute inset-[18%] rounded-full pointer-events-none"
-        style={{
-          border: `1px solid rgb(${tintSoft} / 0.3)`,
-          transform: "rotate3d(1, -1, 0, 60deg)",
-          animation: `jarvis-spin ${ringSpeedSlow} linear infinite reverse`,
-        }}
-      />
+      <span className="absolute inset-[18%] pointer-events-none" style={{ transform: "rotate3d(1, -1, 0, 60deg)", transformStyle: "preserve-3d" }}>
+        <span
+          className="absolute inset-0 rounded-full block"
+          style={{
+            border: `1px solid rgb(${tintSoft} / 0.3)`,
+            animation: `jarvis-spin ${ringSpeedSlow} linear infinite reverse`,
+          }}
+        />
+      </span>
 
       {/* Núcleo plasma — esfera central reativa */}
       <span
