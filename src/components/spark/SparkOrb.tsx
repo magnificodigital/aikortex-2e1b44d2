@@ -1,4 +1,7 @@
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import orbMp4 from "@/assets/spark/orb.mp4";
+import orbWebm from "@/assets/spark/orb.webm";
 
 type OrbState = "idle" | "connecting" | "listening" | "speaking" | "error";
 
@@ -10,20 +13,48 @@ interface SparkOrbProps {
   disabled?: boolean;
 }
 
-// Astro-orb: void escuro com anel circular visivel, 2 polos brancos
-// brilhantes (12h e 6h) e streaks verticais laterais. Espelha a referencia
-// astrofotografica em paleta neutra Aikortex (branco/silver sobre near-black).
+// Jarvis-style plasma orb: hemisferio escuro com penas de plasma branco-azuladas
+// (referencia: chrysanthemum plasma gif). Movimento real = video loop. Reage as
+// falas controlando playbackRate, brilho e escala via `intensity` + `state`.
 export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }: SparkOrbProps) {
-  const isActive = state === "listening" || state === "speaking";
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const isError = state === "error";
-  const reactive = isActive ? Math.min(intensity, 1) : 0;
-  const scale = 1 + reactive * 0.05;
+  const isListening = state === "listening";
+  const isSpeaking = state === "speaking";
+  const isConnecting = state === "connecting";
+  const isActive = isListening || isSpeaking;
+  const reactive = isActive ? Math.min(Math.max(intensity, 0), 1) : 0;
 
-  const poleAlpha = 0.7 + reactive * 0.3;
-  const sideAlpha = 0.22 + reactive * 0.25;
+  // Playback rate reage a fala. Speaking = mais agitado, listening = leve,
+  // idle = bem devagar (parece respirando).
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    let rate = 0.5;
+    if (isSpeaking) rate = 0.9 + reactive * 1.1;       // 0.9 - 2.0
+    else if (isListening) rate = 0.7 + reactive * 0.6; // 0.7 - 1.3
+    else if (isConnecting) rate = 1.2;
+    else rate = 0.45;                                    // idle respirando
+    v.playbackRate = Math.max(0.25, Math.min(rate, 2.5));
+  }, [isSpeaking, isListening, isConnecting, reactive]);
 
-  // Paleta Aikortex: branco frio neutro. Error vira vermelho frio.
-  const tint = isError ? "239 68 68" : "226 232 240"; // slate-200
+  // Auto-play robusto (alguns browsers pausam quando muda src/visibilidade).
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const tryPlay = () => v.play().catch(() => {});
+    tryPlay();
+    v.addEventListener("pause", tryPlay);
+    return () => v.removeEventListener("pause", tryPlay);
+  }, []);
+
+  const scale = 1 + reactive * 0.06;
+  const brightness = 0.85 + reactive * 0.5 + (isSpeaking ? 0.15 : 0);
+  const saturate = isError ? 0 : 1;
+  // Hue rotate: error = vermelho, default = azul nativo do gif.
+  const hueRotate = isError ? 140 : 0;
+  const tintRgb = isError ? "239 68 68" : "186 220 255";
 
   return (
     <button
@@ -32,167 +63,84 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
       disabled={disabled}
       aria-label="Spark voice toggle"
       className={cn(
-        "relative grid place-items-center rounded-full",
+        "relative grid place-items-center rounded-full overflow-hidden",
         "outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-4 focus-visible:ring-offset-background",
-        "transition-transform duration-200 will-change-transform",
+        "transition-transform duration-300 will-change-transform",
         disabled && "opacity-60 cursor-not-allowed",
       )}
       style={{ width: size, height: size, transform: `scale(${scale})` }}
     >
-      {/* 1. Fundo void — near-black com leve gradient */}
+      {/* Halo externo difuso — pulsa com a voz */}
+      <span
+        className={cn(
+          "absolute inset-[-15%] rounded-full blur-3xl pointer-events-none transition-opacity duration-500",
+          isActive ? "opacity-90" : isConnecting ? "opacity-60" : "opacity-40",
+        )}
+        style={{
+          background: `radial-gradient(circle, rgb(${tintRgb} / ${0.25 + reactive * 0.35}) 0%, transparent 65%)`,
+        }}
+      />
+
+      {/* Fundo void */}
       <span
         className="absolute inset-0 rounded-full"
         style={{
           background:
-            "radial-gradient(circle at 50% 50%, rgb(8 10 16) 0%, rgb(3 4 9) 65%, rgb(0 0 3) 100%)",
+            "radial-gradient(circle at 50% 50%, rgb(6 8 14) 0%, rgb(2 3 8) 70%, rgb(0 0 2) 100%)",
         }}
       />
 
-      {/* 2. Halo externo difuso */}
-      <span
-        className={cn(
-          "absolute inset-[-10%] rounded-full blur-3xl pointer-events-none transition-opacity duration-500",
-          isActive ? "opacity-80" : "opacity-45",
-        )}
+      {/* Video plasma — o coração do orbe */}
+      <video
+        ref={videoRef}
+        className="absolute inset-0 w-full h-full object-cover rounded-full pointer-events-none transition-[filter] duration-300"
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
         style={{
-          background: `radial-gradient(circle, rgb(${tint} / 0.28) 0%, transparent 65%)`,
+          filter: `brightness(${brightness}) saturate(${saturate}) hue-rotate(${hueRotate}deg) contrast(1.05)`,
+          mixBlendMode: "screen",
         }}
-      />
-
-      {/* 3. Anel circular — contorno principal da esfera (faint glow ring) */}
-      <span
-        className="absolute inset-[12%] rounded-full pointer-events-none"
-        style={{
-          boxShadow: `
-            inset 0 0 0 1px rgb(${tint} / 0.18),
-            inset 0 0 40px rgb(${tint} / 0.12),
-            0 0 30px rgb(${tint} / 0.1)
-          `,
-        }}
-      />
-
-      {/* 4. Streak vertical esquerdo — fino e suave */}
-      <span
-        className="absolute pointer-events-none blur-[3px]"
-        style={{
-          left: `${size * 0.14}px`,
-          top: `${size * 0.22}px`,
-          width: `${size * 0.025}px`,
-          height: `${size * 0.56}px`,
-          background: `linear-gradient(to bottom, transparent 0%, rgb(${tint} / ${sideAlpha}) 40%, rgb(${tint} / ${sideAlpha * 0.85}) 60%, transparent 100%)`,
-          borderRadius: "50%",
-        }}
-      />
-
-      {/* 5. Streak vertical direito */}
-      <span
-        className="absolute pointer-events-none blur-[3px]"
-        style={{
-          right: `${size * 0.14}px`,
-          top: `${size * 0.22}px`,
-          width: `${size * 0.025}px`,
-          height: `${size * 0.56}px`,
-          background: `linear-gradient(to bottom, transparent 0%, rgb(${tint} / ${sideAlpha}) 40%, rgb(${tint} / ${sideAlpha * 0.85}) 60%, transparent 100%)`,
-          borderRadius: "50%",
-        }}
-      />
-
-      {/* 6. POLO SUPERIOR — arco luminoso largo */}
-      <span
-        className="absolute pointer-events-none transition-all duration-300"
-        style={{
-          top: `${size * 0.09}px`,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: `${size * 0.6}px`,
-          height: `${size * 0.16}px`,
-          background: `radial-gradient(ellipse at center bottom, rgb(${tint} / ${poleAlpha}) 0%, rgb(${tint} / ${poleAlpha * 0.5}) 35%, transparent 75%)`,
-          filter: "blur(5px)",
-          borderRadius: "50%",
-        }}
-      />
-      {/* 6b. Hot spot superior — nucleo branco quente */}
-      <span
-        className="absolute pointer-events-none transition-all duration-300"
-        style={{
-          top: `${size * 0.13}px`,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: `${size * 0.32}px`,
-          height: `${size * 0.06}px`,
-          background: `radial-gradient(ellipse at center, rgba(255,255,255,${0.85 + reactive * 0.15}) 0%, rgb(${tint} / 0.5) 45%, transparent 80%)`,
-          filter: "blur(2px)",
-          borderRadius: "50%",
-        }}
-      />
-
-      {/* 7. POLO INFERIOR — espelhado */}
-      <span
-        className="absolute pointer-events-none transition-all duration-300"
-        style={{
-          bottom: `${size * 0.09}px`,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: `${size * 0.6}px`,
-          height: `${size * 0.16}px`,
-          background: `radial-gradient(ellipse at center top, rgb(${tint} / ${poleAlpha}) 0%, rgb(${tint} / ${poleAlpha * 0.5}) 35%, transparent 75%)`,
-          filter: "blur(5px)",
-          borderRadius: "50%",
-        }}
-      />
-      {/* 7b. Hot spot inferior */}
-      <span
-        className="absolute pointer-events-none transition-all duration-300"
-        style={{
-          bottom: `${size * 0.13}px`,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: `${size * 0.32}px`,
-          height: `${size * 0.06}px`,
-          background: `radial-gradient(ellipse at center, rgba(255,255,255,${0.85 + reactive * 0.15}) 0%, rgb(${tint} / 0.5) 45%, transparent 80%)`,
-          filter: "blur(2px)",
-          borderRadius: "50%",
-        }}
-      />
-
-      {/* 8. Grain noise — textura astrofoto */}
-      <svg
-        className="absolute inset-0 rounded-full opacity-40 mix-blend-overlay pointer-events-none"
-        width="100%" height="100%"
       >
-        <filter id={`spark-grain-${size}`}>
-          <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch" />
-          <feColorMatrix values="0 0 0 0 0.8  0 0 0 0 0.85  0 0 0 0 0.95  0 0 0 0.55 0" />
-        </filter>
-        <rect width="100%" height="100%" filter={`url(#spark-grain-${size})`} />
-      </svg>
+        <source src={orbWebm} type="video/webm" />
+        <source src={orbMp4} type="video/mp4" />
+      </video>
 
-      {/* 9. Aneis pulsantes — feedback de listening/speaking */}
-      {state === "listening" && (
+      {/* Anel de contorno sutil */}
+      <span
+        className="absolute inset-0 rounded-full pointer-events-none"
+        style={{
+          boxShadow: `inset 0 0 0 1px rgb(${tintRgb} / 0.15), inset 0 0 40px rgb(${tintRgb} / 0.08)`,
+        }}
+      />
+
+      {/* Feedback rings — listening/speaking */}
+      {isListening && (
         <span
-          className="absolute inset-0 rounded-full border animate-ping"
-          style={{ borderColor: `rgb(${tint} / 0.4)` }}
+          className="absolute inset-0 rounded-full border animate-ping pointer-events-none"
+          style={{ borderColor: `rgb(${tintRgb} / 0.4)` }}
         />
       )}
-      {state === "speaking" && (
+      {isSpeaking && (
         <>
           <span
-            className="absolute inset-2 rounded-full border animate-ping [animation-delay:0ms]"
-            style={{ borderColor: `rgb(${tint} / 0.5)` }}
+            className="absolute inset-2 rounded-full border animate-ping pointer-events-none [animation-delay:0ms]"
+            style={{ borderColor: `rgb(${tintRgb} / 0.55)` }}
           />
           <span
-            className="absolute inset-5 rounded-full border animate-ping [animation-delay:280ms]"
-            style={{ borderColor: `rgb(${tint} / 0.35)` }}
+            className="absolute inset-6 rounded-full border animate-ping pointer-events-none [animation-delay:280ms]"
+            style={{ borderColor: `rgb(${tintRgb} / 0.35)` }}
           />
         </>
       )}
 
-      {/* 10. Connecting — pulse no anel todo */}
-      {state === "connecting" && (
+      {isConnecting && (
         <span
-          className="absolute inset-[12%] rounded-full animate-pulse pointer-events-none"
+          className="absolute inset-0 rounded-full animate-pulse pointer-events-none"
           style={{
-            boxShadow: `0 0 25px rgb(${tint} / 0.5), inset 0 0 25px rgb(${tint} / 0.3)`,
+            boxShadow: `0 0 30px rgb(${tintRgb} / 0.55), inset 0 0 30px rgb(${tintRgb} / 0.3)`,
           }}
         />
       )}
