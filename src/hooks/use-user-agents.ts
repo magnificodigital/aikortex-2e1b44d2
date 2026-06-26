@@ -64,16 +64,35 @@ export function useUserAgents(opts?: { clientId?: string | null; isAgencyMode?: 
       if (typeof vc.maxCallDuration === "number") voiceColumns.max_call_duration_seconds = vc.maxCallDuration * 60;
     }
 
+    // Default outcome tags por tipo de agente — Spark usa pra responder
+    // perguntas tipo "quantas qualificações fez hoje?". User pode customizar
+    // depois em Painel do agente > Comportamento > Outcomes.
+    const DEFAULT_TRACKED_OUTCOMES: Record<string, string[]> = {
+      SDR:    ["qualified", "disqualified", "meeting_booked", "no_show", "unresponsive"],
+      SAC:    ["resolved", "escalated", "pending_info", "duplicate"],
+      CS:     ["renewed", "churn_risk", "health_check_ok", "expansion_opportunity"],
+      BDR:    ["prospected", "meeting_booked", "unqualified", "follow_up"],
+      Custom: ["completed", "failed", "follow_up"],
+    };
+    const agentType = agent.agent_type || "Custom";
+    const incomingConfig = (agent.config ?? {}) as Record<string, unknown>;
+    const configWithDefaults: Record<string, unknown> = { ...incomingConfig };
+    // Só injeta default se ainda não tiver — preserva customização do user.
+    if (!Array.isArray((incomingConfig as any).tracked_outcomes)) {
+      configWithDefaults.tracked_outcomes =
+        DEFAULT_TRACKED_OUTCOMES[agentType] || DEFAULT_TRACKED_OUTCOMES.Custom;
+    }
+
     const payload: Record<string, unknown> = {
       user_id: user.id,
       name: agent.name,
-      agent_type: agent.agent_type || "Custom",
+      agent_type: agentType,
       description: agent.description || "",
       avatar_url: agent.avatar_url || "",
       model: agent.model || "gemini-2.5-flash",
       provider: (agent as any).provider || "auto",
       status: agent.status || "configuring",
-      config: agent.config || {},
+      config: configWithDefaults,
       ...voiceColumns,
     };
     if (agent.client_id !== undefined) payload.client_id = agent.client_id;
