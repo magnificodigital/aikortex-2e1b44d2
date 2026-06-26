@@ -52,7 +52,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [intensity, setIntensity] = useState(0);
   const [muted, setMuted] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
   const navigate = useNavigate();
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
