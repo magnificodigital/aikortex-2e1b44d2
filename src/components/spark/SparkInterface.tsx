@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MessageSquare, Loader2, Settings, X, ArrowUp, RefreshCw, Square } from "lucide-react";
+import { Mic, MessageSquare, Loader2, Settings, X, ArrowUp, RefreshCw, Square, Sparkles, BarChart3 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
@@ -42,6 +42,9 @@ interface SparkInterfaceProps {
 
 export function SparkInterface({ greeting, userName, honorific, onTextSubmit, onVoiceTranscript }: SparkInterfaceProps) {
   const [mode, setMode] = useState<Mode>("voice");
+  // 'build' = criacao de agente (spark-voice, fluxo Jarvis com fast-ack + nav)
+  // 'manage' = perguntas de gestao (spark-chat com tools, ainda em beta)
+  const [purpose, setPurpose] = useState<"build" | "manage">("build");
   const [orbState, setOrbState] = useState<OrbState>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [textInput, setTextInput] = useState("");
@@ -262,19 +265,23 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
         return;
       }
 
-      // Raw fetch (não supabase.functions.invoke) porque a função agora
-      // devolve audio binário; invoke sempre parse JSON.
-      const resp = await fetch(fnUrl("spark-voice"), {
+      // Roteamento por purpose:
+      //  - 'build'  -> spark-voice (binário + headers; fast-ack + nav)
+      //  - 'manage' -> spark-chat  (JSON com tools, audio base64)
+      const endpoint = purpose === "manage" ? "spark-chat" : "spark-voice";
+      const resp = await fetch(fnUrl(endpoint), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
-          Accept: "audio/mpeg",
+          ...(purpose === "build" ? { Accept: "audio/mpeg" } : {}),
         },
         body: form,
       });
       const contentType = resp.headers.get("content-type") || "";
+      const isJsonResp = contentType.includes("application/json");
+      const isAudioResp = contentType.includes("audio");
 
-      if (!resp.ok || !contentType.includes("audio")) {
+      if (!resp.ok || (!isJsonResp && !isAudioResp)) {
         let parsed: any = null;
         try { parsed = await resp.json(); } catch { /* noop */ }
         const msg = parsed?.message || parsed?.error || `Falha ao processar áudio (HTTP ${resp.status})`;
@@ -283,16 +290,38 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
         toast.error(msg, {
           action: msg.includes("ElevenLabs") || parsed?.error === "elevenlabs_not_configured"
             ? { label: "Configurar", onClick: () => navigate("/settings?tab=integrations") }
+            : parsed?.error === "no_llm_configured"
+            ? { label: "Configurar LLM", onClick: () => navigate("/settings?tab=providers") }
             : undefined,
         });
         return;
       }
 
-      // Path rápido: áudio binário + transcript/reply nos headers (base64-UTF8).
-      const decode = (b64: string) => { try { return decodeURIComponent(escape(atob(b64))); } catch { return ""; } };
-      const userText = decode(resp.headers.get("x-spark-transcript") || "");
-      const reply = decode(resp.headers.get("x-spark-reply") || "");
-      const intent = resp.headers.get("x-spark-intent") || "chat";
+      // ── Extração de transcript/reply/audio nas duas formas ───────────
+      let userText = "";
+      let reply = "";
+      let intent = "chat";
+      let audioBlobPromise: Promise<Blob> | null = null;
+
+      if (isAudioResp) {
+        // spark-voice: binário + headers base64-UTF8
+        const decode = (b64: string) => { try { return decodeURIComponent(escape(atob(b64))); } catch { return ""; } };
+        userText = decode(resp.headers.get("x-spark-transcript") || "");
+        reply = decode(resp.headers.get("x-spark-reply") || "");
+        intent = resp.headers.get("x-spark-intent") || "chat";
+        audioBlobPromise = resp.blob();
+      } else {
+        // spark-chat: JSON com { transcript, reply, audio (base64), tools_called }
+        const j = await resp.json();
+        userText = j.transcript || "";
+        reply = j.reply || "";
+        intent = "chat";
+        if (j.audio && j.audio_mime) {
+          const bytes = Uint8Array.from(atob(j.audio), (c) => c.charCodeAt(0));
+          audioBlobPromise = Promise.resolve(new Blob([bytes], { type: j.audio_mime }));
+        }
+        console.log("[spark-chat] tools:", j.tools_called, "tokens:", j.tokens);
+      }
       console.log("[spark] transcript:", userText, "| intent:", intent, "| reply:", reply.slice(0, 60));
 
       historyRef.current.push({ role: "user", content: userText });
@@ -318,8 +347,14 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
         }
       }
 
-      // Blob URL toca direto, sem decode base64 — corta ~200-400ms por turno.
-      const audioBlob = await resp.blob();
+      // Se nao tem audio (caso raro: spark-chat sem ElevenLabs), volta a ouvir.
+      if (!audioBlobPromise) {
+        setOrbState(resumeState());
+        return;
+      }
+
+      // Blob URL toca direto, sem decode base64 extra — corta ~200-400ms.
+      const audioBlob = await audioBlobPromise;
       const audioUrl = URL.createObjectURL(audioBlob);
       if (audioElRef.current) {
         try { URL.revokeObjectURL(audioElRef.current.src); } catch { /* noop */ }
@@ -361,9 +396,54 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
     setOrbState("idle");
   };
 
-  const submitText = () => {
+  const submitText = async () => {
     const t = textInput.trim();
     if (!t) return;
+
+    // Modo manage: nao navega — chama spark-chat e mostra resposta inline.
+    if (purpose === "manage") {
+      setOrbState("processing");
+      setTextInput("");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) { toast.error("Sessão expirada"); setOrbState("idle"); return; }
+        const resp = await fetch(fnUrl("spark-chat"), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: t, history: historyRef.current.slice(-8) }),
+        });
+        if (!resp.ok) {
+          const parsed = await resp.json().catch(() => ({}));
+          toast.error(parsed?.message || `Falha (HTTP ${resp.status})`, {
+            action: parsed?.error === "no_llm_configured"
+              ? { label: "Configurar LLM", onClick: () => navigate("/settings?tab=providers") }
+              : undefined,
+          });
+          setOrbState("idle");
+          return;
+        }
+        const j = await resp.json();
+        const reply = j.reply || "";
+        historyRef.current.push({ role: "user", content: t });
+        historyRef.current.push({ role: "assistant", content: reply });
+        const ts = Date.now();
+        setTranscript((prev) => [
+          ...prev,
+          { id: `${ts}-u`, role: "user", content: t },
+          { id: `${ts}-a`, role: "assistant", content: reply },
+        ]);
+        setOrbState("idle");
+      } catch (e) {
+        toast.error(`Erro: ${(e as Error).message}`);
+        setOrbState("idle");
+      }
+      return;
+    }
+
+    // Modo build: comportamento antigo — navega via onTextSubmit
     onTextSubmit(t);
   };
 
@@ -389,37 +469,70 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-3.5rem)] px-4 py-8 relative">
-      {/* Mode toggle */}
-      <div className="absolute top-4 right-4 flex items-center gap-1 rounded-full border border-border bg-card/50 backdrop-blur-sm p-1">
-        <button
-          onClick={handleSwitchToVoice}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-            mode === "voice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Mic className="w-3.5 h-3.5" />
-          Voz
-        </button>
-        <button
-          onClick={handleSwitchToText}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-            mode === "text" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-          Texto
-        </button>
+      {/* Top toggles: input mode (voz/texto) + purpose (construtor/gestao) */}
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        {/* Input mode toggle */}
+        <div className="flex items-center gap-1 rounded-full border border-border bg-card/50 backdrop-blur-sm p-1">
+          <button
+            onClick={handleSwitchToVoice}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              mode === "voice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Mic className="w-3.5 h-3.5" />
+            Voz
+          </button>
+          <button
+            onClick={handleSwitchToText}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              mode === "text" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            Texto
+          </button>
+        </div>
+
+        {/* Purpose toggle: build (criar agente) vs manage (perguntar gestao) */}
+        <div className="flex items-center gap-1 rounded-full border border-border bg-card/50 backdrop-blur-sm p-1">
+          <button
+            onClick={() => setPurpose("build")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              purpose === "build" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+            title="Spark cria agentes pra você"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Construir
+          </button>
+          <button
+            onClick={() => setPurpose("manage")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              purpose === "manage" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+            title="Pergunte sobre receita, agentes, métricas..."
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            Gestão
+          </button>
+        </div>
       </div>
 
       <h1 className="text-3xl lg:text-5xl font-light text-foreground mb-3 text-center">
         {greeting}, {honorific}. <span className="italic">{userName}</span>
       </h1>
       <p className="text-sm lg:text-base text-muted-foreground mb-10 text-center max-w-lg">
-        {mode === "voice"
-          ? "Spark, seu copiloto de voz. Fale o que precisa — eu cuido do resto."
-          : "Crie Agentes inteligentes e Aplicações para WhatsApp e Web em minutos conversando com a inteligência artificial."}
+        {purpose === "manage"
+          ? mode === "voice"
+            ? "Pergunte sobre receita, agentes, métricas — Spark consulta seus dados em tempo real."
+            : "Digite sua pergunta sobre gestão — receita, métricas, conversas, qualquer dado da sua agência."
+          : mode === "voice"
+            ? "Spark, seu copiloto de voz. Fale o que precisa — eu cuido do resto."
+            : "Crie Agentes inteligentes e Aplicações para WhatsApp e Web em minutos conversando com a inteligência artificial."}
       </p>
 
       {mode === "voice" ? (
@@ -482,7 +595,9 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
             <textarea
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Descreva o agente ou app que você quer criar..."
+              placeholder={purpose === "manage"
+                ? "Quantas qualificações o SDR fez hoje? Qual a receita do mês?"
+                : "Descreva o agente ou app que você quer criar..."}
               className="w-full bg-transparent border-none outline-none resize-none text-sm text-foreground placeholder:text-muted-foreground/50 px-5 py-4 min-h-[100px]"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
