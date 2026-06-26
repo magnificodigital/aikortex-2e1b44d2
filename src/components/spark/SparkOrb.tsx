@@ -62,9 +62,9 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
       <span className="orb-cloud absolute rounded-full pointer-events-none" />
 
       {/* Faixas verticais luminosas */}
-      <span className="orb-band orb-band-1 absolute rounded-full pointer-events-none" />
-      <span className="orb-band orb-band-2 absolute rounded-full pointer-events-none" />
-      <span className="orb-band orb-band-3 absolute rounded-full pointer-events-none" />
+      <span className="orb-band orb-band-1 absolute rounded-full pointer-events-none" style={{ "--band-x": "-24px" } as React.CSSProperties} />
+      <span className="orb-band orb-band-2 absolute rounded-full pointer-events-none" style={{ "--band-x": "0px" } as React.CSSProperties} />
+      <span className="orb-band orb-band-3 absolute rounded-full pointer-events-none" style={{ "--band-x": "24px" } as React.CSSProperties} />
 
       {/* Brilho polar topo */}
       <span className="orb-pole orb-pole-top absolute rounded-full pointer-events-none" />
