@@ -11,20 +11,17 @@ interface SparkOrbProps {
   disabled?: boolean;
 }
 
-// Esfera plasma holográfica do Spark — forma de luz flutuante.
-// Mantém paleta blue-white do Aikortex: brilho concentrado nos polos,
-// faixas verticais suaves e respiração lenta. Reage ao falar/listen
-// aumentando a velocidade, brilho e escala.
+// Spark Orb — forma pura de luz plasma flutuante.
+// Sem HUD, anéis, partículas ou texto. Apenas volumetric light blue-white
+// com bordas irregulares, faixas verticais e brilho concentrado nos polos.
 export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }: SparkOrbProps) {
-  const wrapRef = useRef<HTMLButtonElement | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const wrap = wrapRef.current;
     if (!wrap) return;
-    // Expõe a intensidade via CSS para ajustar escala do halo via variável.
     wrap.style.setProperty("--orb-intensity", String(intensity));
-    wrap.style.setProperty("--orb-state", `"${state}"`);
-  }, [state, intensity]);
+  }, [intensity]);
 
   const isError = state === "error";
   const isSpeaking = state === "speaking";
@@ -33,45 +30,46 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
 
   const tint = isError ? "239, 68, 68" : "140, 195, 255";
   const white = isError ? "255, 220, 220" : "230, 245, 255";
-  const baseAlpha = isError ? "0.16" : "0.18";
 
   return (
-    <button
+    <div
       ref={wrapRef}
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
       aria-label="Spark voice toggle"
+      onClick={disabled ? undefined : onClick}
+      onKeyDown={(e) => {
+        if (!disabled && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
       className={cn(
-        "spark-orb relative grid place-items-center bg-transparent border-0 p-0 rounded-full",
-        "outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-4 focus-visible:ring-offset-background",
-        "transition-transform duration-300",
+        "spark-orb relative grid place-items-center rounded-full cursor-pointer",
+        "outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-4 focus-visible:ring-offset-background",
         disabled && "opacity-60 cursor-not-allowed",
         isActive && "orb-active",
         isSpeaking && "orb-speaking",
         isListening && "orb-listening",
         isError && "orb-error",
       )}
-      style={{ width: size, height: size, "--orb-tint": tint, "--orb-white": white, "--orb-base": baseAlpha } as React.CSSProperties}
+      style={{ width: size, height: size, "--orb-tint": tint, "--orb-white": white } as React.CSSProperties}
     >
-      {/* Halo externo difuso */}
-      <span className="orb-halo absolute inset-0 rounded-full blur-2xl pointer-events-none" />
+      {/* Glow ambiente externo */}
+      <span className="orb-ambient absolute inset-[-20%] rounded-full pointer-events-none" />
 
-      {/* Forma de plasma central */}
-      <span className="orb-core absolute rounded-full pointer-events-none" />
+      {/* Forma de plasma com bordas irregulares */}
+      <span className="orb-cloud absolute rounded-full pointer-events-none" />
 
       {/* Faixas verticais luminosas */}
-      <span className="orb-band orb-band-1 absolute rounded-full pointer-events-none" style={{ "--x": "-28px" } as React.CSSProperties} />
-      <span className="orb-band orb-band-2 absolute rounded-full pointer-events-none" style={{ "--x": "0px" } as React.CSSProperties} />
-      <span className="orb-band orb-band-3 absolute rounded-full pointer-events-none" style={{ "--x": "28px" } as React.CSSProperties} />
+      <span className="orb-band orb-band-1 absolute rounded-full pointer-events-none" style={{ "--band-x": "-24px" } as React.CSSProperties} />
+      <span className="orb-band orb-band-2 absolute rounded-full pointer-events-none" style={{ "--band-x": "0px" } as React.CSSProperties} />
+      <span className="orb-band orb-band-3 absolute rounded-full pointer-events-none" style={{ "--band-x": "24px" } as React.CSSProperties} />
 
-      {/* Brilho polar (topo) */}
+      {/* Brilho polar topo */}
       <span className="orb-pole orb-pole-top absolute rounded-full pointer-events-none" />
-      {/* Brilho polar (base) */}
+      {/* Brilho polar base */}
       <span className="orb-pole orb-pole-bottom absolute rounded-full pointer-events-none" />
-
-      {/* Grain sutil */}
-      <span className="orb-grain absolute inset-0 rounded-full opacity-20 pointer-events-none mix-blend-overlay" />
-    </button>
+    </div>
   );
 }
