@@ -12,7 +12,7 @@ interface SparkOrbProps {
 }
 
 // Spark Orb — versão Jarvis: núcleo de plasma blue-white Aikortex
-// com anéis orbitais concêntricos, ticks HUD e ondas de scan.
+// com anéis concêntricos pulsantes, micro points e ondas de scan.
 // Mantém as cores do tema atual, mas acelera e adiciona geometria tecnológica.
 export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }: SparkOrbProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -60,24 +60,24 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
       {/* Aura externa pulsante */}
       <span className="orb-aura absolute inset-[-35%] rounded-full pointer-events-none" />
 
-      {/* Anéis orbitais estilo Jarvis (SVG, performático) */}
+      {/* Anéis concêntricos pulsantes estilo Jarvis */}
       <svg className="orb-rings absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 260 260" fill="none">
-        <circle cx="130" cy="130" r="118" className="orb-ring orb-ring-1" />
-        <circle cx="130" cy="130" r="100" className="orb-ring orb-ring-2" />
-        <circle cx="130" cy="130" r="82" className="orb-ring orb-ring-3" />
+        <circle cx="130" cy="130" r="122" className="orb-ring orb-ring-1" />
+        <circle cx="130" cy="130" r="104" className="orb-ring orb-ring-2" />
+        <circle cx="130" cy="130" r="86" className="orb-ring orb-ring-3" />
         {/* Arcos de scan */}
         <path d="M 130 28 A 102 102 0 0 1 232 130" className="orb-arc orb-arc-1" />
         <path d="M 130 232 A 102 102 0 0 1 28 130" className="orb-arc orb-arc-2" />
       </svg>
 
-      {/* HUD de points ao redor — explosão sutil */}
-      <svg className="orb-hud absolute inset-[-18%] w-[136%] h-[136%] pointer-events-none" viewBox="0 0 260 260" fill="none">
-        {[...Array(36)].map((_, i) => {
-          const angle = (i * 10) * (Math.PI / 180);
-          const radius = 112 + (i % 4) * 14;
+      {/* HUD de micro points ao redor — explosão sutil radial */}
+      <svg className="orb-hud absolute inset-[-22%] w-[144%] h-[144%] pointer-events-none" viewBox="0 0 260 260" fill="none">
+        {[...Array(72)].map((_, i) => {
+          const angle = (i * 5) * (Math.PI / 180);
+          const radius = 108 + (i % 5) * 14 + (i % 7) * 3;
           const cx = 130 + Math.cos(angle) * radius;
           const cy = 130 + Math.sin(angle) * radius;
-          const r = 1.2 + (i % 3) * 0.6;
+          const r = 0.6 + (i % 3) * 0.35;
           return (
             <circle
               key={i}
@@ -85,7 +85,7 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
               cy={cy}
               r={r}
               className="orb-point"
-              style={{ animationDelay: `${(i * 0.12).toFixed(2)}s` }}
+              style={{ animationDelay: `${(i * 0.08).toFixed(2)}s` }}
             />
           );
         })}
