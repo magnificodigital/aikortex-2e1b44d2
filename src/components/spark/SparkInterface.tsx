@@ -572,17 +572,17 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
               disabled={!sessionActive}
               title={muted ? "Reativar microfone" : "Mudo"}
               className={cn(
-                "relative flex items-center justify-center w-10 h-10 rounded-full border backdrop-blur-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                "relative flex items-center justify-center w-10 h-10 rounded-full border-2 backdrop-blur-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed",
                 muted
-                  ? "border-destructive/60 bg-destructive/10 text-destructive hover:bg-destructive/15"
+                  ? "border-destructive bg-destructive/15 text-destructive shadow-[0_0_12px_-4px_hsl(var(--destructive))]"
                   : "border-border bg-card/50 text-muted-foreground hover:text-foreground hover:border-foreground/20",
               )}
             >
-              <Mic className="w-4 h-4" />
+              <Mic className={cn("w-4 h-4", muted && "text-destructive")} />
               {muted && (
                 <span
                   aria-hidden
-                  className="absolute left-1 right-1 h-[2px] rounded-full bg-destructive rotate-45 pointer-events-none"
+                  className="absolute left-1.5 right-1.5 h-[2.5px] rounded-full bg-destructive rotate-45 pointer-events-none"
                 />
               )}
             </button>
