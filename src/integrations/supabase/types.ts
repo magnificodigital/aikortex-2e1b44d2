@@ -241,6 +241,56 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_billing_events: {
+        Row: {
+          agency_amount_cents: number
+          agency_user_id: string
+          agent_id: string
+          asaas_payment_id: string
+          client_external_ref: string | null
+          created_at: string | null
+          event_type: string
+          gross_amount_cents: number
+          id: string
+          platform_amount_cents: number
+          raw_payload: Json | null
+        }
+        Insert: {
+          agency_amount_cents: number
+          agency_user_id: string
+          agent_id: string
+          asaas_payment_id: string
+          client_external_ref?: string | null
+          created_at?: string | null
+          event_type: string
+          gross_amount_cents: number
+          id?: string
+          platform_amount_cents: number
+          raw_payload?: Json | null
+        }
+        Update: {
+          agency_amount_cents?: number
+          agency_user_id?: string
+          agent_id?: string
+          asaas_payment_id?: string
+          client_external_ref?: string | null
+          created_at?: string | null
+          event_type?: string
+          gross_amount_cents?: number
+          id?: string
+          platform_amount_cents?: number
+          raw_payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_billing_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_cadences: {
         Row: {
           agent_id: string
@@ -2634,6 +2684,8 @@ export type Database = {
           avatar_url: string | null
           call_webhook_url: string | null
           client_id: string | null
+          client_info: Json | null
+          client_subscription_id: string | null
           config: Json
           created_at: string
           description: string | null
@@ -2644,8 +2696,12 @@ export type Database = {
           name: string
           persona_emoji: string | null
           provider: string
+          published_at: string | null
           published_version_id: string | null
           status: string
+          subscription_status:
+            | Database["public"]["Enums"]["agent_subscription_status"]
+            | null
           telnyx_phone_number: string | null
           updated_at: string
           use_managed_sessions: boolean
@@ -2663,6 +2719,8 @@ export type Database = {
           avatar_url?: string | null
           call_webhook_url?: string | null
           client_id?: string | null
+          client_info?: Json | null
+          client_subscription_id?: string | null
           config?: Json
           created_at?: string
           description?: string | null
@@ -2673,8 +2731,12 @@ export type Database = {
           name: string
           persona_emoji?: string | null
           provider?: string
+          published_at?: string | null
           published_version_id?: string | null
           status?: string
+          subscription_status?:
+            | Database["public"]["Enums"]["agent_subscription_status"]
+            | null
           telnyx_phone_number?: string | null
           updated_at?: string
           use_managed_sessions?: boolean
@@ -2692,6 +2754,8 @@ export type Database = {
           avatar_url?: string | null
           call_webhook_url?: string | null
           client_id?: string | null
+          client_info?: Json | null
+          client_subscription_id?: string | null
           config?: Json
           created_at?: string
           description?: string | null
@@ -2702,8 +2766,12 @@ export type Database = {
           name?: string
           persona_emoji?: string | null
           provider?: string
+          published_at?: string | null
           published_version_id?: string | null
           status?: string
+          subscription_status?:
+            | Database["public"]["Enums"]["agent_subscription_status"]
+            | null
           telnyx_phone_number?: string | null
           updated_at?: string
           use_managed_sessions?: boolean
@@ -3014,7 +3082,12 @@ export type Database = {
       user_agency_id: { Args: never; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      agent_subscription_status:
+        | "pending"
+        | "active"
+        | "overdue"
+        | "suspended"
+        | "canceled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3141,6 +3214,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      agent_subscription_status: [
+        "pending",
+        "active",
+        "overdue",
+        "suspended",
+        "canceled",
+      ],
+    },
   },
 } as const
