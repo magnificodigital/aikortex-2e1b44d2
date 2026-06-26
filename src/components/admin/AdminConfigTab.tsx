@@ -160,7 +160,7 @@ const PROVIDERS: ProviderGroup[] = [
     label: "LiveKit",
     category: "telefonia",
     description: "Servidor WebRTC pra chamadas no navegador (browser-call).",
-    logo: "https://cdn.simpleicons.org/livekit/_/FFFFFF",
+    logo: "https://cdn.simpleicons.org/livekit/_/000000",
     apiKeyUrl: "https://cloud.livekit.io",
     apiKeyUrlLabel: "cloud.livekit.io",
     fields: [
@@ -431,7 +431,9 @@ const AdminConfigTab = () => {
                       <img
                         src={p.logo}
                         alt={p.label}
-                        className="w-7 h-7 object-contain"
+                        className={`w-7 h-7 object-contain ${
+                          ["openai", "elevenlabs", "livekit"].includes(p.id) ? "dark:invert" : ""
+                        }`}
                         onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                       />
                     </div>
@@ -481,7 +483,13 @@ const AdminConfigTab = () => {
                   <DialogTitle className="flex items-center gap-3">
                     {openProvider.logo && (
                       <div className="w-9 h-9 rounded-lg bg-muted/50 grid place-items-center">
-                        <img src={openProvider.logo} alt={openProvider.label} className="w-6 h-6 object-contain" />
+                        <img
+                          src={openProvider.logo}
+                          alt={openProvider.label}
+                          className={`w-6 h-6 object-contain ${
+                            ["openai", "elevenlabs", "livekit"].includes(openProvider.id) ? "dark:invert" : ""
+                          }`}
+                        />
                       </div>
                     )}
                     {openProvider.label}
