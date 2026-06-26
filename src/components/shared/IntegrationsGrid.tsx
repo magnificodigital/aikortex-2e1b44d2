@@ -729,7 +729,7 @@ export function IntegrationsGrid({
           {displayProviders.map((p) => {
             const connected = isConnected(p);
             const renderLogo = (size: "sm" | "lg") => {
-              const isLargeBrand = p.provider === "telnyx" || p.provider === "hubspot";
+              const isLargeBrand = p.provider === "telnyx" || p.provider === "hubspot" || p.provider === "asaas";
               const isElevenLabs = p.provider === "elevenlabs";
               const dim =
                 size === "lg" ? (isLargeBrand ? "w-16 h-16" : isElevenLabs ? "w-7 h-7" : "w-9 h-9")
@@ -749,6 +749,14 @@ export function IntegrationsGrid({
                   <>
                     <img src={hubspotLogoLight.url} alt="HubSpot" className={`${cls} block dark:hidden`} />
                     <img src={hubspotLogoDark.url} alt="HubSpot" className={`${cls} hidden dark:block`} />
+                  </>
+                );
+              }
+              if (p.provider === "asaas") {
+                return (
+                  <>
+                    <img src={asaasLogoLight.url} alt="Asaas" className={`${cls} block dark:hidden`} />
+                    <img src={asaasLogoDark.url} alt="Asaas" className={`${cls} hidden dark:block`} />
                   </>
                 );
               }
