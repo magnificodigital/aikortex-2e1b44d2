@@ -534,7 +534,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
             ? "Pergunte sobre receita, agentes, métricas — Spark consulta seus dados em tempo real."
             : "Digite sua pergunta sobre gestão — receita, métricas, conversas, qualquer dado da sua agência."
           : mode === "voice"
-            ? "Spark, seu copiloto de voz. Fale o que precisa — eu cuido do resto."
+            ? "Fale o que precisa e eu cuido do resto."
             : "Crie Agentes inteligentes e Aplicações para WhatsApp e Web em minutos conversando com a inteligência artificial."}
       </p>
 
