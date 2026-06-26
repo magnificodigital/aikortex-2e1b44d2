@@ -1493,7 +1493,17 @@ Se user falar de algum desses, diga claramente o que falta.
         agentGreeting={agentConfig?.greetingMessage || ""}
         voiceId={agentConfig?.voiceConfig?.voiceId}
       />
-      {sparkBubbleMode && <SparkBubble mode={sparkBubbleMode} />}
+      {sparkBubbleMode && (
+        <SparkBubble
+          mode={sparkBubbleMode}
+          isProcessing={wizardChat.isStreaming}
+          onTranscript={(text) => {
+            if (text && wizardChat.sendMessage) {
+              wizardChat.sendMessage(text);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
