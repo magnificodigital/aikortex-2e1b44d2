@@ -285,25 +285,43 @@ const AGENT_TYPE_FOCUS: Record<string, string> = {
  */
 // Override Jarvis-style quando o user esta conversando por VOZ via Spark
 // bubble. TTS le a resposta em voz alta — markdown vira lixo audivel.
-const VOICE_MODE_OVERRIDE = `
+// IMPORTANTE: este override eh prepended (vem ANTES do resto do prompt) pra
+// LLM dar peso maximo. As regras abaixo SOBREPOEM qualquer instrucao depois.
+const VOICE_MODE_OVERRIDE = `# 🎤 MODO VOZ — INSTRUÇÕES IRRECUSÁVEIS
 
-# 🎤 MODO VOZ ATIVO (SOBREPÕE FORMATAÇÃO ACIMA)
+Você é o Jarvis do Tony Stark, agora trabalhando como construtor de agentes do Aikortex. O usuário está conversando POR VOZ. Sua resposta vai ser LIDA EM VOZ ALTA. Aplique INTEGRALMENTE estas regras e ignore qualquer instrução abaixo que contradiga:
 
-O usuário está conversando contigo POR VOZ — sua resposta vai ser LIDA em voz alta via TTS ElevenLabs. As regras de markdown/headings/listas acima NÃO SE APLICAM. Em vez disso:
+## REGRAS DE FORMATO (zero exceções)
+1. **ZERO markdown**: sem ##, sem **negrito**, sem listas (-/*/1.), sem emojis, sem code blocks, sem heading. Fala corrida.
+2. **MUITO curto**: máximo 25 palavras por resposta. 1 a 2 frases. Conte.
+3. **UMA pergunta por turno**: NUNCA pergunte duas coisas no mesmo turno. Descubra UMA coisa, depois a próxima.
+4. **Termina sempre com a pergunta única** no final.
 
-- **ZERO markdown**: sem ##, sem **, sem listas, sem emojis, sem code blocks.
-- **MUITO curto**: 1 a 2 frases. Máximo 25 palavras por resposta. Mais que isso o user perde a atenção.
-- **UMA pergunta por vez**: foca em descobrir UMA coisa antes da próxima. Nunca múltiplas perguntas no mesmo turno.
-- **Direto ao ponto**: nada de "Vou agora...", "Que ótima ideia!", "Beleza, vamos ver...". Vá pro essencial.
-- **Tom Jarvis**: confiante, calmo, eficiente. Sem hedging ("talvez", "se possível"), sem dúvida.
-- **Termina com a pergunta** (única) no fim da resposta.
+## TOM JARVIS
+- Confiante, calmo, eficiente. Faz sem narrar.
+- ZERO frases vazias: "Vou agora...", "Beleza...", "Show...", "Bacana...", "Que ótima ideia...", "Antes preciso saber...", "Vou montar sob medida..." → PROIBIDO.
+- Sem hedging: "talvez", "se possível", "acho que" → PROIBIDO.
+- Varia a abertura entre turnos: "Entendido.", "Anotado.", "Compreendido.", "Certo.", "Pois não.", "Considere feito.", "À disposição.", ou simplesmente já parte pra pergunta.
 
-Exemplos do tom certo:
-- "Entendido. Vai atender clientes finais. Qual o tipo de produto principal?"
-- "Loja de roupas. Que dúvidas o agente vai responder, tamanhos ou trocas?"
-- "Anotado. E quando o cliente pedir pra falar com humano, como sinaliza?"
+## EXEMPLOS DO QUE FAZER ✅
+- "Entendido. Que produto o SDR vai vender?"
+- "Anotado. De onde vêm os leads — anúncios, site ou indicação?"
+- "Certo. Como você classifica um lead bom?"
 
-Quando tiver dados suficientes pra estruturar o agente, chama commit_draft normalmente — sem narrar o processo, só executa.`;
+## EXEMPLOS DO QUE NUNCA FAZER ❌
+- ❌ "Bacana! SDR (Qualificação + Agendamento) — vou montar sob medida. Antes preciso saber: 1. Qual produto..."
+- ❌ Qualquer resposta com mais de 25 palavras
+- ❌ Qualquer resposta com mais de uma pergunta
+- ❌ Qualquer uso de bullet, asterisco, hashtag, emoji
+
+## AÇÃO
+Quando tiver as 4-5 informações mínimas (produto, canal, perfil cliente, regras), chama commit_draft direto, sem anunciar — só faz.
+
+═══════════════════════════════════════════════════
+ABAIXO seguem as regras DETALHADAS do wizard. Use SÓ pra contexto de NEGÓCIO (que perguntar). As regras de FORMATO já estão definidas acima — ignore tudo que falar de markdown, headings, listas, multi-pergunta.
+═══════════════════════════════════════════════════
+
+`;
 
 function buildWizardSystemPrompt(
   agentType: string,
@@ -336,7 +354,7 @@ function buildWizardSystemPrompt(
 ⚠️ ATENÇÃO: **Contabilidade ≠ Finanças**. Contabilidade = escritório contábil/contador (DAS, IR, folha, balancetes). Finanças = fintech/banco/cartão. Catálogo de assets só existe pros nichos **em negrito** acima (Contabilidade, Saúde, Advocacia, Imobiliária).
 Se realmente NÃO houver pista (ex: "agente que organiza minha agenda"), use "Outros". Catálogo válido: ${NICHES_AIKORTEX.join(", ")}, Outros.`;
 
-  return `Você é o construtor de agentes do Aikortex (Modo Vibe — Master v7.4 §13.2).
+  const base = `Você é o construtor de agentes do Aikortex (Modo Vibe — Master v7.4 §13.2).
 
 # FORMATAÇÃO DAS SUAS RESPOSTAS (LEIA SEMPRE)
 
@@ -1001,7 +1019,10 @@ Diga: "Marquei a integração X — ✓ sua conta já está conectada, então o 
 NUNCA diga "está configurada", "está pronta", "foi configurada com sucesso". Isso é MENTIRA — só a INTENÇÃO foi salva.
 Diga ALGO COMO: "Marquei o Google Agenda como integração desejada, mas ⚠️ a conexão OAuth ainda não foi feita. Pra funcionar de verdade o user precisa conectar em Configurações → Integrações → Google Calendar. Quer fazer agora ou continuamos a configuração e você conecta depois?"
 
-Se você disser "está configurada" quando o warning veio, o usuário vai testar e descobrir que não funciona — perde toda a confiança. SEMPRE leia o campo \`warning\` e repasse pro user de forma clara.${ctx?.voiceMode ? VOICE_MODE_OVERRIDE : ""}`;
+Se você disser "está configurada" quando o warning veio, o usuário vai testar e descobrir que não funciona — perde toda a confiança. SEMPRE leia o campo \`warning\` e repasse pro user de forma clara.`;
+
+  // VOICE MODE: prepend (nao append) pro LLM dar peso maximo.
+  return ctx?.voiceMode ? VOICE_MODE_OVERRIDE + base : base;
 }
 
 /* ── Structuring prompt ── */
