@@ -48,6 +48,7 @@ import AgencyPermissions from "@/components/settings/AgencyPermissions";
 import SubscriptionTab from "@/components/settings/SubscriptionTab";
 import AsaasConfigTab from "@/components/settings/AsaasConfigTab";
 import SparkSettingsTab from "@/components/settings/SparkSettingsTab";
+import RevenueDashboard from "@/components/settings/RevenueDashboard";
 
 // ─── TYPES ──────────────────────────────────────────
 interface BrandColors {
@@ -314,6 +315,7 @@ const SettingsPage = () => {
             <TabsTrigger value="channels" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Radio className="h-3.5 w-3.5" /> Canais</TabsTrigger>
             
             <TabsTrigger value="subscription" className="shrink-0 gap-1 whitespace-nowrap text-xs"><CreditCard className="h-3.5 w-3.5" /> Assinatura & Planos</TabsTrigger>
+            <TabsTrigger value="receita" className="shrink-0 gap-1 whitespace-nowrap text-xs"><DollarSign className="h-3.5 w-3.5" /> Receita</TabsTrigger>
             <TabsTrigger value="financeiro" className="shrink-0 gap-1 whitespace-nowrap text-xs"><DollarSign className="h-3.5 w-3.5" /> Financeiro</TabsTrigger>
           </TabsList>
 
@@ -676,6 +678,11 @@ const SettingsPage = () => {
           {/* ── ASSINATURA ─────────────────────────── */}
           <TabsContent value="subscription">
             <SubscriptionTab />
+          </TabsContent>
+
+          {/* ── RECEITA (dashboard de billing por agente publicado) ── */}
+          <TabsContent value="receita">
+            <RevenueDashboard />
           </TabsContent>
 
           {/* ── FINANCEIRO (ASAAS) ────────────────── */}
