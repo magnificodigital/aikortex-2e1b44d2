@@ -855,6 +855,17 @@ Se user falar de algum desses, diga claramente o que falta.
     }
   );
 
+  // Ultima mensagem do agente no wizard chat — usado pelo SparkBubble pra
+  // ler em voz alta toda vez que muda. useMemo garante valor estavel (sem
+  // IIFE recriando a string a cada render do AgentDetail).
+  const latestWizardAgentMessage = useMemo(() => {
+    const msgs = wizardChat.messages || [];
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === "agent") return msgs[i].text || null;
+    }
+    return null;
+  }, [wizardChat.messages]);
+
   // Quando o wizard transita pra "done", preserva a MENSAGEM RICA do wizard
   // (com warnings + próximos passos + convite) como entrada do setupChat,
   // em vez de descartar e mostrar saudação genérica. User não perde contexto.
@@ -1497,6 +1508,7 @@ Se user falar de algum desses, diga claramente o que falta.
         <SparkBubble
           mode={sparkBubbleMode}
           isProcessing={wizardChat.isStreaming}
+          latestAgentMessage={latestWizardAgentMessage}
           onTranscript={(text) => {
             if (text && wizardChat.sendMessage) {
               wizardChat.sendMessage(text);

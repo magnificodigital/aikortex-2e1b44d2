@@ -204,7 +204,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
   const labelTop = (() => {
     if (!active) return null;
     if (speaking) return "Spark está falando…";
-    if (isProcessing) return "Wizard está pensando…";
+    if (isProcessing) return "Spark trabalhando…";
     if (userStopped && !listening) return "Toque pra retomar";
     if (listening) return partial || "Estou te ouvindo…";
     return "Aguarde…";
@@ -235,7 +235,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
           ? (speaking ? "Pular fala do Spark" : listening ? "Parar de ouvir" : "Falar com Spark")
           : "Spark desativado"}
         title={active
-          ? (speaking ? "Toque pra pular" : isProcessing ? "Wizard pensando…" : listening ? "Toque pra parar" : userStopped ? "Toque pra retomar" : "Aguarde…")
+          ? (speaking ? "Toque pra pular" : isProcessing ? "Spark trabalhando…" : listening ? "Toque pra parar" : userStopped ? "Toque pra retomar" : "Aguarde…")
           : "Spark desativado (você chegou aqui por texto)"}
         className={cn(
           "relative w-14 h-14 rounded-full grid place-items-center transition-all border-2 backdrop-blur-md shadow-xl",
