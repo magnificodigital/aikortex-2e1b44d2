@@ -163,7 +163,11 @@ Deno.serve(async (req) => {
     // 600-1500ms do LLM + 300-500ms de TTS extra (resposta menor).
     // Frontend ja navega assim que recebe headers — usuario nem ouve o LLM
     // dizer 'beleza, vou abrir' porque a pagina ja trocou.
-    const CREATION_FAST_PATH = /\b(cri[ae][r]?|construa|construir|monte|montar|fa[çc][aoe][rm]?|fa[zc]|abre|abrir|abra|quero|queria|preciso|bora|vamos)\b.{0,40}\b(agente|agentes|app|aplicativo|aplica[çc][aã]o|site|dashboard|painel|portal|landing|sistema|crm|sdr|sac|bdr|chatbot|construtor)\b/i;
+    // Regex com STEMS (cri/mont/abr/etc) + \w* pra pegar TODAS as conjugacoes:
+    // cria, criar, criei, criou, criamos, criasse, criando, etc.
+    // Versao anterior tinha 'cri[ae][r]?' que falhava em 'criei' (terminava
+    // em 'i', \b fim do match nao casava com word char seguinte).
+    const CREATION_FAST_PATH = /\b(cri|fa[zçc]|mont|abr|constr|quer|precis|ger|bora|vamos)\w*\b.{0,60}\b(agente|agentes|app|aplicativo|aplica[çc][aã]o|site|dashboard|painel|portal|landing|sistema|crm|sdr|sac|bdr|chatbot|construtor|suporte)\b/i;
     let reply: string;
     const fastAckIntent = CREATION_FAST_PATH.test(userText);
     const t_llm_start = Date.now();
