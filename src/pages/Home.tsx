@@ -80,6 +80,11 @@ const Home = () => {
   //   "text"  → bubble visivel mas desativado (so sinal de presenca)
   const navigateToNewAgent = (text: string, source: "voice" | "text") => {
     const newId = `new-${Date.now()}`;
+    // userName eh "Usuário" no estado inicial ate o profile carregar.
+    // Pega so o primeiro nome pra usar no greeting do wizard.
+    const firstName = userName && userName !== "Usuário"
+      ? userName.trim().split(/\s+/)[0]
+      : "";
     navigate(`/aikortex/agents/${newId}`, {
       state: {
         fromTemplate: false,
@@ -87,6 +92,7 @@ const Home = () => {
         agentName: "Novo Agente",
         initialPrompt: text,
         sparkBubbleMode: source,
+        sparkUserFirstName: firstName,
       },
     });
   };

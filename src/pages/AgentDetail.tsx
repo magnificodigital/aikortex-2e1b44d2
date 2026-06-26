@@ -806,9 +806,23 @@ Se user falar de algum desses, diga claramente o que falta.
   const wizardChat = useAgentChat(
     [{
       role: "agent" as const,
-      // Master v7.4 §13.2 — Modo Vibe ONE-SHOT. Saudação rotaciona pra dar
-      // variedade a quem entra várias vezes; cada variação é direta + 1 exemplo.
+      // Greeting condicional:
+      //  - Se chegou via Spark (voz/texto) -> script Jarvis com nome do user +
+      //    3 perguntas de discovery (espelha exatamente o TTS que Spark falou).
+      //  - Senao (botao Novo Agente) -> saudacao rotativa simples §13.2.
       text: (() => {
+        if (navState?.sparkBubbleMode) {
+          const first = (navState?.sparkUserFirstName as string) || "";
+          const voc = first ? `, sir ${first}` : ", sir";
+          return [
+            `Sim${voc}.`,
+            "Pra esse agente ficar impecável, preciso que me responda o seguinte:",
+            "",
+            "• O que este agente vai fazer no dia-a-dia?",
+            "• Ele vai atender cliente final, time interno ou fornecedores?",
+            "• Que limites ou regras ele DEVE respeitar?",
+          ].join("\n");
+        }
         const greetings = [
           `👋 O que seu agente precisa fazer?\n\n*Ex:* "SDR pra clínica odontológica que qualifica leads via WhatsApp."`,
           `👋 Qual agente vamos criar hoje?\n\n*Ex:* "SAC pra e-commerce que resolve dúvidas e escala pra humano quando precisa."`,
@@ -1325,7 +1339,7 @@ Se user falar de algum desses, diga claramente o que falta.
             isStructuring={isStructuring}
             isBuilding={isBuilding}
             onOpenConfig={() => setMobileTab("config")}
-            initialPrompt={isNewCustomFromHome ? navState?.initialPrompt : undefined}
+            initialPrompt={isNewCustomFromHome && !sparkBubbleMode ? navState?.initialPrompt : undefined}
             initialWizardMessages={wizardMessages}
             onWizardMessagesChange={setWizardMessages}
             hasMemoryActive={hasMemoryActive}
