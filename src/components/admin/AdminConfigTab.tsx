@@ -214,8 +214,31 @@ const AdminConfigTab = () => {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [openProvider, setOpenProvider] = useState<ProviderGroup | null>(null);
+  // Modelos vindos de available_llms (gerenciados em /admin?tab=llms).
+  // Quando admin ativa/desativa um modelo la, automaticamente reflete aqui.
+  const [llmsByProvider, setLlmsByProvider] = useState<Record<string, { id: string; label: string }[]>>({});
 
-  useEffect(() => { loadConfig(); }, []);
+  useEffect(() => { loadConfig(); loadActiveLLMs(); }, []);
+
+  const loadActiveLLMs = async () => {
+    const { data, error } = await supabase
+      .from("available_llms")
+      .select("provider, model_id, display_name, tier, active")
+      .eq("active", true)
+      .order("provider", { ascending: true })
+      .order("priority", { ascending: true });
+    if (error || !data) return;
+
+    const grouped: Record<string, { id: string; label: string }[]> = {};
+    for (const row of data as any[]) {
+      const provider = String(row.provider || "").toLowerCase();
+      if (!grouped[provider]) grouped[provider] = [];
+      const tierBadge = row.tier ? ` (${row.tier})` : "";
+      const label = row.display_name ? `${row.display_name}${tierBadge}` : row.model_id;
+      grouped[provider].push({ id: row.model_id, label });
+    }
+    setLlmsByProvider(grouped);
+  };
 
   const loadConfig = async () => {
     setLoading(true);
@@ -385,8 +408,12 @@ const AdminConfigTab = () => {
                   const currentValue = configValues[field.key] || "";
 
                   // ── Type: model (dropdown com opcoes + "Outro") ──
-                  if (field.type === "model" && field.options) {
-                    const knownIds = field.options.map((o) => o.id);
+                  if (field.type === "model") {
+                    // Prioridade: lista de available_llms (gerenciada em /admin?tab=llms)
+                    // > lista hardcoded (fallback se nao tiver modelo cadastrado).
+                    const dynamicModels = llmsByProvider[openProvider.id] || [];
+                    const options = dynamicModels.length > 0 ? dynamicModels : (field.options || []);
+                    const knownIds = options.map((o) => o.id);
                     const isCustom = !!currentValue && !knownIds.includes(currentValue);
                     const selectValue = isCustom ? CUSTOM_MODEL_OPTION : (currentValue || "");
 
@@ -414,7 +441,6 @@ const AdminConfigTab = () => {
                               value={selectValue}
                               onValueChange={(v) => {
                                 if (v === CUSTOM_MODEL_OPTION) {
-                                  // Mantem valor atual pra usuario editar
                                   handleChange(field.key, currentValue || "");
                                 } else {
                                   handleChange(field.key, v);
@@ -422,10 +448,10 @@ const AdminConfigTab = () => {
                               }}
                             >
                               <SelectTrigger className="h-8 text-xs">
-                                <SelectValue placeholder="Escolha um modelo" />
+                                <SelectValue placeholder={options.length === 0 ? "Nenhum modelo ativo — adicione em /admin?tab=llms" : "Escolha um modelo"} />
                               </SelectTrigger>
                               <SelectContent>
-                                {field.options.map((opt) => (
+                                {options.map((opt) => (
                                   <SelectItem key={opt.id} value={opt.id}>
                                     <div className="flex flex-col">
                                       <span className="text-xs">{opt.label}</span>
@@ -438,6 +464,12 @@ const AdminConfigTab = () => {
                                 </SelectItem>
                               </SelectContent>
                             </Select>
+
+                            {dynamicModels.length > 0 && (
+                              <p className="text-[9px] text-muted-foreground">
+                                {dynamicModels.length} modelo{dynamicModels.length === 1 ? "" : "s"} ativo{dynamicModels.length === 1 ? "" : "s"} — gerencie em <a href="/admin?tab=llms" className="text-primary hover:underline">Modelos LLM</a>
+                              </p>
+                            )}
 
                             {isCustom && (
                               <Input
