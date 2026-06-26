@@ -11,9 +11,9 @@ interface SparkOrbProps {
   disabled?: boolean;
 }
 
-// Spark Orb — forma pura de luz plasma flutuante.
-// Sem HUD, anéis, partículas ou texto. Apenas volumetric light blue-white
-// com bordas irregulares, faixas verticais e brilho concentrado nos polos.
+// Spark Orb — versão Jarvis: núcleo de plasma blue-white Aikortex
+// com anéis orbitais concêntricos, ticks HUD e ondas de scan.
+// Mantém as cores do tema atual, mas acelera e adiciona geometria tecnológica.
 export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }: SparkOrbProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
@@ -26,7 +26,8 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
   const isError = state === "error";
   const isSpeaking = state === "speaking";
   const isListening = state === "listening";
-  const isActive = isSpeaking || isListening;
+  const isConnecting = state === "connecting";
+  const isActive = isSpeaking || isListening || isConnecting;
 
   const tint = isError ? "239, 68, 68" : "140, 195, 255";
   const white = isError ? "255, 220, 220" : "230, 245, 255";
@@ -51,14 +52,44 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
         isActive && "orb-active",
         isSpeaking && "orb-speaking",
         isListening && "orb-listening",
+        isConnecting && "orb-connecting",
         isError && "orb-error",
       )}
       style={{ width: size, height: size, "--orb-tint": tint, "--orb-white": white } as React.CSSProperties}
     >
-      {/* Glow ambiente externo */}
-      <span className="orb-ambient absolute inset-[-20%] rounded-full pointer-events-none" />
+      {/* Aura externa pulsante */}
+      <span className="orb-aura absolute inset-[-35%] rounded-full pointer-events-none" />
 
-      {/* Forma de plasma com bordas irregulares */}
+      {/* Anéis orbitais estilo Jarvis (SVG, performático) */}
+      <svg className="orb-rings absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 260 260" fill="none">
+        <circle cx="130" cy="130" r="118" className="orb-ring orb-ring-1" />
+        <circle cx="130" cy="130" r="100" className="orb-ring orb-ring-2" />
+        <circle cx="130" cy="130" r="82" className="orb-ring orb-ring-3" />
+        {/* Arcos de scan */}
+        <path d="M 130 28 A 102 102 0 0 1 232 130" className="orb-arc orb-arc-1" />
+        <path d="M 130 232 A 102 102 0 0 1 28 130" className="orb-arc orb-arc-2" />
+      </svg>
+
+      {/* HUD de ticks ao redor */}
+      <svg className="orb-hud absolute inset-[-18%] w-[136%] h-[136%] pointer-events-none" viewBox="0 0 260 260" fill="none">
+        {[...Array(24)].map((_, i) => (
+          <line
+            key={i}
+            x1="130"
+            y1="12"
+            x2="130"
+            y2="22"
+            className="orb-tick"
+            style={{ transform: `rotate(${i * 15}deg)`, transformOrigin: "130px 130px" }}
+          />
+        ))}
+      </svg>
+
+      {/* Onda de scan radial */}
+      <span className="orb-scan absolute rounded-full pointer-events-none" />
+
+      {/* Núcleo de plasma com bordas irregulares */}
+      <span className="orb-core absolute rounded-full pointer-events-none" />
       <span className="orb-cloud absolute rounded-full pointer-events-none" />
 
       {/* Faixas verticais luminosas */}
@@ -66,9 +97,8 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
       <span className="orb-band orb-band-2 absolute rounded-full pointer-events-none" style={{ "--band-x": "0px" } as React.CSSProperties} />
       <span className="orb-band orb-band-3 absolute rounded-full pointer-events-none" style={{ "--band-x": "24px" } as React.CSSProperties} />
 
-      {/* Brilho polar topo */}
+      {/* Brilhos polares topo/base */}
       <span className="orb-pole orb-pole-top absolute rounded-full pointer-events-none" />
-      {/* Brilho polar base */}
       <span className="orb-pole orb-pole-bottom absolute rounded-full pointer-events-none" />
     </div>
   );
