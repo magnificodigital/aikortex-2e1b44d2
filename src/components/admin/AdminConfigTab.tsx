@@ -431,14 +431,23 @@ const AdminConfigTab = () => {
                 <div className="flex items-center gap-3 min-w-0">
                   {p.logo && (
                     <div className="w-10 h-10 rounded-lg bg-muted/50 grid place-items-center shrink-0">
-                      <img
-                        src={p.logo}
-                        alt={p.label}
-                        className={`w-7 h-7 object-contain ${
-                          ["openai", "elevenlabs", "livekit"].includes(p.id) ? "dark:invert" : ""
-                        }`}
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                      />
+                      {p.id === "asaas" ? (
+                        <>
+                          <img src={asaasLogoLight.url} alt={p.label} className="w-7 h-7 object-contain block dark:hidden" />
+                          <img src={asaasLogoDark.url} alt={p.label} className="w-7 h-7 object-contain hidden dark:block" />
+                        </>
+                      ) : p.id === "telnyx" ? (
+                        <img src={telnyxLogo.url} alt={p.label} className="w-9 h-9 object-contain" />
+                      ) : (
+                        <img
+                          src={p.logo}
+                          alt={p.label}
+                          className={`w-7 h-7 object-contain ${
+                            ["openai", "elevenlabs", "livekit"].includes(p.id) ? "dark:invert" : ""
+                          }`}
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        />
+                      )}
                     </div>
                   )}
                   <div className="min-w-0">
