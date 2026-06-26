@@ -68,6 +68,10 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
+      // abort() em vez de stop() — descarta audio capturado em-vôo e nao
+      // dispara onend com transcript final. Critico quando estamos parando
+      // pra falar: senao recognition pode entregar trecho com TTS dentro.
+      try { recognitionRef.current.abort(); } catch { /* noop */ }
       try { recognitionRef.current.stop(); } catch { /* noop */ }
       recognitionRef.current = null;
     }
@@ -91,6 +95,13 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
     finalTextRef.current = "";
 
     rec.onresult = (event: any) => {
+      // Safety: se Spark comecou a falar entre o start desta sessao e
+      // este evento, descarta tudo — esta capturando o proprio TTS.
+      if (speakingRef.current) {
+        finalTextRef.current = "";
+        setPartial("");
+        return;
+      }
       let final = "";
       let interim = "";
       for (let i = 0; i < event.results.length; i++) {
@@ -115,6 +126,12 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
       const text = finalTextRef.current.trim();
       finalTextRef.current = "";
       setPartial("");
+      // Safety final: se Spark estava falando OU comecou a falar durante a
+      // captura, descarta. Evita transcript do TTS chegar no wizard.
+      if (speakingRef.current) {
+        console.log("[spark-bubble] descartando transcript — speaking ativo");
+        return;
+      }
       if (text && text.length >= 2) {
         const cb = onTranscriptRef.current;
         if (cb) cb(text);
