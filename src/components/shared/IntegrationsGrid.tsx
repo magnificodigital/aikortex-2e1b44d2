@@ -730,6 +730,14 @@ export function IntegrationsGrid({
                   </>
                 );
               }
+              if (p.provider === "hubspot") {
+                return (
+                  <>
+                    <img src={hubspotLogoLight.url} alt="HubSpot" className={`${cls} block dark:hidden`} />
+                    <img src={hubspotLogoDark.url} alt="HubSpot" className={`${cls} hidden dark:block`} />
+                  </>
+                );
+              }
               if (p.provider === "outlook_calendar") {
                 // Outlook logo é um PNG colorido local — não precisa de filter.
                 return <img src={p.logo} alt={p.label} className={cls} />;
