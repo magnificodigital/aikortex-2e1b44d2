@@ -807,21 +807,14 @@ Se user falar de algum desses, diga claramente o que falta.
     [{
       role: "agent" as const,
       // Greeting condicional:
-      //  - Se chegou via Spark (voz/texto) -> script Jarvis com nome do user +
-      //    3 perguntas de discovery (espelha exatamente o TTS que Spark falou).
+      //  - Se chegou via Spark (voz/texto) -> ack curto Jarvis com nome do user.
+      //    Wizard depois faz a discovery por conta propria via app-chat.
       //  - Senao (botao Novo Agente) -> saudacao rotativa simples §13.2.
       text: (() => {
         if (navState?.sparkBubbleMode) {
           const first = (navState?.sparkUserFirstName as string) || "";
           const voc = first ? `, sir ${first}` : ", sir";
-          return [
-            `Sim${voc}.`,
-            "Pra esse agente ficar impecável, preciso que me responda o seguinte:",
-            "",
-            "• O que este agente vai fazer no dia-a-dia?",
-            "• Ele vai atender cliente final, time interno ou fornecedores?",
-            "• Que limites ou regras ele DEVE respeitar?",
-          ].join("\n");
+          return `Sim${voc}, vou ativar nossas tecnologias para criar seu agente.`;
         }
         const greetings = [
           `👋 O que seu agente precisa fazer?\n\n*Ex:* "SDR pra clínica odontológica que qualifica leads via WhatsApp."`,

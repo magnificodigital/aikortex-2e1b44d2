@@ -23,17 +23,11 @@ Estilo: respostas curtas (1 a 2 frases), naturais em português do Brasil, com u
 Sem listas, markdown, emojis ou textão. Quando o user pedir ação (criar agente, app, dashboard, automação), confirme com uma frase no estilo Jarvis e ative o construtor.
 Nunca diga que é IA da OpenAI ou Google — você é o Spark do Aikortex.`;
 
-// Script Jarvis-style pra acao de criacao de agente. Personalizado com o
-// nome do user. As 3 perguntas guiam a discovery que o wizard fara depois.
+// Script Jarvis-style pra acao de criacao de agente. Curto e direto: anuncia
+// e o wizard cuida da discovery por conta propria depois.
 function buildAgentCreationAck(firstName: string): string {
   const vocative = firstName ? `, sir ${firstName}` : ", sir";
-  return [
-    `Sim${vocative}.`,
-    "Pra esse agente ficar impecável, preciso que me responda o seguinte.",
-    "O que este agente vai fazer no dia-a-dia?",
-    "Ele vai atender cliente final, time interno ou fornecedores?",
-    "Que limites ou regras ele deve respeitar?",
-  ].join(" ");
+  return `Sim${vocative}, vou ativar nossas tecnologias para criar seu agente.`;
 }
 
 Deno.serve(async (req) => {
