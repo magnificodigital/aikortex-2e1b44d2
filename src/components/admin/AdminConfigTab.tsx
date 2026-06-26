@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Eye, EyeOff, Save, CheckCircle2, AlertCircle, ExternalLink } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Eye, EyeOff, Save, CheckCircle2, AlertCircle, ExternalLink, Cpu } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +17,53 @@ interface ConfigField {
   label: string;
   placeholder?: string;
   description: string;
+  /** "secret" (default) = input password com eye toggle.
+   *  "model" = dropdown com opcoes + "Outro" pra texto livre. */
+  type?: "secret" | "model";
+  /** Lista de opcoes pro tipo "model". Atualize aqui quando lancarem versao nova. */
+  options?: { id: string; label: string }[];
 }
+
+// Listas curadas das versoes mais usadas/recentes. Quando o provider lancar
+// um modelo novo, basta adicionar aqui (sem mudar nada no DB). Admin tambem
+// pode escolher "Outro..." pra digitar id custom.
+const MODELS_OPENROUTER: { id: string; label: string }[] = [
+  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (rápido, barato)" },
+  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  { id: "anthropic/claude-opus-4-7", label: "Claude Opus 4.7" },
+  { id: "anthropic/claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  { id: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5 (rápido, barato)" },
+  { id: "openai/gpt-5", label: "GPT-5" },
+  { id: "openai/gpt-4o", label: "GPT-4o" },
+  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini (rápido, barato)" },
+  { id: "meta-llama/llama-3.3-70b-instruct", label: "Llama 3.3 70B" },
+  { id: "deepseek/deepseek-chat", label: "DeepSeek Chat V3" },
+  { id: "deepseek/deepseek-r1", label: "DeepSeek R1 (raciocínio)" },
+];
+
+const MODELS_OPENAI: { id: string; label: string }[] = [
+  { id: "gpt-5", label: "GPT-5 (mais recente)" },
+  { id: "gpt-4.1", label: "GPT-4.1" },
+  { id: "gpt-4o", label: "GPT-4o (multimodal, voz, visão)" },
+  { id: "gpt-4o-mini", label: "GPT-4o Mini (rápido, barato)" },
+  { id: "o3", label: "o3 (raciocínio profundo)" },
+  { id: "o3-mini", label: "o3 Mini (raciocínio rápido)" },
+];
+
+const MODELS_ANTHROPIC: { id: string; label: string }[] = [
+  { id: "claude-opus-4-7", label: "Claude Opus 4.7 (mais inteligente)" },
+  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (balanced)" },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5 (rápido, barato)" },
+];
+
+const MODELS_GEMINI: { id: string; label: string }[] = [
+  { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (mais barato)" },
+  { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+];
+
+const CUSTOM_MODEL_OPTION = "__custom__";
 
 interface ProviderGroup {
   id: string;
@@ -40,6 +87,7 @@ const PROVIDERS: ProviderGroup[] = [
     apiKeyUrlLabel: "openrouter.ai",
     fields: [
       { key: "openrouter_api_key", label: "API Key", placeholder: "sk-or-...", description: "Usada por todos os usuários Starter/Pro para modelos gratuitos." },
+      { key: "openrouter_default_model", label: "Modelo padrão", description: "Qual modelo o gateway usa quando não tem preferência específica do agente.", type: "model", options: MODELS_OPENROUTER },
     ],
   },
   {
@@ -52,18 +100,20 @@ const PROVIDERS: ProviderGroup[] = [
     apiKeyUrlLabel: "console.anthropic.com",
     fields: [
       { key: "anthropic_api_key", label: "API Key", placeholder: "sk-ant-...", description: "Chave padrão para modelos Claude." },
+      { key: "anthropic_default_model", label: "Modelo padrão", description: "Versão do Claude usada por padrão.", type: "model", options: MODELS_ANTHROPIC },
     ],
   },
   {
     id: "openai",
     label: "OpenAI",
     category: "llm",
-    description: "GPT-4o, GPT-4.1, o3 e Whisper (transcrição de voz).",
+    description: "GPT-4o, GPT-4.1, GPT-5, o3 e Whisper (transcrição de voz).",
     logo: new URL("@/assets/openai-icon.png", import.meta.url).href,
     apiKeyUrl: "https://platform.openai.com/api-keys",
     apiKeyUrlLabel: "platform.openai.com",
     fields: [
       { key: "openai_api_key", label: "API Key", placeholder: "sk-...", description: "Chave padrão para GPT e Whisper." },
+      { key: "openai_default_model", label: "Modelo padrão", description: "Versão do GPT usada por padrão.", type: "model", options: MODELS_OPENAI },
     ],
   },
   {
@@ -76,6 +126,7 @@ const PROVIDERS: ProviderGroup[] = [
     apiKeyUrlLabel: "aistudio.google.com",
     fields: [
       { key: "gemini_api_key", label: "API Key", placeholder: "AIza...", description: "Chave padrão para Gemini." },
+      { key: "gemini_default_model", label: "Modelo padrão", description: "Versão do Gemini usada por padrão.", type: "model", options: MODELS_GEMINI },
     ],
   },
   {
@@ -331,6 +382,87 @@ const AdminConfigTab = () => {
                 {openProvider.fields.map((field) => {
                   const isConfigured = savedKeys.has(field.key) && !!configValues[field.key];
                   const isVisible = visibleFields.has(field.key);
+                  const currentValue = configValues[field.key] || "";
+
+                  // ── Type: model (dropdown com opcoes + "Outro") ──
+                  if (field.type === "model" && field.options) {
+                    const knownIds = field.options.map((o) => o.id);
+                    const isCustom = !!currentValue && !knownIds.includes(currentValue);
+                    const selectValue = isCustom ? CUSTOM_MODEL_OPTION : (currentValue || "");
+
+                    return (
+                      <div key={field.key} className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-medium flex items-center gap-1.5">
+                            <Cpu className="w-3 h-3 text-muted-foreground" />
+                            {field.label}
+                          </Label>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[9px] h-4 px-1.5",
+                              isConfigured ? "border-emerald-500/40 text-emerald-500" : "border-muted-foreground/30 text-muted-foreground",
+                            )}
+                          >
+                            {isConfigured ? currentValue : "Padrão automático"}
+                          </Badge>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">{field.description}</p>
+                        <div className="flex gap-2">
+                          <div className="flex-1 space-y-1.5">
+                            <Select
+                              value={selectValue}
+                              onValueChange={(v) => {
+                                if (v === CUSTOM_MODEL_OPTION) {
+                                  // Mantem valor atual pra usuario editar
+                                  handleChange(field.key, currentValue || "");
+                                } else {
+                                  handleChange(field.key, v);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Escolha um modelo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {field.options.map((opt) => (
+                                  <SelectItem key={opt.id} value={opt.id}>
+                                    <div className="flex flex-col">
+                                      <span className="text-xs">{opt.label}</span>
+                                      <span className="text-[9px] text-muted-foreground font-mono">{opt.id}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                                <SelectItem value={CUSTOM_MODEL_OPTION}>
+                                  <span className="text-xs italic">Outro (digitar manualmente)</span>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            {isCustom && (
+                              <Input
+                                value={currentValue}
+                                onChange={(e) => handleChange(field.key, e.target.value)}
+                                placeholder="ex.: claude-haiku-5-0-20260201"
+                                className="font-mono text-xs h-8"
+                              />
+                            )}
+                          </div>
+                          <Button
+                            onClick={() => saveField(field)}
+                            disabled={savingKey === field.key}
+                            size="sm"
+                            className="gap-1.5 shrink-0 h-8 self-start"
+                          >
+                            <Save className="w-3 h-3" />
+                            {savingKey === field.key ? "..." : "Salvar"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // ── Type: secret (default) — input password com eye ──
                   return (
                     <div key={field.key} className="space-y-1.5">
                       <div className="flex items-center justify-between">
@@ -339,9 +471,7 @@ const AdminConfigTab = () => {
                           variant="outline"
                           className={cn(
                             "text-[9px] h-4 px-1.5",
-                            isConfigured
-                              ? "border-emerald-500/40 text-emerald-500"
-                              : "border-muted-foreground/30 text-muted-foreground",
+                            isConfigured ? "border-emerald-500/40 text-emerald-500" : "border-muted-foreground/30 text-muted-foreground",
                           )}
                         >
                           {isConfigured ? "Configurado" : "Vazio"}
@@ -352,7 +482,7 @@ const AdminConfigTab = () => {
                         <div className="relative flex-1">
                           <Input
                             type={isVisible ? "text" : "password"}
-                            value={configValues[field.key] || ""}
+                            value={currentValue}
                             onChange={(e) => handleChange(field.key, e.target.value)}
                             placeholder={field.placeholder || `Insira ${field.label}`}
                             className="pr-9 font-mono text-xs h-8"
