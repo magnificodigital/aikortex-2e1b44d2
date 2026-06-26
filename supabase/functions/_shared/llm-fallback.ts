@@ -159,7 +159,23 @@ export async function callLLM(
   options: LLMOptions = {},
   supabase?: SupabaseClient,
 ): Promise<LLMResult> {
-  
+
+  // Provider active flag check (admin pode desligar em /admin?tab=api-keys).
+  // So checa se temos supabase client — sem ele nao tem como ler platform_config.
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from("platform_config")
+        .select("value")
+        .eq("key", "openrouter_active")
+        .maybeSingle();
+      const active = (data as { value?: string } | null)?.value !== "false";
+      if (!active) {
+        return { success: false, error: "OpenRouter está desativado pelo admin (/admin?tab=api-keys)" };
+      }
+    } catch { /* segue normalmente se erro */ }
+  }
+
   const apiKey = options.apiKey || Deno.env.get("OPENROUTER_API_KEY") || "";
   if (!apiKey) {
     console.error("[llm-fallback] OPENROUTER_API_KEY ausente");

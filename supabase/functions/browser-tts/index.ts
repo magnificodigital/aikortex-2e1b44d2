@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isProviderActive } from "../_shared/is-provider-active.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +17,17 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // Provider active flag check (admin pode desligar em /admin?tab=api-keys)
+    if (!(await isProviderActive(supabase, "elevenlabs"))) {
+      return new Response(
+        JSON.stringify({
+          error: "provider_disabled",
+          message: "ElevenLabs está desativado pelo admin. Não é possível gerar áudio agora.",
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // Auth
     const authHeader = req.headers.get("Authorization") ?? "";

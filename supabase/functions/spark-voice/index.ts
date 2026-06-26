@@ -2,6 +2,7 @@
 // Returns transcript, assistant reply text, and TTS audio (base64 mp3).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callLLM } from "../_shared/llm-fallback.ts";
+import { isProviderActive } from "../_shared/is-provider-active.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,6 +52,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // Provider active flag check (admin pode desligar em /admin?tab=api-keys)
+    if (!(await isProviderActive(admin, "elevenlabs"))) {
+      return json({
+        error: "provider_disabled",
+        message: "ElevenLabs está desativado pelo admin. Spark de voz indisponível.",
+      }, 503);
+    }
 
     // Busca o nome do user pra usar no vocativo Jarvis-style ("Sim sir Maykow").
     const { data: profile } = await admin

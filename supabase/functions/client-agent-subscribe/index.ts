@@ -19,6 +19,7 @@
 // de um template.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { isProviderActive } from "../_shared/is-provider-active.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,6 +76,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // Provider active flag check (admin pode desligar em /admin?tab=api-keys)
+    if (!(await isProviderActive(admin, "asaas"))) {
+      return json({
+        error: "provider_disabled",
+        message: "Asaas (master) está desativado pelo admin. Publicações novas estão bloqueadas.",
+      }, 503);
+    }
 
     // Cascade: platform_config (admin UI) > env vars (fallback legacy)
     const asaasCfg = await loadAsaasConfig(admin);

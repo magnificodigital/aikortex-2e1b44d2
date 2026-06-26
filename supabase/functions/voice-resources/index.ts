@@ -9,6 +9,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isProviderActive } from "../_shared/is-provider-active.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -123,6 +124,9 @@ serve(async (req) => {
     }
 
     if (provider === "elevenlabs") {
+      if (!(await isProviderActive(admin, "elevenlabs"))) {
+        return jsonRes({ error: "PROVIDER_DISABLED", message: "ElevenLabs está desativado pelo admin." }, 503);
+      }
       const apiKey = await getUserApiKey(admin, userData.user.id, "elevenlabs");
       if (!apiKey) return jsonRes({ error: "KEY_MISSING", message: "Chave ElevenLabs não configurada" }, 400);
 
