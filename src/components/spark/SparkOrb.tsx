@@ -52,10 +52,13 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
     >
       {/* Outer glow — expande e contrai suavemente */}
       <span
-        className="absolute inset-[-45%] rounded-full blur-3xl pointer-events-none"
+        className={cn(
+          "absolute inset-[-45%] rounded-full blur-3xl pointer-events-none",
+          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
+        )}
         style={{
-          background: `radial-gradient(circle, rgb(${tint} / ${0.14 + reactive * 0.22}) 0%, rgb(${deep} / 0.05) 45%, transparent 72%)`,
-          animation: `plasma-glow ${glow} ease-in-out infinite`,
+          background: `radial-gradient(circle, rgb(${tint} / ${speakGlow}) 0%, rgb(${deep} / 0.05) 45%, transparent 72%)`,
+          animation: isSpeaking ? undefined : `plasma-glow ${glow} ease-in-out infinite`,
         }}
       />
 
