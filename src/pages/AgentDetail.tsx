@@ -1497,6 +1497,13 @@ Se user falar de algum desses, diga claramente o que falta.
         <SparkBubble
           mode={sparkBubbleMode}
           isProcessing={wizardChat.isStreaming}
+          latestAgentMessage={(() => {
+            const msgs = wizardChat.messages || [];
+            for (let i = msgs.length - 1; i >= 0; i--) {
+              if (msgs[i].role === "agent") return msgs[i].text || null;
+            }
+            return null;
+          })()}
           onTranscript={(text) => {
             if (text && wizardChat.sendMessage) {
               wizardChat.sendMessage(text);
