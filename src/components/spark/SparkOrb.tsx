@@ -128,28 +128,34 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
 
       {/* Bloom polar superior — heavy bloom */}
       <span
-        className="absolute pointer-events-none rounded-full"
+        className={cn(
+          "absolute pointer-events-none rounded-full",
+          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
+        )}
         style={{
           top: "8%",
           left: "30%",
           width: "40%",
           height: "18%",
-          background: `radial-gradient(ellipse at center, rgb(${white} / 0.55), transparent 75%)`,
+          background: `radial-gradient(ellipse at center, rgb(${white} / ${isSpeaking ? 0.7 : 0.55}), transparent 75%)`,
           filter: "blur(14px)",
-          animation: `plasma-breath ${breath} ease-in-out infinite`,
+          animation: isSpeaking ? undefined : `plasma-breath ${breath} ease-in-out infinite`,
         }}
       />
       {/* Bloom polar inferior */}
       <span
-        className="absolute pointer-events-none rounded-full"
+        className={cn(
+          "absolute pointer-events-none rounded-full",
+          isSpeaking && "animate-[plasma-speak-pulse_2.2s_ease-in-out_infinite]"
+        )}
         style={{
           bottom: "8%",
           left: "30%",
           width: "40%",
           height: "18%",
-          background: `radial-gradient(ellipse at center, rgb(${white} / 0.5), transparent 75%)`,
+          background: `radial-gradient(ellipse at center, rgb(${white} / ${isSpeaking ? 0.65 : 0.5}), transparent 75%)`,
           filter: "blur(14px)",
-          animation: `plasma-breath ${breath} ease-in-out infinite reverse`,
+          animation: isSpeaking ? undefined : `plasma-breath ${breath} ease-in-out infinite reverse`,
         }}
       />
 
