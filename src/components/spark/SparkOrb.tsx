@@ -32,9 +32,8 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
   const glow = isSpeaking ? "5s" : isListening ? "6.5s" : "9s";
 
   const reactiveScale = 1 + reactive * 0.04;
-  const speakPulseScale = isSpeaking ? 1 + 0.03 * Math.sin(performance.now() / 400) : 1;
   const speakGlow = isSpeaking ? 0.32 + reactive * 0.18 : 0.14 + reactive * 0.22;
-  const speakBrightness = isSpeaking ? "1.15" : "1.0";
+
 
 
   return (
