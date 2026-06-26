@@ -3,6 +3,7 @@ import * as ed25519 from "https://esm.sh/@noble/ed25519@2.0.0";
 import { overlayPublishedConfig, applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
 import { callLLM } from "../_shared/llm-fallback.ts";
+import { classifyOutcome } from "../_shared/classify-outcome.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -310,11 +311,35 @@ Deno.serve(async (req) => {
         if (session?.agent_id) {
           const { data: agentRaw } = await supabase
             .from("user_agents")
-            .select("config, telnyx_phone_number, published_version_id")
+            .select("config, telnyx_phone_number, published_version_id, agent_type")
             .eq("id", session.agent_id)
             .single();
           const agent = await overlayPublishedConfig(supabase, agentRaw);
           const agentConfig = (agent?.config ?? {}) as Record<string, any>;
+
+          // Outcome classification — melhor-esforço. Lê tracked_outcomes do
+          // agente, manda transcript pro LLM, salva tags em call_logs.
+          // Sem tracked_outcomes ou sem mensagens, vira no-op.
+          const trackedOutcomes: string[] = Array.isArray(agentConfig.tracked_outcomes)
+            ? agentConfig.tracked_outcomes
+            : [];
+          if (trackedOutcomes.length > 0 && Array.isArray(session?.messages) && session.messages.length > 0) {
+            const transcriptText = session.messages
+              .map((m: any) => `${m.role === "assistant" ? "Agente" : "Cliente"}: ${m.content ?? ""}`)
+              .join("\n");
+            const tags = await classifyOutcome(supabase, {
+              trackedOutcomes,
+              transcript: transcriptText,
+              agentType: (agentRaw as any)?.agent_type ?? "Custom",
+              durationSeconds: duration,
+            });
+            if (tags.length > 0) {
+              await supabase
+                .from("call_logs")
+                .update({ outcome_tags: tags })
+                .eq("telnyx_call_id", callControlId);
+            }
+          }
 
           // Send post-call SMS
           if (agentConfig.action_post_sms && payload?.from && agent?.telnyx_phone_number) {
