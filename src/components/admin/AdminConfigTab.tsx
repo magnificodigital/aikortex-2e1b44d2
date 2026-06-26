@@ -12,6 +12,9 @@ import { Switch } from "@/components/ui/switch";
 import { Eye, EyeOff, Save, CheckCircle2, AlertCircle, ExternalLink, Cpu, Power, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import telnyxLogo from "@/assets/connectors/telnyx-logo.png.asset.json";
+import asaasLogoLight from "@/assets/connectors/asaas-light.png.asset.json";
+import asaasLogoDark from "@/assets/connectors/asaas-dark.png.asset.json";
 
 interface ConfigField {
   key: string;
