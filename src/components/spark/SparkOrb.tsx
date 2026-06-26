@@ -10,8 +10,8 @@ interface SparkOrbProps {
   disabled?: boolean;
 }
 
-// Jarvis-style holographic orb: anéis orbitais rotativos, núcleo plasma,
-// partículas e HUD ticks — paleta Aikortex (silver/cyan frio).
+// Holographic plasma orb: translúcido, névoa volumétrica, streaks verticais,
+// bordas borradas e respiração lenta — paleta cyan Aikortex.
 export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }: SparkOrbProps) {
   const isError = state === "error";
   const isListening = state === "listening";
@@ -20,14 +20,14 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
   const isActive = isListening || isSpeaking;
   const reactive = isActive ? Math.min(Math.max(intensity, 0), 1) : 0;
 
-  const coreScale = 1 + reactive * 0.18;
-  const glow = 0.5 + reactive * 0.6;
-  const ringSpeedFast = isSpeaking ? "6s" : isListening ? "10s" : isConnecting ? "8s" : "22s";
-  const ringSpeedMed = isSpeaking ? "9s" : isListening ? "14s" : isConnecting ? "11s" : "30s";
-  const ringSpeedSlow = isSpeaking ? "14s" : isListening ? "20s" : isConnecting ? "16s" : "45s";
+  // Cyan plasma tints (Aikortex)
+  const core = isError ? "248 113 113" : "180 230 255";
+  const tint = isError ? "239 68 68" : "90 170 255";
+  const deep = isError ? "180 40 40" : "40 110 220";
 
-  const tint = isError ? "239 68 68" : "150 200 255"; // cyan-ice Aikortex
-  const tintSoft = isError ? "248 113 113" : "200 220 245";
+  const breath = isSpeaking ? "2.4s" : isListening ? "3.6s" : isConnecting ? "3s" : "6s";
+  const drift = isSpeaking ? "9s" : isListening ? "14s" : "22s";
+  const scale = 1 + reactive * 0.08;
 
   return (
     <button
@@ -41,153 +41,134 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
         "transition-transform duration-500",
         disabled && "opacity-60 cursor-not-allowed",
       )}
-      style={{ width: size, height: size, perspective: `${size * 3}px` }}
+      style={{ width: size, height: size }}
     >
-      {/* Halo externo difuso */}
+      {/* Halo externo difuso — luz cyan vazando na escuridão */}
       <span
-        className="absolute inset-[-25%] rounded-full blur-3xl pointer-events-none transition-opacity duration-500"
+        className="absolute inset-[-40%] rounded-full blur-3xl pointer-events-none transition-opacity duration-700"
         style={{
-          background: `radial-gradient(circle, rgb(${tint} / ${0.18 + reactive * 0.35}) 0%, transparent 65%)`,
-          opacity: isActive ? 1 : isConnecting ? 0.75 : 0.5,
+          background: `radial-gradient(circle, rgb(${tint} / ${0.18 + reactive * 0.32}) 0%, rgb(${deep} / 0.08) 40%, transparent 70%)`,
+          opacity: isActive ? 1 : isConnecting ? 0.8 : 0.6,
+          animation: `plasma-breath ${breath} ease-in-out infinite`,
         }}
       />
 
-      {/* HUD ticks externos (anel marcado) */}
-      <svg
-        viewBox="0 0 100 100"
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ animation: `jarvis-spin ${ringSpeedSlow} linear infinite reverse` }}
+      {/* Halo médio — fog volumétrico */}
+      <span
+        className="absolute inset-[-10%] rounded-full blur-2xl pointer-events-none"
+        style={{
+          background: `radial-gradient(circle at 50% 55%, rgb(${tint} / 0.35) 0%, rgb(${deep} / 0.18) 45%, transparent 75%)`,
+          animation: `plasma-breath ${breath} ease-in-out infinite reverse`,
+        }}
+      />
+
+      {/* Corpo translúcido do orb — esfera de plasma */}
+      <span
+        className="absolute rounded-full pointer-events-none overflow-hidden"
+        style={{
+          width: "78%",
+          height: "78%",
+          transform: `scale(${scale})`,
+          transition: "transform 180ms ease-out",
+          background: `
+            radial-gradient(circle at 50% 38%, rgb(${core} / 0.55) 0%, rgb(${tint} / 0.35) 28%, rgb(${deep} / 0.22) 55%, rgb(${deep} / 0.05) 78%, transparent 92%)
+          `,
+          boxShadow: `
+            0 0 ${40 + reactive * 60}px rgb(${tint} / ${0.45 + reactive * 0.35}),
+            inset 0 0 ${50 + reactive * 30}px rgb(${tint} / 0.35),
+            inset 0 0 ${20 + reactive * 20}px rgb(${core} / 0.5)
+          `,
+          filter: `blur(${0.5 + reactive * 0.6}px)`,
+          animation: `plasma-breath ${breath} ease-in-out infinite`,
+        }}
       >
-        {Array.from({ length: 60 }).map((_, i) => {
-          const long = i % 5 === 0;
-          return (
-            <line
-              key={i}
-              x1="50"
-              y1={long ? 2 : 3}
-              x2="50"
-              y2={long ? 5.5 : 4.5}
-              stroke={`rgb(${tint})`}
-              strokeOpacity={long ? 0.7 : 0.3}
-              strokeWidth={long ? 0.4 : 0.2}
-              transform={`rotate(${i * 6} 50 50)`}
-            />
-          );
-        })}
-      </svg>
+        {/* Streaks verticais luminosos atravessando o centro */}
+        <span
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `
+              linear-gradient(90deg, transparent 46%, rgb(${core} / 0.55) 49.5%, rgb(255 255 255 / 0.85) 50%, rgb(${core} / 0.55) 50.5%, transparent 54%),
+              linear-gradient(90deg, transparent 38%, rgb(${tint} / 0.35) 41%, transparent 44%),
+              linear-gradient(90deg, transparent 56%, rgb(${tint} / 0.35) 59%, transparent 62%),
+              linear-gradient(90deg, transparent 30%, rgb(${tint} / 0.2) 32%, transparent 34%),
+              linear-gradient(90deg, transparent 66%, rgb(${tint} / 0.2) 68%, transparent 70%)
+            `,
+            mixBlendMode: "screen",
+            filter: `blur(${1.2 + reactive * 1.5}px)`,
+            animation: `plasma-streak ${drift} ease-in-out infinite`,
+            opacity: 0.85,
+          }}
+        />
 
-      {/* Anel orbital 1 — tilt X */}
-      <span className="absolute inset-[6%] pointer-events-none" style={{ transform: "rotateX(72deg)", transformStyle: "preserve-3d" }}>
+        {/* Fog interno em movimento — plasma drift */}
         <span
-          className="absolute inset-0 rounded-full block"
+          className="absolute inset-[-10%] pointer-events-none"
           style={{
-            border: `1px solid rgb(${tint} / 0.45)`,
-            boxShadow: `0 0 ${10 + reactive * 20}px rgb(${tint} / 0.4), inset 0 0 ${10 + reactive * 20}px rgb(${tint} / 0.2)`,
-            animation: `jarvis-spin ${ringSpeedFast} linear infinite`,
+            background: `
+              radial-gradient(ellipse 60% 40% at 30% 40%, rgb(${core} / 0.35), transparent 70%),
+              radial-gradient(ellipse 50% 70% at 70% 60%, rgb(${tint} / 0.35), transparent 70%),
+              radial-gradient(ellipse 40% 30% at 50% 80%, rgb(${deep} / 0.4), transparent 70%)
+            `,
+            mixBlendMode: "screen",
+            filter: "blur(14px)",
+            animation: `plasma-drift ${drift} ease-in-out infinite alternate`,
           }}
         />
-      </span>
-      {/* Anel orbital 2 — tilt Y */}
-      <span className="absolute inset-[10%] pointer-events-none" style={{ transform: "rotateY(72deg)", transformStyle: "preserve-3d" }}>
+
+        {/* Highlight especular superior — distorção óptica */}
         <span
-          className="absolute inset-0 rounded-full block"
+          className="absolute pointer-events-none"
           style={{
-            border: `1px solid rgb(${tintSoft} / 0.5)`,
-            boxShadow: `0 0 ${8 + reactive * 16}px rgb(${tint} / 0.35)`,
-            animation: `jarvis-spin ${ringSpeedMed} linear infinite reverse`,
-          }}
-        />
-      </span>
-      {/* Anel orbital 3 — diagonal */}
-      <span className="absolute inset-[14%] pointer-events-none" style={{ transform: "rotate3d(1, 1, 0, 70deg)", transformStyle: "preserve-3d" }}>
-        <span
-          className="absolute inset-0 rounded-full block"
-          style={{
-            border: `1px dashed rgb(${tint} / 0.35)`,
-            animation: `jarvis-spin ${ringSpeedMed} linear infinite`,
-          }}
-        />
-      </span>
-      {/* Anel orbital 4 — outro eixo */}
-      <span className="absolute inset-[18%] pointer-events-none" style={{ transform: "rotate3d(1, -1, 0, 60deg)", transformStyle: "preserve-3d" }}>
-        <span
-          className="absolute inset-0 rounded-full block"
-          style={{
-            border: `1px solid rgb(${tintSoft} / 0.3)`,
-            animation: `jarvis-spin ${ringSpeedSlow} linear infinite reverse`,
+            top: "12%",
+            left: "28%",
+            width: "44%",
+            height: "26%",
+            background: `radial-gradient(ellipse at center, rgb(255 255 255 / 0.55), transparent 70%)`,
+            filter: "blur(8px)",
+            animation: `plasma-breath ${breath} ease-in-out infinite`,
           }}
         />
       </span>
 
-      {/* Núcleo plasma — esfera central reativa */}
-      <span
-        className="absolute rounded-full pointer-events-none transition-transform duration-200"
-        style={{
-          width: "42%",
-          height: "42%",
-          transform: `scale(${coreScale})`,
-          background: `radial-gradient(circle at 35% 30%, rgb(${tintSoft} / 0.95) 0%, rgb(${tint} / 0.7) 35%, rgb(${tint} / 0.25) 65%, transparent 80%)`,
-          boxShadow: `0 0 ${30 + reactive * 50}px rgb(${tint} / ${glow}), inset 0 0 ${20 + reactive * 30}px rgb(${tintSoft} / 0.6)`,
-          animation: `jarvis-pulse ${isSpeaking ? "1.2s" : isListening ? "2s" : "3.5s"} ease-in-out infinite`,
-        }}
-      />
-
-      {/* Núcleo brilhante interno */}
+      {/* Núcleo brilhante central */}
       <span
         className="absolute rounded-full pointer-events-none"
         style={{
-          width: "16%",
-          height: "16%",
-          background: `radial-gradient(circle, white 0%, rgb(${tintSoft}) 50%, transparent 100%)`,
-          filter: `blur(${2 + reactive * 4}px)`,
-          opacity: 0.85 + reactive * 0.15,
+          width: "10%",
+          height: "10%",
+          background: `radial-gradient(circle, white 0%, rgb(${core}) 50%, transparent 100%)`,
+          filter: `blur(${2 + reactive * 3}px)`,
+          opacity: 0.9,
+          animation: `plasma-breath ${breath} ease-in-out infinite`,
         }}
       />
 
-      {/* Partículas orbitais */}
-      {Array.from({ length: 4 }).map((_, i) => (
-        <span
-          key={i}
-          className="absolute inset-0 pointer-events-none"
-          style={{ animation: `jarvis-spin ${6 + i * 2}s linear infinite ${i % 2 ? "reverse" : ""}` }}
-        >
-          <span
-            className="absolute rounded-full"
-            style={{
-              width: 4,
-              height: 4,
-              top: `${10 + i * 4}%`,
-              left: "50%",
-              background: `rgb(${tintSoft})`,
-              boxShadow: `0 0 8px rgb(${tint}), 0 0 16px rgb(${tint} / 0.6)`,
-              transform: "translateX(-50%)",
-            }}
-          />
-        </span>
-      ))}
-
-      {/* Feedback rings */}
+      {/* Feedback rings (sutis) */}
       {isListening && (
         <span
-          className="absolute inset-[4%] rounded-full border animate-ping pointer-events-none"
-          style={{ borderColor: `rgb(${tint} / 0.4)` }}
+          className="absolute inset-[2%] rounded-full border animate-ping pointer-events-none"
+          style={{ borderColor: `rgb(${tint} / 0.25)` }}
         />
       )}
       {isSpeaking && (
         <span
-          className="absolute inset-0 rounded-full border-2 animate-ping pointer-events-none"
-          style={{ borderColor: `rgb(${tint} / 0.5)` }}
+          className="absolute inset-0 rounded-full border animate-ping pointer-events-none"
+          style={{ borderColor: `rgb(${tint} / 0.3)` }}
         />
       )}
 
       <style>{`
-        @keyframes jarvis-spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+        @keyframes plasma-breath {
+          0%, 100% { filter: brightness(0.92); transform: scale(1); }
+          50% { filter: brightness(1.12); transform: scale(1.025); }
         }
-        @keyframes jarvis-pulse {
-          0%, 100% { filter: brightness(1); }
-          50% { filter: brightness(1.25); }
+        @keyframes plasma-streak {
+          0%, 100% { transform: translateX(-2%) scaleY(1); opacity: 0.75; }
+          50% { transform: translateX(2%) scaleY(1.05); opacity: 1; }
+        }
+        @keyframes plasma-drift {
+          0% { transform: translate(-3%, -2%) rotate(0deg); }
+          100% { transform: translate(3%, 2%) rotate(8deg); }
         }
       `}</style>
     </button>
