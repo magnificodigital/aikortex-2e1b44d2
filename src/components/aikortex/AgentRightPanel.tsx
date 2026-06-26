@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS, type ProviderConfig } from "@/components/shared/IntegrationsGrid";
 import EmptyIntegrationSection from "@/components/settings/EmptyIntegrationSection";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
-import IntegrationVoiceForm from "@/components/settings/IntegrationVoiceForm";
 import VoiceProviderStatus from "./VoiceProviderStatus";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
 import { Button } from "@/components/ui/button";

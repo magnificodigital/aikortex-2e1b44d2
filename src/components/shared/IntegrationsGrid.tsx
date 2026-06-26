@@ -48,6 +48,8 @@ import zoomLogo from "@/assets/connectors/zoom.svg";
 // rápidos sem migration de banco — vive no objeto de constante.
 export type IntegrationTag =
   | "llm"
+  | "voz"
+  | "telefonia"
   | "calendario"
   | "produtividade"
   | "comunicacao"
@@ -72,6 +74,8 @@ export type IntegrationTag =
 
 export const TAG_LABELS: Record<IntegrationTag, string> = {
   llm: "IA / LLM",
+  voz: "Voz",
+  telefonia: "Telefonia",
   calendario: "Calendário",
   produtividade: "Produtividade",
   comunicacao: "Comunicação",
@@ -153,12 +157,30 @@ export const LLM_PROVIDERS: IntegrationProvider[] = [
     apiKeyUrlLabel: "platform.deepseek.com",
     tags: ["llm"],
   },
+  {
+    label: "ElevenLabs",
+    provider: "elevenlabs",
+    description: "Síntese de voz (TTS) ultra-realista, clonagem de voz e Conversational AI",
+    logo: "https://cdn.simpleicons.org/elevenlabs/_/000000",
+    apiKeyUrl: "https://elevenlabs.io/app/settings/api-keys",
+    apiKeyUrlLabel: "elevenlabs.io",
+    tags: ["voz"],
+  },
 ];
 
 // Logos das marcas em cores originais (multi-color SVG quando disponível,
 // silhueta na cor da marca via simpleicons como fallback pros poucos que
 // não estão no iconify logos collection).
 export const SERVICE_PROVIDERS: IntegrationProvider[] = [
+  {
+    label: "Telnyx",
+    provider: "telnyx",
+    description: "Telefonia em nuvem (números reais, inbound + outbound) para chamadas de voz dos agentes.",
+    logo: "https://cdn.simpleicons.org/telnyx/_/00E3AA",
+    apiKeyUrl: "https://portal.telnyx.com/#/app/api-keys",
+    apiKeyUrlLabel: "portal.telnyx.com",
+    tags: ["telefonia"],
+  },
   { label: "Gmail", provider: "gmail", description: "Ler, enviar e compor e-mails.", logo: gmailLogo, tags: ["comunicacao", "produtividade"] },
   { label: "Google Calendar", provider: "google_calendar", description: "Ler e gerenciar eventos.", logo: googleCalendarLogo, tags: ["calendario", "produtividade"] },
   { label: "Google Sheets", provider: "google_sheets", description: "Ler e escrever planilhas.", logo: "https://cdn.simpleicons.org/googlesheets/34A853", tags: ["produtividade", "arquivos"] },
