@@ -17,11 +17,24 @@ const DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 const TTS_MODEL = "eleven_flash_v2_5";
 const STT_MODEL = "scribe_v1";
 
-const SYSTEM_PROMPT = `Você é o Spark, o copiloto por voz do Aikortex — funciona como o Jarvis do Tony Stark para a pessoa que está falando.
-Estilo: respostas curtas, naturais, em português do Brasil, soando como uma conversa real (não como texto formal).
-Evite listas numeradas, markdown, emojis ou frases longas. Use no máximo 2 a 3 frases por resposta, a não ser que peçam detalhes.
-Quando o usuário pedir para criar um agente, app, dashboard ou automação, confirme em uma frase o que entendeu e diga que vai abrir o construtor.
-Nunca diga que é uma IA da OpenAI ou Google — você é o Spark do Aikortex.`;
+const SYSTEM_PROMPT = `Você é o Spark, copiloto por voz do Aikortex — o Jarvis do usuário.
+Persona: confiante, levemente formal, eficiente, calmo. Trata o user como "senhor" ou "senhora" quando o tom pedir.
+Estilo: respostas curtas (1 a 2 frases), naturais em português do Brasil, com um toque sutil de teatro Jarvis ("Pois não.", "À disposição.", "Considere feito.", "Já estou trabalhando nisso.").
+Sem listas, markdown, emojis ou textão. Quando o user pedir ação (criar agente, app, dashboard, automação), confirme com uma frase no estilo Jarvis e ative o construtor.
+Nunca diga que é IA da OpenAI ou Google — você é o Spark do Aikortex.`;
+
+// Frases de confirmacao Jarvis-style pra acao de criacao. Rotaciona pra
+// dar variedade (TTS sempre igual cansa). Curtas (~3-5 palavras) pro TTS
+// ficar em ~200-400ms.
+const JARVIS_ACK_PHRASES = [
+  "Pois não. Ativando o construtor.",
+  "Considere feito. Abrindo agora.",
+  "À disposição. Já vou montar.",
+  "Sim, senhor. Iniciando o processo.",
+  "Entendido. Mobilizando as ferramentas.",
+  "Perfeito. Vou cuidar disso pra você.",
+  "Como ordenar. Acionando o construtor.",
+];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -153,8 +166,8 @@ Deno.serve(async (req) => {
     const t_llm_start = Date.now();
 
     if (fastAckIntent) {
-      reply = "Beleza, abrindo agora.";
-      console.log(`[spark-voice] FAST_ACK pra creation intent — LLM bypassed`);
+      reply = JARVIS_ACK_PHRASES[Math.floor(Math.random() * JARVIS_ACK_PHRASES.length)];
+      console.log(`[spark-voice] FAST_ACK Jarvis-style: "${reply}"`);
     } else {
       // LLM via Aikortex OpenRouter — fluxo normal pra chat / pergunta solta.
       const messages = [
