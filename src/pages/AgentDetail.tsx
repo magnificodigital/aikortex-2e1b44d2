@@ -1352,7 +1352,7 @@ Se user falar de algum desses, diga claramente o que falta.
             isStructuring={isStructuring}
             isBuilding={isBuilding}
             onOpenConfig={() => setMobileTab("config")}
-            initialPrompt={isNewCustomFromHome && !sparkBubbleMode ? navState?.initialPrompt : undefined}
+            initialPrompt={isNewCustomFromHome ? navState?.initialPrompt : undefined}
             initialWizardMessages={wizardMessages}
             onWizardMessagesChange={setWizardMessages}
             hasMemoryActive={hasMemoryActive}
