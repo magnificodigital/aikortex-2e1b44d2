@@ -177,7 +177,7 @@ export const SERVICE_PROVIDERS: IntegrationProvider[] = [
     label: "Telnyx",
     provider: "telnyx",
     description: "Telefonia em nuvem (números reais, inbound + outbound) para chamadas de voz dos agentes.",
-    logo: "https://cdn.simpleicons.org/telnyx/_/00E3AA",
+    logo: telnyxLogo.url,
     apiKeyUrl: "https://portal.telnyx.com/#/app/api-keys",
     apiKeyUrlLabel: "portal.telnyx.com",
     tags: ["telefonia"],
