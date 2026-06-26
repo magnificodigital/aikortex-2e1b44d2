@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MessageSquare, Loader2, Settings, X, ArrowUp, RefreshCw, Square, Sparkles, BarChart3 } from "lucide-react";
+import { Mic, MessageSquare, Loader2, Settings, X, ArrowUp, RefreshCw, Sparkles, BarChart3 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
