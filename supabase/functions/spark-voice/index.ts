@@ -74,17 +74,18 @@ Deno.serve(async (req) => {
       .from("user_api_keys")
       .select("provider, api_key")
       .eq("user_id", userId)
-      .in("provider", ["elevenlabs", "elevenlabs_voice_id", "spark_voice_id"]);
+      .in("provider", ["elevenlabs", "spark_voice_id"]);
 
     const map = new Map<string, string>();
     (keys ?? []).forEach((row: any) => map.set(row.provider, row.api_key ?? ""));
     const elevenKey = map.get("elevenlabs") ?? "";
-    // Prioridade: spark_voice_id (config dedicada do Spark em Settings > Spark)
-    //          → elevenlabs_voice_id (fallback antigo, voz default dos agentes)
-    //          → DEFAULT_VOICE_ID (Sarah)
-    const voiceId = (map.get("spark_voice_id") || "").trim()
-      || (map.get("elevenlabs_voice_id") || "").trim()
-      || DEFAULT_VOICE_ID;
+    // Voz do SPARK eh INDEPENDENTE dos agentes. Cascata limpa:
+    //   spark_voice_id (config dedicada em Settings > Spark) → DEFAULT_VOICE_ID
+    // NUNCA fazer fallback pra elevenlabs_voice_id (voz dos agentes) —
+    // bug reportado: Spark "trocava" pra voz do agente que o user estava
+    // configurando no wizard. Spark eh o agente CONFIGURADOR, nao o agente
+    // CONFIGURADO. Voz tem que ser estavel ponta a ponta.
+    const voiceId = (map.get("spark_voice_id") || "").trim() || DEFAULT_VOICE_ID;
 
     if (!elevenKey) {
       return json({
