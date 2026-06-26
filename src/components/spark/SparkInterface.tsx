@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MicOff, MessageSquare, Settings, X, ArrowUp, RefreshCw, Sparkles, BarChart3, Pause, Play } from "lucide-react";
+import { Mic, MicOff, MessageSquare, Settings, X, ArrowUp, RefreshCw, Sparkles, BarChart3, Square } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
@@ -51,7 +52,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [intensity, setIntensity] = useState(0);
   const [muted, setMuted] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
   const navigate = useNavigate();
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -550,20 +551,15 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
 
           <p className="text-sm text-muted-foreground text-center min-h-[1.5rem]">{orbHint}</p>
 
-          {/* Spark controls: pause, stop, mute, settings */}
+          {/* Spark controls: stop, mute, mensagens, configurações */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                const a = audioElRef.current;
-                if (!a) return;
-                if (a.paused) { a.play().catch(() => {}); setPaused(false); }
-                else { a.pause(); setPaused(true); }
-              }}
+              onClick={endSession}
               disabled={!sessionActive}
-              title={paused ? "Retomar" : "Pausar"}
+              title="Encerrar"
               className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+              <Square className="w-4 h-4" />
             </button>
             <button
               onClick={() => {
@@ -575,9 +571,33 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
               }}
               disabled={!sessionActive}
               title={muted ? "Reativar microfone" : "Mudo"}
-              className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className={cn(
+                "relative flex items-center justify-center w-10 h-10 rounded-full border backdrop-blur-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                muted
+                  ? "border-destructive/60 bg-destructive/10 text-destructive hover:bg-destructive/15"
+                  : "border-border bg-card/50 text-muted-foreground hover:text-foreground hover:border-foreground/20",
+              )}
             >
-              {muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              <Mic className="w-4 h-4" />
+              {muted && (
+                <span
+                  aria-hidden
+                  className="absolute left-1 right-1 h-[2px] rounded-full bg-destructive rotate-45 pointer-events-none"
+                />
+              )}
+            </button>
+            <button
+              onClick={() => setShowTranscript(true)}
+              disabled={transcript.length === 0}
+              title="Ver mensagens"
+              className="relative flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <MessageSquare className="w-4 h-4" />
+              {transcript.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-medium grid place-items-center">
+                  {transcript.length}
+                </span>
+              )}
             </button>
             <Link
               to="/settings?tab=integrations"
@@ -588,33 +608,45 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
             </Link>
           </div>
 
-          {transcript.length > 0 && (
-            <div className="w-full max-h-64 overflow-y-auto rounded-2xl border border-border bg-card/40 backdrop-blur-sm px-4 py-3 space-y-2">
-              {transcript.slice(-8).map((entry) => (
-                <div
-                  key={entry.id}
-                  className={cn(
-                    "text-sm leading-relaxed",
-                    entry.role === "user" ? "text-foreground" : "text-muted-foreground italic",
+          <Dialog open={showTranscript} onOpenChange={setShowTranscript}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center justify-between">
+                  <span>Conversa com Spark</span>
+                  {transcript.length > 0 && (
+                    <button
+                      onClick={() => { setTranscript([]); historyRef.current = []; }}
+                      className="text-xs font-normal text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mr-6"
+                    >
+                      <X className="w-3 h-3" /> Limpar
+                    </button>
                   )}
-                >
-                  <span className="text-[10px] uppercase tracking-wider opacity-50 mr-2">
-                    {entry.role === "user" ? "Você" : "Spark"}
-                  </span>
-                  {entry.content}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {transcript.length > 0 && (
-            <button
-              onClick={() => { setTranscript([]); historyRef.current = []; }}
-              className="text-xs text-muted-foreground/70 hover:text-foreground inline-flex items-center gap-1"
-            >
-              <X className="w-3 h-3" /> Limpar conversa
-            </button>
-          )}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
+                {transcript.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Nenhuma mensagem ainda.
+                  </p>
+                ) : (
+                  transcript.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className={cn(
+                        "text-sm leading-relaxed",
+                        entry.role === "user" ? "text-foreground" : "text-muted-foreground italic",
+                      )}
+                    >
+                      <span className="text-[10px] uppercase tracking-wider opacity-50 mr-2">
+                        {entry.role === "user" ? "Você" : "Spark"}
+                      </span>
+                      {entry.content}
+                    </div>
+                  ))
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       ) : (
         <div className="w-full max-w-2xl">
