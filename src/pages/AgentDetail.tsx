@@ -845,7 +845,13 @@ Se user falar de algum desses, diga claramente o que falta.
       niche: wizardNiche || undefined,
       // Master v7.4 §13.16: Modo Vibe Acting precisa do agentId pra agent-vibe-mutate
       // poder atualizar o draft em tempo real.
-      agentContext: agentId ? { agentId, name: loadedAgent?.name ?? "" } : undefined,
+      // CRITICO: agentId 'new-{ts}' eh local-only — o agente ainda nao existe
+      // no DB. Mandar isso pro app-chat faz a validacao de ownership falhar
+      // ('Agente nao encontrado ou sem permissao'). So passa quando for ID real
+      // (uuid de agente salvo). Wizard cria o agente via commit_draft no fluxo.
+      agentContext: (agentId && !agentId.startsWith("new-") && agentId !== "new")
+        ? { agentId, name: loadedAgent?.name ?? "" }
+        : undefined,
       disableCrmExtraction: true,
       persistKey: shouldPersistTemplateDraft ? `${storagePrefix}-wizard-messages` : undefined,
       // G6 — flag opcional pra modo consultivo. Liga via localStorage:
