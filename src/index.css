@@ -605,14 +605,14 @@ body::after {
   will-change: transform, opacity;
 }
 .orb-point {
-  fill: rgba(var(--orb-tint), 0.32);
+  fill: rgba(var(--orb-tint), 0.14);
   transform-origin: 130px 130px;
   animation: orb-point-pulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  filter: drop-shadow(0 0 2px rgba(var(--orb-tint), 0.5));
+  filter: drop-shadow(0 0 2px rgba(var(--orb-tint), 0.25));
   will-change: transform, opacity;
 }
 .orb-point:nth-child(4n) {
-  fill: rgba(var(--orb-white), 0.48);
+  fill: rgba(var(--orb-white), 0.22);
   animation-duration: 1.9s;
 }
 .orb-point:nth-child(7n) {
