@@ -1,8 +1,8 @@
 // Helper compartilhado pra ler a chave LLM da agencia/cliente.
 //
-// IMPORTANTE: Spark eh assistente da AGENCIA. Cada chamada consome
+// IMPORTANTE: Stark eh assistente da AGENCIA. Cada chamada consome
 // tokens da chave LLM PROPRIA dela. Aikortex NAO banca conta de
-// agencia — sem chave configurada, Spark recusa.
+// agencia — sem chave configurada, Stark recusa.
 //
 // Cascata de prioridade (mais especifica → mais generica):
 //   1. openrouter   (gateway, suporta 200+ modelos, mais flexivel)
@@ -21,7 +21,7 @@ export interface AgencyLlmConfig {
   provider: LlmProvider;
   apiKey: string;
   /** Modelo padrao configurado pela agencia em /admin?tab=api-keys ou no agente.
-   *  null = usar default do provider (Spark monta um sensible default por provider). */
+   *  null = usar default do provider (Stark monta um sensible default por provider). */
   defaultModel: string | null;
 }
 
@@ -82,7 +82,7 @@ export function noLlmConfiguredError() {
   return {
     error: "no_llm_configured",
     message:
-      "Configure sua chave LLM em Configurações → Provedores pra ativar o Spark. " +
+      "Configure sua chave LLM em Configurações → Provedores pra ativar o Stark. " +
       "Recomendamos Claude Haiku ou Gemini Flash pra custo baixo.",
     action: { type: "navigate", url: "/settings?tab=providers" },
   };

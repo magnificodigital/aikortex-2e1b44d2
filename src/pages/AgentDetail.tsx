@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ConversationProvider } from "@elevenlabs/react";
 import AgentRightPanel, { type AgentConfig } from "@/components/aikortex/AgentRightPanel";
 import AgentChatPanel, { type StructuredAgentConfig } from "@/components/aikortex/AgentChatPanel";
-import { SparkBubble } from "@/components/spark/SparkBubble";
+import { StarkBubble } from "@/components/stark/StarkBubble";
 import WizardShowcasePanel from "@/components/aikortex/WizardShowcasePanel";
 import { computeWizardProgress } from "@/lib/wizard-progress";
 import VoiceCallPanel from "@/components/aikortex/VoiceCallPanel";
@@ -211,9 +211,9 @@ const AgentDetail = () => {
 
   const isTemplate    = !!agentId && !!TEMPLATE_MAP[agentId];
   const isNewCustomFromHome = navState?.fromTemplate === false && !!navState?.initialPrompt;
-  // Spark bubble: aparece so quando user chegou aqui via Spark (Home).
+  // Stark bubble: aparece so quando user chegou aqui via Stark (Home).
   // Voz = bubble ativo (continua conversa). Texto = bubble desativado (so presenca).
-  const sparkBubbleMode = navState?.sparkBubbleMode as "voice" | "text" | undefined;
+  const starkBubbleMode = navState?.starkBubbleMode as "voice" | "text" | undefined;
   const isFreshNew = !isTemplate && (!agentId || agentId === "new" || agentId.startsWith("new-"));
   const templateAgent = isTemplate ? TEMPLATE_MAP[agentId!] : null;
   const initialType: AgentType = (navState?.agentType as AgentType) || templateAgent?.agentType || "Custom";
@@ -807,12 +807,12 @@ Se user falar de algum desses, diga claramente o que falta.
     [{
       role: "agent" as const,
       // Greeting condicional:
-      //  - Se chegou via Spark (voz/texto) -> ack curto Jarvis com nome do user.
+      //  - Se chegou via Stark (voz/texto) -> ack curto Jarvis com nome do user.
       //    Wizard depois faz a discovery por conta propria via app-chat.
       //  - Senao (botao Novo Agente) -> saudacao rotativa simples §13.2.
       text: (() => {
-        if (navState?.sparkBubbleMode) {
-          const first = (navState?.sparkUserFirstName as string) || "";
+        if (navState?.starkBubbleMode) {
+          const first = (navState?.starkUserFirstName as string) || "";
           const voc = first ? `, sir ${first}` : ", sir";
           return `Sim${voc}, vou ativar nossas tecnologias para criar seu agente.`;
         }
@@ -851,13 +851,13 @@ Se user falar de algum desses, diga claramente o que falta.
       // localStorage.setItem("aikortex_wizard_consultive", "1")
       // Default desligado (comportamento atual idêntico).
       consultive: (typeof window !== "undefined" && window.localStorage?.getItem("aikortex_wizard_consultive") === "1") || undefined,
-      // SparkBubble em modo voz le todas as respostas via TTS — backend
+      // StarkBubble em modo voz le todas as respostas via TTS — backend
       // injeta override Jarvis (curto, sem markdown, 1 pergunta por vez).
-      voiceMode: sparkBubbleMode === "voice",
+      voiceMode: starkBubbleMode === "voice",
     }
   );
 
-  // Ultima mensagem do agente no wizard chat — usado pelo SparkBubble pra
+  // Ultima mensagem do agente no wizard chat — usado pelo StarkBubble pra
   // ler em voz alta toda vez que muda. useMemo garante valor estavel (sem
   // IIFE recriando a string a cada render do AgentDetail).
   const latestWizardAgentMessage = useMemo(() => {
@@ -1506,9 +1506,9 @@ Se user falar de algum desses, diga claramente o que falta.
         agentGreeting={agentConfig?.greetingMessage || ""}
         voiceId={agentConfig?.voiceConfig?.voiceId}
       />
-      {sparkBubbleMode && (
-        <SparkBubble
-          mode={sparkBubbleMode}
+      {starkBubbleMode && (
+        <StarkBubble
+          mode={starkBubbleMode}
           isProcessing={wizardChat.isStreaming}
           latestAgentMessage={latestWizardAgentMessage}
           onTranscript={(text) => {

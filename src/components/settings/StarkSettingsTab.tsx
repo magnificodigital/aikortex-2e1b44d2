@@ -15,30 +15,30 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
 import { useElevenLabsVoices } from "@/hooks/use-elevenlabs-voices";
-import { useSparkPrefs, type SparkPersonaPreset } from "@/hooks/use-spark-prefs";
-import { useSparkCommands } from "@/hooks/use-spark-commands";
-import { useSparkUsage } from "@/hooks/use-spark-usage";
+import { useStarkPrefs, type StarkPersonaPreset } from "@/hooks/use-stark-prefs";
+import { useStarkCommands } from "@/hooks/use-stark-commands";
+import { useStarkUsage } from "@/hooks/use-stark-usage";
 import { toast } from "sonner";
 
 const DEFAULT_VOICE = "EXAVITQu4vr4xnSDxMaL"; // Sarah
-const PREVIEW_TEXT = "Olá, sou o Spark, seu copiloto de voz. À disposição.";
+const PREVIEW_TEXT = "Olá, sou o Stark, seu copiloto de voz. À disposição.";
 
-const PRESET_OPTIONS: { value: SparkPersonaPreset; label: string; hint: string }[] = [
+const PRESET_OPTIONS: { value: StarkPersonaPreset; label: string; hint: string }[] = [
   { value: "jarvis", label: "Jarvis", hint: "Confiante, calmo, eficiente — estilo Tony Stark" },
   { value: "profissional", label: "Profissional", hint: "Corporativo, objetivo, formal" },
   { value: "casual", label: "Casual", hint: "Descontraído, amigável, próximo" },
   { value: "custom", label: "Custom", hint: "Você escreve do zero o system prompt" },
 ];
 
-export default function SparkSettingsTab() {
+export default function StarkSettingsTab() {
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" /> Spark
+          <Sparkles className="w-5 h-5 text-primary" /> Stark
         </h2>
         <p className="text-xs text-muted-foreground">
-          Configure seu copiloto. Esses ajustes valem para o Spark em todas as telas —
+          Configure seu copiloto. Esses ajustes valem para o Stark em todas as telas —
           não confundir com a voz dos agentes.
         </p>
       </div>
@@ -54,8 +54,8 @@ export default function SparkSettingsTab() {
 // ── Personalidade ────────────────────────────────────────────────────────
 
 function PersonaSection() {
-  const { prefs, loading, saving, save } = useSparkPrefs();
-  const [preset, setPreset] = useState<SparkPersonaPreset>("jarvis");
+  const { prefs, loading, saving, save } = useStarkPrefs();
+  const [preset, setPreset] = useState<StarkPersonaPreset>("jarvis");
   const [userName, setUserName] = useState("");
   const [customPrompt, setCustomPrompt] = useState("");
   const [bubbleEnabled, setBubbleEnabled] = useState(true);
@@ -81,7 +81,7 @@ function PersonaSection() {
       persona_prompt: preset === "custom" ? (customPrompt.trim() || null) : null,
       bubble_enabled: bubbleEnabled,
     });
-    if (ok) toast.success("Personalidade do Spark atualizada");
+    if (ok) toast.success("Personalidade do Stark atualizada");
   }
 
   return (
@@ -91,13 +91,13 @@ function PersonaSection() {
           <Sparkles className="w-4 h-4 text-primary" /> Personalidade
         </CardTitle>
         <CardDescription className="text-xs">
-          Como o Spark fala com você. Essas regras viram parte do system prompt em todo turno.
+          Como o Stark fala com você. Essas regras viram parte do system prompt em todo turno.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
           <Label className="text-xs">Preset</Label>
-          <Select value={preset} onValueChange={(v) => setPreset(v as SparkPersonaPreset)}>
+          <Select value={preset} onValueChange={(v) => setPreset(v as StarkPersonaPreset)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {PRESET_OPTIONS.map(o => (
@@ -113,7 +113,7 @@ function PersonaSection() {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Como o Spark deve te chamar</Label>
+          <Label className="text-xs">Como o Stark deve te chamar</Label>
           <Input
             placeholder='ex: "Willy", "sir", "chefe"'
             value={userName}
@@ -121,7 +121,7 @@ function PersonaSection() {
             maxLength={40}
           />
           <p className="text-[10px] text-muted-foreground">
-            Vazio = Spark escolhe pelo preset (Jarvis usa "sir").
+            Vazio = Stark escolhe pelo preset (Jarvis usa "sir").
           </p>
         </div>
 
@@ -130,7 +130,7 @@ function PersonaSection() {
             <Label className="text-xs">System prompt customizado</Label>
             <Textarea
               rows={8}
-              placeholder="Escreva do zero como o Spark deve se comportar..."
+              placeholder="Escreva do zero como o Stark deve se comportar..."
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
               className="font-mono text-xs"
@@ -147,7 +147,7 @@ function PersonaSection() {
               <Bell className="w-3 h-3" /> Bubble flutuante
             </Label>
             <p className="text-[10px] text-muted-foreground">
-              Mostra o orb do Spark flutuando nas telas de gestão.
+              Mostra o orb do Stark flutuando nas telas de gestão.
             </p>
           </div>
           <Switch checked={bubbleEnabled} onCheckedChange={setBubbleEnabled} />
@@ -185,12 +185,12 @@ function VoiceSection() {
         .from("user_api_keys")
         .select("provider, api_key")
         .eq("user_id", user.id)
-        .in("provider", ["spark_voice_id", "spark_voice_stability", "spark_voice_speed"]);
+        .in("provider", ["stark_voice_id", "stark_voice_stability", "stark_voice_speed"]);
       const map = new Map<string, string>();
       (data ?? []).forEach((row: any) => map.set(row.provider, row.api_key ?? ""));
-      const vid = map.get("spark_voice_id") || DEFAULT_VOICE;
-      const stab = parseFloat(map.get("spark_voice_stability") || "0.5");
-      const spd = parseFloat(map.get("spark_voice_speed") || "1.0");
+      const vid = map.get("stark_voice_id") || DEFAULT_VOICE;
+      const stab = parseFloat(map.get("stark_voice_stability") || "0.5");
+      const spd = parseFloat(map.get("stark_voice_speed") || "1.0");
       setVoiceId(vid); setSavedVoiceId(vid);
       setStability(Number.isFinite(stab) ? stab : 0.5);
       setSavedStability(Number.isFinite(stab) ? stab : 0.5);
@@ -207,16 +207,16 @@ function VoiceSection() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Não autenticado"); return; }
       const rows = [
-        { user_id: user.id, provider: "spark_voice_id", api_key: voiceId },
-        { user_id: user.id, provider: "spark_voice_stability", api_key: String(stability) },
-        { user_id: user.id, provider: "spark_voice_speed", api_key: String(speed) },
+        { user_id: user.id, provider: "stark_voice_id", api_key: voiceId },
+        { user_id: user.id, provider: "stark_voice_stability", api_key: String(stability) },
+        { user_id: user.id, provider: "stark_voice_speed", api_key: String(speed) },
       ];
       const { error: upErr } = await supabase
         .from("user_api_keys")
         .upsert(rows, { onConflict: "user_id,provider" });
       if (upErr) throw upErr;
       setSavedVoiceId(voiceId); setSavedStability(stability); setSavedSpeed(speed);
-      toast.success("Voz do Spark atualizada");
+      toast.success("Voz do Stark atualizada");
     } catch (e) {
       toast.error(`Erro: ${(e as Error).message}`);
     } finally {
@@ -271,7 +271,7 @@ function VoiceSection() {
           <Mic className="w-4 h-4 text-primary" /> Voz
         </CardTitle>
         <CardDescription className="text-xs">
-          Escolha a voz do Spark. As vozes vêm da sua conta ElevenLabs.
+          Escolha a voz do Stark. As vozes vêm da sua conta ElevenLabs.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -377,7 +377,7 @@ const SUGGESTED_COMMANDS = [
 ];
 
 function CommandsSection() {
-  const { commands, loading, create, update, remove } = useSparkCommands();
+  const { commands, loading, create, update, remove } = useStarkCommands();
   const [draftLabel, setDraftLabel] = useState("");
   const [draftPrompt, setDraftPrompt] = useState("");
   const [adding, setAdding] = useState(false);
@@ -420,7 +420,7 @@ function CommandsSection() {
           <Zap className="w-4 h-4 text-primary" /> Comandos rápidos
         </CardTitle>
         <CardDescription className="text-xs">
-          Atalhos que aparecem como botões na home do Spark. Um clique = pergunta pronta.
+          Atalhos que aparecem como botões na home do Stark. Um clique = pergunta pronta.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -498,7 +498,7 @@ function CommandsSection() {
                 maxLength={60}
               />
               <Textarea
-                placeholder="Pergunta que vai ser mandada ao Spark"
+                placeholder="Pergunta que vai ser mandada ao Stark"
                 value={draftPrompt}
                 onChange={(e) => setDraftPrompt(e.target.value)}
                 rows={2}
@@ -521,7 +521,7 @@ function CommandsSection() {
 // ── Uso & Custos LLM ─────────────────────────────────────────────────────
 
 function UsageSection() {
-  const { summary, loading } = useSparkUsage(30);
+  const { summary, loading } = useStarkUsage(30);
 
   const formatTokens = (n: number) =>
     n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M` :
@@ -549,7 +549,7 @@ function UsageSection() {
           </div>
         ) : summary.callCount === 0 ? (
           <p className="text-xs text-muted-foreground py-4 text-center">
-            Nenhum uso registrado ainda. Use o Spark e os números aparecem aqui.
+            Nenhum uso registrado ainda. Use o Stark e os números aparecem aqui.
           </p>
         ) : (
           <>

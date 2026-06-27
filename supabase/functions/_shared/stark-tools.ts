@@ -1,4 +1,4 @@
-// Tools que o Spark expõe pro LLM via tool calling.
+// Tools que o Stark expõe pro LLM via tool calling.
 //
 // Princípios:
 // - Genéricas (não específicas por tipo de agente)
@@ -6,14 +6,14 @@
 // - Cada tool roda com client autenticado do USER → RLS auto-filtra
 // - Sempre retornam dados reais; NUNCA inventar — se vazio, dizer vazio
 //
-// Spark consulta via period filters padronizados:
+// Stark consulta via period filters padronizados:
 //   "today" | "yesterday" | "this_week" | "last_week"
 //   | "this_month" | "last_month" | "last_7_days" | "last_30_days"
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 /** Schema OpenAI/Anthropic-compatible das tools. LLM le isso pra saber o que existe. */
-export const SPARK_TOOL_DEFS = [
+export const STARK_TOOL_DEFS = [
   {
     name: "list_agents",
     description: "Lista agentes do user (qualquer tipo: SDR, SAC, CS, BDR, Custom). Use quando user pergunta 'meus agentes', 'quais agentes tenho', ou precisa de IDs pra outras tools.",

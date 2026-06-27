@@ -440,7 +440,7 @@ const AgentChatPanel = ({
     onWizardMessagesChange?.(wizardMessages);
   }, [wizardMessages, onWizardMessagesChange]);
 
-  // Auto-trigger quando initialPrompt vier da Home (ex.: Spark texto/voz).
+  // Auto-trigger quando initialPrompt vier da Home (ex.: Stark texto/voz).
   // CRITICO: usa wizardSendMessage (mesmo caminho do user digitando no input)
   // em vez de handleDiscover. handleDiscover pula direto pra step "structure";
   // wizardSendMessage mantem a conversa multi-turn em "discover" — o wizard

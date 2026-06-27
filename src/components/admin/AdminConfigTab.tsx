@@ -137,7 +137,7 @@ const PROVIDERS: ProviderGroup[] = [
     id: "elevenlabs",
     label: "ElevenLabs",
     category: "voz",
-    description: "Síntese de voz (TTS) ultra-realista para agentes e Spark.",
+    description: "Síntese de voz (TTS) ultra-realista para agentes e Stark.",
     logo: "https://cdn.simpleicons.org/elevenlabs/_/000000",
     apiKeyUrl: "https://elevenlabs.io/app/settings/api-keys",
     apiKeyUrlLabel: "elevenlabs.io",

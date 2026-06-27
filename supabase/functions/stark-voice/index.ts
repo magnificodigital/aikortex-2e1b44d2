@@ -1,4 +1,4 @@
-// Spark voice loop: ElevenLabs STT -> Aikortex LLM (OpenRouter via llm-fallback) -> ElevenLabs TTS.
+// Stark voice loop: ElevenLabs STT -> Aikortex LLM (OpenRouter via llm-fallback) -> ElevenLabs TTS.
 // Returns transcript, assistant reply text, and TTS audio (base64 mp3).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callLLM } from "../_shared/llm-fallback.ts";
@@ -9,8 +9,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   // CRITICO: sem Expose-Headers o browser ESCONDE qualquer header custom em
-  // respostas cross-origin. Front leria null nos X-Spark-* e nao navegava.
-  "Access-Control-Expose-Headers": "x-spark-intent, x-spark-transcript, x-spark-reply, x-spark-total-ms, x-voice-fallback, x-voice-fallback-reason",
+  // respostas cross-origin. Front leria null nos X-Stark-* e nao navegava.
+  "Access-Control-Expose-Headers": "x-stark-intent, x-stark-transcript, x-stark-reply, x-stark-total-ms, x-voice-fallback, x-voice-fallback-reason",
 };
 
 // Multilingual default voice (Sarah). User can override via user_api_keys.provider='elevenlabs_voice_id'.
@@ -18,11 +18,11 @@ const DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 const TTS_MODEL = "eleven_flash_v2_5";
 const STT_MODEL = "scribe_v1";
 
-const SYSTEM_PROMPT = `Você é o Spark, copiloto por voz do Aikortex — o Jarvis do usuário.
+const SYSTEM_PROMPT = `Você é o Stark, copiloto por voz do Aikortex — o Jarvis do usuário.
 Persona: confiante, levemente formal, eficiente, calmo. Trata o user como "senhor" ou "senhora" quando o tom pedir.
 Estilo: respostas curtas (1 a 2 frases), naturais em português do Brasil, com um toque sutil de teatro Jarvis ("Pois não.", "À disposição.", "Considere feito.", "Já estou trabalhando nisso.").
 Sem listas, markdown, emojis ou textão. Quando o user pedir ação (criar agente, app, dashboard, automação), confirme com uma frase no estilo Jarvis e ative o construtor.
-Nunca diga que é IA da OpenAI ou Google — você é o Spark do Aikortex.`;
+Nunca diga que é IA da OpenAI ou Google — você é o Stark do Aikortex.`;
 
 // Script Jarvis-style pra acao de criacao de agente. Curto e direto: anuncia
 // e o wizard cuida da discovery por conta propria depois.
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     if (!(await isProviderActive(admin, "elevenlabs"))) {
       return json({
         error: "provider_disabled",
-        message: "ElevenLabs está desativado pelo admin. Spark de voz indisponível.",
+        message: "ElevenLabs está desativado pelo admin. Stark de voz indisponível.",
       }, 503);
     }
 
@@ -74,18 +74,18 @@ Deno.serve(async (req) => {
       .from("user_api_keys")
       .select("provider, api_key")
       .eq("user_id", userId)
-      .in("provider", ["elevenlabs", "spark_voice_id"]);
+      .in("provider", ["elevenlabs", "stark_voice_id"]);
 
     const map = new Map<string, string>();
     (keys ?? []).forEach((row: any) => map.set(row.provider, row.api_key ?? ""));
     const elevenKey = map.get("elevenlabs") ?? "";
-    // Voz do SPARK eh INDEPENDENTE dos agentes. Cascata limpa:
-    //   spark_voice_id (config dedicada em Settings > Spark) → DEFAULT_VOICE_ID
+    // Voz do STARK eh INDEPENDENTE dos agentes. Cascata limpa:
+    //   stark_voice_id (config dedicada em Settings > Stark) → DEFAULT_VOICE_ID
     // NUNCA fazer fallback pra elevenlabs_voice_id (voz dos agentes) —
-    // bug reportado: Spark "trocava" pra voz do agente que o user estava
-    // configurando no wizard. Spark eh o agente CONFIGURADOR, nao o agente
+    // bug reportado: Stark "trocava" pra voz do agente que o user estava
+    // configurando no wizard. Stark eh o agente CONFIGURADOR, nao o agente
     // CONFIGURADO. Voz tem que ser estavel ponta a ponta.
-    const voiceId = (map.get("spark_voice_id") || "").trim() || DEFAULT_VOICE_ID;
+    const voiceId = (map.get("stark_voice_id") || "").trim() || DEFAULT_VOICE_ID;
 
     if (!elevenKey) {
       return json({
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
               ? j.detail
               : j?.detail?.message || j?.detail?.status || j?.message || "";
           } catch { elevenMsg = t.slice(0, 200); }
-          console.error("[spark-voice] STT failed", sttResp.status, t);
+          console.error("[stark-voice] STT failed", sttResp.status, t);
           const friendly =
             sttResp.status === 401 ? "Chave ElevenLabs inválida ou sem permissão de STT."
             : sttResp.status === 402 ? "Plano ElevenLabs não cobre STT. Faça upgrade ou troque a chave."
@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
         }
         const sttJson = await sttResp.json();
         userText = (sttJson?.text ?? "").trim();
-        console.log(`[spark-voice] stt_ms=${Date.now() - t_stt_start} text="${userText.slice(0, 80)}"`);
+        console.log(`[stark-voice] stt_ms=${Date.now() - t_stt_start} text="${userText.slice(0, 80)}"`);
       } else {
         const text = form.get("text");
         if (typeof text === "string") userText = text.trim();
@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
 
     if (fastAckIntent) {
       reply = buildAgentCreationAck(firstName);
-      console.log(`[spark-voice] FAST_ACK Jarvis-style com nome="${firstName}": "${reply.slice(0, 60)}..."`);
+      console.log(`[stark-voice] FAST_ACK Jarvis-style com nome="${firstName}": "${reply.slice(0, 60)}..."`);
     } else {
       // LLM via Aikortex OpenRouter — fluxo normal pra chat / pergunta solta.
       const messages = [
@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
         admin,
       );
       if (!llmResult.success) {
-        console.warn("[spark-voice] fast models falharam, tentando tier=free do DB");
+        console.warn("[stark-voice] fast models falharam, tentando tier=free do DB");
         llmResult = await callLLM(
           messages,
           { apiKey: openrouterKey, temperature: 0.7, maxTokens: 120, tier: "free" },
@@ -216,13 +216,13 @@ Deno.serve(async (req) => {
         );
       }
       if (!llmResult.success) {
-        console.error("[spark-voice] LLM falhou em todos os fallbacks:", llmResult.error);
+        console.error("[stark-voice] LLM falhou em todos os fallbacks:", llmResult.error);
         return json({ error: "llm_failed", message: "Nenhum modelo de LLM respondeu. Verifique OpenRouter.", details: llmResult.error }, 502);
       }
       reply = (llmResult.content ?? "").trim();
       if (!reply) return json({ error: "empty_reply" }, 502);
     }
-    console.log(`[spark-voice] llm_ms=${Date.now() - t_llm_start} fast_ack=${fastAckIntent}`);
+    console.log(`[stark-voice] llm_ms=${Date.now() - t_llm_start} fast_ack=${fastAckIntent}`);
 
     // ElevenLabs TTS — endpoint /stream + formato leve mp3_22050_32.
     const SARAH = "EXAVITQu4vr4xnSDxMaL";
@@ -246,10 +246,10 @@ Deno.serve(async (req) => {
     // Disambigua: se 401 com voz custom, tenta Sarah. Se Sarah funciona, o
     // problema NAO eh a chave — eh a voz custom que nao pertence a conta.
     if (ttsResp.status === 401 && finalVoiceId !== SARAH) {
-      console.log(`[spark-voice] 401 com ${finalVoiceId}, tentando Sarah pra disambiguar`);
+      console.log(`[stark-voice] 401 com ${finalVoiceId}, tentando Sarah pra disambiguar`);
       const sarahResp = await callTts(SARAH);
       if (sarahResp.ok) {
-        console.warn(`[spark-voice] voz ${finalVoiceId} sem acesso; usando Sarah como fallback`);
+        console.warn(`[stark-voice] voz ${finalVoiceId} sem acesso; usando Sarah como fallback`);
         ttsResp = sarahResp;
         usedFallback = true;
       } else {
@@ -265,7 +265,7 @@ Deno.serve(async (req) => {
           ? j.detail
           : j?.detail?.message || j?.detail?.status || j?.message || "";
       } catch { elevenMsg = t.slice(0, 200); }
-      console.error("[spark-voice] TTS failed", ttsResp.status, t);
+      console.error("[stark-voice] TTS failed", ttsResp.status, t);
       if (ttsResp.status === 401) {
         // ElevenLabs reutiliza 401 pra quota_exceeded. Desambiguar.
         let parsedDetail: any = null;
@@ -311,7 +311,7 @@ Deno.serve(async (req) => {
     // Sem base64 (vs antes), sem TransformStream (mais estavel). transcript/reply
     // vao nos headers pra cliente mostrar texto enquanto audio toca.
     const audioBytes = new Uint8Array(await ttsResp.arrayBuffer());
-    console.log(`[spark-voice] tts_ms=${Date.now() - t0} bytes=${audioBytes.byteLength}`);
+    console.log(`[stark-voice] tts_ms=${Date.now() - t0} bytes=${audioBytes.byteLength}`);
 
     const audioHeaders: Record<string, string> = {
       ...corsHeaders,
@@ -320,10 +320,10 @@ Deno.serve(async (req) => {
       // Texto em base64 pra suportar UTF-8 nos headers HTTP sem escape hell.
       // Backend eh fonte da verdade pro intent. Front confia neste flag e dispara
       // navegacao quando = creation. Evita divergencia entre regex front e back.
-      "X-Spark-Intent": fastAckIntent ? "creation" : "chat",
-      "X-Spark-Transcript": btoa(unescape(encodeURIComponent(userText))),
-      "X-Spark-Reply": btoa(unescape(encodeURIComponent(reply))),
-      "X-Spark-Total-Ms": String(Date.now() - t0),
+      "X-Stark-Intent": fastAckIntent ? "creation" : "chat",
+      "X-Stark-Transcript": btoa(unescape(encodeURIComponent(userText))),
+      "X-Stark-Reply": btoa(unescape(encodeURIComponent(reply))),
+      "X-Stark-Total-Ms": String(Date.now() - t0),
     };
     if (usedFallback) {
       audioHeaders["X-Voice-Fallback"] = "true";

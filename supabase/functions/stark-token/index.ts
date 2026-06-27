@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       return json({ error: "elevenlabs_not_configured", message: "Configure sua chave ElevenLabs em Configurações → Voz." }, 400);
     }
     if (!agentId) {
-      return json({ error: "agent_id_missing", message: "Configure o Agent ID do seu Spark em Configurações → Voz." }, 400);
+      return json({ error: "agent_id_missing", message: "Configure o Agent ID do seu Stark em Configurações → Voz." }, 400);
     }
 
     const resp = await fetch(

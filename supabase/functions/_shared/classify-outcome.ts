@@ -2,8 +2,8 @@
 // (tracked_outcomes do agente) e retorna quais aplicam.
 //
 // Usado no final de chamadas (telnyx-webhook hangup) pra popular
-// call_logs.outcome_tags, e depois Spark consegue responder
-// "quantas qualificacoes hoje?" via spark-tools.count_outcomes.
+// call_logs.outcome_tags, e depois Stark consegue responder
+// "quantas qualificacoes hoje?" via stark-tools.count_outcomes.
 //
 // LLM usado: cascata padrao do callLLM (OpenRouter platform key). Classificacao
 // e' tarefa pequena (256 tokens), modelo free serve. Se falhar (sem chave,

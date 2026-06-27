@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { SparkOrb } from "./SparkOrb";
+import { StarkOrb } from "./StarkOrb";
 import { cn } from "@/lib/utils";
 
 type Mode = "voice" | "text";
@@ -33,7 +33,7 @@ const TEXT_SUGGESTIONS = [
   ["Agente BDR LinkedIn", "Portal de Clientes", "Sistema de Tarefas"],
 ];
 
-interface SparkInterfaceProps {
+interface StarkInterfaceProps {
   greeting: string;
   userName: string;
   honorific: string;
@@ -41,10 +41,10 @@ interface SparkInterfaceProps {
   onVoiceTranscript?: (text: string) => void;
 }
 
-export function SparkInterface({ greeting, userName, honorific, onTextSubmit, onVoiceTranscript }: SparkInterfaceProps) {
+export function StarkInterface({ greeting, userName, honorific, onTextSubmit, onVoiceTranscript }: StarkInterfaceProps) {
   const [mode, setMode] = useState<Mode>("voice");
-  // 'build' = criacao de agente (spark-voice, fluxo Jarvis com fast-ack + nav)
-  // 'manage' = perguntas de gestao (spark-chat com tools, ainda em beta)
+  // 'build' = criacao de agente (stark-voice, fluxo Jarvis com fast-ack + nav)
+  // 'manage' = perguntas de gestao (stark-chat com tools, ainda em beta)
   const [purpose, setPurpose] = useState<"build" | "manage">("build");
   const [orbState, setOrbState] = useState<OrbState>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
@@ -124,7 +124,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
   }, []);
 
   // Libera SO recursos de microfone/analyser. Nao toca no audio TTS — esse
-  // pode estar reproduzindo a frase do Spark e precisa continuar mesmo
+  // pode estar reproduzindo a frase do Stark e precisa continuar mesmo
   // depois que o componente desmonta (caso navegacao Jarvis-style).
   const releaseMicResources = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -158,7 +158,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
   }, [releaseMicResources]);
 
   // Cleanup no UNMOUNT (ex.: navegacao). NAO pausa o audio TTS — usuario
-  // ainda precisa ouvir o resto da frase do Spark mesmo na proxima tela.
+  // ainda precisa ouvir o resto da frase do Stark mesmo na proxima tela.
   // Pra garantir que o browser nao GC o Audio element durante playback,
   // movemos ele pra document.body com auto-remove no onended.
   useEffect(() => () => {
@@ -248,7 +248,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       };
       rafRef.current = requestAnimationFrame(tick);
     } catch (e) {
-      console.error("[spark] mic error", e);
+      console.error("[stark] mic error", e);
       setOrbState("error");
       toast.error("Não foi possível acessar o microfone");
     }
@@ -269,9 +269,9 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       }
 
       // Roteamento por purpose:
-      //  - 'build'  -> spark-voice (binário + headers; fast-ack + nav)
-      //  - 'manage' -> spark-chat  (JSON com tools, audio base64)
-      const endpoint = purpose === "manage" ? "spark-chat" : "spark-voice";
+      //  - 'build'  -> stark-voice (binário + headers; fast-ack + nav)
+      //  - 'manage' -> stark-chat  (JSON com tools, audio base64)
+      const endpoint = purpose === "manage" ? "stark-chat" : "stark-voice";
       const resp = await fetch(fnUrl(endpoint), {
         method: "POST",
         headers: {
@@ -288,7 +288,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
         let parsed: any = null;
         try { parsed = await resp.json(); } catch { /* noop */ }
         const msg = parsed?.message || parsed?.error || `Falha ao processar áudio (HTTP ${resp.status})`;
-        console.error("[spark] backend error", { msg, parsed, status: resp.status });
+        console.error("[stark] backend error", { msg, parsed, status: resp.status });
         setOrbState("error");
         toast.error(msg, {
           action: msg.includes("ElevenLabs") || parsed?.error === "elevenlabs_not_configured"
@@ -307,14 +307,14 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       let audioBlobPromise: Promise<Blob> | null = null;
 
       if (isAudioResp) {
-        // spark-voice: binário + headers base64-UTF8
+        // stark-voice: binário + headers base64-UTF8
         const decode = (b64: string) => { try { return decodeURIComponent(escape(atob(b64))); } catch { return ""; } };
-        userText = decode(resp.headers.get("x-spark-transcript") || "");
-        reply = decode(resp.headers.get("x-spark-reply") || "");
-        intent = resp.headers.get("x-spark-intent") || "chat";
+        userText = decode(resp.headers.get("x-stark-transcript") || "");
+        reply = decode(resp.headers.get("x-stark-reply") || "");
+        intent = resp.headers.get("x-stark-intent") || "chat";
         audioBlobPromise = resp.blob();
       } else {
-        // spark-chat: JSON com { transcript, reply, audio (base64), tools_called }
+        // stark-chat: JSON com { transcript, reply, audio (base64), tools_called }
         const j = await resp.json();
         userText = j.transcript || "";
         reply = j.reply || "";
@@ -323,9 +323,9 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
           const bytes = Uint8Array.from(atob(j.audio), (c) => c.charCodeAt(0));
           audioBlobPromise = Promise.resolve(new Blob([bytes], { type: j.audio_mime }));
         }
-        console.log("[spark-chat] tools:", j.tools_called, "tokens:", j.tokens);
+        console.log("[stark-chat] tools:", j.tools_called, "tokens:", j.tokens);
       }
-      console.log("[spark] transcript:", userText, "| intent:", intent, "| reply:", reply.slice(0, 60));
+      console.log("[stark] transcript:", userText, "| intent:", intent, "| reply:", reply.slice(0, 60));
 
       historyRef.current.push({ role: "user", content: userText });
       historyRef.current.push({ role: "assistant", content: reply });
@@ -344,13 +344,13 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       if (intent === "creation") {
         const cb = onVoiceTranscriptRef.current;
         if (cb) {
-          try { cb(userText); } catch (e) { console.error("[spark] onVoiceTranscript falhou:", e); }
+          try { cb(userText); } catch (e) { console.error("[stark] onVoiceTranscript falhou:", e); }
         } else {
-          console.warn("[spark] intent=creation mas onVoiceTranscript nao registrado");
+          console.warn("[stark] intent=creation mas onVoiceTranscript nao registrado");
         }
       }
 
-      // Se nao tem audio (caso raro: spark-chat sem ElevenLabs), volta a ouvir.
+      // Se nao tem audio (caso raro: stark-chat sem ElevenLabs), volta a ouvir.
       if (!audioBlobPromise) {
         setOrbState(resumeState());
         return;
@@ -373,7 +373,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
         setOrbState(resumeState());
       }
     } catch (e) {
-      console.error("[spark] sendAudio error", e);
+      console.error("[stark] sendAudio error", e);
       setOrbState("error");
       toast.error("Erro ao processar áudio");
     }
@@ -403,14 +403,14 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
     const t = textInput.trim();
     if (!t) return;
 
-    // Modo manage: nao navega — chama spark-chat e mostra resposta inline.
+    // Modo manage: nao navega — chama stark-chat e mostra resposta inline.
     if (purpose === "manage") {
       setOrbState("processing");
       setTextInput("");
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) { toast.error("Sessão expirada"); setOrbState("idle"); return; }
-        const resp = await fetch(fnUrl("spark-chat"), {
+        const resp = await fetch(fnUrl("stark-chat"), {
           method: "POST",
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -506,7 +506,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
               "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
               purpose === "build" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
-            title="Spark cria agentes pra você"
+            title="Stark cria agentes pra você"
           >
             <Sparkles className="w-3.5 h-3.5" />
             Construir
@@ -531,7 +531,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       <p className="text-sm lg:text-base text-muted-foreground mb-10 text-center max-w-lg">
         {purpose === "manage"
           ? mode === "voice"
-            ? "Pergunte sobre receita, agentes, métricas — Spark consulta seus dados em tempo real."
+            ? "Pergunte sobre receita, agentes, métricas — Stark consulta seus dados em tempo real."
             : "Digite sua pergunta sobre gestão — receita, métricas, conversas, qualquer dado da sua agência."
           : mode === "voice"
             ? "Fale o que precisa e eu cuido do resto."
@@ -541,7 +541,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
       {mode === "voice" ? (
         <div className="flex flex-col items-center gap-6 w-full max-w-2xl">
           <div className="relative">
-            <SparkOrb
+            <StarkOrb
               state={orbStateForVisual}
               intensity={intensity}
               onClick={handleOrbClick}
@@ -551,7 +551,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
 
           <p className="text-sm text-muted-foreground text-center min-h-[1.5rem]">{orbHint}</p>
 
-          {/* Spark controls: stop, mute, mensagens, configurações */}
+          {/* Stark controls: stop, mute, mensagens, configurações */}
           <div className="flex items-center gap-2">
             <button
               onClick={endSession}
@@ -601,7 +601,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
             </button>
             <Link
               to="/settings?tab=integrations"
-              title="Configurações do Spark"
+              title="Configurações do Stark"
               className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
             >
               <Settings className="w-4 h-4" />
@@ -612,7 +612,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle className="flex items-center justify-between">
-                  <span>Conversa com Spark</span>
+                  <span>Conversa com Stark</span>
                   {transcript.length > 0 && (
                     <button
                       onClick={() => { setTranscript([]); historyRef.current = []; }}
@@ -638,7 +638,7 @@ export function SparkInterface({ greeting, userName, honorific, onTextSubmit, on
                       )}
                     >
                       <span className="text-[10px] uppercase tracking-wider opacity-50 mr-2">
-                        {entry.role === "user" ? "Você" : "Spark"}
+                        {entry.role === "user" ? "Você" : "Stark"}
                       </span>
                       {entry.content}
                     </div>

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 type OrbState = "idle" | "connecting" | "listening" | "speaking" | "error";
 
-interface SparkOrbProps {
+interface StarkOrbProps {
   state: OrbState;
   intensity?: number; // 0-1
   onClick?: () => void;
@@ -11,10 +11,10 @@ interface SparkOrbProps {
   disabled?: boolean;
 }
 
-// Spark Orb — versão Jarvis: núcleo de plasma blue-white Aikortex
+// Stark Orb — versão Jarvis: núcleo de plasma blue-white Aikortex
 // com anéis concêntricos pulsantes, micro points e ondas de scan.
 // Mantém as cores do tema atual, mas acelera e adiciona geometria tecnológica.
-export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }: SparkOrbProps) {
+export function StarkOrb({ state, intensity = 0, onClick, size = 260, disabled }: StarkOrbProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
       ref={wrapRef}
       role="button"
       tabIndex={disabled ? -1 : 0}
-      aria-label="Spark voice toggle"
+      aria-label="Stark voice toggle"
       onClick={disabled ? undefined : onClick}
       onKeyDown={(e) => {
         if (!disabled && (e.key === "Enter" || e.key === " ")) {
@@ -46,7 +46,7 @@ export function SparkOrb({ state, intensity = 0, onClick, size = 260, disabled }
         }
       }}
       className={cn(
-        "spark-orb relative grid place-items-center rounded-full cursor-pointer",
+        "stark-orb relative grid place-items-center rounded-full cursor-pointer",
         "outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-4 focus-visible:ring-offset-background",
         disabled && "opacity-60 cursor-not-allowed",
         isActive && "orb-active",

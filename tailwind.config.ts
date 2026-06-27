@@ -83,11 +83,11 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.6" },
         },
-        "spark-spin": {
+        "stark-spin": {
           from: { transform: "rotate(0deg)" },
           to: { transform: "rotate(360deg)" },
         },
-        "spark-spin-reverse": {
+        "stark-spin-reverse": {
           from: { transform: "rotate(360deg)" },
           to: { transform: "rotate(0deg)" },
         },
@@ -97,8 +97,8 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.4s ease-out forwards",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
-        "spark-spin": "spark-spin 8s linear infinite",
-        "spark-spin-reverse": "spark-spin-reverse 12s linear infinite",
+        "stark-spin": "stark-spin 8s linear infinite",
+        "stark-spin-reverse": "stark-spin-reverse 12s linear infinite",
       },
     },
   },

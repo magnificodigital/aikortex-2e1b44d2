@@ -123,7 +123,7 @@ interface UseAgentChatOptions {
   /** G6 — modo consultivo do wizard (perguntas focadas em problema operacional). */
   consultive?: boolean;
   /** Quando true, sinaliza pro backend que a resposta sera lida via TTS
-   *  (SparkBubble). Backend injeta override Jarvis: respostas curtas, sem
+   *  (StarkBubble). Backend injeta override Jarvis: respostas curtas, sem
    *  markdown, uma pergunta por vez. */
   voiceMode?: boolean;
 }

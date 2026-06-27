@@ -2,17 +2,17 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export type SparkPersonaPreset = "jarvis" | "profissional" | "casual" | "custom";
+export type StarkPersonaPreset = "jarvis" | "profissional" | "casual" | "custom";
 
-export interface SparkPrefs {
-  persona_preset: SparkPersonaPreset;
+export interface StarkPrefs {
+  persona_preset: StarkPersonaPreset;
   persona_prompt: string | null;
   user_name: string | null;
   bubble_enabled: boolean;
   monthly_token_limit: number | null;
 }
 
-const DEFAULT_PREFS: SparkPrefs = {
+const DEFAULT_PREFS: StarkPrefs = {
   persona_preset: "jarvis",
   persona_prompt: null,
   user_name: null,
@@ -20,8 +20,8 @@ const DEFAULT_PREFS: SparkPrefs = {
   monthly_token_limit: null,
 };
 
-export function useSparkPrefs() {
-  const [prefs, setPrefs] = useState<SparkPrefs>(DEFAULT_PREFS);
+export function useStarkPrefs() {
+  const [prefs, setPrefs] = useState<StarkPrefs>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -29,13 +29,13 @@ export function useSparkPrefs() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-    const { data } = await (supabase.from("spark_user_prefs" as any) as any)
+    const { data } = await (supabase.from("stark_user_prefs" as any) as any)
       .select("persona_preset, persona_prompt, user_name, bubble_enabled, monthly_token_limit")
       .eq("user_id", user.id)
       .maybeSingle();
     if (data) {
       setPrefs({
-        persona_preset: (data.persona_preset ?? "jarvis") as SparkPersonaPreset,
+        persona_preset: (data.persona_preset ?? "jarvis") as StarkPersonaPreset,
         persona_prompt: data.persona_prompt ?? null,
         user_name: data.user_name ?? null,
         bubble_enabled: data.bubble_enabled ?? true,
@@ -49,13 +49,13 @@ export function useSparkPrefs() {
 
   useEffect(() => { refetch(); }, [refetch]);
 
-  const save = useCallback(async (patch: Partial<SparkPrefs>) => {
+  const save = useCallback(async (patch: Partial<StarkPrefs>) => {
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Não autenticado"); return false; }
       const next = { ...prefs, ...patch };
-      const { error } = await (supabase.from("spark_user_prefs" as any) as any)
+      const { error } = await (supabase.from("stark_user_prefs" as any) as any)
         .upsert({
           user_id: user.id,
           ...next,

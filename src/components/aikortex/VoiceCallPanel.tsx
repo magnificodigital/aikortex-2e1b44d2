@@ -461,7 +461,7 @@ const VoiceCallPanel = ({
   }, [agentId, stopRecording]);
 
   // Estado custom (substitui useConversation da ElevenLabs Conversational AI).
-  // Loop: gravar voz do user -> spark-voice (STT+LLM+TTS) -> tocar áudio -> repete.
+  // Loop: gravar voz do user -> stark-voice (STT+LLM+TTS) -> tocar áudio -> repete.
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -605,7 +605,7 @@ const VoiceCallPanel = ({
       form.append("system_prompt", sysPrompt);
       form.append("voice_id", selectedVoice || "EXAVITQu4vr4xnSDxMaL");
 
-      const resp = await fetch(fnUrl("spark-voice"), {
+      const resp = await fetch(fnUrl("stark-voice"), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -638,8 +638,8 @@ const VoiceCallPanel = ({
 
       // Caminho rapido: audio binario + texto nos headers (UTF-8 via base64).
       const decode = (b64: string) => { try { return decodeURIComponent(escape(atob(b64))); } catch { return ""; } };
-      const userText = decode(resp.headers.get("x-spark-transcript") || "");
-      const reply = decode(resp.headers.get("x-spark-reply") || "");
+      const userText = decode(resp.headers.get("x-stark-transcript") || "");
+      const reply = decode(resp.headers.get("x-stark-reply") || "");
       if (resp.headers.get("x-voice-fallback") === "true" && !voiceFallbackNotifiedRef.current) {
         voiceFallbackNotifiedRef.current = true;
         const reason = decode(resp.headers.get("x-voice-fallback-reason") || "")

@@ -1,19 +1,19 @@
-// spark-chat
+// stark-chat
 // ==========
-// Spark conversacional com tool calling. Diferente de spark-voice (que faz
+// Stark conversacional com tool calling. Diferente de stark-voice (que faz
 // criação de agente linear), este aqui responde perguntas de GESTÃO via tools.
 //
 // Fluxo:
 //   1. STT (ElevenLabs Scribe ou texto direto)
 //   2. LLM da AGÊNCIA com tools registradas (precisa de chave própria)
 //   3. Loop de tool execution até resposta final
-//   4. TTS (ElevenLabs com spark_voice_id da agência)
-//   5. Telemetria → spark_usage
+//   4. TTS (ElevenLabs com stark_voice_id da agência)
+//   5. Telemetria → stark_usage
 //
 // Acessos:
 // - Tools rodam com client AUTENTICADO do user → RLS auto-filtra
 // - LLM usa chave da agência → conta vem pra eles
-// - Spark NÃO usa platform OPENROUTER_API_KEY (precisa setar próprio)
+// - Stark NÃO usa platform OPENROUTER_API_KEY (precisa setar próprio)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
@@ -22,14 +22,14 @@ import {
   noLlmConfiguredError,
   type LlmProvider,
 } from "../_shared/get-agency-llm-key.ts";
-import { SPARK_TOOL_DEFS, executeTool } from "../_shared/spark-tools.ts";
+import { STARK_TOOL_DEFS, executeTool } from "../_shared/stark-tools.ts";
 import { isProviderActive } from "../_shared/is-provider-active.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Expose-Headers": "x-spark-transcript, x-spark-reply, x-spark-tools-called, x-spark-tokens",
+  "Access-Control-Expose-Headers": "x-stark-transcript, x-stark-reply, x-stark-tools-called, x-stark-tokens",
 };
 
 const DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"; // Sarah
@@ -45,7 +45,7 @@ const ACTION_RULES = `AÇÃO:
 ZERO frases vazias.`;
 
 const PRESET_PERSONAS: Record<string, string> = {
-  jarvis: `Você é o Spark, copiloto da plataforma Aikortex — pense em Jarvis do Tony Stark.
+  jarvis: `Você é o Stark, copiloto da plataforma Aikortex — pense em Jarvis do Tony Stark.
 
 PERSONA:
 - Confiante, calmo, eficiente
@@ -58,14 +58,14 @@ EXEMPLOS DO TOM:
 - "Receita do mês: 11 mil reais."
 - "Nada hoje. Quer ver de ontem?"
 - "Qual agente — SDR ou SAC?"`,
-  profissional: `Você é o Spark, copiloto da plataforma Aikortex.
+  profissional: `Você é o Stark, copiloto da plataforma Aikortex.
 
 PERSONA:
 - Tom corporativo, objetivo, formal
 - SEM markdown, listas, emojis (voz pela TTS)
 - Respostas CURTAS: máximo 25 palavras
 - Use linguagem de negócios — "performance", "indicadores", "métricas"`,
-  casual: `Você é o Spark, copiloto da plataforma Aikortex.
+  casual: `Você é o Stark, copiloto da plataforma Aikortex.
 
 PERSONA:
 - Tom descontraído, amigável, próximo
@@ -178,9 +178,9 @@ Deno.serve(async (req) => {
 
     const model = llmCfg.defaultModel || fallbackModelForProvider(llmCfg.provider);
 
-    // ── Persona customizada do user (Configuracoes > Spark) ────────
+    // ── Persona customizada do user (Configuracoes > Stark) ────────
     const { data: prefsRow } = await admin
-      .from("spark_user_prefs")
+      .from("stark_user_prefs")
       .select("persona_preset, persona_prompt, user_name")
       .eq("user_id", userId)
       .maybeSingle();
@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
     let finalReply = "";
 
     for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
-      const llmResp = await callLlm(llmCfg.provider, llmCfg.apiKey, model, messages, SPARK_TOOL_DEFS);
+      const llmResp = await callLlm(llmCfg.provider, llmCfg.apiKey, model, messages, STARK_TOOL_DEFS);
       totalPromptTokens += llmResp.prompt_tokens;
       totalCompletionTokens += llmResp.completion_tokens;
 
@@ -233,7 +233,7 @@ Deno.serve(async (req) => {
 
     if (!finalReply) finalReply = "Sem resposta. Tente reformular.";
 
-    // ── TTS (ElevenLabs com spark_voice_id) ─────────────────────────
+    // ── TTS (ElevenLabs com stark_voice_id) ─────────────────────────
     const { data: ekRow } = await admin
       .from("user_api_keys")
       .select("api_key")
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
         .from("user_api_keys")
         .select("api_key")
         .eq("user_id", userId)
-        .eq("provider", "spark_voice_id")
+        .eq("provider", "stark_voice_id")
         .maybeSingle();
       const voiceId = (voiceRow as { api_key?: string } | null)?.api_key || DEFAULT_VOICE_ID;
 
@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
     const totalTokens = totalPromptTokens + totalCompletionTokens;
     const durationMs = Date.now() - t0;
     try {
-      await admin.from("spark_usage").insert({
+      await admin.from("stark_usage").insert({
         user_id: userId,
         llm_provider: llmCfg.provider,
         llm_model: model,
@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
         tools_called: toolsCalled,
         duration_ms: durationMs,
       });
-    } catch (e) { console.warn("[spark-chat] telemetry insert falhou:", e); }
+    } catch (e) { console.warn("[stark-chat] telemetry insert falhou:", e); }
 
     return json({
       transcript: userText,
@@ -296,7 +296,7 @@ Deno.serve(async (req) => {
       duration_ms: durationMs,
     });
   } catch (e) {
-    console.error("[spark-chat] exception:", e);
+    console.error("[stark-chat] exception:", e);
     return json({ error: "internal", message: (e as Error).message }, 500);
   }
 });
@@ -364,7 +364,7 @@ async function callAnthropic(apiKey: string, model: string, messages: any[], too
 async function callOpenRouter(apiKey: string, model: string, messages: any[], tools: any[]): Promise<LlmResponse> {
   return callOpenAICompatible("https://openrouter.ai/api/v1/chat/completions", apiKey, model, messages, tools, {
     "HTTP-Referer": "https://aikortex26.lovable.app",
-    "X-Title": "Aikortex Spark",
+    "X-Title": "Aikortex Stark",
   });
 }
 

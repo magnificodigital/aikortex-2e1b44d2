@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export interface SparkUsageRow {
+export interface StarkUsageRow {
   llm_provider: string;
   llm_model: string;
   prompt_tokens: number;
@@ -11,7 +11,7 @@ export interface SparkUsageRow {
   created_at: string;
 }
 
-export interface SparkUsageSummary {
+export interface StarkUsageSummary {
   totalTokens: number;
   totalPromptTokens: number;
   totalCompletionTokens: number;
@@ -21,7 +21,7 @@ export interface SparkUsageSummary {
   byModel: Record<string, { tokens: number; costCents: number; calls: number }>;
 }
 
-const EMPTY: SparkUsageSummary = {
+const EMPTY: StarkUsageSummary = {
   totalTokens: 0,
   totalPromptTokens: 0,
   totalCompletionTokens: 0,
@@ -31,9 +31,9 @@ const EMPTY: SparkUsageSummary = {
   byModel: {},
 };
 
-export function useSparkUsage(windowDays: number = 30) {
-  const [rows, setRows] = useState<SparkUsageRow[]>([]);
-  const [summary, setSummary] = useState<SparkUsageSummary>(EMPTY);
+export function useStarkUsage(windowDays: number = 30) {
+  const [rows, setRows] = useState<StarkUsageRow[]>([]);
+  const [summary, setSummary] = useState<StarkUsageSummary>(EMPTY);
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
@@ -41,13 +41,13 @@ export function useSparkUsage(windowDays: number = 30) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
     const since = new Date(Date.now() - windowDays * 86400_000).toISOString();
-    const { data } = await (supabase.from("spark_usage" as any) as any)
+    const { data } = await (supabase.from("stark_usage" as any) as any)
       .select("llm_provider, llm_model, prompt_tokens, completion_tokens, total_tokens, estimated_cost_cents, created_at")
       .eq("user_id", user.id)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(2000);
-    const list = (data ?? []) as SparkUsageRow[];
+    const list = (data ?? []) as StarkUsageRow[];
     setRows(list);
     setSummary(summarize(list));
     setLoading(false);
@@ -58,8 +58,8 @@ export function useSparkUsage(windowDays: number = 30) {
   return { rows, summary, loading, refetch };
 }
 
-function summarize(rows: SparkUsageRow[]): SparkUsageSummary {
-  const s: SparkUsageSummary = {
+function summarize(rows: StarkUsageRow[]): StarkUsageSummary {
+  const s: StarkUsageSummary = {
     totalTokens: 0, totalPromptTokens: 0, totalCompletionTokens: 0,
     totalCostCents: 0, callCount: rows.length,
     byProvider: {}, byModel: {},

@@ -4,23 +4,23 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
 
-interface SparkBubbleProps {
+interface StarkBubbleProps {
   /** Modo de chegada:
-   *  - "voice": bubble ATIVO HANDS-FREE — Spark lê resposta do wizard via
-   *    ElevenLabs (mesma voz da Spark), escuta o user, manda pro wizard.
+   *  - "voice": bubble ATIVO HANDS-FREE — Stark lê resposta do wizard via
+   *    ElevenLabs (mesma voz da Stark), escuta o user, manda pro wizard.
    *  - "text":  bubble visivel mas DESATIVADO — so sinal de presenca. */
   mode: "voice" | "text";
   /** Wizard esta processando a mensagem anterior. */
   isProcessing?: boolean;
-  /** Ultima mensagem do agente no chat. Quando muda, Spark le em voz alta. */
+  /** Ultima mensagem do agente no chat. Quando muda, Stark le em voz alta. */
   latestAgentMessage?: string | null;
   /** Bubble entrega fala capturada pra parent (forwarda pro wizard.sendMessage). */
   onTranscript?: (text: string) => void;
 }
 
-// Espera Spark do home terminar o TTS antes de mexer (~10s + folga).
+// Espera Stark do home terminar o TTS antes de mexer (~10s + folga).
 const INITIAL_TTS_GUARD_MS = 12_000;
-// Delay curto entre Spark terminar de falar e religar mic. Generoso
+// Delay curto entre Stark terminar de falar e religar mic. Generoso
 // pra TTS dar tempo de comecar (fetch + decode + play start ~400-800ms).
 const RESUME_DELAY_MS = 800;
 
@@ -36,13 +36,13 @@ function cleanForTts(text: string): string {
     .trim();
 }
 
-export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscript }: SparkBubbleProps) {
+export function StarkBubble({ mode, isProcessing, latestAgentMessage, onTranscript }: StarkBubbleProps) {
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [partial, setPartial] = useState("");
   const [userStopped, setUserStopped] = useState(false);
-  // Preferencias salvas em Settings > Spark. Default: Sarah, 0.5, 1.0.
-  const sparkPrefsRef = useRef<{ voiceId?: string; stability?: number; speed?: number }>({});
+  // Preferencias salvas em Settings > Stark. Default: Sarah, 0.5, 1.0.
+  const starkPrefsRef = useRef<{ voiceId?: string; stability?: number; speed?: number }>({});
 
   // Carrega preferencias do user (uma vez por sessao do bubble)
   useEffect(() => {
@@ -55,14 +55,14 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
           .from("user_api_keys")
           .select("provider, api_key")
           .eq("user_id", user.id)
-          .in("provider", ["spark_voice_id", "spark_voice_stability", "spark_voice_speed"]);
+          .in("provider", ["stark_voice_id", "stark_voice_stability", "stark_voice_speed"]);
         if (cancelled) return;
         const map = new Map<string, string>();
         (data ?? []).forEach((row: any) => map.set(row.provider, row.api_key ?? ""));
-        const stab = parseFloat(map.get("spark_voice_stability") || "");
-        const spd = parseFloat(map.get("spark_voice_speed") || "");
-        sparkPrefsRef.current = {
-          voiceId: map.get("spark_voice_id") || undefined,
+        const stab = parseFloat(map.get("stark_voice_stability") || "");
+        const spd = parseFloat(map.get("stark_voice_speed") || "");
+        starkPrefsRef.current = {
+          voiceId: map.get("stark_voice_id") || undefined,
           stability: Number.isFinite(stab) ? stab : undefined,
           speed: Number.isFinite(spd) ? spd : undefined,
         };
@@ -76,7 +76,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
   const onTranscriptRef = useRef(onTranscript);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
   // initSeen: trava UMA vez quando o bubble ve a primeira mensagem do
-  // wizard. Essa primeira mensagem eh o GREETING que o Spark do home ja
+  // wizard. Essa primeira mensagem eh o GREETING que o Stark do home ja
   // leu em voz alta — bubble NAO pode repetir.
   const initSeenRef = useRef(false);
   // Ultima string ja falada pelo bubble (evita falar a mesma resposta 2x
@@ -88,7 +88,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
   // agendado; setState eh async e pode nao ter propagado ainda quando
   // o auto-listen calcula. A ref atualiza imediato e a callback do
   // timeout checa ela antes de start listening — evita mic capturar
-  // o proprio TTS do Spark (feedback loop).
+  // o proprio TTS do Stark (feedback loop).
   const speakingRef = useRef(false);
 
   useEffect(() => { onTranscriptRef.current = onTranscript; }, [onTranscript]);
@@ -111,7 +111,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
     if (recognitionRef.current) return;
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
-      console.warn("[spark-bubble] SpeechRecognition nao suportado neste browser");
+      console.warn("[stark-bubble] SpeechRecognition nao suportado neste browser");
       return;
     }
 
@@ -124,7 +124,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
     finalTextRef.current = "";
 
     rec.onresult = (event: any) => {
-      // Safety: se Spark comecou a falar entre o start desta sessao e
+      // Safety: se Stark comecou a falar entre o start desta sessao e
       // este evento, descarta tudo — esta capturando o proprio TTS.
       if (speakingRef.current) {
         finalTextRef.current = "";
@@ -143,7 +143,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
     };
 
     rec.onerror = (e: any) => {
-      console.warn("[spark-bubble] recognition error:", e?.error);
+      console.warn("[stark-bubble] recognition error:", e?.error);
       setListening(false);
       recognitionRef.current = null;
       setPartial("");
@@ -155,10 +155,10 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
       const text = finalTextRef.current.trim();
       finalTextRef.current = "";
       setPartial("");
-      // Safety final: se Spark estava falando OU comecou a falar durante a
+      // Safety final: se Stark estava falando OU comecou a falar durante a
       // captura, descarta. Evita transcript do TTS chegar no wizard.
       if (speakingRef.current) {
-        console.log("[spark-bubble] descartando transcript — speaking ativo");
+        console.log("[stark-bubble] descartando transcript — speaking ativo");
         return;
       }
       if (text && text.length >= 2) {
@@ -172,11 +172,11 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
       recognitionRef.current = rec;
       setListening(true);
     } catch (e) {
-      console.warn("[spark-bubble] start falhou:", e);
+      console.warn("[stark-bubble] start falhou:", e);
     }
   }, []);
 
-  /** TTS via browser-tts (ElevenLabs) — voz consistente com o Spark do home. */
+  /** TTS via browser-tts (ElevenLabs) — voz consistente com o Stark do home. */
   const speakMessage = useCallback(async (text: string) => {
     const clean = cleanForTts(text);
     if (!clean) return;
@@ -199,7 +199,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
         setSpeaking(false);
         return;
       }
-      const prefs = sparkPrefsRef.current;
+      const prefs = starkPrefsRef.current;
       const resp = await fetch(fnUrl("browser-tts"), {
         method: "POST",
         headers: {
@@ -215,7 +215,7 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
       });
       const ct = resp.headers.get("content-type") || "";
       if (!resp.ok || !ct.includes("audio")) {
-        console.warn("[spark-bubble] browser-tts falhou:", resp.status);
+        console.warn("[stark-bubble] browser-tts falhou:", resp.status);
         speakingRef.current = false;
         setSpeaking(false);
         return;
@@ -242,15 +242,15 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
         setSpeaking(false);
       });
     } catch (e) {
-      console.warn("[spark-bubble] speakMessage exception:", e);
+      console.warn("[stark-bubble] speakMessage exception:", e);
       speakingRef.current = false;
       setSpeaking(false);
     }
   }, []);
 
-  // Quando o wizard adiciona uma mensagem nova, Spark le em voz alta.
+  // Quando o wizard adiciona uma mensagem nova, Stark le em voz alta.
   // CUIDADO: a PRIMEIRA mensagem que o bubble ve eh o greeting inicial
-  // (3 perguntas do Jarvis) que o Spark do HOME ja leu via ElevenLabs.
+  // (3 perguntas do Jarvis) que o Stark do HOME ja leu via ElevenLabs.
   // Bubble NAO pode repetir — usa initSeenRef pra marcar isso como
   // "ja foi falado" sem chamar speakMessage.
   useEffect(() => {
@@ -324,8 +324,8 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
 
   const labelTop = (() => {
     if (!active) return null;
-    if (speaking) return "Spark está falando…";
-    if (isProcessing) return "Spark trabalhando…";
+    if (speaking) return "Stark está falando…";
+    if (isProcessing) return "Stark trabalhando…";
     if (userStopped && !listening) return "Toque pra retomar";
     if (listening) return partial || "Estou te ouvindo…";
     return "Aguarde…";
@@ -353,11 +353,11 @@ export function SparkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
         onClick={handleClick}
         disabled={!active}
         aria-label={active
-          ? (speaking ? "Pular fala do Spark" : listening ? "Parar de ouvir" : "Falar com Spark")
-          : "Spark desativado"}
+          ? (speaking ? "Pular fala do Stark" : listening ? "Parar de ouvir" : "Falar com Stark")
+          : "Stark desativado"}
         title={active
-          ? (speaking ? "Toque pra pular" : isProcessing ? "Spark trabalhando…" : listening ? "Toque pra parar" : userStopped ? "Toque pra retomar" : "Aguarde…")
-          : "Spark desativado (você chegou aqui por texto)"}
+          ? (speaking ? "Toque pra pular" : isProcessing ? "Stark trabalhando…" : listening ? "Toque pra parar" : userStopped ? "Toque pra retomar" : "Aguarde…")
+          : "Stark desativado (você chegou aqui por texto)"}
         className={cn(
           "relative w-14 h-14 rounded-full grid place-items-center transition-all border-2 backdrop-blur-md shadow-xl",
           !active && "bg-muted/40 border-border opacity-60 cursor-not-allowed grayscale",

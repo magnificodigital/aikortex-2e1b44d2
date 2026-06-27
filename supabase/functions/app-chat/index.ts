@@ -283,7 +283,7 @@ const AGENT_TYPE_FOCUS: Record<string, string> = {
  * Sempre contextualizado por nicho (§13.4 + §15.2). Quando nicho não vem,
  * primeira pergunta identifica o nicho.
  */
-// Override Jarvis-style quando o user esta conversando por VOZ via Spark
+// Override Jarvis-style quando o user esta conversando por VOZ via Stark
 // bubble. TTS le a resposta em voz alta — markdown vira lixo audivel.
 // IMPORTANTE: este override eh prepended (vem ANTES do resto do prompt) pra
 // LLM dar peso maximo. As regras abaixo SOBREPOEM qualquer instrucao depois.
@@ -1675,7 +1675,7 @@ serve(async (req) => {
         // consultivas focadas em problema operacional.
         const consultive = (body as any).consultive === true
           || req.headers.get("x-wizard-consultive") === "1";
-        // voiceMode = wizard esta sendo controlado pelo SparkBubble (TTS le
+        // voiceMode = wizard esta sendo controlado pelo StarkBubble (TTS le
         // a resposta em voz alta). Override forca respostas curtas, sem
         // markdown, uma pergunta por vez — Jarvis-style.
         const voiceMode = (body as any).voiceMode === true

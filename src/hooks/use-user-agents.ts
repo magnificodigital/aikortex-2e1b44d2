@@ -64,7 +64,7 @@ export function useUserAgents(opts?: { clientId?: string | null; isAgencyMode?: 
       if (typeof vc.maxCallDuration === "number") voiceColumns.max_call_duration_seconds = vc.maxCallDuration * 60;
     }
 
-    // Default outcome tags por tipo de agente — Spark usa pra responder
+    // Default outcome tags por tipo de agente — Stark usa pra responder
     // perguntas tipo "quantas qualificações fez hoje?". User pode customizar
     // depois em Painel do agente > Comportamento > Outcomes.
     const DEFAULT_TRACKED_OUTCOMES: Record<string, string[]> = {

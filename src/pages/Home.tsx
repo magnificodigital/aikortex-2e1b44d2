@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { SparkInterface } from "@/components/spark/SparkInterface";
+import { StarkInterface } from "@/components/stark/StarkInterface";
 
 const WHATSAPP_KEYWORDS = ["whatsapp", "wpp", "zap", "zapzap", "mensagem", "conversa", "chat", "atendimento", "sac", "suporte ao cliente", "cliente pelo whatsapp", "whats"];
 const WEB_KEYWORDS = ["web", "site", "website", "dashboard", "portal", "painel", "landing", "página", "pagina", "sistema web", "plataforma", "saas", "aplicativo web", "app web"];
@@ -75,7 +75,7 @@ const Home = () => {
   // solicitacao via wizardSendMessage (mesmo caminho do user digitando),
   // mantendo a conversa multi-turn natural.
   //
-  // sparkBubbleMode controla o SparkBubble da pagina destino:
+  // starkBubbleMode controla o StarkBubble da pagina destino:
   //   "voice" → bubble ativo (continua conversa por voz)
   //   "text"  → bubble visivel mas desativado (so sinal de presenca)
   const navigateToNewAgent = (text: string, source: "voice" | "text") => {
@@ -91,8 +91,8 @@ const Home = () => {
         agentType: "Custom",
         agentName: "Novo Agente",
         initialPrompt: text,
-        sparkBubbleMode: source,
-        sparkUserFirstName: firstName,
+        starkBubbleMode: source,
+        starkUserFirstName: firstName,
       },
     });
   };
@@ -108,8 +108,8 @@ const Home = () => {
   };
 
   const handleVoiceTranscript = (text: string) => {
-    // Backend (spark-voice) ja filtrou: so chega aqui se intent=creation.
-    console.log(`[spark→home] navegando com transcript="${text}"`);
+    // Backend (stark-voice) ja filtrou: so chega aqui se intent=creation.
+    console.log(`[stark→home] navegando com transcript="${text}"`);
     const detected = detectCategory(text);
     if (detected === "agentes") {
       navigateToNewAgent(text, "voice");
@@ -121,7 +121,7 @@ const Home = () => {
 
   return (
     <DashboardLayout>
-      <SparkInterface
+      <StarkInterface
         greeting={getGreeting()}
         userName={userName}
         honorific={detectHonorific(userName)}
