@@ -78,12 +78,12 @@ export function StarkOrb({ state, intensity = 0, onClick, size = 260, disabled }
 
       {/* HUD de micro points ao redor — explosão sutil radial */}
       <svg className="orb-hud absolute inset-[-22%] w-[144%] h-[144%] pointer-events-none" viewBox="0 0 260 260" fill="none">
-        {[...Array(72)].map((_, i) => {
-          const angle = (i * 5) * (Math.PI / 180);
+        {[...Array(144)].map((_, i) => {
+          const angle = (i * 2.5) * (Math.PI / 180);
           const radius = 108 + (i % 5) * 14 + (i % 7) * 3;
           const cx = 130 + Math.cos(angle) * radius;
           const cy = 130 + Math.sin(angle) * radius;
-          const r = 0.9 + (i % 3) * 0.45;
+          const r = 0.7 + (i % 3) * 0.32;
           return (
             <circle
               key={i}
@@ -91,7 +91,7 @@ export function StarkOrb({ state, intensity = 0, onClick, size = 260, disabled }
               cy={cy}
               r={r}
               className="orb-point"
-              style={{ animationDelay: `${(i * 0.08).toFixed(2)}s` }}
+              style={{ animationDelay: `${(i * 0.04).toFixed(2)}s` }}
             />
           );
         })}
