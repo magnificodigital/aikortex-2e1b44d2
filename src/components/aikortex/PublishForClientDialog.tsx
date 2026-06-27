@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Rocket } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Rocket, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-const DEFAULT_PRICE_CENTS = 99700;
+import { Link } from "react-router-dom";
 
 interface Props {
   open: boolean;
@@ -17,34 +16,15 @@ interface Props {
   onPublished?: () => void;
 }
 
-function formatCpfCnpj(v: string): string {
-  const digits = v.replace(/\D/g, "");
-  if (digits.length <= 11) {
-    return digits
-      .replace(/^(\d{3})(\d)/, "$1.$2")
-      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-      .replace(/\.(\d{3})(\d)/, ".$1-$2")
-      .slice(0, 14);
-  }
-  return digits
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2")
-    .slice(0, 18);
+interface AgencyClient {
+  id: string;
+  client_name: string;
+  client_email: string | null;
+  client_phone: string | null;
+  client_document: string | null;
 }
 
-function formatPhone(v: string): string {
-  const digits = v.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 10) {
-    return digits
-      .replace(/^(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{4})(\d)/, "$1-$2");
-  }
-  return digits
-    .replace(/^(\d{2})(\d)/, "($1) $2")
-    .replace(/(\d{5})(\d)/, "$1-$2");
-}
+const DEFAULT_PRICE_CENTS = 99700;
 
 /**
  * Diferente do PublishAgentDialog.tsx (que publica uma VERSÃO do config).
@@ -52,66 +32,84 @@ function formatPhone(v: string): string {
  * Subscription com split. Master v7.4 §3.
  */
 export default function PublishForClientDialog({ open, onOpenChange, agentId, agentName, onPublished }: Props) {
-  const [name, setName] = useState("");
-  const [cpfCnpj, setCpfCnpj] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [clients, setClients] = useState<AgencyClient[]>([]);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [priceCents, setPriceCents] = useState<number>(DEFAULT_PRICE_CENTS);
 
-  // Carrega preco do template do agente (ou usa default). So roda quando o
-  // dialog abre — evita query desnecessaria em mount.
+  // Quando o dialog abre: carrega lista de clientes da agencia + preco do template.
   useEffect(() => {
     if (!open || !agentId) return;
     let cancelled = false;
     (async () => {
+      setLoadingClients(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+
+      const { data: agency } = await supabase
+        .from("agency_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (agency?.id && !cancelled) {
+        const { data } = await supabase
+          .from("agency_clients")
+          .select("id, client_name, client_email, client_phone, client_document")
+          .eq("agency_id", agency.id)
+          .eq("status", "active")
+          .order("client_name");
+        if (!cancelled) setClients((data as AgencyClient[]) ?? []);
+      }
+
       const { data: agent } = await supabase
         .from("user_agents")
         .select("template_id")
         .eq("id", agentId)
         .maybeSingle();
       const tplId = (agent as any)?.template_id;
-      if (!tplId || cancelled) return;
-      const { data: tpl } = await supabase
-        .from("agent_templates")
-        .select("retail_price_cents")
-        .eq("id", tplId)
-        .maybeSingle();
-      if (!cancelled && (tpl as any)?.retail_price_cents) {
-        setPriceCents((tpl as any).retail_price_cents);
+      if (tplId && !cancelled) {
+        const { data: tpl } = await supabase
+          .from("agent_templates")
+          .select("retail_price_cents")
+          .eq("id", tplId)
+          .maybeSingle();
+        if (!cancelled && (tpl as any)?.retail_price_cents) {
+          setPriceCents((tpl as any).retail_price_cents);
+        }
       }
+
+      if (!cancelled) setLoadingClients(false);
     })();
     return () => { cancelled = true; };
   }, [open, agentId]);
 
   const priceFmt = (priceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const reset = () => {
-    setName(""); setCpfCnpj(""); setEmail(""); setPhone("");
-  };
-
   const handleClose = (o: boolean) => {
-    if (!o) reset();
+    if (!o) setSelectedClientId("");
     onOpenChange(o);
   };
 
-  const canSubmit = name.trim().length >= 3
-    && cpfCnpj.replace(/\D/g, "").length >= 11
-    && /\S+@\S+\.\S+/.test(email)
+  const selectedClient = clients.find((c) => c.id === selectedClientId);
+  const canSubmit = !!selectedClient
+    && !!selectedClient.client_document
+    && !!selectedClient.client_email
     && !submitting;
 
   async function handleSubmit() {
-    if (!canSubmit) return;
+    if (!canSubmit || !selectedClient) return;
     setSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke("client-agent-subscribe", {
         body: {
           agent_id: agentId,
           client_info: {
-            name: name.trim(),
-            cpf_cnpj: cpfCnpj.replace(/\D/g, ""),
-            email: email.trim(),
-            phone: phone.replace(/\D/g, ""),
+            name: selectedClient.client_name,
+            cpf_cnpj: (selectedClient.client_document || "").replace(/\D/g, ""),
+            email: selectedClient.client_email,
+            phone: (selectedClient.client_phone || "").replace(/\D/g, ""),
           },
         },
       });
@@ -125,9 +123,9 @@ export default function PublishForClientDialog({ open, onOpenChange, agentId, ag
         return;
       }
 
-      const d = data as { agency_percent: number; platform_percent: number; retail_price_cents: number; next_due_date: string };
+      const d = data as { agency_percent: number; platform_percent: number; next_due_date: string };
       toast.success(
-        `Agente publicado! ${d.agency_percent}% pra você, ${d.platform_percent}% pra Aikortex. ` +
+        `Agente publicado pra ${selectedClient.client_name}! ` +
         `Primeira cobrança em ${new Date(d.next_due_date).toLocaleDateString("pt-BR")}.`,
         { duration: 8000 },
       );
@@ -159,26 +157,53 @@ export default function PublishForClientDialog({ open, onOpenChange, agentId, ag
             </p>
           </div>
 
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Nome ou razão social do cliente</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Loja Roupas XYZ Ltda" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs">CPF ou CNPJ</Label>
-              <Input value={cpfCnpj} onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))} placeholder="00.000.000/0000-00" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs">Email do cliente</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="contato@empresa.com.br" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs">Telefone (opcional)</Label>
-              <Input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} placeholder="(11) 98765-4321" />
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cliente</Label>
+            {loadingClients ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando clientes…
+              </div>
+            ) : clients.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border p-4 text-center space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Nenhum cliente cadastrado ainda.
+                </p>
+                <Button asChild size="sm" variant="outline" className="gap-1.5" onClick={() => handleClose(false)}>
+                  <Link to="/clients">
+                    <UserPlus className="w-3.5 h-3.5" /> Cadastrar cliente
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="flex flex-col">
+                          <span className="text-sm">{c.client_name}</span>
+                          {c.client_email && (
+                            <span className="text-[10px] text-muted-foreground">{c.client_email}</span>
+                          )}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedClient && (!selectedClient.client_document || !selectedClient.client_email) && (
+                  <p className="text-[11px] text-amber-500">
+                    Esse cliente está sem {!selectedClient.client_document ? "CPF/CNPJ" : "email"}.
+                    {" "}
+                    <Link to={`/clients/${selectedClient.id}`} className="underline" onClick={() => handleClose(false)}>
+                      Completar cadastro
+                    </Link>.
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </div>
 

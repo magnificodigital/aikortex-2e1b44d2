@@ -28,6 +28,7 @@ import { useAgentMemory } from "@/hooks/use-agent-memory";
 import { useAgentPublishState } from "@/hooks/use-agent-versions";
 import { computeAgentDiff } from "@/lib/agent-diff";
 import PublishAgentDialog from "@/components/aikortex/PublishAgentDialog";
+import PublishForClientDialog from "@/components/aikortex/PublishForClientDialog";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -164,15 +165,19 @@ function PublishStateBadge({ state, hasDraftChanges }: { state: any; hasDraftCha
 }
 
 function PublishButton({
-  agentId, disabled, hasDraftChanges, publishedNumber, publishedSnapshot, currentConfig,
+  agentId, agentName, disabled, hasDraftChanges, publishedNumber, publishedSnapshot, currentConfig,
 }: {
-  agentId?: string; disabled: boolean; hasDraftChanges: boolean;
+  agentId?: string; agentName: string; disabled: boolean; hasDraftChanges: boolean;
   publishedNumber: number | null; publishedSnapshot: Record<string, any> | null; currentConfig: Record<string, any> | null;
 }) {
   const [open, setOpen] = useState(false);
   const nothingToPublish = publishedNumber !== null && !hasDraftChanges;
   const nextNumber = (publishedNumber ?? 0) + 1;
-  const label = publishedNumber === null ? "Publicar" : (nothingToPublish ? `Publicado · v${publishedNumber}` : "Publicar alterações");
+  // Primeira publicacao = vincula agente ao cliente final + ativa cobranca
+  // recorrente (Master v7.4 §3). Publicacoes subsequentes = lock down de
+  // nova versao do config (PublishAgentDialog).
+  const isFirstPublish = publishedNumber === null;
+  const label = isFirstPublish ? "Publicar" : (nothingToPublish ? `Publicado · v${publishedNumber}` : "Publicar alterações");
 
   return (
     <>
@@ -187,7 +192,15 @@ function PublishButton({
         <Rocket className="w-3.5 h-3.5" />
         <span className="hidden lg:inline">{label}</span>
       </Button>
-      {agentId && (
+      {agentId && isFirstPublish && (
+        <PublishForClientDialog
+          open={open}
+          onOpenChange={setOpen}
+          agentId={agentId}
+          agentName={agentName}
+        />
+      )}
+      {agentId && !isFirstPublish && (
         <PublishAgentDialog
           open={open}
           onOpenChange={setOpen}
@@ -1436,6 +1449,7 @@ Se user falar de algum desses, diga claramente o que falta.
               </Button>
               <PublishButton
                 agentId={resolvedAgentIdForPanel}
+                agentName={agentConfig?.name?.trim() || "agente"}
                 disabled={!agentConfig?.name?.trim() || isSaving}
                 hasDraftChanges={hasDraftChanges}
                 publishedNumber={publishState?.publishedNumber ?? null}
