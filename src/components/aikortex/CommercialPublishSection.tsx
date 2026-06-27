@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Rocket, CheckCircle2, Loader2, ExternalLink } from "lucide-react";
@@ -26,9 +26,14 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   canceled: { label: "Cancelado", color: "bg-muted text-muted-foreground border-border" },
 };
 
+// Preco default Master v7.4: R$ 997/mes. Templates podem override via
+// agent_templates.retail_price_cents.
+const DEFAULT_PRICE_CENTS = 99700;
+
 export default function CommercialPublishSection({ agentId, agentName }: Props) {
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState<AgentPublishState | null>(null);
+  const [priceCents, setPriceCents] = useState<number>(DEFAULT_PRICE_CENTS);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   async function loadState() {
@@ -36,10 +41,19 @@ export default function CommercialPublishSection({ agentId, agentName }: Props) 
     try {
       const { data } = await supabase
         .from("user_agents")
-        .select("published_at, client_subscription_id, client_info, subscription_status")
+        .select("published_at, client_subscription_id, client_info, subscription_status, template_id")
         .eq("id", agentId)
         .maybeSingle();
       setState(data as AgentPublishState | null);
+      const tplId = (data as any)?.template_id;
+      if (tplId) {
+        const { data: tpl } = await supabase
+          .from("agent_templates")
+          .select("retail_price_cents")
+          .eq("id", tplId)
+          .maybeSingle();
+        if ((tpl as any)?.retail_price_cents) setPriceCents((tpl as any).retail_price_cents);
+      }
     } finally {
       setLoading(false);
     }
@@ -57,38 +71,27 @@ export default function CommercialPublishSection({ agentId, agentName }: Props) 
 
   if (isNewAgent) {
     return (
-      <div className="space-y-4 max-w-2xl">
-        <div>
-          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-            <Rocket className="w-5 h-5 text-primary" /> Publicação & Cobrança
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Salve o agente primeiro pra poder publicar e ativar cobrança.
-          </p>
-        </div>
+      <div className="max-w-md">
+        <p className="text-sm text-muted-foreground">Salve o agente primeiro pra poder publicar.</p>
       </div>
     );
   }
 
   const published = !!state?.published_at && !!state?.client_subscription_id;
   const statusInfo = state?.subscription_status ? STATUS_LABEL[state.subscription_status] : null;
+  const priceFmt = (priceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  return (
-    <div className="space-y-4 max-w-2xl">
-      <div>
-        <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-          <Rocket className="w-5 h-5 text-primary" /> Publicação & Cobrança
-        </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Master v7.4 §3 — agente fica grátis em rascunho. Publicar inicia cobrança recorrente do cliente final via Asaas, com split automático da tua margem.
-        </p>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12 max-w-md">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : published ? (
+  if (published) {
+    return (
+      <div className="max-w-md">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -102,9 +105,6 @@ export default function CommercialPublishSection({ agentId, agentName }: Props) 
                 </Badge>
               )}
             </div>
-            <CardDescription className="text-xs">
-              Asaas Subscription <code className="text-foreground">{state?.client_subscription_id}</code>
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
@@ -113,18 +113,7 @@ export default function CommercialPublishSection({ agentId, agentName }: Props) 
               {state?.client_info?.email && (
                 <p className="text-xs text-muted-foreground">{state.client_info.email}</p>
               )}
-              {state?.client_info?.cpf_cnpj && (
-                <p className="text-xs text-muted-foreground font-mono">{state.client_info.cpf_cnpj}</p>
-              )}
             </div>
-
-            <div>
-              <p className="text-[11px] uppercase text-muted-foreground tracking-wider mb-1">Publicado em</p>
-              <p className="text-xs text-foreground">
-                {state?.published_at && new Date(state.published_at).toLocaleString("pt-BR")}
-              </p>
-            </div>
-
             <a
               href={`https://www.asaas.com/subscriptions/show/${state?.client_subscription_id}`}
               target="_blank"
@@ -135,29 +124,33 @@ export default function CommercialPublishSection({ agentId, agentName }: Props) 
             </a>
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Pronto pra ir ao ar?</CardTitle>
-            <CardDescription className="text-xs">
-              Publicar cria uma assinatura Asaas mensal recorrente pro cliente final. Você define quem é o cliente final agora.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <ul className="text-xs text-muted-foreground space-y-1.5">
-              <li>• Trial de 7 dias antes da primeira cobrança</li>
-              <li>• Cliente paga por Pix, boleto ou cartão (escolha no checkout)</li>
-              <li>• Split automático pra tua wallet (configurada em Configurações → Financeiro)</li>
-              <li>• Inadimplência suspende o agente automaticamente após período de tolerância</li>
-            </ul>
+        <PublishForClientDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          agentId={agentId}
+          agentName={agentName}
+          onPublished={loadState}
+        />
+      </div>
+    );
+  }
 
-            <Button onClick={() => setDialogOpen(true)} className="gap-2 w-full">
-              <Rocket className="w-4 h-4" /> Publicar e ativar cobrança
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
+  return (
+    <div className="max-w-md">
+      <Card>
+        <CardContent className="p-6 space-y-5">
+          <div>
+            <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Mensalidade</p>
+            <p className="text-3xl font-bold text-foreground">
+              {priceFmt}
+              <span className="text-sm font-normal text-muted-foreground">/mês</span>
+            </p>
+          </div>
+          <Button onClick={() => setDialogOpen(true)} className="w-full gap-2 h-11">
+            <Rocket className="w-4 h-4" /> Publicar
+          </Button>
+        </CardContent>
+      </Card>
       <PublishForClientDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
