@@ -1006,59 +1006,9 @@ const AgentChatPanel = ({
       {/* Input area */}
       <div className="p-3 border-t border-border shrink-0">
         <div className="max-w-3xl mx-auto w-full">
-        {chatMode === "test" && !keysLoading && wizardStep === "done" && isSelectedModelLocked && (
-          <div className="mb-2 text-xs text-destructive flex items-center gap-1.5 bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            <span>
-              O modelo <strong>{selectedModelInfo?.label}</strong> requer chave de API própria.{" "}
-              <button className="underline font-medium" onClick={onGoToIntegrations}>Configurar em Integrações</button>
-            </span>
-          </div>
-        )}
-        {chatMode === "test" && !keysLoading && wizardStep === "done" && hasAnyLLMKey && availableModels.length > 0 && (() => {
-          const grouped = new Map<string, typeof availableModels>();
-          const providerLabels: Record<string, string> = { anthropic: "Anthropic", openai: "OpenAI", google: "Google", meta: "Meta", deepseek: "DeepSeek", mistral: "Mistral", gemini: "Google" };
-          for (const m of availableModels) {
-            const key = m.provider;
-            if (!grouped.has(key)) grouped.set(key, []);
-            grouped.get(key)!.push(m);
-          }
-          const selectedModel = availableModels.find(m => m.value === agentModel);
-          return (
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-xs text-muted-foreground shrink-0">Modelo:</span>
-              <div className="relative flex-1 max-w-[240px]">
-                <select
-                  value={agentModel}
-                  onChange={e => {
-                    const model = availableModels.find(m => m.value === e.target.value);
-                    if (model?.locked) {
-                      toast.info("Adicione sua chave de API em Integrações para usar este modelo", {
-                        action: { label: "Configurar", onClick: onGoToIntegrations },
-                      });
-                    }
-                    setAgentModel(e.target.value);
-                  }}
-                  className="text-xs h-7 w-full rounded-md border border-input bg-background px-2 py-0.5 text-foreground outline-none focus:ring-1 focus:ring-ring appearance-none pr-6"
-                >
-                  {Array.from(grouped.entries()).map(([provider, models]) => (
-                    <optgroup key={provider} label={providerLabels[provider] || provider}>
-                      {models.map(m => (
-                        <option key={m.value} value={m.value}>
-                          {m.locked ? "🔒 " : ""}{m.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
-              </div>
-              {selectedModel?.locked && (
-                <Lock className="h-3 w-3 text-muted-foreground opacity-60 shrink-0" />
-              )}
-            </div>
-          );
-        })()}
+        {/* Modelo selector removido — agente roda com o modelo configurado
+            em Visao geral; chave LLM e' resolvida pelo runtime cascade
+            (Provedores -> Aikortex fallback). */}
         <div className={`rounded-xl border border-border bg-card/50 p-1 transition-colors ${
           (wizardStep === "done" || wizardStep === "discover") ? "focus-within:border-primary/30" : "opacity-60"
         }`}>
