@@ -2308,6 +2308,28 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
         // spec do arquétipo direto — perguntas já estão estruturadas, sem motivo
         // pra esperar 25s do Qwen 3. Instant.
         const firstMsgContent = incomingMessages.find((m) => m.role === "user")?.content ?? "";
+
+        // VOZ: Stark esta lendo a resposta em voz alta. Fast-path padrao gera
+        // "Beleza! ... 1. 2. 3. 4. Manda essas info..." — pessimo pra TTS.
+        // Override Jarvis: pega so a primeira pergunta, abertura curta.
+        const isVoice = (body as any).voiceMode === true
+          || req.headers.get("x-wizard-voice-mode") === "1";
+        if (isVoice) {
+          const firstQ =
+            detectedSpec.discoveryQuestions.business[0] ||
+            detectedSpec.discoveryQuestions.audience[0] ||
+            detectedSpec.discoveryQuestions.behavior[0] ||
+            "Que produto ou serviço esse agente vai atender?";
+          const openings = [
+            "Entendido.", "Anotado.", "Compreendido.",
+            "Certo.", "Pois não.", "À disposição.",
+          ];
+          const openHash = firstMsgContent.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+          const opener = openings[openHash % openings.length];
+          content = `${opener} ${firstQ.trim().replace(/[?.!\s]+$/, "")}?`;
+          console.log(`[wizard-DESCOBERTA-voice] archetype=${detectedSpec.archetype} (single Q)`);
+        } else {
+
         const questionsBlock = buildDiscoveryQuestionsBlock(detectedSpec, firstMsgContent, agencyName);
 
         // Inferred connectors → cada um vira marker OAuth inline pra user já conectar
@@ -2369,6 +2391,7 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
 
         content = `${intro}\n\n${questionsBlock}${closing}`;
         console.log(`[wizard-DESCOBERTA-fast] archetype=${detectedSpec.archetype} (sem LLM call)`);
+        } // fim do else (modo texto)
       } else if (mode === "wizard-setup") {
         // Fase PLANO (e fallback Descoberta sem spec detectado): usa LLM.
         // Timeout maior pq o prompt é grande e Qwen 3 free costuma demorar
