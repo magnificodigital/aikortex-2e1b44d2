@@ -198,6 +198,7 @@ function PublishButton({
           onOpenChange={setOpen}
           agentId={agentId}
           agentName={agentName}
+          currentConfig={currentConfig}
         />
       )}
       {agentId && !isFirstPublish && (
