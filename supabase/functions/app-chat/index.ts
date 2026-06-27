@@ -2351,8 +2351,10 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
           const opener = openings[openHash % openings.length];
 
           if (userMsgsSoFar <= 1) {
-            // Turn 1: ack completo + permissao Jarvis-style
-            content = `Sim${voc}, vou ativar nossas tecnologias para criar seu agente. Antes preciso de algumas informações, posso prosseguir?`;
+            // Turn 1: NAO repete "Sim..., vou ativar nossas tecnologias..."
+            // — Stark no Home ja falou isso. Wizard pega o bastao com algo
+            // novo (permissao Jarvis-style).
+            content = `Pois não${voc}. Posso te fazer algumas perguntas antes de começar?`;
           } else {
             // Turns 2..N: pergunta sequencial. Index = userMsgsSoFar - 2 (0-based).
             const qIdx = userMsgsSoFar - 2;

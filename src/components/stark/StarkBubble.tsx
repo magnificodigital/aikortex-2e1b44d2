@@ -82,10 +82,6 @@ export function StarkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
   const finalTextRef = useRef("");
   const onTranscriptRef = useRef(onTranscript);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
-  // initSeen: trava UMA vez quando o bubble ve a primeira mensagem do
-  // wizard. Essa primeira mensagem eh o GREETING que o Stark do home ja
-  // leu em voz alta — bubble NAO pode repetir.
-  const initSeenRef = useRef(false);
   // Ultima string ja falada pelo bubble (evita falar a mesma resposta 2x
   // durante streaming).
   const spokenMessageRef = useRef<string>("");
@@ -272,20 +268,14 @@ export function StarkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
   // Quando o wizard adiciona uma mensagem nova, Stark le em voz alta.
   // CUIDADO: a PRIMEIRA mensagem que o bubble ve eh o greeting inicial
   // (3 perguntas do Jarvis) que o Stark do HOME ja leu via ElevenLabs.
-  // Bubble NAO pode repetir — usa initSeenRef pra marcar isso como
-  // "ja foi falado" sem chamar speakMessage.
+  // Wizard fala todas as mensagens. Antes tinha um gate "primeira msg = ja
+  // falada" assumindo que era o greeting seedado que Stark do Home leu — mas
+  // com o fluxo novo o wizard nao seeda greeting, entao a 1a msg agora e
+  // resposta real do wizard e precisa ser lida.
   useEffect(() => {
     if (!active) return;
     if (!latestAgentMessage) return;
     if (isProcessing) return; // streaming, espera completar
-
-    // Primeira mensagem que vemos = greeting inicial. Marca como ja-falada.
-    if (!initSeenRef.current) {
-      initSeenRef.current = true;
-      spokenMessageRef.current = latestAgentMessage;
-      return;
-    }
-
     if (latestAgentMessage === spokenMessageRef.current) return;
 
     spokenMessageRef.current = latestAgentMessage;
