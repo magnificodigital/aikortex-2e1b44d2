@@ -295,6 +295,11 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
+            // Backup do voiceMode via header (caso body parsing falhe ou middleware
+            // strip-e o campo). Backend faz OR entre body.voiceMode e este header.
+            ...(options.mode === "wizard-setup" && options.voiceMode
+              ? { "x-wizard-voice-mode": "1" }
+              : {}),
           },
           body: JSON.stringify(payload),
           signal: abortController.signal,
@@ -417,7 +422,7 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
       }
       abortControllerRef.current = null;
     }
-  }, [isStreaming, options.provider, options.model, options.useGateway, options.gatewayModel, options.systemPrompt, options.apiConfig, options.agentContext, options.mode, options.agentType, options.disableCrmExtraction, flushPendingText]);
+  }, [isStreaming, options.provider, options.model, options.useGateway, options.gatewayModel, options.systemPrompt, options.apiConfig, options.agentContext, options.mode, options.agentType, options.disableCrmExtraction, options.voiceMode, options.niche, options.consultive, flushPendingText]);
 
   // Permite UI interromper a geração (botão de stop)
   const stopStreaming = useCallback(() => {
