@@ -3,6 +3,7 @@ import { Mic, MicOff, Loader2, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
+import { toast } from "sonner";
 
 interface StarkBubbleProps {
   /** Modo de chegada:
@@ -221,7 +222,12 @@ export function StarkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
       });
       const ct = resp.headers.get("content-type") || "";
       if (!resp.ok || !ct.includes("audio")) {
-        console.warn("[stark-bubble] browser-tts falhou:", resp.status);
+        // Captura mensagem de erro do backend pra mostrar pro user.
+        let errMsg = "";
+        try { const j = await resp.json(); errMsg = j?.message || j?.error || ""; }
+        catch { /* noop */ }
+        console.warn("[stark-bubble] browser-tts falhou:", resp.status, errMsg);
+        toast.error(errMsg || `Stark não conseguiu falar (browser-tts ${resp.status}). Verifique sua chave ElevenLabs.`);
         speakingRef.current = false;
         setSpeaking(false);
         return;
@@ -236,13 +242,22 @@ export function StarkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
         speakingRef.current = false;
         setSpeaking(false);
       };
-      audio.onerror = () => {
+      audio.onerror = (e) => {
+        console.warn("[stark-bubble] audio element error:", e);
         URL.revokeObjectURL(url);
         if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
         speakingRef.current = false;
         setSpeaking(false);
       };
-      await audio.play().catch(() => {
+      await audio.play().catch((err) => {
+        // Causa mais comum: autoplay block do browser. Mostra toast pro user
+        // saber e oferece clique pra retomar.
+        console.warn("[stark-bubble] audio.play() failed:", err?.name, err?.message);
+        if (err?.name === "NotAllowedError") {
+          toast.error("Browser bloqueou o áudio do Stark. Clique no orb pra liberar.", { duration: 6000 });
+        } else {
+          toast.error(`Stark não conseguiu falar: ${err?.message || "erro desconhecido"}`);
+        }
         URL.revokeObjectURL(url);
         speakingRef.current = false;
         setSpeaking(false);

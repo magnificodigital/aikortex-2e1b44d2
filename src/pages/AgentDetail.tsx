@@ -803,19 +803,14 @@ Se user falar de algum desses, diga claramente o que falta.
   // (app-chat → buildWizardSystemPrompt) com contextualização por nicho.
   // Frontend só passa agentType + niche; o prompt canônico fica server-side
   // pra garantir consistência entre §13.2 (perfil/integrações/critérios/fluxo).
+  // Quando vem de Stark voz/texto, NAO seed greeting — usuario ja recebeu
+  // ack do Stark no Home. Wizard comeca vazio, o auto-trigger envia a fala
+  // original como msg #1 e o wizard responde com pergunta voice-friendly
+  // ("Compreendido. Qual produto...?"). Ordem perceptual fica correta.
   const wizardChat = useAgentChat(
-    [{
+    navState?.starkBubbleMode ? [] : [{
       role: "agent" as const,
-      // Greeting condicional:
-      //  - Se chegou via Stark (voz/texto) -> ack curto Jarvis com nome do user.
-      //    Wizard depois faz a discovery por conta propria via app-chat.
-      //  - Senao (botao Novo Agente) -> saudacao rotativa simples §13.2.
       text: (() => {
-        if (navState?.starkBubbleMode) {
-          const first = (navState?.starkUserFirstName as string) || "";
-          const voc = first ? `, sir ${first}` : ", sir";
-          return `Sim${voc}, vou ativar nossas tecnologias para criar seu agente.`;
-        }
         const greetings = [
           `👋 O que seu agente precisa fazer?\n\n*Ex:* "SDR pra clínica odontológica que qualifica leads via WhatsApp."`,
           `👋 Qual agente vamos criar hoje?\n\n*Ex:* "SAC pra e-commerce que resolve dúvidas e escala pra humano quando precisa."`,

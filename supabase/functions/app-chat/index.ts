@@ -2320,14 +2320,37 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
             detectedSpec.discoveryQuestions.audience[0] ||
             detectedSpec.discoveryQuestions.behavior[0] ||
             "Que produto ou serviço esse agente vai atender?";
-          const openings = [
-            "Entendido.", "Anotado.", "Compreendido.",
-            "Certo.", "Pois não.", "À disposição.",
-          ];
-          const openHash = firstMsgContent.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-          const opener = openings[openHash % openings.length];
-          content = `${opener} ${firstQ.trim().replace(/[?.!\s]+$/, "")}?`;
-          console.log(`[wizard-DESCOBERTA-voice] archetype=${detectedSpec.archetype} (single Q)`);
+
+          // Tenta puxar o primeiro nome do user pra Jarvis-style: "Sim, sir Willy."
+          let firstName = "";
+          try {
+            const uid = (authResult as any).user?.id;
+            if (uid) {
+              const { data: prof } = await adminClient
+                .from("profiles")
+                .select("full_name")
+                .eq("user_id", uid)
+                .maybeSingle();
+              firstName = (((prof as any)?.full_name) || "").trim().split(/\s+/)[0] || "";
+            }
+          } catch { /* sem nome, ok */ }
+
+          const userMsgsSoFar = incomingMessages.filter((m) => m.role === "user").length;
+          const isFirstTurn = userMsgsSoFar <= 1;
+          const voc = firstName ? `, sir ${firstName}` : ", sir";
+
+          let prefix: string;
+          if (isFirstTurn) {
+            // Primeiro turno: ack completo igual o que Stark falou no Home.
+            prefix = `Sim${voc}, vou ativar nossas tecnologias para criar seu agente.`;
+          } else {
+            const openings = ["Entendido.", "Anotado.", "Compreendido.", "Certo.", "Pois não.", "À disposição."];
+            const openHash = firstMsgContent.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+            prefix = openings[openHash % openings.length];
+          }
+
+          content = `${prefix} ${firstQ.trim().replace(/[?.!\s]+$/, "")}?`;
+          console.log(`[wizard-DESCOBERTA-voice] archetype=${detectedSpec.archetype} firstTurn=${isFirstTurn}`);
         } else {
 
         const questionsBlock = buildDiscoveryQuestionsBlock(detectedSpec, firstMsgContent, agencyName);
