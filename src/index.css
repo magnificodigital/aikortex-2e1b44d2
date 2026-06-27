@@ -563,22 +563,22 @@ body::after {
 .orb-screen-ripple {
   position: absolute;
   border-radius: 9999px;
-  border: 1px solid rgba(var(--orb-tint, 140, 195, 255), 0.14);
-  width: 380px;
-  height: 380px;
+  border: 1px solid rgba(var(--orb-tint, 140, 195, 255), 0.10);
+  width: 340px;
+  height: 340px;
   opacity: 0;
-  box-shadow: 0 0 18px rgba(var(--orb-tint, 140, 195, 255), 0.08), inset 0 0 18px rgba(var(--orb-tint, 140, 195, 255), 0.04);
+  box-shadow: 0 0 16px rgba(var(--orb-tint, 140, 195, 255), 0.06), inset 0 0 16px rgba(var(--orb-tint, 140, 195, 255), 0.03);
   animation: orb-screen-ripple 7.5s ease-out infinite;
 }
-.orb-screen-ripple-2 { animation-delay: -1.5s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.10); }
+.orb-screen-ripple-2 { animation-delay: -1.5s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.07); }
 .orb-screen-ripple-3 { animation-delay: -3.0s; }
-.orb-screen-ripple-4 { animation-delay: -4.5s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.08); }
+.orb-screen-ripple-4 { animation-delay: -4.5s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.05); }
 .orb-screen-ripple-5 { animation-delay: -6.0s; }
 
 @keyframes orb-screen-ripple {
-  0% { transform: scale(0.35); opacity: 0; }
-  10% { opacity: 0.22; }
-  100% { transform: scale(4.8); opacity: 0; }
+  0% { transform: scale(0.45); opacity: 0; }
+  10% { opacity: 0.18; }
+  100% { transform: scale(2.5); opacity: 0; }
 }
 
 /* Arcos de scan — traços suaves e pulsantes */ 
