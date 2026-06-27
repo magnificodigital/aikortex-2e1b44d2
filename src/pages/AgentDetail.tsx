@@ -875,6 +875,23 @@ Se user falar de algum desses, diga claramente o que falta.
     return null;
   }, [wizardChat.messages]);
 
+  // Defensive: se vier de Stark e a msg #1 ainda for o greeting seedado antigo
+  // (cache do JS pre-fix, build pendente, etc), purga. Garante ordem correta:
+  // user msg primeiro, wizard responde depois.
+  const purgedStarkGreetingRef = useRef(false);
+  useEffect(() => {
+    if (purgedStarkGreetingRef.current) return;
+    if (!navState?.starkBubbleMode) return;
+    const msgs = wizardChat.messages || [];
+    if (msgs.length === 0) return;
+    const first: any = msgs[0];
+    const firstText = (first?.text ?? first?.content ?? "") as string;
+    if (first?.role === "agent" && firstText.startsWith("Sim") && firstText.includes("vou ativar nossas tecnologias")) {
+      purgedStarkGreetingRef.current = true;
+      wizardChat.setMessages(msgs.slice(1));
+    }
+  }, [wizardChat.messages, navState?.starkBubbleMode, wizardChat.setMessages]);
+
   // Quando o wizard transita pra "done", preserva a MENSAGEM RICA do wizard
   // (com warnings + próximos passos + convite) como entrada do setupChat,
   // em vez de descartar e mostrar saudação genérica. User não perde contexto.
