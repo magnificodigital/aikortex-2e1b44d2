@@ -2564,7 +2564,7 @@ export type Database = {
         }
         Relationships: []
       }
-      spark_commands: {
+      stark_commands: {
         Row: {
           created_at: string | null
           enabled: boolean
@@ -2600,7 +2600,7 @@ export type Database = {
         }
         Relationships: []
       }
-      spark_usage: {
+      stark_usage: {
         Row: {
           completion_tokens: number
           created_at: string | null
@@ -2645,7 +2645,7 @@ export type Database = {
         }
         Relationships: []
       }
-      spark_user_prefs: {
+      stark_user_prefs: {
         Row: {
           bubble_enabled: boolean
           created_at: string | null
