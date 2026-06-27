@@ -571,16 +571,17 @@ body::after {
   height: 340px;
   opacity: 0;
   box-shadow: 0 0 16px rgba(var(--orb-tint, 140, 195, 255), 0.06), inset 0 0 16px rgba(var(--orb-tint, 140, 195, 255), 0.03);
-  animation: orb-screen-ripple 7.5s ease-out infinite;
+  animation: orb-screen-ripple 6.5s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+  will-change: transform, opacity;
 }
-.orb-screen-ripple-2 { animation-delay: -1.5s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.07); }
-.orb-screen-ripple-3 { animation-delay: -3.0s; }
-.orb-screen-ripple-4 { animation-delay: -4.5s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.05); }
-.orb-screen-ripple-5 { animation-delay: -6.0s; }
+.orb-screen-ripple-2 { animation-delay: -1.3s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.07); }
+.orb-screen-ripple-3 { animation-delay: -2.6s; }
+.orb-screen-ripple-4 { animation-delay: -3.9s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.05); }
+.orb-screen-ripple-5 { animation-delay: -5.2s; }
 
 @keyframes orb-screen-ripple {
   0% { transform: scale(0.45); opacity: 0; }
-  10% { opacity: 0.18; }
+  12% { opacity: 0.20; }
   100% { transform: scale(2.5); opacity: 0; }
 }
 
@@ -593,27 +594,30 @@ body::after {
   filter: drop-shadow(0 0 3px rgba(var(--orb-tint), 0.3));
   opacity: 0.35;
   transform-origin: center;
-  animation: orb-arc-scan 3s ease-in-out infinite;
+  animation: orb-arc-scan 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: transform, opacity;
 }
 .orb-arc-2 { animation-delay: -1.5s; }
 
-/* HUD de micro points ao redor — explosão sutil radial, mais visível */
+/* HUD de micro points ao redor — explosão sutil radial, mais fluida */
 .orb-hud {
-  animation: orb-hud-pulse 5s ease-in-out infinite;
+  animation: orb-hud-pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: transform, opacity;
 }
 .orb-point {
-  fill: rgba(var(--orb-tint), 0.38);
+  fill: rgba(var(--orb-tint), 0.32);
   transform-origin: 130px 130px;
-  animation: orb-point-pulse 2.6s ease-in-out infinite;
-  filter: drop-shadow(0 0 2px rgba(var(--orb-tint), 0.45));
+  animation: orb-point-pulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  filter: drop-shadow(0 0 2px rgba(var(--orb-tint), 0.5));
+  will-change: transform, opacity;
 }
 .orb-point:nth-child(4n) {
-  fill: rgba(var(--orb-white), 0.52);
-  animation-duration: 2s;
+  fill: rgba(var(--orb-white), 0.48);
+  animation-duration: 1.9s;
 }
 .orb-point:nth-child(7n) {
   animation-delay: -0.8s;
-  animation-duration: 3.2s;
+  animation-duration: 3s;
 }
 .orb-point:nth-child(11n) {
   animation-delay: -1.6s;
@@ -626,7 +630,8 @@ body::after {
   border: 1px solid rgba(var(--orb-tint), 0.2);
   box-shadow: 0 0 16px rgba(var(--orb-tint), 0.15), inset 0 0 16px rgba(var(--orb-tint), 0.08);
   opacity: 0;
-  animation: orb-scan-ripple 3s ease-out infinite;
+  animation: orb-scan-ripple 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: transform, opacity;
 }
 
 /* Núcleo de plasma */
@@ -636,7 +641,8 @@ body::after {
   background: radial-gradient(circle, rgba(var(--orb-white), 0.18) 0%, rgba(var(--orb-tint), 0.12) 35%, transparent 70%);
   filter: blur(10px);
   mix-blend-mode: screen;
-  animation: orb-core-breathe 2.8s ease-in-out infinite;
+  animation: orb-core-breathe 2.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: transform, opacity;
 }
 
 .orb-cloud {
@@ -648,7 +654,8 @@ body::after {
     radial-gradient(ellipse 50% 60% at 50% 55%, rgba(var(--orb-tint), 0.07) 0%, transparent 60%);
   filter: blur(12px);
   mix-blend-mode: screen;
-  animation: orb-cloud-drift 5s ease-in-out infinite;
+  animation: orb-cloud-drift 5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: transform, opacity;
 }
 
 /* Faixas verticais luminosas */
@@ -666,7 +673,8 @@ body::after {
   filter: blur(7px);
   mix-blend-mode: screen;
   opacity: 0.45;
-  animation: orb-band-oscillate 3.5s ease-in-out infinite;
+  animation: orb-band-oscillate 3.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: transform, opacity;
 }
 
 .orb-band-1 {
@@ -697,7 +705,8 @@ body::after {
   filter: blur(10px);
   mix-blend-mode: screen;
   opacity: 0.85;
-  animation: orb-pole-breathe 3s ease-in-out infinite;
+  animation: orb-pole-breathe 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: transform, opacity;
 }
 
 .orb-pole-top { top: 8%; }
