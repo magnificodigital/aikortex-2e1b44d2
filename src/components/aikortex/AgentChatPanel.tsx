@@ -87,6 +87,11 @@ interface AgentChatPanelProps {
   savedConfig?: Record<string, any> | null;
 }
 
+// Module-level set pra dedupe de initialPrompt entre mounts (StrictMode em
+// dev faz mount->cleanup->mount; refs do componente sao recriados, mas isto
+// sobrevive. Chave = initialPrompt + agentId pra nao colidir entre agentes).
+const triggeredPrompts = new Set<string>();
+
 const stepLabels = [
   { id: "discover" as const, label: "Descobrir", num: 1 },
   { id: "structure" as const, label: "Estruturar", num: 2 },
@@ -457,13 +462,24 @@ const AgentChatPanel = ({
     if (initialPromptUsedRef.current) return;
     if (wizardIsStreaming) return;
     if (!wizardSendMessage) return;
-    const hasUserMsg = (wizardChatMessages || []).some((m: any) => m.role === "user");
-    if (hasUserMsg) {
-      // Wizard ja recebeu uma mensagem do user antes — nao reenviar.
+    // Set module-level sobrevive a StrictMode mount/unmount/mount. Chave inclui
+    // o texto exato pra nunca mandar 2x o mesmo prompt nem que a UI rerenderize.
+    if (triggeredPrompts.has(initialPrompt)) {
+      initialPromptUsedRef.current = true;
+      return;
+    }
+    // Tambem checa se ja existe esse texto exato como msg do user (caso muito
+    // dificil: page reload com prompt remontado).
+    const promptAlreadyInChat = (wizardChatMessages || []).some(
+      (m: any) => m.role === "user" && (m.text || m.content || "").trim() === initialPrompt.trim()
+    );
+    if (promptAlreadyInChat) {
+      triggeredPrompts.add(initialPrompt);
       initialPromptUsedRef.current = true;
       return;
     }
     console.log("[wizard-trigger] DISPARANDO wizardSendMessage:", initialPrompt);
+    triggeredPrompts.add(initialPrompt);
     initialPromptUsedRef.current = true;
     wizardSendMessage(initialPrompt);
   }, [initialPrompt, wizardStep, wizardIsStreaming, wizardSendMessage, wizardChatMessages]);
