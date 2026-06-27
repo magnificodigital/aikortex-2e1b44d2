@@ -699,11 +699,10 @@ body::after {
 
 .orb-pole-top { top: 8%; }
 .orb-pole-bottom { bottom: 8%; animation-delay: -1.5s; }
-.orb-speaking ~ .orb-screen-ripples .orb-screen-ripple,
-.orb-speaking .orb-screen-ripple { animation-duration: 2.4s; }
-.orb-listening .orb-screen-ripple { animation-duration: 4s; }
-.orb-connecting .orb-screen-ripple { animation-duration: 1.8s; }
-.orb-error .orb-screen-ripple { border-color: rgba(239, 68, 68, 0.4); }
+.orb-speaking .orb-screen-ripple { animation-duration: 3.2s; }
+.orb-listening .orb-screen-ripple { animation-duration: 5.5s; }
+.orb-connecting .orb-screen-ripple { animation-duration: 2.4s; }
+.orb-error .orb-screen-ripple { border-color: rgba(239, 68, 68, 0.18); box-shadow: 0 0 18px rgba(239, 68, 68, 0.08), inset 0 0 18px rgba(239, 68, 68, 0.04); }
 
 /* Estados reativos — RÁPIDO, como Jarvis */
 .orb-speaking .orb-aura,
