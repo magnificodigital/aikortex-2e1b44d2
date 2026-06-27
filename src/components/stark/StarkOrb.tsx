@@ -60,6 +60,16 @@ export function StarkOrb({ state, intensity = 0, onClick, size = 260, disabled }
       {/* Aura externa pulsante */}
       <span className="orb-aura absolute inset-[-35%] rounded-full pointer-events-none" />
 
+      {/* Ondas expansivas pela tela inteira */}
+      <div className="orb-screen-ripples" aria-hidden="true">
+        <span className="orb-screen-ripple orb-screen-ripple-1" />
+        <span className="orb-screen-ripple orb-screen-ripple-2" />
+        <span className="orb-screen-ripple orb-screen-ripple-3" />
+        <span className="orb-screen-ripple orb-screen-ripple-4" />
+        <span className="orb-screen-ripple orb-screen-ripple-5" />
+      </div>
+
+
       {/* Anéis concêntricos pulsantes estilo Jarvis */}
       <svg className="orb-rings absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 260 260" fill="none">
         <circle cx="130" cy="130" r="122" className="orb-ring orb-ring-1" />
