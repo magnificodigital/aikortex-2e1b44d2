@@ -551,9 +551,14 @@ export async function runAgentLLM(opts: {
   // ── OpenRouter: path original (callLLM via llm-fallback) ──
   // Mantem retry + telemetry + health tracking que ja existem.
   if (resolution.provider === "openrouter") {
+    // Quando temos modelo resolvido, usa como preferred; senao deixa empty
+    // pra runWithTools carregar de available_llms (rotacao tier=free).
+    const models = (opts.models && opts.models.length > 0)
+      ? opts.models
+      : (resolution.model ? [resolution.model] : []);
     const text = await runWithTools({
       apiKey: resolution.apiKey,
-      models: opts.models ?? [],
+      models,
       messages: fullMessages,
       enabled,
       supabase: opts.supabase,
@@ -569,7 +574,7 @@ export async function runAgentLLM(opts: {
   const text = await runWithToolsDirect({
     provider: resolution.provider,
     apiKey: resolution.apiKey,
-    model: agentModel || "",
+    model: resolution.model,
     messages: fullMessages,
     enabled,
     supabase: opts.supabase,

@@ -16,9 +16,12 @@ import type { LlmProvider } from "./agent-llm-dispatchers.ts";
 export interface AgentLlmResolution {
   provider: LlmProvider;
   apiKey: string;
+  /** Modelo final a usar — o do agente quando especificado e compativel,
+   *  ou default do provider quando agente nao tem modelo definido. */
+  model: string;
   /** "user" = chave da agencia. "platform" = Aikortex env fallback. */
   source: "user" | "platform";
-  /** Quando true, o caller deve abortar com mensagem clara — chave configurada
+  /** Quando setado, o caller deve abortar com mensagem clara — chave configurada
    *  pela agencia nao casa com o modelo do agente. */
   mismatchError?: string;
 }
@@ -32,6 +35,17 @@ export function detectProviderFromModel(model: string): LlmProvider | null {
   if (m.startsWith("claude")) return "anthropic";
   if (m.startsWith("gemini") || m.startsWith("gemma")) return "gemini";
   return null;
+}
+
+/** Modelo default por provider, usado quando o agente nao tem model especificado
+ *  no config mas a agencia tem chave configurada — evita mismatch falso. */
+export function defaultModelForProvider(provider: LlmProvider): string {
+  switch (provider) {
+    case "openrouter": return "anthropic/claude-haiku-4-5";
+    case "anthropic": return "claude-haiku-4-5";
+    case "openai": return "gpt-4o-mini";
+    case "gemini": return "gemini-2.5-flash";
+  }
 }
 
 /** Resolve a chave LLM a usar pro agente. */
@@ -50,7 +64,7 @@ export async function resolveAgentLlm(
   const ownerId = (agent as any)?.user_id;
   if (!ownerId) {
     return platformOpenRouterKey
-      ? { provider: "openrouter", apiKey: platformOpenRouterKey, source: "platform" }
+      ? { provider: "openrouter", apiKey: platformOpenRouterKey, model: agentModel || defaultModelForProvider("openrouter"), source: "platform" }
       : null;
   }
 
@@ -68,35 +82,60 @@ export async function resolveAgentLlm(
     }
   });
 
+  const modelProvider = agentModel ? detectProviderFromModel(agentModel) : null;
+
   // 3) Prioridade: OpenRouter da agencia (cobre tudo)
   const orKey = keys.get("openrouter");
   if (orKey) {
-    return { provider: "openrouter", apiKey: orKey, source: "user" };
+    return {
+      provider: "openrouter",
+      apiKey: orKey,
+      model: agentModel || defaultModelForProvider("openrouter"),
+      source: "user",
+    };
   }
 
   // 4) Detecta provider do modelo e tenta chave direta da agencia
-  const modelProvider = agentModel ? detectProviderFromModel(agentModel) : null;
   if (modelProvider && modelProvider !== "openrouter") {
     const directKey = keys.get(modelProvider);
     if (directKey) {
-      return { provider: modelProvider, apiKey: directKey, source: "user" };
+      return { provider: modelProvider, apiKey: directKey, model: agentModel!, source: "user" };
     }
   }
 
-  // 5) Agencia tem chave LLM propria mas nao cobre o modelo do agente
+  // 5) Agente sem modelo definido — usa a primeira chave da agencia que tiver
+  //    com o default do provider. Evita mismatch falso quando config.model
+  //    ainda nao foi setado pelo wizard.
+  if (!agentModel && keys.size > 0) {
+    const priority: LlmProvider[] = ["openai", "anthropic", "gemini"];
+    for (const p of priority) {
+      const k = keys.get(p);
+      if (k) {
+        return { provider: p, apiKey: k, model: defaultModelForProvider(p), source: "user" };
+      }
+    }
+  }
+
+  // 6) Agencia tem chave LLM propria mas nao cobre o modelo do agente
   if (keys.size > 0) {
     const configured = Array.from(keys.keys()).join(", ");
     return {
       provider: "openrouter",
       apiKey: "",
+      model: agentModel || "",
       source: "user",
       mismatchError: `O agente usa o modelo "${agentModel}" (provider: ${modelProvider ?? "desconhecido"}), mas a agência só tem chave configurada para: ${configured}. Configure a chave correspondente em Provedores ou use um modelo compatível.`,
     };
   }
 
-  // 6) Sem chave da agencia → fallback Aikortex (so se tiver env)
+  // 7) Sem chave da agencia → fallback Aikortex (so se tiver env)
   if (platformOpenRouterKey) {
-    return { provider: "openrouter", apiKey: platformOpenRouterKey, source: "platform" };
+    return {
+      provider: "openrouter",
+      apiKey: platformOpenRouterKey,
+      model: agentModel || defaultModelForProvider("openrouter"),
+      source: "platform",
+    };
   }
   return null;
 }
