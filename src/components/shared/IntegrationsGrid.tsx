@@ -667,7 +667,18 @@ export function IntegrationsGrid({
     } finally { setSaving(false); }
   };
 
-  const isConnected = (p: IntegrationProvider) => p.native || !!connectorKeys[p.provider]?.configured;
+  // Master v7.4: assim que a agencia configura QUALQUER LLM proprio
+  // (OpenRouter, Anthropic, OpenAI, Gemini, DeepSeek, etc), o Aikortex
+  // (native) e' DESATIVADO no agente — agente passa a usar so a chave
+  // da agencia. Sinaliza isso no card removendo o badge 'Nativo' do
+  // Aikortex quando outro LLM ja esta conectado.
+  const hasOwnLlmConfigured = LLM_PROVIDERS.some((lp) =>
+    !lp.native && !!connectorKeys[lp.provider]?.configured,
+  );
+  const isConnected = (p: IntegrationProvider) => {
+    if (p.native && p.provider === "aikortex" && hasOwnLlmConfigured) return false;
+    return p.native || !!connectorKeys[p.provider]?.configured;
+  };
   const isLLMProvider = (p: IntegrationProvider) => LLM_PROVIDER_IDS.has(p.provider);
   const dialogIsLLM = dialogProvider ? isLLMProvider(dialogProvider) : false;
   const dialogModels = dialogProvider ? PROVIDER_MODELS[dialogProvider.provider] || [] : [];
@@ -810,6 +821,10 @@ export function IntegrationsGrid({
                     <span className="absolute top-2 right-2 text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded-full">
                       Em breve
                     </span>
+                  ) : (p.native && p.provider === "aikortex" && hasOwnLlmConfigured) ? (
+                    <span className="absolute top-2 right-2 text-[9px] font-semibold text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded-full">
+                      Desativado
+                    </span>
                   ) : connected && (
                     <span className="absolute top-2 right-2 flex items-center gap-0.5 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded-full">
                       <Check className="w-2.5 h-2.5" />
@@ -845,6 +860,10 @@ export function IntegrationsGrid({
                       {p.comingSoon ? (
                         <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded-full">
                           Em breve
+                        </span>
+                      ) : (p.native && p.provider === "aikortex" && hasOwnLlmConfigured) ? (
+                        <span className="text-[10px] font-semibold text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded-full">
+                          Desativado
                         </span>
                       ) : connected && (
                         <span className="flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
