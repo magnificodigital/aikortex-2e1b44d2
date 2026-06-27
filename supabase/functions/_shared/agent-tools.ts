@@ -383,7 +383,9 @@ async function executeToolCall(
 }
 
 export interface RunWithToolsOptions {
-  /** @deprecated apiKey is now read from env by the shared helper. */
+  /** Chave OpenRouter — quando vem do runAgentLLM, ja foi resolvida via
+   *  cascade (user_api_keys do dono do agente > env). callLLM usa essa em
+   *  vez de OPENROUTER_API_KEY. */
   apiKey?: string;
   /** Optional explicit model list; helper falls back to available_llms when omitted. */
   models?: string[];
@@ -436,6 +438,9 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
     const result = await callLLM(
       messages,
       {
+        // Quando runAgentLLM resolveu uma chave do dono do agente (Provedores),
+        // ela vem como opts.apiKey e tem prioridade sobre o env (Aikortex).
+        apiKey: opts.apiKey,
         preferredModel: opts.models?.[0],
         fallbackModels: opts.models, // honor caller-supplied list when given
         tier: "free",
@@ -507,8 +512,46 @@ export async function runAgentLLM(opts: {
   /** End-user JWT — propagated to user-scoped tools (knowledge_search). */
   userJwt?: string | null;
 }): Promise<string | null> {
-  const apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  // Cascade de chave LLM:
+  //   1. user_api_keys.openrouter do dono do agente (configurada em Provedores)
+  //   2. OPENROUTER_API_KEY env (Aikortex platform fallback — so usado quando
+  //      a agencia ainda nao configurou a propria chave)
+  //
+  // Master v7.4: a partir do momento que a agencia configura a chave dela,
+  // a chave da Aikortex NAO e' mais usada naquele agente.
+  let apiKey = "";
+  let keySource: "user" | "platform" = "platform";
+  if (opts.agentId) {
+    try {
+      const { data: agent } = await opts.supabase
+        .from("user_agents")
+        .select("user_id")
+        .eq("id", opts.agentId)
+        .maybeSingle();
+      const ownerId = (agent as any)?.user_id;
+      if (ownerId) {
+        const { data: row } = await opts.supabase
+          .from("user_api_keys")
+          .select("api_key")
+          .eq("user_id", ownerId)
+          .eq("provider", "openrouter")
+          .maybeSingle();
+        const userKey = (row as any)?.api_key?.trim();
+        if (userKey) {
+          apiKey = userKey;
+          keySource = "user";
+        }
+      }
+    } catch (e) {
+      console.warn("[runAgentLLM] cascade lookup falhou, usando platform key:", e);
+    }
+  }
+  if (!apiKey) {
+    apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
+  }
   if (!apiKey) return null;
+  console.log(`[runAgentLLM] agentId=${opts.agentId} keySource=${keySource}`);
+
   const enabled = opts.agentId ? await loadEnabledTools(opts.supabase, opts.agentId) : [];
   const systemWithHints = applyToolsHints(opts.system, enabled);
   const fullMessages = [{ role: "system", content: systemWithHints }, ...opts.messages];
