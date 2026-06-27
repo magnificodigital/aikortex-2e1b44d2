@@ -93,7 +93,12 @@ export default function PublishForClientDialog({
 
   const priceFmt = (priceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const checks = useMemo(() => evaluateReadiness(currentConfig ?? null), [currentConfig]);
+  // O nome do agente fica na coluna 'name' da row user_agents (nao no JSONB
+  // config). Mergeamos pro readiness check enxergar o nome correto.
+  const checks = useMemo(
+    () => evaluateReadiness({ ...(currentConfig ?? {}), name: agentName }),
+    [currentConfig, agentName],
+  );
   const criticalFailing = checks.filter((c) => c.level === "critical" && !c.pass);
   const recommendedFailing = checks.filter((c) => c.level === "recommended" && !c.pass);
   const readinessOk = criticalFailing.length === 0 && (recommendedFailing.length === 0 || ackWarnings);
@@ -180,18 +185,6 @@ export default function PublishForClientDialog({
           {/* Readiness checklist */}
           {checks.length > 0 && (
             <div className="space-y-1.5">
-              <h4 className="text-xs font-semibold flex items-center gap-2">
-                Prontidão pra produção
-                {criticalFailing.length === 0 ? (
-                  <span className="text-[10px] font-normal text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
-                    Pronto
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-normal text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full">
-                    {criticalFailing.length} bloqueando
-                  </span>
-                )}
-              </h4>
               <div className="space-y-1">
                 {checks.map((c) => {
                   const failed = !c.pass;

@@ -53,7 +53,7 @@ export function evaluateReadiness(cfg: Record<string, any> | null): ReadinessChe
   const llmReady = !!provider && provider !== "aikortex" && provider !== "auto";
   checks.push({
     key: "llm",
-    label: "Chave LLM real conectada (não Aikortex)",
+    label: "Chave LLM",
     pass: llmReady,
     level: "critical",
     hint: !llmReady ? "Conecta OpenAI/Anthropic/Gemini em Integrações → LLMs" : undefined,
