@@ -46,7 +46,6 @@ import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS } from "@/components
 import AgencyChannelsManager from "@/components/settings/AgencyChannelsManager";
 import AgencyPermissions from "@/components/settings/AgencyPermissions";
 import SubscriptionTab from "@/components/settings/SubscriptionTab";
-import AsaasConfigTab from "@/components/settings/AsaasConfigTab";
 import StarkSettingsTab from "@/components/settings/StarkSettingsTab";
 import RevenueDashboard from "@/components/settings/RevenueDashboard";
 
@@ -312,7 +311,6 @@ const SettingsPage = () => {
             
             <TabsTrigger value="subscription" className="shrink-0 gap-1 whitespace-nowrap text-xs"><CreditCard className="h-3.5 w-3.5" /> Assinatura & Planos</TabsTrigger>
             <TabsTrigger value="receita" className="shrink-0 gap-1 whitespace-nowrap text-xs"><DollarSign className="h-3.5 w-3.5" /> Receita</TabsTrigger>
-            <TabsTrigger value="financeiro" className="shrink-0 gap-1 whitespace-nowrap text-xs"><DollarSign className="h-3.5 w-3.5" /> Financeiro</TabsTrigger>
           </TabsList>
 
           {/* ── PROVEDORES (LLMs) ───────────────────── */}
@@ -354,11 +352,6 @@ const SettingsPage = () => {
           {/* ── RECEITA (dashboard de billing por agente publicado) ── */}
           <TabsContent value="receita">
             <RevenueDashboard />
-          </TabsContent>
-
-          {/* ── FINANCEIRO (ASAAS) ────────────────── */}
-          <TabsContent value="financeiro">
-            <AsaasConfigTab />
           </TabsContent>
         </Tabs>
       </div>
