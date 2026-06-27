@@ -820,8 +820,8 @@ body::after {
 }
 
 @keyframes orb-point-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.22; }
-  50% { transform: scale(2.2); opacity: 0.72; }
+  0%, 100% { transform: scale(1); opacity: 0.10; }
+  50% { transform: scale(2.2); opacity: 0.38; }
 }
 
 @keyframes orb-scan-ripple {
