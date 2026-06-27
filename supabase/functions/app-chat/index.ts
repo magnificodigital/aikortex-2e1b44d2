@@ -2315,13 +2315,7 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
         const isVoice = (body as any).voiceMode === true
           || req.headers.get("x-wizard-voice-mode") === "1";
         if (isVoice) {
-          const firstQ =
-            detectedSpec.discoveryQuestions.business[0] ||
-            detectedSpec.discoveryQuestions.audience[0] ||
-            detectedSpec.discoveryQuestions.behavior[0] ||
-            "Que produto ou serviço esse agente vai atender?";
-
-          // Tenta puxar o primeiro nome do user pra Jarvis-style: "Sim, sir Willy."
+          // Tenta puxar primeiro nome do user pra Jarvis-style.
           let firstName = "";
           try {
             const uid = (authResult as any).user?.id;
@@ -2334,23 +2328,43 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
               firstName = (((prof as any)?.full_name) || "").trim().split(/\s+/)[0] || "";
             }
           } catch { /* sem nome, ok */ }
-
-          const userMsgsSoFar = incomingMessages.filter((m) => m.role === "user").length;
-          const isFirstTurn = userMsgsSoFar <= 1;
           const voc = firstName ? `, sir ${firstName}` : ", sir";
 
-          let prefix: string;
-          if (isFirstTurn) {
-            // Primeiro turno: ack completo igual o que Stark falou no Home.
-            prefix = `Sim${voc}, vou ativar nossas tecnologias para criar seu agente.`;
-          } else {
-            const openings = ["Entendido.", "Anotado.", "Compreendido.", "Certo.", "Pois não.", "À disposição."];
-            const openHash = firstMsgContent.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-            prefix = openings[openHash % openings.length];
-          }
+          // Sequencia Jarvis hardcoded por turn (sequencial, sem LLM).
+          //   1: ack + pede permissao
+          //   2: pergunta business
+          //   3: pergunta audience
+          //   4: pergunta behavior
+          //   5: pergunta business[1] (extra)
+          //   6+: cai pro LLM com commit_draft instructions (voice override aplica)
+          const dq = detectedSpec.discoveryQuestions;
+          const questionSequence: string[] = [
+            dq.business[0],
+            dq.audience[0],
+            dq.behavior[0],
+            dq.business[1],
+          ].filter(Boolean);
 
-          content = `${prefix} ${firstQ.trim().replace(/[?.!\s]+$/, "")}?`;
-          console.log(`[wizard-DESCOBERTA-voice] archetype=${detectedSpec.archetype} firstTurn=${isFirstTurn}`);
+          const userMsgsSoFar = incomingMessages.filter((m) => m.role === "user").length;
+          const openings = ["Entendido.", "Anotado.", "Compreendido.", "Certo.", "Pois não.", "À disposição."];
+          const openHash = (firstMsgContent + userMsgsSoFar).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+          const opener = openings[openHash % openings.length];
+
+          if (userMsgsSoFar <= 1) {
+            // Turn 1: ack completo + permissao Jarvis-style
+            content = `Sim${voc}, vou ativar nossas tecnologias para criar seu agente. Antes preciso de algumas informações, posso prosseguir?`;
+          } else {
+            // Turns 2..N: pergunta sequencial. Index = userMsgsSoFar - 2 (0-based).
+            const qIdx = userMsgsSoFar - 2;
+            const q = questionSequence[qIdx];
+            if (q) {
+              content = `${opener} ${q.trim().replace(/[?.!\s]+$/, "")}?`;
+            } else {
+              // Esgotou perguntas hardcoded — fallback curto sinalizando avanco.
+              content = `Anotado${voc}. Estou montando o agente, um momento.`;
+            }
+          }
+          console.log(`[wizard-DESCOBERTA-voice] archetype=${detectedSpec.archetype} turn=${userMsgsSoFar}`);
         } else {
 
         const questionsBlock = buildDiscoveryQuestionsBlock(detectedSpec, firstMsgContent, agencyName);

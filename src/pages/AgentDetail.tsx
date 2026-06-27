@@ -373,6 +373,13 @@ const AgentDetail = () => {
   const storagePrefix = `agent-detail-${agentId || "new"}`;
   const shouldPersistTemplateDraft = !isTemplate;
 
+  // Quando vem de Stark, garante storage limpo. Se ficou cache de tentativa
+  // anterior (mesmo agentId reaberto), greeting antigo voltava como msg #1
+  // mesmo apos o fix. Rodar antes do useAgentChat resolver o useState inicial.
+  if (typeof window !== "undefined" && navState?.starkBubbleMode) {
+    try { localStorage.removeItem(`${storagePrefix}-wizard-messages`); } catch { /* noop */ }
+  }
+
   const [chatMode, setChatMode] = useState<"setup" | "test">(() => {
     if (navState?.chatMode === "test") return "test";
     if (!shouldPersistTemplateDraft) return "setup";
@@ -841,7 +848,12 @@ Se user falar de algum desses, diga claramente o que falta.
         ? { agentId, name: loadedAgent?.name ?? "" }
         : undefined,
       disableCrmExtraction: true,
-      persistKey: shouldPersistTemplateDraft ? `${storagePrefix}-wizard-messages` : undefined,
+      // Quando vem de Stark, NAO persiste — cada nova sessao comeca fresh.
+      // Cache localStorage tava trazendo greeting antigo de volta e dando
+      // sensacao de duplicacao.
+      persistKey: (shouldPersistTemplateDraft && !navState?.starkBubbleMode)
+        ? `${storagePrefix}-wizard-messages`
+        : undefined,
       // G6 — flag opcional pra modo consultivo. Liga via localStorage:
       // localStorage.setItem("aikortex_wizard_consultive", "1")
       // Default desligado (comportamento atual idêntico).
