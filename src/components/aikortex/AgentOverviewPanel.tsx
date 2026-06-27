@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
   Bot,
@@ -14,6 +14,7 @@ import {
   Mail,
   MessageSquare,
   Plug,
+  Rocket,
   Send,
   ShieldAlert,
   Sparkles,
@@ -21,6 +22,7 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
+import PublishForClientDialog from "./PublishForClientDialog";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,6 +65,8 @@ export default function AgentOverviewPanel({
   llmModel,
 }: Props) {
   const isPublished = agentStatus === "publicado" || agentStatus === "published";
+  const isSavedAgent = !!agentId && agentId !== "new" && !agentId.startsWith("new-");
+  const [publishOpen, setPublishOpen] = useState(false);
 
   const { data: cadences = [] } = useAgentCadences(agentId);
   const { data: stats, isLoading: statsLoading } = useCadenceExecutionStats(agentId);
@@ -205,6 +209,16 @@ export default function AgentOverviewPanel({
                 : `${completedCount}/${totalCount} etapas concluídas. Veja o que falta abaixo.`}
             </p>
           </div>
+          {isSavedAgent && !isPublished && (
+            <Button
+              onClick={() => setPublishOpen(true)}
+              size="sm"
+              className="shrink-0 gap-1.5"
+            >
+              <Rocket className="w-3.5 h-3.5" />
+              Publicar pro cliente
+            </Button>
+          )}
         </div>
 
         {/* Progress bar */}
@@ -480,6 +494,15 @@ export default function AgentOverviewPanel({
           })}
         </div>
       </div>
+
+      {isSavedAgent && (
+        <PublishForClientDialog
+          open={publishOpen}
+          onOpenChange={setPublishOpen}
+          agentId={agentId!}
+          agentName={agentName}
+        />
+      )}
     </div>
   );
 }

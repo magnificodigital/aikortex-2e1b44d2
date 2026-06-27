@@ -25,7 +25,6 @@ import {
 import AgentMemoryTab from "./AgentMemoryTab";
 import AgentToolsSection from "./AgentToolsSection";
 import AgentVersionsSection from "./AgentVersionsSection";
-import CommercialPublishSection from "./CommercialPublishSection";
 import KnowledgeBaseSection from "./KnowledgeBaseSection";
 import ClientTablesSection from "./ClientTablesSection";
 import CadencesSection from "./CadencesSection";
@@ -169,9 +168,6 @@ const RIGHT_NAV: NavGroup[] = [
     { key: "behavior.cadences",      label: "Cadências",            icon: Clock,           masterRef: "13.5.13" },
     { key: "ops.executions",         label: "Execuções",            icon: Activity },
     { key: "behavior.squad",         label: "Squad",                icon: Users,           comingSoon: true, sprint: "Fase E", masterRef: "13.5.14" },
-  ]},
-  { group: "Comercial", items: [
-    { key: "commercial.publish",     label: "Publicação & Cobrança", icon: Rocket },
   ]},
   { group: "Operação", items: [
     { key: "ops.versions",           label: "Versões",              icon: GitBranch },
@@ -1061,11 +1057,6 @@ const AgentRightPanel = ({
                 </div>
                 <CadenceExecutionsPanel agentId={agentId} />
               </div>
-            )}
-
-            {/* ── Comercial → Publicação & Cobrança ── */}
-            {activeSection === "commercial.publish" && (
-              <CommercialPublishSection agentId={agentId} agentName={agent.name || "agente"} />
             )}
 
             {/* ── Operação → Versões ── */}
