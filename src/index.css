@@ -550,35 +550,35 @@ body::after {
 .orb-outer-ring-1 { r: 140; animation: orb-ring-pulse 3.2s ease-in-out infinite; }
 .orb-outer-ring-2 { r: 162; stroke: rgba(var(--orb-white), 0.10); animation: orb-ring-pulse 2.6s ease-in-out infinite; animation-delay: -1.1s; }
 
-/* Ondas expansivas que cobrem a tela inteira — emanam do centro da esfera */
+/* Ondas expansivas que emanam da esfera — suaves, transparentes e atrás do orb */
 .orb-screen-ripples {
-  position: fixed;
+  position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
   display: grid;
   place-items: center;
-  overflow: hidden;
+  overflow: visible;
 }
 .orb-screen-ripple {
   position: absolute;
   border-radius: 9999px;
-  border: 1px solid rgba(var(--orb-tint, 140, 195, 255), 0.35);
-  width: 320px;
-  height: 320px;
+  border: 1px solid rgba(var(--orb-tint, 140, 195, 255), 0.14);
+  width: 380px;
+  height: 380px;
   opacity: 0;
-  box-shadow: 0 0 24px rgba(var(--orb-tint, 140, 195, 255), 0.18), inset 0 0 24px rgba(var(--orb-tint, 140, 195, 255), 0.08);
-  animation: orb-screen-ripple 6s ease-out infinite;
+  box-shadow: 0 0 18px rgba(var(--orb-tint, 140, 195, 255), 0.08), inset 0 0 18px rgba(var(--orb-tint, 140, 195, 255), 0.04);
+  animation: orb-screen-ripple 7.5s ease-out infinite;
 }
-.orb-screen-ripple-2 { animation-delay: -1.2s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.28); }
-.orb-screen-ripple-3 { animation-delay: -2.4s; }
-.orb-screen-ripple-4 { animation-delay: -3.6s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.22); }
-.orb-screen-ripple-5 { animation-delay: -4.8s; }
+.orb-screen-ripple-2 { animation-delay: -1.5s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.10); }
+.orb-screen-ripple-3 { animation-delay: -3.0s; }
+.orb-screen-ripple-4 { animation-delay: -4.5s; border-color: rgba(var(--orb-white, 230, 245, 255), 0.08); }
+.orb-screen-ripple-5 { animation-delay: -6.0s; }
 
 @keyframes orb-screen-ripple {
-  0% { transform: scale(0.15); opacity: 0; }
-  8% { opacity: 0.55; }
-  100% { transform: scale(6.5); opacity: 0; }
+  0% { transform: scale(0.35); opacity: 0; }
+  10% { opacity: 0.22; }
+  100% { transform: scale(4.8); opacity: 0; }
 }
 
 /* Arcos de scan — traços suaves e pulsantes */ 
