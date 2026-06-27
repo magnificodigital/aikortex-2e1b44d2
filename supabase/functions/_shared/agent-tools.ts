@@ -501,6 +501,9 @@ export async function runWithTools(opts: RunWithToolsOptions): Promise<string> {
  * tools for the agent (when agentId is provided) and runs the LLM with function
  * calling. Falls back to plain completion when no tools are enabled.
  */
+import { resolveAgentLlm } from "./agent-llm-cascade.ts";
+import { callProviderLlm, type LlmProvider } from "./agent-llm-dispatchers.ts";
+
 export async function runAgentLLM(opts: {
   supabase: any;
   agentId?: string | null;
@@ -512,52 +515,61 @@ export async function runAgentLLM(opts: {
   /** End-user JWT — propagated to user-scoped tools (knowledge_search). */
   userJwt?: string | null;
 }): Promise<string | null> {
-  // Cascade de chave LLM:
-  //   1. user_api_keys.openrouter do dono do agente (configurada em Provedores)
-  //   2. OPENROUTER_API_KEY env (Aikortex platform fallback — so usado quando
-  //      a agencia ainda nao configurou a propria chave)
-  //
-  // Master v7.4: a partir do momento que a agencia configura a chave dela,
-  // a chave da Aikortex NAO e' mais usada naquele agente.
-  let apiKey = "";
-  let keySource: "user" | "platform" = "platform";
-  if (opts.agentId) {
-    try {
-      const { data: agent } = await opts.supabase
-        .from("user_agents")
-        .select("user_id")
-        .eq("id", opts.agentId)
-        .maybeSingle();
-      const ownerId = (agent as any)?.user_id;
-      if (ownerId) {
-        const { data: row } = await opts.supabase
-          .from("user_api_keys")
-          .select("api_key")
-          .eq("user_id", ownerId)
-          .eq("provider", "openrouter")
-          .maybeSingle();
-        const userKey = (row as any)?.api_key?.trim();
-        if (userKey) {
-          apiKey = userKey;
-          keySource = "user";
-        }
-      }
-    } catch (e) {
-      console.warn("[runAgentLLM] cascade lookup falhou, usando platform key:", e);
-    }
-  }
-  if (!apiKey) {
-    apiKey = Deno.env.get("OPENROUTER_API_KEY") ?? "";
-  }
-  if (!apiKey) return null;
-  console.log(`[runAgentLLM] agentId=${opts.agentId} keySource=${keySource}`);
-
   const enabled = opts.agentId ? await loadEnabledTools(opts.supabase, opts.agentId) : [];
   const systemWithHints = applyToolsHints(opts.system, enabled);
   const fullMessages = [{ role: "system", content: systemWithHints }, ...opts.messages];
-  const text = await runWithTools({
-    apiKey,
-    models: opts.models ?? [],
+
+  // ── Cascade: resolve qual provider+chave usar (user > platform) ──
+  // Master v7.4: agencia configurou propria chave -> Aikortex desligada.
+  const platformOrKey = Deno.env.get("OPENROUTER_API_KEY") ?? null;
+  // Pega o modelo configurado no proprio agente — define provider esperado.
+  let agentModel: string | null = null;
+  if (opts.agentId) {
+    try {
+      const { data } = await opts.supabase
+        .from("user_agents")
+        .select("config")
+        .eq("id", opts.agentId)
+        .maybeSingle();
+      agentModel = ((data as any)?.config?.model ?? null) || (opts.models?.[0] ?? null);
+    } catch { /* ignore */ }
+  }
+  const resolution = opts.agentId
+    ? await resolveAgentLlm(opts.supabase, opts.agentId, agentModel, platformOrKey)
+    : (platformOrKey ? { provider: "openrouter" as LlmProvider, apiKey: platformOrKey, source: "platform" as const } : null);
+
+  if (!resolution) {
+    console.error(`[runAgentLLM] sem chave LLM disponivel pra agentId=${opts.agentId}`);
+    return null;
+  }
+  if (resolution.mismatchError) {
+    console.error(`[runAgentLLM] mismatch: ${resolution.mismatchError}`);
+    return resolution.mismatchError;
+  }
+  console.log(`[runAgentLLM] agentId=${opts.agentId} provider=${resolution.provider} source=${resolution.source}`);
+
+  // ── OpenRouter: path original (callLLM via llm-fallback) ──
+  // Mantem retry + telemetry + health tracking que ja existem.
+  if (resolution.provider === "openrouter") {
+    const text = await runWithTools({
+      apiKey: resolution.apiKey,
+      models: opts.models ?? [],
+      messages: fullMessages,
+      enabled,
+      supabase: opts.supabase,
+      agencyId: opts.agencyId ?? null,
+      agentId: opts.agentId ?? null,
+      maxTokens: opts.maxTokens,
+      userJwt: opts.userJwt ?? null,
+    });
+    return text || null;
+  }
+
+  // ── OpenAI / Anthropic / Gemini direto: usa dispatcher ──
+  const text = await runWithToolsDirect({
+    provider: resolution.provider,
+    apiKey: resolution.apiKey,
+    model: agentModel || "",
     messages: fullMessages,
     enabled,
     supabase: opts.supabase,
@@ -567,6 +579,101 @@ export async function runAgentLLM(opts: {
     userJwt: opts.userJwt ?? null,
   });
   return text || null;
+}
+
+/** Loop de tool-calling pros providers diretos (nao-OpenRouter).
+ *  Espelha o flow do runWithTools mas usa callProviderLlm em vez do callLLM
+ *  (que e' OpenRouter-only). */
+async function runWithToolsDirect(opts: {
+  provider: LlmProvider;
+  apiKey: string;
+  model: string;
+  messages: Array<{ role: string; content: any; tool_calls?: any; tool_call_id?: string; name?: string }>;
+  enabled: EnabledTool[];
+  supabase: any;
+  agencyId: string | null;
+  agentId?: string | null;
+  maxTokens?: number;
+  userJwt?: string | null;
+  maxIterations?: number;
+}): Promise<string> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const yearMonth = new Date().toISOString().slice(0, 7);
+  const maxIterations = opts.maxIterations ?? 3;
+  const maxTokens = opts.maxTokens ?? 2048;
+  let tier: "start" | "hack" | "growth" = "start";
+  if (opts.agencyId) {
+    try {
+      const { data } = await opts.supabase
+        .from("agency_profiles")
+        .select("tier")
+        .eq("id", opts.agencyId)
+        .maybeSingle();
+      if (data?.tier === "start" || data?.tier === "hack" || data?.tier === "growth") {
+        tier = data.tier;
+      }
+    } catch { /* keep default */ }
+  }
+
+  const messages = [...opts.messages];
+  const toolDefs = buildToolDefinitions(opts.enabled).map((t: any) => ({
+    name: t.function?.name,
+    description: t.function?.description,
+    input_schema: t.function?.parameters,
+  }));
+
+  for (let iter = 0; iter < maxIterations + 1; iter++) {
+    let result;
+    try {
+      result = await callProviderLlm(
+        opts.provider,
+        opts.apiKey,
+        opts.model,
+        messages,
+        iter < maxIterations ? toolDefs : [], // ultima iter, sem tools — forca texto final
+        { maxTokens },
+      );
+    } catch (e) {
+      console.warn(`[runWithToolsDirect] iter=${iter} ${opts.provider} falhou:`, (e as Error).message);
+      return "";
+    }
+
+    const toolCalls = result.tool_calls;
+    if (!toolCalls || toolCalls.length === 0) {
+      return result.content || "";
+    }
+
+    // Anexa turn do assistant com tool_calls
+    messages.push({
+      role: "assistant",
+      content: result.content ?? null,
+      tool_calls: toolCalls,
+    });
+
+    for (const tc of toolCalls) {
+      const { result: toolResult } = await executeToolCall(tc.name || "", tc.arguments || {}, {
+        supabase: opts.supabase,
+        agencyId: opts.agencyId,
+        agentId: opts.agentId ?? null,
+        tier,
+        yearMonth,
+        supabaseUrl,
+        serviceKey,
+        anonKey,
+        userJwt: opts.userJwt ?? null,
+      });
+      messages.push({
+        role: "tool",
+        tool_call_id: tc.id,
+        name: tc.name,
+        content: toolResult,
+      });
+    }
+  }
+
+  return "⚠️ Limite de iterações de tools atingido.";
 }
 
 /**
