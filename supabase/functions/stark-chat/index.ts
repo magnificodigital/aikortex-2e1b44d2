@@ -244,13 +244,18 @@ Deno.serve(async (req) => {
 
     let audioB64 = "";
     if (elevenKey && (await isProviderActive(admin, "elevenlabs"))) {
-      const { data: voiceRow } = await admin
+      // Cascade: stark_voice_id (novo) -> spark_voice_id (legacy) -> DEFAULT
+      const { data: voiceRows } = await admin
         .from("user_api_keys")
-        .select("api_key")
+        .select("provider, api_key")
         .eq("user_id", userId)
-        .eq("provider", "stark_voice_id")
-        .maybeSingle();
-      const voiceId = (voiceRow as { api_key?: string } | null)?.api_key || DEFAULT_VOICE_ID;
+        .in("provider", ["stark_voice_id", "spark_voice_id"]);
+      const voiceMap = new Map<string, string>();
+      (voiceRows ?? []).forEach((r: any) => voiceMap.set(r.provider, r.api_key ?? ""));
+      const voiceId =
+        (voiceMap.get("stark_voice_id") || "").trim() ||
+        (voiceMap.get("spark_voice_id") || "").trim() ||
+        DEFAULT_VOICE_ID;
 
       const ttsResp = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_22050_32`,

@@ -74,18 +74,21 @@ Deno.serve(async (req) => {
       .from("user_api_keys")
       .select("provider, api_key")
       .eq("user_id", userId)
-      .in("provider", ["elevenlabs", "stark_voice_id"]);
+      .in("provider", ["elevenlabs", "stark_voice_id", "spark_voice_id"]);
 
     const map = new Map<string, string>();
     (keys ?? []).forEach((row: any) => map.set(row.provider, row.api_key ?? ""));
     const elevenKey = map.get("elevenlabs") ?? "";
     // Voz do STARK eh INDEPENDENTE dos agentes. Cascata limpa:
-    //   stark_voice_id (config dedicada em Settings > Stark) → DEFAULT_VOICE_ID
+    //   stark_voice_id (config nova) → spark_voice_id (legacy pre-rename) → DEFAULT_VOICE_ID
     // NUNCA fazer fallback pra elevenlabs_voice_id (voz dos agentes) —
     // bug reportado: Stark "trocava" pra voz do agente que o user estava
     // configurando no wizard. Stark eh o agente CONFIGURADOR, nao o agente
     // CONFIGURADO. Voz tem que ser estavel ponta a ponta.
-    const voiceId = (map.get("stark_voice_id") || "").trim() || DEFAULT_VOICE_ID;
+    const voiceId =
+      (map.get("stark_voice_id") || "").trim() ||
+      (map.get("spark_voice_id") || "").trim() ||
+      DEFAULT_VOICE_ID;
 
     if (!elevenKey) {
       return json({

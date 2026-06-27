@@ -55,14 +55,20 @@ export function StarkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
           .from("user_api_keys")
           .select("provider, api_key")
           .eq("user_id", user.id)
-          .in("provider", ["stark_voice_id", "stark_voice_stability", "stark_voice_speed"]);
+          .in("provider", [
+            "stark_voice_id", "stark_voice_stability", "stark_voice_speed",
+            "spark_voice_id", "spark_voice_stability", "spark_voice_speed",
+          ]);
         if (cancelled) return;
         const map = new Map<string, string>();
         (data ?? []).forEach((row: any) => map.set(row.provider, row.api_key ?? ""));
-        const stab = parseFloat(map.get("stark_voice_stability") || "");
-        const spd = parseFloat(map.get("stark_voice_speed") || "");
+        // Cascade: stark_* (novo) -> spark_* (legacy pre-rename)
+        const pick = (k: "voice_id" | "voice_stability" | "voice_speed") =>
+          map.get(`stark_${k}`) || map.get(`spark_${k}`) || "";
+        const stab = parseFloat(pick("voice_stability"));
+        const spd = parseFloat(pick("voice_speed"));
         starkPrefsRef.current = {
-          voiceId: map.get("stark_voice_id") || undefined,
+          voiceId: pick("voice_id") || undefined,
           stability: Number.isFinite(stab) ? stab : undefined,
           speed: Number.isFinite(spd) ? spd : undefined,
         };

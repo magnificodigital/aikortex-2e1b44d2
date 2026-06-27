@@ -185,12 +185,18 @@ function VoiceSection() {
         .from("user_api_keys")
         .select("provider, api_key")
         .eq("user_id", user.id)
-        .in("provider", ["stark_voice_id", "stark_voice_stability", "stark_voice_speed"]);
+        .in("provider", [
+          "stark_voice_id", "stark_voice_stability", "stark_voice_speed",
+          "spark_voice_id", "spark_voice_stability", "spark_voice_speed",
+        ]);
       const map = new Map<string, string>();
       (data ?? []).forEach((row: any) => map.set(row.provider, row.api_key ?? ""));
-      const vid = map.get("stark_voice_id") || DEFAULT_VOICE;
-      const stab = parseFloat(map.get("stark_voice_stability") || "0.5");
-      const spd = parseFloat(map.get("stark_voice_speed") || "1.0");
+      // Cascade: stark_* (novo) -> spark_* (legacy pre-rename)
+      const pick = (k: "voice_id" | "voice_stability" | "voice_speed") =>
+        map.get(`stark_${k}`) || map.get(`spark_${k}`) || "";
+      const vid = pick("voice_id") || DEFAULT_VOICE;
+      const stab = parseFloat(pick("voice_stability") || "0.5");
+      const spd = parseFloat(pick("voice_speed") || "1.0");
       setVoiceId(vid); setSavedVoiceId(vid);
       setStability(Number.isFinite(stab) ? stab : 0.5);
       setSavedStability(Number.isFinite(stab) ? stab : 0.5);
