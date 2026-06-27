@@ -805,8 +805,8 @@ body::after {
 }
 
 @keyframes orb-ring-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.25; stroke-width: 1; }
-  50% { transform: scale(1.12); opacity: 0.7; stroke-width: 1.5; }
+  0%, 100% { transform: scale(1); opacity: 0.20; stroke-width: 1; }
+  50% { transform: scale(1.12); opacity: 0.65; stroke-width: 1.5; }
 }
 
 @keyframes orb-arc-scan {
@@ -815,13 +815,13 @@ body::after {
 }
 
 @keyframes orb-hud-pulse {
-  0%, 100% { opacity: 0.45; transform: scale(1); }
-  50% { opacity: 0.75; transform: scale(1.04); }
+  0%, 100% { opacity: 0.42; transform: scale(1); }
+  50% { opacity: 0.78; transform: scale(1.04); }
 }
 
 @keyframes orb-point-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.32; }
-  50% { transform: scale(1.8); opacity: 0.78; }
+  0%, 100% { transform: scale(1); opacity: 0.22; }
+  50% { transform: scale(2.2); opacity: 0.72; }
 }
 
 @keyframes orb-scan-ripple {
@@ -851,6 +851,7 @@ body::after {
   0%, 100% { opacity: 0.85; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.12); }
 }
+
 
 
 
