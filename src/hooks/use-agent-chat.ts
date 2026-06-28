@@ -154,6 +154,11 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
     return initialMessages;
   });
   const [isStreaming, setIsStreaming] = useState(false);
+  // Mirror sincrono: isStreaming (state React) so propaga no proximo render.
+  // Em StrictMode dev (Lovable), sendMessage pode ser chamado 2x antes do
+  // setState propagar → ambas chamadas passam pelo guard → mensagem dupla.
+  // Ref e' sincrona: lock imediato antes do await elimina race.
+  const isStreamingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const messagesRef = useRef(messages);
@@ -206,7 +211,9 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
   }, []);
 
   const sendMessage = useCallback(async (userText: string) => {
-    if (!userText.trim() || isStreaming) return;
+    if (!userText.trim()) return;
+    if (isStreamingRef.current) return; // lock sincrono — bloqueia duplicacoes
+    isStreamingRef.current = true;
 
     const inferredProvider = deriveProvider(options.model);
     if (options.provider && inferredProvider && options.provider !== inferredProvider) {
@@ -417,12 +424,13 @@ export function useAgentChat(initialMessages: ChatMessage[] = [], options: UseAg
         }
       }
     } finally {
+      isStreamingRef.current = false;
       if (mountedRef.current) {
         setIsStreaming(false);
       }
       abortControllerRef.current = null;
     }
-  }, [isStreaming, options.provider, options.model, options.useGateway, options.gatewayModel, options.systemPrompt, options.apiConfig, options.agentContext, options.mode, options.agentType, options.disableCrmExtraction, options.voiceMode, options.niche, options.consultive, flushPendingText]);
+  }, [options.provider, options.model, options.useGateway, options.gatewayModel, options.systemPrompt, options.apiConfig, options.agentContext, options.mode, options.agentType, options.disableCrmExtraction, options.voiceMode, options.niche, options.consultive, flushPendingText]);
 
   // Permite UI interromper a geração (botão de stop)
   const stopStreaming = useCallback(() => {

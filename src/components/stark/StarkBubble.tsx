@@ -44,11 +44,16 @@ export function StarkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
   const [userStopped, setUserStopped] = useState(false);
   // Preferencias salvas em Settings > Stark. Default: Sarah, 0.5, 1.0.
   const starkPrefsRef = useRef<{ voiceId?: string; stability?: number; speed?: number }>({});
+  // Race-condition fix: speakMessage espera prefs carregarem antes de chamar
+  // browser-tts. Sem isso, primeira fala usava Sarah default (voz "do agente"
+  // na percepcao do user) mesmo com stark_voice_id custom configurado.
+  const prefsLoadedRef = useRef(false);
+  const prefsPromiseRef = useRef<Promise<void> | null>(null);
 
   // Carrega preferencias do user (uma vez por sessao do bubble)
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    prefsPromiseRef.current = (async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || cancelled) return;
@@ -73,7 +78,12 @@ export function StarkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
           stability: Number.isFinite(stab) ? stab : undefined,
           speed: Number.isFinite(spd) ? spd : undefined,
         };
-      } catch { /* default config eh suficiente */ }
+        console.log(`[stark-bubble] prefs loaded: voiceId=${starkPrefsRef.current.voiceId || "(default Sarah)"}`);
+      } catch (e) {
+        console.warn("[stark-bubble] prefs load falhou — usando defaults:", e);
+      } finally {
+        prefsLoadedRef.current = true;
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -196,6 +206,12 @@ export function StarkBubble({ mode, isProcessing, latestAgentMessage, onTranscri
     speakingRef.current = true;
     setSpeaking(true);
     try {
+      // Garante que prefs (stark_voice_id) carregaram antes de chamar TTS.
+      // Sem isso, primeira mensagem usava Sarah default em vez da voz custom
+      // do user — user percebia como "trocou pra voz do agente".
+      if (!prefsLoadedRef.current && prefsPromiseRef.current) {
+        await prefsPromiseRef.current;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         speakingRef.current = false;
