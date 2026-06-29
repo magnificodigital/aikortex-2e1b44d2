@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { StarkFloatingOrb } from "@/components/stark/StarkFloatingOrb";
 // HelpBubble removido a pedido — conflitava visualmente com botões flutuantes
 // (ex: FAB "Ver configuração" no Modo Vibe).
 
@@ -128,6 +129,10 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
+          {/* Orb flutuante do Stark — aparece em qualquer pagina autenticada,
+              exceto onde o Stark ja' tem UI propria (/home, /aikortex/agents/*).
+              Decisao de exibir mora dentro do componente (le prefs.bubble_enabled). */}
+          <StarkFloatingOrb />
         </BrowserRouter>
       </TooltipProvider>
       </WorkspaceProvider>

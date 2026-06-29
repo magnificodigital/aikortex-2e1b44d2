@@ -174,7 +174,11 @@ export function useStarkLiveKit({
           }
           if (msg.type === "open_agent_creator") {
             // Stark pediu pra abrir o wizard. Mesma rota do Home.navigateToNewAgent.
+            // DESCONECTA antes do navigate — senao o LiveKit ainda tenta entregar
+            // o resto do TTS enquanto o AgentDetail ja' montou o StarkBubble (web
+            // speech), gerando 2 vozes ao mesmo tempo.
             const newId = `new-${Date.now()}`;
+            disconnect();
             navigate(`/aikortex/agents/${newId}`, {
               state: {
                 fromTemplate: false,
