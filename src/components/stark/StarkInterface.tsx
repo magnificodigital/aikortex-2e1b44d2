@@ -11,12 +11,14 @@ import { cn } from "@/lib/utils";
 import { useStarkLiveKit } from "@/hooks/use-stark-livekit";
 
 /** Feature flag: 'legacy' (MediaRecorder + edge fn) ou 'livekit' (Agent Railway).
- *  Default 'legacy' enquanto livekit ainda esta em beta. */
+ *  Default agora e 'livekit' (streaming sub-segundo, Jarvis mode).
+ *  Opt-out via localStorage: setItem('stark_voice_provider', 'legacy') pra
+ *  forcar o caminho antigo em caso de bug. */
 const VOICE_PROVIDER_KEY = "stark_voice_provider";
 type VoiceProvider = "legacy" | "livekit";
 function readVoiceProvider(): VoiceProvider {
-  if (typeof window === "undefined") return "legacy";
-  return localStorage.getItem(VOICE_PROVIDER_KEY) === "livekit" ? "livekit" : "legacy";
+  if (typeof window === "undefined") return "livekit";
+  return localStorage.getItem(VOICE_PROVIDER_KEY) === "legacy" ? "legacy" : "livekit";
 }
 
 type Mode = "voice" | "text";
