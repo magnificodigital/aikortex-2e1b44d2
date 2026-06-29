@@ -104,10 +104,16 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
   useEffect(() => { onVoiceTranscriptRef.current = onVoiceTranscript; }, [onVoiceTranscript]);
 
   // ── LiveKit (Fase 3) ──
-  // Hook conecta quando useLiveKit=true AND mode=voice. Quando desativa,
-  // disconnect automatico via cleanup do hook.
+  // Sessao SO inicia quando user toca na esfera (consent explicito).
+  // Sem isso, /home auto-abria o microfone e consumia creditos sem
+  // o user clicar em nada.
+  const [liveKitActive, setLiveKitActive] = useState(false);
+  // Resetar quando troca de modo (voice ↔ text) ou desliga LiveKit
+  useEffect(() => {
+    if (mode !== "voice" || !useLiveKit) setLiveKitActive(false);
+  }, [mode, useLiveKit]);
   const livekit = useStarkLiveKit({
-    active: useLiveKit && mode === "voice",
+    active: useLiveKit && mode === "voice" && liveKitActive,
   });
 
   // Mapeia state do hook LiveKit pro OrbState legacy (mesma UI pra ambos).
@@ -427,6 +433,12 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
   const sessionActive = orbState !== "idle" && orbState !== "error";
 
   const handleOrbClick = () => {
+    // LiveKit: toggle conexao via hook (consent explicito do user).
+    if (useLiveKit) {
+      setLiveKitActive((prev) => !prev);
+      return;
+    }
+    // Legacy: gerencia sessao MediaRecorder.
     if (sessionActive) {
       endSession();
     } else {
@@ -496,6 +508,17 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
   };
 
   const orbHint = (() => {
+    if (useLiveKit) {
+      if (!liveKitActive) return "Toque na esfera para iniciar a conversa";
+      switch (livekit.state) {
+        case "connecting": return "Conectando…";
+        case "listening":  return "Pode falar";
+        case "speaking":   return "";
+        case "no_credits": return livekit.error || "Créditos esgotados";
+        case "error":      return livekit.error || "Toque para tentar novamente";
+        default:           return "";
+      }
+    }
     switch (orbState) {
       case "idle": return "Toque na esfera para iniciar a conversa";
       case "listening": return "Pode falar";
@@ -599,7 +622,7 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
             <StarkOrb
               state={orbStateForVisual}
               intensity={orbIntensity}
-              onClick={useLiveKit ? undefined : handleOrbClick}
+              onClick={handleOrbClick}
               disabled={useLiveKit ? livekit.state === "connecting" : orbState === "processing"}
             />
           </div>
