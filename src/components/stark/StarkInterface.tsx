@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mic, MicOff, MessageSquare, Settings, X, ArrowUp, RefreshCw, Sparkles, BarChart3, Square } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link, useNavigate } from "react-router-dom";
@@ -8,6 +8,16 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { StarkOrb } from "./StarkOrb";
 import { cn } from "@/lib/utils";
+import { useStarkLiveKit } from "@/hooks/use-stark-livekit";
+
+/** Feature flag: 'legacy' (MediaRecorder + edge fn) ou 'livekit' (Agent Railway).
+ *  Default 'legacy' enquanto livekit ainda esta em beta. */
+const VOICE_PROVIDER_KEY = "stark_voice_provider";
+type VoiceProvider = "legacy" | "livekit";
+function readVoiceProvider(): VoiceProvider {
+  if (typeof window === "undefined") return "legacy";
+  return localStorage.getItem(VOICE_PROVIDER_KEY) === "livekit" ? "livekit" : "legacy";
+}
 
 type Mode = "voice" | "text";
 type OrbState = "idle" | "listening" | "recording" | "processing" | "speaking" | "error";
@@ -43,6 +53,20 @@ interface StarkInterfaceProps {
 
 export function StarkInterface({ greeting, userName, honorific, onTextSubmit, onVoiceTranscript }: StarkInterfaceProps) {
   const [mode, setMode] = useState<Mode>("voice");
+  // Feature flag — legacy (edge fn) vs livekit (Stark Agent no Railway).
+  // Voltado pra localStorage, leitura no mount + listener pra sincronizar
+  // quando o user troca em Configuracoes > Stark.
+  const [voiceProvider, setVoiceProvider] = useState<VoiceProvider>(() => readVoiceProvider());
+  useEffect(() => {
+    const handler = () => setVoiceProvider(readVoiceProvider());
+    window.addEventListener("storage", handler);
+    window.addEventListener("stark:voice-provider-changed", handler);
+    return () => {
+      window.removeEventListener("storage", handler);
+      window.removeEventListener("stark:voice-provider-changed", handler);
+    };
+  }, []);
+  const useLiveKit = voiceProvider === "livekit";
   // 'build' = criacao de agente (stark-voice, fluxo Jarvis com fast-ack + nav)
   // 'manage' = perguntas de gestao (stark-chat com tools, ainda em beta)
   const [purpose, setPurpose] = useState<"build" | "manage">("build");
@@ -76,6 +100,25 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
   // (otherwise startUtterance, memoized with [], would capture a stale prop).
   const onVoiceTranscriptRef = useRef(onVoiceTranscript);
   useEffect(() => { onVoiceTranscriptRef.current = onVoiceTranscript; }, [onVoiceTranscript]);
+
+  // ── LiveKit (Fase 3) ──
+  // Hook conecta quando useLiveKit=true AND mode=voice. Quando desativa,
+  // disconnect automatico via cleanup do hook.
+  const livekit = useStarkLiveKit({
+    active: useLiveKit && mode === "voice",
+  });
+
+  // Mapeia state do hook LiveKit pro OrbState legacy (mesma UI pra ambos).
+  const liveKitOrbState: OrbState = useMemo(() => {
+    switch (livekit.state) {
+      case "connecting": return "processing";
+      case "listening":  return "listening";
+      case "speaking":   return "speaking";
+      case "no_credits": return "error";
+      case "error":      return "error";
+      default:           return "idle";
+    }
+  }, [livekit.state]);
 
   const pickMime = () =>
     MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -461,12 +504,22 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
     }
   })();
 
-  const orbStateForVisual: "idle" | "connecting" | "listening" | "speaking" | "error" =
-    orbState === "recording" || orbState === "listening" ? "listening"
-    : orbState === "processing" ? "connecting"
-    : orbState === "speaking" ? "speaking"
-    : orbState === "error" ? "error"
-    : "idle";
+  const orbStateForVisual: "idle" | "connecting" | "listening" | "speaking" | "error" = useLiveKit
+    ? (
+        liveKitOrbState === "recording" || liveKitOrbState === "listening" ? "listening"
+        : liveKitOrbState === "processing" ? "connecting"
+        : liveKitOrbState === "speaking" ? "speaking"
+        : liveKitOrbState === "error" ? "error"
+        : "idle"
+      )
+    : (
+        orbState === "recording" || orbState === "listening" ? "listening"
+        : orbState === "processing" ? "connecting"
+        : orbState === "speaking" ? "speaking"
+        : orbState === "error" ? "error"
+        : "idle"
+      );
+  const orbIntensity = useLiveKit ? livekit.intensity : intensity;
 
   const currentSuggestions = TEXT_SUGGESTIONS[suggestionIndex % TEXT_SUGGESTIONS.length];
 
@@ -543,9 +596,9 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
           <div className="relative">
             <StarkOrb
               state={orbStateForVisual}
-              intensity={intensity}
-              onClick={handleOrbClick}
-              disabled={orbState === "processing"}
+              intensity={orbIntensity}
+              onClick={useLiveKit ? undefined : handleOrbClick}
+              disabled={useLiveKit ? livekit.state === "connecting" : orbState === "processing"}
             />
           </div>
 
