@@ -1,8 +1,20 @@
+/**
+ * Stark Settings — refeito com tabs internas + stats no topo.
+ *
+ * Layout:
+ *  - StatsHeader (4 cards: minutos voz / custo LLM / sessoes / pack)
+ *  - Tabs: Personalidade | Voz | Ferramentas | Atalhos | Uso
+ *
+ * Padrao visual segue SubscriptionTab.tsx (max-w-3xl, icones em circulo,
+ * tipografia consistente).
+ */
 import { useEffect, useState } from "react";
 import {
   Mic, Play, Loader2, Save, AlertTriangle, Sparkles, Zap, BarChart3,
-  Plus, Trash2, GripVertical, Bell,
+  Plus, Trash2, GripVertical, Bell, Wrench, Clock, History, ShoppingBag,
+  Wallet,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,59 +24,172 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
 import { useElevenLabsVoices } from "@/hooks/use-elevenlabs-voices";
-import { useStarkPrefs, type StarkPersonaPreset } from "@/hooks/use-stark-prefs";
+import { useStarkPrefs, type StarkPersonaPreset, type StarkLanguage } from "@/hooks/use-stark-prefs";
 import { useStarkCommands } from "@/hooks/use-stark-commands";
 import { useStarkUsage } from "@/hooks/use-stark-usage";
+import { useStarkVoiceCredits } from "@/hooks/use-stark-voice-credits";
 import { toast } from "sonner";
 
 const DEFAULT_VOICE = "EXAVITQu4vr4xnSDxMaL"; // Sarah
 const PREVIEW_TEXT = "Olá, sou o Stark, seu copiloto de voz. À disposição.";
 
-const PRESET_OPTIONS: { value: StarkPersonaPreset; label: string; hint: string }[] = [
-  { value: "jarvis", label: "Jarvis", hint: "Confiante, calmo, eficiente — estilo Tony Stark" },
-  { value: "profissional", label: "Profissional", hint: "Corporativo, objetivo, formal" },
-  { value: "casual", label: "Casual", hint: "Descontraído, amigável, próximo" },
-  { value: "custom", label: "Custom", hint: "Você escreve do zero o system prompt" },
+const PRESET_OPTIONS: { value: StarkPersonaPreset; label: string; hint: string; tone: number; response: number; energy: number }[] = [
+  { value: "executivo",    label: "Executivo",    hint: "Confiante, calmo, eficiente",     tone: 30, response: 20, energy: 35 },
+  { value: "profissional", label: "Profissional", hint: "Corporativo, objetivo, formal",   tone: 15, response: 35, energy: 25 },
+  { value: "casual",       label: "Casual",       hint: "Descontraído, amigável, próximo", tone: 80, response: 30, energy: 70 },
+  { value: "custom",       label: "Personalizado", hint: "Você ajusta tudo manualmente",   tone: 50, response: 50, energy: 50 },
+];
+
+const LANGUAGE_OPTIONS: { value: StarkLanguage; label: string }[] = [
+  { value: "pt-BR", label: "Português (Brasil)" },
+  { value: "en",    label: "English" },
+  { value: "es",    label: "Español" },
+];
+
+// Catalogo de tools — match com src/tools/__init__.py do Stark Agent.
+// Pra ativar/desativar individualmente o que o Stark pode consultar.
+const TOOL_CATALOG: { id: string; label: string; group: string; description: string }[] = [
+  { id: "list_agents",       label: "Listar agentes",       group: "Aikortex", description: "Lista os agentes cadastrados" },
+  { id: "query_messages",    label: "Mensagens",            group: "Aikortex", description: "Conta conversas no período" },
+  { id: "query_calls",       label: "Ligações",             group: "Aikortex", description: "Conta ligações telefônicas" },
+  { id: "query_cadences",    label: "Cadências",            group: "Aikortex", description: "Conta execuções de cadência" },
+  { id: "count_outcomes",    label: "Qualificações/Outcomes", group: "Aikortex", description: "Conta outcomes (qualified, booked etc)" },
+  { id: "list_clients",      label: "Clientes",             group: "Gestão",   description: "Lista clientes da agência" },
+  { id: "count_new_clients", label: "Novos clientes",       group: "Gestão",   description: "Conta clientes novos no período" },
+  { id: "list_meetings",     label: "Reuniões",             group: "Gestão",   description: "Lista reuniões agendadas/ocorridas" },
+  { id: "query_mrr",         label: "MRR (Receita)",        group: "Financeiro", description: "Soma a receita mensal recorrente" },
+  { id: "query_invoices",    label: "Faturas",              group: "Financeiro", description: "Lista faturas pendentes/pagas" },
+  { id: "open_agent_creator", label: "Criar agente por voz", group: "Ação",     description: "Abre o wizard ao pedir um novo agente" },
 ];
 
 export default function StarkSettingsTab() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" /> Stark
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          Configure seu copiloto. Esses ajustes valem para o Stark em todas as telas —
-          não confundir com a voz dos agentes.
-        </p>
+    <div className="space-y-6 max-w-4xl">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Sparkles className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Stark</h2>
+          <p className="text-xs text-muted-foreground">
+            Configure seu copiloto. Esses ajustes valem em todas as telas — não confundir com a voz dos agentes.
+          </p>
+        </div>
       </div>
 
-      <PersonaSection />
-      <VoiceSection />
-      <CommandsSection />
-      <UsageSection />
+      <StatsHeader />
+
+      <Tabs defaultValue="persona" className="space-y-4">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-5">
+          <TabsTrigger value="persona" className="gap-1.5"><Sparkles className="w-3.5 h-3.5" />Personalidade</TabsTrigger>
+          <TabsTrigger value="voice" className="gap-1.5"><Mic className="w-3.5 h-3.5" />Voz</TabsTrigger>
+          <TabsTrigger value="tools" className="gap-1.5"><Wrench className="w-3.5 h-3.5" />Ferramentas</TabsTrigger>
+          <TabsTrigger value="commands" className="gap-1.5"><Zap className="w-3.5 h-3.5" />Atalhos</TabsTrigger>
+          <TabsTrigger value="usage" className="gap-1.5"><BarChart3 className="w-3.5 h-3.5" />Uso</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="persona"><PersonaSection /></TabsContent>
+        <TabsContent value="voice"><VoiceSection /></TabsContent>
+        <TabsContent value="tools"><ToolsSection /></TabsContent>
+        <TabsContent value="commands"><CommandsSection /></TabsContent>
+        <TabsContent value="usage" className="space-y-4">
+          <UsageSection />
+          <HistorySection />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
-// NOTE: O provedor de voz (legacy vs streaming) é controlado internamente
-// via localStorage 'stark_voice_provider'. Não exposto na UI — detalhe
-// técnico que o user final não deve conhecer. Pra forçar legacy/livekit
-// em QA: `localStorage.setItem('stark_voice_provider', 'livekit')` no
-// DevTools + recarrega.
+// ── Stats no topo ────────────────────────────────────────────────────────
+
+function StatsHeader() {
+  const { credits, loading: cLoading } = useStarkVoiceCredits(0);
+  const { summary, loading: uLoading } = useStarkUsage(30);
+
+  const fmtMin = (m: number) => m >= 60 ? `${Math.floor(m/60)}h${Math.round(m%60).toString().padStart(2,"0")}` : `${Math.round(m)}min`;
+  const fmtBRL = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <StatCard
+        icon={<Clock className="w-4 h-4" />}
+        label="Minutos restantes"
+        value={cLoading ? "—" : fmtMin(credits.totalRemaining)}
+        hint={cLoading ? "" : `Tier ${fmtMin(credits.tierRemaining)} + Packs ${fmtMin(credits.packRemaining)}`}
+        highlight
+      />
+      <StatCard
+        icon={<Wallet className="w-4 h-4" />}
+        label="Custo LLM (30d)"
+        value={uLoading ? "—" : fmtBRL(summary.totalCostCents)}
+        hint={uLoading ? "" : `${summary.callCount} chamadas`}
+      />
+      <StatCard
+        icon={<History className="w-4 h-4" />}
+        label="Tier usado"
+        value={cLoading ? "—" : `${credits.tierUsed.toFixed(0)}/${credits.tierTotal}min`}
+        hint="Resetado todo mês"
+      />
+      <ActionCard
+        icon={<ShoppingBag className="w-4 h-4" />}
+        label="Comprar pack"
+        hint="60 / 300 / 1000 min"
+        onClick={() => toast.info("Compra de pack — em breve via Asaas")}
+      />
+    </div>
+  );
+}
+
+function StatCard({ icon, label, value, hint, highlight }: { icon: React.ReactNode; label: string; value: string; hint?: string; highlight?: boolean }) {
+  return (
+    <Card className={highlight ? "border-primary/30 bg-primary/5" : ""}>
+      <CardContent className="p-4 space-y-1">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          {icon}
+          <span className="text-[11px] uppercase tracking-wider font-medium">{label}</span>
+        </div>
+        <p className={`text-xl font-semibold ${highlight ? "text-primary" : "text-foreground"}`}>{value}</p>
+        {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActionCard({ icon, label, hint, onClick }: { icon: React.ReactNode; label: string; hint?: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-left rounded-lg border border-dashed border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition p-4 space-y-1"
+    >
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        {icon}
+        <span className="text-[11px] uppercase tracking-wider font-medium">{label}</span>
+      </div>
+      <p className="text-base font-medium text-foreground">+ Adicionar</p>
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </button>
+  );
+}
 
 // ── Personalidade ────────────────────────────────────────────────────────
 
 function PersonaSection() {
   const { prefs, loading, saving, save } = useStarkPrefs();
-  const [preset, setPreset] = useState<StarkPersonaPreset>("jarvis");
+  const [preset, setPreset] = useState<StarkPersonaPreset>("executivo");
   const [userName, setUserName] = useState("");
   const [customPrompt, setCustomPrompt] = useState("");
   const [bubbleEnabled, setBubbleEnabled] = useState(true);
+  const [language, setLanguage] = useState<StarkLanguage>("pt-BR");
+  const [tone, setTone] = useState(50);
+  const [responseLength, setResponseLength] = useState(25);
+  const [energy, setEnergy] = useState(50);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -72,13 +197,32 @@ function PersonaSection() {
     setUserName(prefs.user_name ?? "");
     setCustomPrompt(prefs.persona_prompt ?? "");
     setBubbleEnabled(prefs.bubble_enabled);
+    setLanguage(prefs.language);
+    setTone(prefs.tone);
+    setResponseLength(prefs.response_length);
+    setEnergy(prefs.energy);
   }, [loading, prefs]);
+
+  // Aplica preset → sliders (visual feedback imediato).
+  function applyPreset(p: StarkPersonaPreset) {
+    setPreset(p);
+    const opt = PRESET_OPTIONS.find(o => o.value === p);
+    if (opt && p !== "custom") {
+      setTone(opt.tone);
+      setResponseLength(opt.response);
+      setEnergy(opt.energy);
+    }
+  }
 
   const dirty =
     preset !== prefs.persona_preset ||
     (userName || null) !== prefs.user_name ||
     (customPrompt || null) !== prefs.persona_prompt ||
-    bubbleEnabled !== prefs.bubble_enabled;
+    bubbleEnabled !== prefs.bubble_enabled ||
+    language !== prefs.language ||
+    tone !== prefs.tone ||
+    responseLength !== prefs.response_length ||
+    energy !== prefs.energy;
 
   async function onSave() {
     const ok = await save({
@@ -86,83 +230,128 @@ function PersonaSection() {
       user_name: userName.trim() || null,
       persona_prompt: preset === "custom" ? (customPrompt.trim() || null) : null,
       bubble_enabled: bubbleEnabled,
+      language,
+      tone,
+      response_length: responseLength,
+      energy,
     });
-    if (ok) toast.success("Personalidade do Stark atualizada");
+    if (ok) toast.success("Personalidade atualizada");
   }
+
+  const toneLabel = tone < 33 ? "Formal" : tone < 67 ? "Equilibrado" : "Casual";
+  const lengthLabel = responseLength < 33 ? "Curta" : responseLength < 67 ? "Média" : "Detalhada";
+  const energyLabel = energy < 33 ? "Sério" : energy < 67 ? "Neutro" : "Animado";
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" /> Personalidade
-        </CardTitle>
+        <CardTitle className="text-base">Como o Stark fala com você</CardTitle>
         <CardDescription className="text-xs">
-          Como o Stark fala com você. Essas regras viram parte do system prompt em todo turno.
+          Escolha um estilo pronto ou ajuste os sliders manualmente. Vale pra voz e texto.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Preset</Label>
-          <Select value={preset} onValueChange={(v) => setPreset(v as StarkPersonaPreset)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {PRESET_OPTIONS.map(o => (
-                <SelectItem key={o.value} value={o.value}>
-                  <span className="flex flex-col">
-                    <span>{o.label}</span>
-                    <span className="text-[10px] text-muted-foreground">{o.hint}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs">Como o Stark deve te chamar</Label>
-          <Input
-            placeholder='ex: "Willy", "sir", "chefe"'
-            value={userName}
-            onChange={(e) => setUserName(e.target.value)}
-            maxLength={40}
-          />
-          <p className="text-[10px] text-muted-foreground">
-            Vazio = Stark escolhe pelo preset (Jarvis usa "sir").
-          </p>
-        </div>
-
-        {preset === "custom" && (
-          <div className="space-y-1.5">
-            <Label className="text-xs">System prompt customizado</Label>
-            <Textarea
-              rows={8}
-              placeholder="Escreva do zero como o Stark deve se comportar..."
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              className="font-mono text-xs"
-            />
-            <p className="text-[10px] text-muted-foreground">
-              As regras de AÇÃO (uso de tools, sem markdown, respostas curtas) são sempre anexadas no final.
-            </p>
+      <CardContent className="space-y-5">
+        <div className="space-y-2">
+          <Label className="text-xs">Estilo</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {PRESET_OPTIONS.map(o => (
+              <button
+                key={o.value}
+                onClick={() => applyPreset(o.value)}
+                className={`text-left rounded-lg border p-3 transition ${
+                  preset === o.value
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/40"
+                }`}
+              >
+                <p className="text-sm font-medium">{o.label}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{o.hint}</p>
+              </button>
+            ))}
           </div>
-        )}
+        </div>
+
+        <div className="space-y-4 rounded-lg border border-border p-4">
+          <SliderRow
+            label="Tom"
+            value={tone}
+            onChange={(v) => { setTone(v); setPreset("custom"); }}
+            leftHint="Formal" rightHint="Casual" currentLabel={toneLabel}
+          />
+          <SliderRow
+            label="Tamanho da resposta"
+            value={responseLength}
+            onChange={(v) => { setResponseLength(v); setPreset("custom"); }}
+            leftHint="Curta" rightHint="Detalhada" currentLabel={lengthLabel}
+          />
+          <SliderRow
+            label="Energia"
+            value={energy}
+            onChange={(v) => { setEnergy(v); setPreset("custom"); }}
+            leftHint="Sério" rightHint="Animado" currentLabel={energyLabel}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Idioma</Label>
+            <Select value={language} onValueChange={(v) => setLanguage(v as StarkLanguage)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LANGUAGE_OPTIONS.map(l => (
+                  <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Como te chamar</Label>
+            <Input
+              placeholder='ex: "Willy", "chefe"'
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              maxLength={40}
+            />
+          </div>
+        </div>
 
         <div className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
           <div className="space-y-0.5">
             <Label className="text-xs flex items-center gap-1.5">
               <Bell className="w-3 h-3" /> Bubble flutuante
             </Label>
-            <p className="text-[10px] text-muted-foreground">
-              Mostra o orb do Stark flutuando nas telas de gestão.
+            <p className="text-[11px] text-muted-foreground">
+              Mostra o orb do Stark nas telas de gestão.
             </p>
           </div>
           <Switch checked={bubbleEnabled} onCheckedChange={setBubbleEnabled} />
         </div>
 
+        <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
+              {showAdvanced ? "Ocultar" : "Mostrar"} system prompt avançado
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-1.5">
+            <Label className="text-xs">System prompt customizado (opcional)</Label>
+            <Textarea
+              rows={6}
+              placeholder="Sobrescreve TODO o prompt base. Use quando precisar de controle total."
+              value={customPrompt}
+              onChange={(e) => { setCustomPrompt(e.target.value); if (e.target.value) setPreset("custom"); }}
+              className="font-mono text-xs"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              As regras de AÇÃO (uso de tools, sem markdown) são sempre anexadas no final.
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
+
         <div className="flex items-center justify-end pt-2 border-t border-border">
           <Button size="sm" className="gap-1.5" onClick={onSave} disabled={!dirty || saving}>
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            Salvar
+            Salvar personalidade
           </Button>
         </div>
       </CardContent>
@@ -170,7 +359,25 @@ function PersonaSection() {
   );
 }
 
-// ── Voz (preservado, só refatorado pra subcomponent) ─────────────────────
+function SliderRow({ label, value, onChange, leftHint, rightHint, currentLabel }: {
+  label: string; value: number; onChange: (v: number) => void;
+  leftHint: string; rightHint: string; currentLabel: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">{label}</Label>
+        <Badge variant="secondary" className="text-[10px]">{currentLabel}</Badge>
+      </div>
+      <Slider min={0} max={100} step={5} value={[value]} onValueChange={(v) => onChange(v[0])} />
+      <div className="flex justify-between text-[10px] text-muted-foreground">
+        <span>{leftHint}</span><span>{rightHint}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Voz ──────────────────────────────────────────────────────────────────
 
 function VoiceSection() {
   const { voices, loading, hasUserKey, error } = useElevenLabsVoices();
@@ -191,23 +398,15 @@ function VoiceSection() {
         .from("user_api_keys")
         .select("provider, api_key")
         .eq("user_id", user.id)
-        .in("provider", [
-          "stark_voice_id", "stark_voice_stability", "stark_voice_speed",
-          "spark_voice_id", "spark_voice_stability", "spark_voice_speed",
-        ]);
+        .in("provider", ["stark_voice_id", "stark_voice_stability", "stark_voice_speed"]);
       const map = new Map<string, string>();
       (data ?? []).forEach((row: any) => map.set(row.provider, row.api_key ?? ""));
-      // Cascade: stark_* (novo) -> spark_* (legacy pre-rename)
-      const pick = (k: "voice_id" | "voice_stability" | "voice_speed") =>
-        map.get(`stark_${k}`) || map.get(`spark_${k}`) || "";
-      const vid = pick("voice_id") || DEFAULT_VOICE;
-      const stab = parseFloat(pick("voice_stability") || "0.5");
-      const spd = parseFloat(pick("voice_speed") || "1.0");
+      const vid = map.get("stark_voice_id") || DEFAULT_VOICE;
+      const stab = parseFloat(map.get("stark_voice_stability") || "0.5");
+      const spd = parseFloat(map.get("stark_voice_speed") || "1.0");
       setVoiceId(vid); setSavedVoiceId(vid);
-      setStability(Number.isFinite(stab) ? stab : 0.5);
-      setSavedStability(Number.isFinite(stab) ? stab : 0.5);
-      setSpeed(Number.isFinite(spd) ? spd : 1.0);
-      setSavedSpeed(Number.isFinite(spd) ? spd : 1.0);
+      setStability(Number.isFinite(stab) ? stab : 0.5); setSavedStability(Number.isFinite(stab) ? stab : 0.5);
+      setSpeed(Number.isFinite(spd) ? spd : 1.0); setSavedSpeed(Number.isFinite(spd) ? spd : 1.0);
     })();
   }, []);
 
@@ -228,7 +427,7 @@ function VoiceSection() {
         .upsert(rows, { onConflict: "user_id,provider" });
       if (upErr) throw upErr;
       setSavedVoiceId(voiceId); setSavedStability(stability); setSavedSpeed(speed);
-      toast.success("Voz do Stark atualizada");
+      toast.success("Voz atualizada");
     } catch (e) {
       toast.error(`Erro: ${(e as Error).message}`);
     } finally {
@@ -243,10 +442,7 @@ function VoiceSection() {
       if (!session?.access_token) { toast.error("Sessão expirada"); return; }
       const resp = await fetch(fnUrl("browser-tts"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ text: PREVIEW_TEXT, voiceId, stability, speed }),
       });
       const ct = resp.headers.get("content-type") || "";
@@ -279,11 +475,9 @@ function VoiceSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Mic className="w-4 h-4 text-primary" /> Voz
-        </CardTitle>
+        <CardTitle className="text-base">Voz do Stark</CardTitle>
         <CardDescription className="text-xs">
-          Escolha a voz do Stark. As vozes vêm da sua conta ElevenLabs.
+          As vozes vêm da sua conta ElevenLabs. Clique em "Testar" pra ouvir antes de salvar.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -291,11 +485,10 @@ function VoiceSection() {
           <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
             <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
             <p className="text-xs text-amber-200">
-              Você ainda não conectou uma chave ElevenLabs. Vá em <span className="font-semibold">Provedores</span> primeiro.
+              Conecte uma chave ElevenLabs em <span className="font-semibold">Provedores</span> pra desbloquear o catálogo.
             </p>
           </div>
         )}
-
         {hasUserKey && error && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
             <p className="text-xs text-destructive">{error}</p>
@@ -314,9 +507,7 @@ function VoiceSection() {
                   <span className="flex items-center gap-2">
                     <span>{v.name}</span>
                     {v.labels?.language && (
-                      <span className="text-[10px] text-muted-foreground uppercase">
-                        {v.labels.language}
-                      </span>
+                      <span className="text-[10px] text-muted-foreground uppercase">{v.labels.language}</span>
                     )}
                   </span>
                 </SelectItem>
@@ -328,51 +519,28 @@ function VoiceSection() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs flex items-center justify-between">
-              <span>Estabilidade</span>
-              <span className="text-muted-foreground">{stability.toFixed(2)}</span>
+              <span>Estabilidade</span><span className="text-muted-foreground">{stability.toFixed(2)}</span>
             </Label>
-            <Slider
-              min={0} max={1} step={0.05}
-              value={[stability]}
-              onValueChange={(v) => setStability(v[0])}
-              disabled={!hasUserKey}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Maior = mais consistente. Menor = mais expressivo.
-            </p>
+            <Slider min={0} max={1} step={0.05} value={[stability]} onValueChange={(v) => setStability(v[0])} disabled={!hasUserKey} />
+            <p className="text-[11px] text-muted-foreground">Maior = consistente. Menor = expressivo.</p>
           </div>
-
           <div className="space-y-1.5">
             <Label className="text-xs flex items-center justify-between">
-              <span>Velocidade</span>
-              <span className="text-muted-foreground">{speed.toFixed(2)}x</span>
+              <span>Velocidade</span><span className="text-muted-foreground">{speed.toFixed(2)}x</span>
             </Label>
-            <Slider
-              min={0.7} max={1.3} step={0.05}
-              value={[speed]}
-              onValueChange={(v) => setSpeed(v[0])}
-              disabled={!hasUserKey}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Mais rápido cansa menos, mais lento parece mais natural.
-            </p>
+            <Slider min={0.7} max={1.3} step={0.05} value={[speed]} onValueChange={(v) => setSpeed(v[0])} disabled={!hasUserKey} />
+            <p className="text-[11px] text-muted-foreground">Mais rápido cansa menos.</p>
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-          <Button
-            variant="outline" size="sm" className="gap-1.5"
-            onClick={handleTest} disabled={testing || !hasUserKey}
-          >
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleTest} disabled={testing || !hasUserKey}>
             {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
             Testar voz
           </Button>
-          <Button
-            size="sm" className="gap-1.5"
-            onClick={handleSave} disabled={!dirty || saving || !hasUserKey}
-          >
+          <Button size="sm" className="gap-1.5" onClick={handleSave} disabled={!dirty || saving || !hasUserKey}>
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            Salvar
+            Salvar voz
           </Button>
         </div>
       </CardContent>
@@ -380,7 +548,73 @@ function VoiceSection() {
   );
 }
 
-// ── Comandos rapidos ─────────────────────────────────────────────────────
+// ── Ferramentas ──────────────────────────────────────────────────────────
+
+function ToolsSection() {
+  const { prefs, loading, saving, save } = useStarkPrefs();
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (loading) return;
+    // Default: tudo ON quando tools_enabled é null/ausente.
+    const map: Record<string, boolean> = {};
+    TOOL_CATALOG.forEach(t => {
+      map[t.id] = prefs.tools_enabled?.[t.id] ?? true;
+    });
+    setEnabled(map);
+  }, [loading, prefs]);
+
+  const groups = Array.from(new Set(TOOL_CATALOG.map(t => t.group)));
+  const dirty = JSON.stringify(enabled) !== JSON.stringify(
+    Object.fromEntries(TOOL_CATALOG.map(t => [t.id, prefs.tools_enabled?.[t.id] ?? true])),
+  );
+
+  async function onSave() {
+    const ok = await save({ tools_enabled: enabled });
+    if (ok) toast.success("Ferramentas atualizadas");
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Ferramentas do Stark</CardTitle>
+        <CardDescription className="text-xs">
+          Controle quais dados o Stark pode consultar via voz/texto. Útil pra ocultar Financeiro de membros não-admin.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {groups.map(g => (
+          <div key={g} className="space-y-2">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">{g}</Label>
+            <div className="space-y-1.5">
+              {TOOL_CATALOG.filter(t => t.group === g).map(t => (
+                <div key={t.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="text-sm font-medium">{t.label}</p>
+                    <p className="text-[11px] text-muted-foreground">{t.description}</p>
+                  </div>
+                  <Switch
+                    checked={enabled[t.id] ?? true}
+                    onCheckedChange={(v) => setEnabled(prev => ({ ...prev, [t.id]: v }))}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div className="flex items-center justify-end pt-2 border-t border-border">
+          <Button size="sm" className="gap-1.5" onClick={onSave} disabled={!dirty || saving}>
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            Salvar ferramentas
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Atalhos (comandos rapidos — preservado) ──────────────────────────────
 
 const SUGGESTED_COMMANDS = [
   { label: "Briefing matinal", prompt: "Resumo das qualificações de ontem e o que está agendado pra hoje", icon: "Coffee" },
@@ -395,32 +629,20 @@ function CommandsSection() {
   const [adding, setAdding] = useState(false);
 
   async function handleAdd() {
-    if (!draftLabel.trim() || !draftPrompt.trim()) {
-      toast.error("Preencha rótulo e prompt");
-      return;
-    }
+    if (!draftLabel.trim() || !draftPrompt.trim()) { toast.error("Preencha rótulo e prompt"); return; }
     setAdding(true);
     const ok = await create({
-      label: draftLabel.trim(),
-      prompt: draftPrompt.trim(),
-      icon: null,
-      sort_order: commands.length,
-      enabled: true,
+      label: draftLabel.trim(), prompt: draftPrompt.trim(), icon: null,
+      sort_order: commands.length, enabled: true,
     });
     setAdding(false);
-    if (ok) {
-      setDraftLabel(""); setDraftPrompt("");
-      toast.success("Comando adicionado");
-    }
+    if (ok) { setDraftLabel(""); setDraftPrompt(""); toast.success("Atalho adicionado"); }
   }
 
   async function handleAddSuggested(s: typeof SUGGESTED_COMMANDS[number]) {
     const ok = await create({
-      label: s.label,
-      prompt: s.prompt,
-      icon: s.icon,
-      sort_order: commands.length,
-      enabled: true,
+      label: s.label, prompt: s.prompt, icon: s.icon,
+      sort_order: commands.length, enabled: true,
     });
     if (ok) toast.success(`"${s.label}" adicionado`);
   }
@@ -428,11 +650,9 @@ function CommandsSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Zap className="w-4 h-4 text-primary" /> Comandos rápidos
-        </CardTitle>
+        <CardTitle className="text-base">Atalhos rápidos</CardTitle>
         <CardDescription className="text-xs">
-          Atalhos que aparecem como botões na home do Stark. Um clique = pergunta pronta.
+          Botões que aparecem na home do Stark. Um clique = pergunta pronta.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -444,14 +664,11 @@ function CommandsSection() {
           <>
             {commands.length === 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Nenhum comando ainda. Comece pelos sugeridos:</p>
+                <p className="text-xs text-muted-foreground">Nenhum atalho ainda. Comece pelos sugeridos:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {SUGGESTED_COMMANDS.map(s => (
-                    <Button
-                      key={s.label}
-                      variant="outline" size="sm" className="h-7 gap-1 text-xs"
-                      onClick={() => handleAddSuggested(s)}
-                    >
+                    <Button key={s.label} variant="outline" size="sm" className="h-7 gap-1 text-xs"
+                      onClick={() => handleAddSuggested(s)}>
                       <Plus className="w-3 h-3" /> {s.label}
                     </Button>
                   ))}
@@ -462,36 +679,18 @@ function CommandsSection() {
             {commands.length > 0 && (
               <div className="space-y-2">
                 {commands.map(cmd => (
-                  <div
-                    key={cmd.id}
-                    className="flex items-start gap-2 rounded-lg border border-border p-3 group"
-                  >
+                  <div key={cmd.id} className="flex items-start gap-2 rounded-lg border border-border p-3 group">
                     <GripVertical className="w-4 h-4 text-muted-foreground/40 mt-1 shrink-0" />
                     <div className="flex-1 min-w-0 space-y-1">
-                      <Input
-                        value={cmd.label}
-                        onChange={(e) => update(cmd.id, { label: e.target.value })}
-                        className="h-7 text-sm font-medium"
-                      />
-                      <Textarea
-                        value={cmd.prompt}
-                        onChange={(e) => update(cmd.id, { prompt: e.target.value })}
-                        rows={2}
-                        className="text-xs resize-none"
-                      />
+                      <Input value={cmd.label} onChange={(e) => update(cmd.id, { label: e.target.value })}
+                        className="h-7 text-sm font-medium" />
+                      <Textarea value={cmd.prompt} onChange={(e) => update(cmd.id, { prompt: e.target.value })}
+                        rows={2} className="text-xs resize-none" />
                     </div>
                     <div className="flex flex-col items-center gap-1.5 pt-1 shrink-0">
-                      <Switch
-                        checked={cmd.enabled}
-                        onCheckedChange={(v) => update(cmd.id, { enabled: v })}
-                      />
-                      <Button
-                        variant="ghost" size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => {
-                          if (confirm(`Remover "${cmd.label}"?`)) remove(cmd.id);
-                        }}
-                      >
+                      <Switch checked={cmd.enabled} onCheckedChange={(v) => update(cmd.id, { enabled: v })} />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => { if (confirm(`Remover "${cmd.label}"?`)) remove(cmd.id); }}>
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
@@ -501,21 +700,11 @@ function CommandsSection() {
             )}
 
             <div className="space-y-2 rounded-lg border border-dashed border-border p-3">
-              <Label className="text-xs">Adicionar novo comando</Label>
-              <Input
-                placeholder='Rótulo (ex: "Status do SDR")'
-                value={draftLabel}
-                onChange={(e) => setDraftLabel(e.target.value)}
-                className="h-8 text-sm"
-                maxLength={60}
-              />
-              <Textarea
-                placeholder="Pergunta que vai ser mandada ao Stark"
-                value={draftPrompt}
-                onChange={(e) => setDraftPrompt(e.target.value)}
-                rows={2}
-                className="text-xs resize-none"
-              />
+              <Label className="text-xs">Adicionar novo atalho</Label>
+              <Input placeholder='Rótulo (ex: "Status do SDR")' value={draftLabel}
+                onChange={(e) => setDraftLabel(e.target.value)} className="h-8 text-sm" maxLength={60} />
+              <Textarea placeholder="Pergunta que vai ser mandada ao Stark" value={draftPrompt}
+                onChange={(e) => setDraftPrompt(e.target.value)} rows={2} className="text-xs resize-none" />
               <div className="flex justify-end">
                 <Button size="sm" className="gap-1.5" onClick={handleAdd} disabled={adding}>
                   {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
@@ -530,15 +719,13 @@ function CommandsSection() {
   );
 }
 
-// ── Uso & Custos LLM ─────────────────────────────────────────────────────
+// ── Uso & Custos LLM (preservado) ────────────────────────────────────────
 
 function UsageSection() {
   const { summary, loading } = useStarkUsage(30);
-
   const formatTokens = (n: number) =>
     n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M` :
     n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : String(n);
-
   const formatBRL = (cents: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 
@@ -547,11 +734,9 @@ function UsageSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-primary" /> Uso & Custos LLM
-        </CardTitle>
+        <CardTitle className="text-base">Custos LLM — últimos 30 dias</CardTitle>
         <CardDescription className="text-xs">
-          Últimos 30 dias. Consumo do LLM da sua agência — você paga via sua chave.
+          Tokens e custo estimado da sua chave de LLM. Inclui texto e voz.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -566,12 +751,11 @@ function UsageSection() {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Stat label="Chamadas" value={summary.callCount.toLocaleString("pt-BR")} />
-              <Stat label="Tokens" value={formatTokens(summary.totalTokens)} />
-              <Stat label="Prompt / Saída" value={`${formatTokens(summary.totalPromptTokens)} / ${formatTokens(summary.totalCompletionTokens)}`} />
-              <Stat label="Custo estimado" value={formatBRL(summary.totalCostCents)} highlight />
+              <MiniStat label="Chamadas" value={summary.callCount.toLocaleString("pt-BR")} />
+              <MiniStat label="Tokens" value={formatTokens(summary.totalTokens)} />
+              <MiniStat label="Prompt/Saída" value={`${formatTokens(summary.totalPromptTokens)}/${formatTokens(summary.totalCompletionTokens)}`} />
+              <MiniStat label="Custo" value={formatBRL(summary.totalCostCents)} highlight />
             </div>
-
             {providers.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Por provider</Label>
@@ -598,11 +782,62 @@ function UsageSection() {
   );
 }
 
-function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function MiniStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className={`rounded-lg border border-border p-3 ${highlight ? "bg-primary/5" : ""}`}>
-      <p className="text-[10px] uppercase text-muted-foreground tracking-wider">{label}</p>
+      <p className="text-[11px] uppercase text-muted-foreground tracking-wider">{label}</p>
       <p className={`text-base font-semibold mt-0.5 ${highlight ? "text-primary" : ""}`}>{value}</p>
     </div>
+  );
+}
+
+// ── Histórico de sessões de voz ──────────────────────────────────────────
+
+function HistorySection() {
+  const { sessions, loading } = useStarkVoiceCredits(10);
+  const fmtDur = (s: number) => s >= 60 ? `${Math.floor(s/60)}m${(s%60).toString().padStart(2,"0")}s` : `${s}s`;
+  const fmtDate = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Últimas sessões de voz</CardTitle>
+        <CardDescription className="text-xs">
+          As 10 conversas mais recentes com o Stark Voice.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : sessions.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-4 text-center">
+            Nenhuma sessão de voz ainda. Clique no orb do Stark e fale.
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {sessions.map(s => (
+              <div key={s.id} className="flex items-center justify-between gap-3 rounded border border-border px-3 py-2 text-xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-muted-foreground shrink-0">{fmtDate(s.created_at)}</span>
+                  <span className="font-medium">{fmtDur(s.duration_seconds)}</span>
+                  {s.tools_called?.length > 0 && (
+                    <span className="text-muted-foreground truncate">
+                      {s.tools_called.slice(0, 3).join(", ")}
+                      {s.tools_called.length > 3 ? ` +${s.tools_called.length - 3}` : ""}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {s.llm_model && <Badge variant="outline" className="text-[10px]">{s.llm_model}</Badge>}
+                  {s.credit_source && <Badge variant="secondary" className="text-[10px]">{s.credit_source}</Badge>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
