@@ -44,7 +44,6 @@ export default function StarkSettingsTab() {
       </div>
 
       <PersonaSection />
-      <VoiceProviderSection />
       <VoiceSection />
       <CommandsSection />
       <UsageSection />
@@ -52,71 +51,11 @@ export default function StarkSettingsTab() {
   );
 }
 
-// ── Voice Provider toggle (Fase 3 — LiveKit beta) ─────────────────────
-
-function VoiceProviderSection() {
-  const [provider, setProvider] = useState<"legacy" | "livekit">(() => {
-    if (typeof window === "undefined") return "legacy";
-    return localStorage.getItem("stark_voice_provider") === "livekit" ? "livekit" : "legacy";
-  });
-
-  function handleChange(next: "legacy" | "livekit") {
-    setProvider(next);
-    localStorage.setItem("stark_voice_provider", next);
-    // Dispara evento custom pra StarkInterface trocar provider sem reload
-    window.dispatchEvent(new Event("stark:voice-provider-changed"));
-    toast.success(next === "livekit"
-      ? "LiveKit ativado. Stark vai conectar via streaming (Jarvis mode)."
-      : "Voltou pro modo legacy (gravacao + edge function).");
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Mic className="w-4 h-4 text-primary" /> Provedor de voz (beta)
-        </CardTitle>
-        <CardDescription className="text-xs">
-          Escolha o motor de voz do Stark. LiveKit é streaming em tempo real
-          (sub-segundo). Legacy é o atual (gravação + envio).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => handleChange("legacy")}
-            className={`rounded-lg border p-3 text-left transition ${
-              provider === "legacy"
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-border/70"
-            }`}
-          >
-            <p className="text-sm font-medium">Legacy</p>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Edge function · ~2-5s por resposta · estável
-            </p>
-          </button>
-          <button
-            onClick={() => handleChange("livekit")}
-            className={`rounded-lg border p-3 text-left transition ${
-              provider === "livekit"
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-border/70"
-            }`}
-          >
-            <p className="text-sm font-medium flex items-center gap-1.5">
-              LiveKit
-              <Badge variant="outline" className="text-[9px] uppercase">Beta</Badge>
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Streaming WebRTC · ~300-800ms · Jarvis mode
-            </p>
-          </button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+// NOTE: O provedor de voz (legacy vs streaming) é controlado internamente
+// via localStorage 'stark_voice_provider'. Não exposto na UI — detalhe
+// técnico que o user final não deve conhecer. Pra forçar legacy/livekit
+// em QA: `localStorage.setItem('stark_voice_provider', 'livekit')` no
+// DevTools + recarrega.
 
 // ── Personalidade ────────────────────────────────────────────────────────
 
