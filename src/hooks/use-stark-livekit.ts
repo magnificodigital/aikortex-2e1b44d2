@@ -12,6 +12,7 @@
  * STT → LLM → TTS e responde com audio sub-segundo de latencia.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Room,
   RoomEvent,
@@ -57,6 +58,7 @@ export function useStarkLiveKit({
   active,
   onAgentSpoke: _onAgentSpoke,
 }: UseStarkLiveKitOptions): UseStarkLiveKitReturn {
+  const navigate = useNavigate();
   const [state, setState] = useState<StarkLiveKitState>("idle");
   const [intensity, setIntensity] = useState(0);
   const [remainingMinutes, setRemainingMinutes] = useState<number | null>(null);
@@ -168,6 +170,21 @@ export function useStarkLiveKit({
             toast.error(msg.message || "Créditos esgotados.", { duration: 8000 });
             setState("no_credits");
             disconnect();
+            return;
+          }
+          if (msg.type === "open_agent_creator") {
+            // Stark pediu pra abrir o wizard. Mesma rota do Home.navigateToNewAgent.
+            const newId = `new-${Date.now()}`;
+            navigate(`/aikortex/agents/${newId}`, {
+              state: {
+                fromTemplate: false,
+                agentType: "Custom",
+                agentName: "Novo Agente",
+                initialPrompt: msg.initial_prompt || "",
+                starkBubbleMode: "voice",
+              },
+            });
+            return;
           }
         } catch {
           // payload nao-JSON, ignora
