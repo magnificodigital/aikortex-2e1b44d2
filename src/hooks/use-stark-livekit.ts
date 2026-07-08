@@ -34,9 +34,26 @@ export type StarkLiveKitState =
   | "error"
   | "no_credits";
 
+export interface StarkPageContext {
+  /** Rota atual (ex: "/clientes/123"). */
+  path: string;
+  /** Nome human-friendly da rota pro Stark entender (ex: "detalhes do cliente"). */
+  route?: string;
+  /** Entidade em foco, quando aplicavel (ex: cliente aberto, agente sendo editado). */
+  entity?: {
+    type: string;
+    id?: string;
+    name?: string;
+    extra?: Record<string, unknown>;
+  };
+}
+
 interface UseStarkLiveKitOptions {
   /** Quando true, conecta. Quando false, desconecta + cleanup. */
   active: boolean;
+  /** Contexto da pagina onde o orb foi ativado — Stark usa no system prompt
+   *  pra saber "onde o user esta" e responder com referencia contextual. */
+  pageContext?: StarkPageContext;
   /** Callback quando o agente termina uma frase (pra logica externa
    *  saber se deve trocar de pagina, etc). */
   onAgentSpoke?: (text: string) => void;
@@ -56,6 +73,7 @@ interface UseStarkLiveKitReturn {
 
 export function useStarkLiveKit({
   active,
+  pageContext,
   onAgentSpoke: _onAgentSpoke,
 }: UseStarkLiveKitOptions): UseStarkLiveKitReturn {
   const navigate = useNavigate();
@@ -116,7 +134,9 @@ export function useStarkLiveKit({
             Authorization: `Bearer ${session.access_token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({}),
+          body: JSON.stringify({
+            page_context: pageContext ?? null,
+          }),
         });
       } catch (e) {
         if (cancelled) return;

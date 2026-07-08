@@ -30,6 +30,7 @@ async function createLiveKitToken(
   userId: string,
   agencyId: string | null,
   userName: string,
+  pageContext: unknown,
 ): Promise<string> {
   const header = { alg: "HS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
@@ -51,11 +52,12 @@ async function createLiveKitToken(
     },
     // Metadata serializado: Stark Agent (Python) le isso pra saber agency
     // (pra debitar creditos), locale (pra Deepgram STT), JWT do user (pra
-    // tools com RLS).
+    // tools com RLS), e page_context (rota/entidade onde o user esta).
     metadata: JSON.stringify({
       agencyId,
       userId,
       locale: "pt-BR",
+      page_context: pageContext ?? null,
     }),
   };
 
@@ -86,6 +88,17 @@ Deno.serve(async (req) => {
     if (userErr || !userData?.user) return json({ error: "unauthorized" }, 401);
     const userId = userData.user.id;
     const userName = userData.user.user_metadata?.full_name || userData.user.email || "User";
+
+    // Body opcional: { page_context?: {...} } — frontend manda a rota atual
+    // pra o Stark saber onde o user esta. Ausente = home/generico.
+    let pageContext: unknown = null;
+    try {
+      const bodyText = await req.text();
+      if (bodyText) {
+        const parsed = JSON.parse(bodyText);
+        pageContext = parsed?.page_context ?? null;
+      }
+    } catch { /* body invalido — segue sem contexto */ }
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -151,7 +164,7 @@ Deno.serve(async (req) => {
     }
 
     // 5) Gera JWT
-    const token = await createLiveKitToken(lkKey, lkSecret, userId, agency.id, userName);
+    const token = await createLiveKitToken(lkKey, lkSecret, userId, agency.id, userName, pageContext);
     const roomName = `stark-${userId}`;
 
     return json({

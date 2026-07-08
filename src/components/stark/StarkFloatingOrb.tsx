@@ -14,11 +14,11 @@
  *  - Erro / sem creditos: orb vermelho + toast
  *  - Click no orb ativo = desconecta
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Mic, Loader2, AlertTriangle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useStarkLiveKit } from "@/hooks/use-stark-livekit";
+import { useStarkLiveKit, type StarkPageContext } from "@/hooks/use-stark-livekit";
 import { useStarkPrefs } from "@/hooks/use-stark-prefs";
 
 // Paths onde NAO mostrar (interface propria do Stark ja' ocupa).
@@ -31,12 +31,54 @@ function shouldShow(pathname: string): boolean {
   return true;
 }
 
+// Map de path → nome human-friendly pro Stark saber "onde o user esta"
+// no system prompt. Regex-based pra suportar dinamicos (/clientes/:id).
+const ROUTE_LABELS: { pattern: RegExp; label: string; entity?: (m: RegExpMatchArray) => StarkPageContext["entity"] }[] = [
+  { pattern: /^\/clients\/([^/]+)$/,          label: "detalhes do cliente",  entity: (m) => ({ type: "client", id: m[1] }) },
+  { pattern: /^\/clients$/,                    label: "lista de clientes" },
+  { pattern: /^\/aikortex\/crm$/,             label: "CRM (Kanban de leads)" },
+  { pattern: /^\/aikortex$/,                   label: "CRM (Kanban de leads)" },
+  { pattern: /^\/sales$/,                      label: "vendas" },
+  { pattern: /^\/tasks$/,                      label: "tarefas" },
+  { pattern: /^\/team$/,                       label: "equipe" },
+  { pattern: /^\/financial$/,                  label: "financeiro (BRL)" },
+  { pattern: /^\/financeiro$/,                 label: "financeiro (BRL)" },
+  { pattern: /^\/reports$/,                    label: "relatorios" },
+  { pattern: /^\/projects$/,                   label: "projetos" },
+  { pattern: /^\/proposals$/,                  label: "propostas comerciais" },
+  { pattern: /^\/contracts$/,                  label: "contratos" },
+  { pattern: /^\/partners$/,                   label: "parceiros" },
+  { pattern: /^\/apps$/,                       label: "apps (integracoes)" },
+  { pattern: /^\/app-builder$/,                label: "construtor de app" },
+  { pattern: /^\/templates$/,                  label: "galeria de templates de agentes" },
+  { pattern: /^\/dashboard$/,                  label: "dashboard geral" },
+  { pattern: /^\/settings/,                    label: "configuracoes" },
+];
+
+function inferPageContext(pathname: string): StarkPageContext {
+  for (const r of ROUTE_LABELS) {
+    const m = pathname.match(r.pattern);
+    if (m) {
+      return {
+        path: pathname,
+        route: r.label,
+        entity: r.entity ? r.entity(m) : undefined,
+      };
+    }
+  }
+  return { path: pathname };
+}
+
 export function StarkFloatingOrb() {
   const location = useLocation();
   const { prefs, loading } = useStarkPrefs();
   const [active, setActive] = useState(false);
 
-  const livekit = useStarkLiveKit({ active });
+  const pageContext = useMemo(
+    () => inferPageContext(location.pathname),
+    [location.pathname],
+  );
+  const livekit = useStarkLiveKit({ active, pageContext });
 
   // Reseta active quando muda de rota (evita carregar conexao pra pagina nova)
   useEffect(() => {
