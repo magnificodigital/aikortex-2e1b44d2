@@ -191,7 +191,7 @@ const LandingPage = () => {
           </Select>
           <button
             onClick={() => openAuthModal("signin")}
-            className={`flex items-center gap-2 px-5 py-2 rounded-full border text-sm font-medium transition-colors ${isDark ? "bg-white text-[#0a0a0f] hover:bg-white/90 border-white" : "bg-foreground text-background hover:bg-foreground/90 border-foreground"}`}
+            className={`flex items-center gap-2 px-5 py-2 rounded-full border text-sm font-medium ${bannerBg} transition-colors`}
           >
             {t.signIn}
           </button>
@@ -238,7 +238,7 @@ const LandingPage = () => {
               <div className="flex flex-col gap-2 mt-3">
                 <button
                   onClick={() => openAuthModal("signin")}
-                  className={`w-full py-2.5 rounded-full text-sm font-medium transition-colors ${isDark ? "bg-white text-[#0a0a0f] hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90"}`}
+                  className={`w-full py-2.5 rounded-full text-sm font-medium border ${bannerBg} transition-colors`}
                 >
                   {t.signIn}
                 </button>
