@@ -181,12 +181,12 @@ const LandingPage = () => {
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
           <Select value={lang} onValueChange={handleLangChange}>
-            <SelectTrigger className="h-8 w-8 justify-center border-none bg-transparent p-0 focus:ring-0" aria-label="Language">
-              <SelectValue placeholder="🇧🇷" />
+            <SelectTrigger className="h-8 w-8 justify-center border-none bg-transparent p-0 focus:ring-0 text-white" aria-label="Language">
+              <SelectValue placeholder="BR" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="pt">🇧🇷</SelectItem>
-              <SelectItem value="en">🇬🇧</SelectItem>
+              <SelectItem value="pt">BR</SelectItem>
+              <SelectItem value="en">EN</SelectItem>
             </SelectContent>
           </Select>
           <button
@@ -226,12 +226,12 @@ const LandingPage = () => {
               <div className={`my-2 border-t ${borderColor}`} />
 
               <Select value={lang} onValueChange={(v) => { handleLangChange(v); setMobileMenuOpen(false); }}>
-                <SelectTrigger className={`h-9 w-full justify-center gap-2 border ${isDark ? "border-white/10 bg-white/5" : "border-border bg-muted"} px-3 text-sm ${textMuted} focus:ring-0 rounded-lg`} aria-label="Language">
-                  <SelectValue placeholder="🇧🇷" />
+                <SelectTrigger className={`h-9 w-full justify-center gap-2 border ${isDark ? "border-white/10 bg-white/5 text-white" : "border-border bg-muted text-foreground"} px-3 text-sm focus:ring-0 rounded-lg`} aria-label="Language">
+                  <SelectValue placeholder="BR" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pt">🇧🇷</SelectItem>
-                  <SelectItem value="en">🇬🇧</SelectItem>
+                  <SelectItem value="pt">BR</SelectItem>
+                  <SelectItem value="en">EN</SelectItem>
                 </SelectContent>
               </Select>
 
