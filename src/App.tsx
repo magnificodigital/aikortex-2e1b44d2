@@ -7,13 +7,12 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { StarkVoiceProvider } from "@/contexts/StarkVoiceContext";
 // HelpBubble removido a pedido — conflitava visualmente com botões flutuantes
 // (ex: FAB "Ver configuração" no Modo Vibe).
 
-// LAZY obrigatorio: StarkFloatingOrb puxa livekit-client (~300KB). Import
-// estatico aqui jogava a lib no bundle principal de TODAS as paginas e
-// deixava o app inteiro lento pra carregar. Lazy = chunk separado, baixado
-// depois do primeiro paint.
+// StarkVoiceProvider e' leve (livekit-client so' baixa via dynamic import
+// dentro do start()). O orb continua lazy — chunk separado pos-paint.
 const StarkFloatingOrb = lazy(() =>
   import("@/components/stark/StarkFloatingOrb").then((m) => ({ default: m.StarkFloatingOrb })),
 );
@@ -83,6 +82,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <StarkVoiceProvider>
           <Suspense fallback={<Loading />}>
             <Routes>
               <Route path="/" element={<LandingPage />} />
@@ -136,12 +136,13 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
-          {/* Orb flutuante do Stark — aparece em qualquer pagina autenticada,
-              exceto onde o Stark ja' tem UI propria (/home, /aikortex/agents/*).
-              Decisao de exibir mora dentro do componente (le prefs.bubble_enabled). */}
+          {/* Orb flutuante do Stark — janela da sessao global de voz.
+              Aparece em qualquer pagina autenticada, exceto onde o Stark
+              ja' tem UI propria (/home, /aikortex/agents/*). */}
           <Suspense fallback={null}>
             <StarkFloatingOrb />
           </Suspense>
+          </StarkVoiceProvider>
         </BrowserRouter>
       </TooltipProvider>
       </WorkspaceProvider>

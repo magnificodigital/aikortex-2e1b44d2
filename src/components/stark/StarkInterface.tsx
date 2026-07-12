@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { StarkOrb } from "./StarkOrb";
 import { cn } from "@/lib/utils";
-import { useStarkLiveKit } from "@/hooks/use-stark-livekit";
+import { useStarkVoice } from "@/contexts/StarkVoiceContext";
 
 /** Feature flag: 'legacy' (MediaRecorder + edge fn) ou 'livekit' (Agent Railway).
  *  Default agora e 'livekit' (streaming sub-segundo, Jarvis mode).
@@ -103,22 +103,25 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
   const onVoiceTranscriptRef = useRef(onVoiceTranscript);
   useEffect(() => { onVoiceTranscriptRef.current = onVoiceTranscript; }, [onVoiceTranscript]);
 
-  // ── LiveKit (Fase 3) ──
-  // Sessao SO inicia quando user toca na esfera (consent explicito).
-  // Sem isso, /home auto-abria o microfone e consumia creditos sem
-  // o user clicar em nada.
-  const [liveKitActive, setLiveKitActive] = useState(false);
-  // Resetar quando troca de modo (voice ↔ text) ou desliga LiveKit
+  // ── LiveKit — sessao GLOBAL (StarkVoiceProvider) ──
+  // A sessao vive no provider (App root): navegar pra fora do /home NAO
+  // derruba a ligacao — o orb flutuante assume como janela da mesma
+  // sessao. Aqui so' consumimos estado e disparamos start/stop.
+  // Consent explicito continua: so' conecta no clique da esfera.
+  const livekit = useStarkVoice();
+  const liveKitActive =
+    livekit.status === "connecting" ||
+    livekit.status === "listening" ||
+    livekit.status === "speaking";
+  // Sair do modo voz (voice → text) encerra a sessao.
   useEffect(() => {
-    if (mode !== "voice" || !useLiveKit) setLiveKitActive(false);
+    if ((mode !== "voice" || !useLiveKit) && liveKitActive) livekit.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, useLiveKit]);
-  const livekit = useStarkLiveKit({
-    active: useLiveKit && mode === "voice" && liveKitActive,
-  });
 
-  // Mapeia state do hook LiveKit pro OrbState legacy (mesma UI pra ambos).
+  // Mapeia status do provider pro OrbState legacy (mesma UI pra ambos).
   const liveKitOrbState: OrbState = useMemo(() => {
-    switch (livekit.state) {
+    switch (livekit.status) {
       case "connecting": return "processing";
       case "listening":  return "listening";
       case "speaking":   return "speaking";
@@ -126,7 +129,7 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
       case "error":      return "error";
       default:           return "idle";
     }
-  }, [livekit.state]);
+  }, [livekit.status]);
 
   const pickMime = () =>
     MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -433,9 +436,10 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
   const sessionActive = orbState !== "idle" && orbState !== "error";
 
   const handleOrbClick = () => {
-    // LiveKit: toggle conexao via hook (consent explicito do user).
+    // LiveKit: toggle conexao via provider global (consent explicito).
     if (useLiveKit) {
-      setLiveKitActive((prev) => !prev);
+      if (liveKitActive) livekit.stop();
+      else livekit.start();
       return;
     }
     // Legacy: gerencia sessao MediaRecorder.
@@ -509,14 +513,13 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
 
   const orbHint = (() => {
     if (useLiveKit) {
-      if (!liveKitActive) return "Toque na esfera para iniciar a conversa";
-      switch (livekit.state) {
+      switch (livekit.status) {
         case "connecting": return "Conectando…";
         case "listening":  return "Pode falar";
         case "speaking":   return "";
         case "no_credits": return livekit.error || "Créditos esgotados";
         case "error":      return livekit.error || "Toque para tentar novamente";
-        default:           return "";
+        default:           return "Toque na esfera para iniciar a conversa";
       }
     }
     switch (orbState) {
@@ -623,7 +626,7 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
               state={orbStateForVisual}
               intensity={orbIntensity}
               onClick={handleOrbClick}
-              disabled={useLiveKit ? livekit.state === "connecting" : orbState === "processing"}
+              disabled={useLiveKit ? livekit.status === "connecting" : orbState === "processing"}
             />
           </div>
 
@@ -632,8 +635,8 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
           {/* Stark controls: stop, mute, mensagens, configurações */}
           <div className="flex items-center gap-2">
             <button
-              onClick={endSession}
-              disabled={!sessionActive}
+              onClick={() => (useLiveKit ? livekit.stop() : endSession())}
+              disabled={useLiveKit ? !liveKitActive : !sessionActive}
               title="Encerrar"
               className="flex items-center justify-center w-10 h-10 rounded-full border border-border bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
