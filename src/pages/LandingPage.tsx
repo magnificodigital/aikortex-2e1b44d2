@@ -256,12 +256,10 @@ const LandingPage = () => {
           className="h-12 sm:h-14 w-auto object-contain mb-6"
         />
 
-        {/* Announcement Banner */}
-        <div className={`flex items-center gap-2 mb-10 text-sm ${textMuted}`}>
-          <span className="text-[10px] font-bold uppercase bg-primary text-primary-foreground px-2 py-0.5 rounded-full">{t.newBadge}</span>
-          {t.banner}
-          <span className={isDark ? "text-white/40" : "text-muted-foreground"}>→</span>
-        </div>
+        {/* Subtitle */}
+        <p className={`text-base lg:text-lg ${textLight} text-center max-w-lg mb-10 leading-relaxed whitespace-pre-line`}>
+          {t.heroSubtitle}
+        </p>
 
         {/* Video Player */}
         <div className={`w-full max-w-4xl mb-10 rounded-2xl overflow-hidden border ${isDark ? "border-white/10 bg-white/[0.03]" : "border-border bg-card"} shadow-2xl`}>
