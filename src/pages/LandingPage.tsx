@@ -181,16 +181,18 @@ const LandingPage = () => {
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
           <Select value={lang} onValueChange={handleLangChange}>
-            <SelectTrigger className={`h-8 w-auto gap-1 border-none bg-transparent px-2 text-sm ${textMuted} ${textHover} focus:ring-0`}>
-              <Globe className="w-4 h-4" />
-              <SelectValue />
+            <SelectTrigger className="h-8 w-8 justify-center border-none bg-transparent p-0 focus:ring-0" aria-label="Language">
+              <SelectValue placeholder="🇧🇷" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="pt">Português</SelectItem>
-              <SelectItem value="en">English</SelectItem>
+              <SelectItem value="pt">🇧🇷</SelectItem>
+              <SelectItem value="en">🇬🇧</SelectItem>
             </SelectContent>
           </Select>
-          <button onClick={() => openAuthModal("signin")} className={`${textHover} transition-colors`}>
+          <button
+            onClick={() => openAuthModal("signin")}
+            className={`flex items-center gap-2 px-5 py-2 rounded-full border text-sm font-medium transition-colors ${isDark ? "bg-white text-[#0a0a0f] hover:bg-white/90 border-white" : "bg-foreground text-background hover:bg-foreground/90 border-foreground"}`}
+          >
             {t.signIn}
           </button>
         </div>
@@ -224,20 +226,19 @@ const LandingPage = () => {
               <div className={`my-2 border-t ${borderColor}`} />
 
               <Select value={lang} onValueChange={(v) => { handleLangChange(v); setMobileMenuOpen(false); }}>
-                <SelectTrigger className={`h-9 w-full gap-2 border ${isDark ? "border-white/10 bg-white/5" : "border-border bg-muted"} px-3 text-sm ${textMuted} focus:ring-0 rounded-lg`}>
-                  <Globe className="w-4 h-4" />
-                  <SelectValue />
+                <SelectTrigger className={`h-9 w-full justify-center gap-2 border ${isDark ? "border-white/10 bg-white/5" : "border-border bg-muted"} px-3 text-sm ${textMuted} focus:ring-0 rounded-lg`} aria-label="Language">
+                  <SelectValue placeholder="🇧🇷" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pt">Português</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="pt">🇧🇷</SelectItem>
+                  <SelectItem value="en">🇬🇧</SelectItem>
                 </SelectContent>
               </Select>
 
               <div className="flex flex-col gap-2 mt-3">
                 <button
                   onClick={() => openAuthModal("signin")}
-                  className={`w-full py-2.5 rounded-lg text-sm font-medium border ${isDark ? "border-white/10 text-white/80 hover:bg-white/5" : "border-border text-foreground hover:bg-accent"} transition-colors`}
+                  className={`w-full py-2.5 rounded-full text-sm font-medium transition-colors ${isDark ? "bg-white text-[#0a0a0f] hover:bg-white/90" : "bg-foreground text-background hover:bg-foreground/90"}`}
                 >
                   {t.signIn}
                 </button>
@@ -275,19 +276,10 @@ const LandingPage = () => {
           </div>
         </div>
 
-        {/* Hero */}
-        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-light text-center mb-5 tracking-tight">
-          <span className={heroText1}>{t.heroTitle1}</span>
-          <span className={`italic font-serif font-light ${heroText2}`}>{t.heroTitle2}</span>
-        </h1>
-        <p className={`text-base lg:text-lg ${textLight} text-center max-w-lg mb-10 leading-relaxed whitespace-pre-line`}>
-          {t.heroSubtitle}
-        </p>
-
         {/* CTA */}
         <button
           onClick={() => openAuthModal("signup")}
-          className={`flex items-center gap-2 mb-8 px-5 py-2.5 rounded-full border text-sm ${bannerBg} transition-colors`}
+          className={`flex items-center gap-2 mb-8 px-7 py-3.5 rounded-full border text-sm font-medium shadow-lg hover:shadow-xl transition-all ${isDark ? "bg-white text-[#0a0a0f] hover:bg-white/90 border-white" : "bg-foreground text-background hover:bg-foreground/90 border-foreground"}`}
         >
           {t.ctaExperts}
           <ArrowRight className="w-4 h-4" />
