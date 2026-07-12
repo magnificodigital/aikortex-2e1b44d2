@@ -84,6 +84,7 @@ const LandingPage = () => {
   const [activeCreationTab, setActiveCreationTab] = useState<"app" | "agentes" | "flows">("app");
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
+  const [isPlaying, setIsPlaying] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [lang, setLang] = useState<Lang>(() => {
@@ -263,16 +264,46 @@ const LandingPage = () => {
         </p>
 
         {/* Video Player */}
-        <div className={`w-full max-w-4xl mb-10 rounded-2xl overflow-hidden border ${isDark ? "border-white/10 bg-white/[0.03]" : "border-border bg-card"} shadow-2xl`}>
-          <div className="relative aspect-video">
-            <iframe
-              className="absolute inset-0 w-full h-full"
-              src="https://www.youtube.com/embed/QyDYR1bwznw?rel=0&modestbranding=1&start=56"
-              title="Aikortex — Demo"
-              frameBorder={0}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+        <div className="w-full max-w-3xl mb-8 group">
+          <div className={`relative aspect-video rounded-2xl overflow-hidden border shadow-2xl transition-transform duration-300 ${isDark ? "border-white/10" : "border-border"} ${cardBg}`}>
+            {!isPlaying ? (
+              <>
+                <img
+                  src="https://img.youtube.com/vi/QyDYR1bwznw/maxresdefault.jpg"
+                  alt="Aikortex — Demo"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                {/* Hover overlay with controls */}
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 pointer-events-none group-hover:pointer-events-auto">
+                  <div className="flex items-center justify-between text-white/80 text-xs">
+                    <span className="font-medium">Aikortex — Demo</span>
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsPlaying(true)}
+                    className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-white/95 text-black flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200 pointer-events-auto"
+                    aria-label="Play"
+                  >
+                    <svg className="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                  </button>
+                  <div className="w-full h-1 bg-white/30 rounded-full overflow-hidden">
+                    <div className="h-full w-0 bg-white/80 rounded-full" />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src="https://www.youtube.com/embed/QyDYR1bwznw?rel=0&modestbranding=1&start=56&autoplay=1"
+                title="Aikortex — Demo"
+                frameBorder={0}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            )}
           </div>
         </div>
 
