@@ -263,6 +263,20 @@ const LandingPage = () => {
           <span className={isDark ? "text-white/40" : "text-muted-foreground"}>→</span>
         </div>
 
+        {/* Video Player */}
+        <div className={`w-full max-w-4xl mb-10 rounded-2xl overflow-hidden border ${isDark ? "border-white/10 bg-white/[0.03]" : "border-border bg-card"} shadow-2xl`}>
+          <div className="relative aspect-video">
+            <iframe
+              className="absolute inset-0 w-full h-full"
+              src="https://www.youtube.com/embed/QyDYR1bwznw?rel=0&modestbranding=1&start=56"
+              title="Aikortex — Demo"
+              frameBorder={0}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+
         {/* Hero */}
         <h1 className="text-5xl sm:text-6xl lg:text-7xl font-light text-center mb-5 tracking-tight">
           <span className={heroText1}>{t.heroTitle1}</span>
@@ -271,20 +285,6 @@ const LandingPage = () => {
         <p className={`text-base lg:text-lg ${textLight} text-center max-w-lg mb-10 leading-relaxed whitespace-pre-line`}>
           {t.heroSubtitle}
         </p>
-
-        {/* Video Player */}
-        <div className={`w-full max-w-2xl mb-10 rounded-2xl overflow-hidden border ${isDark ? "border-white/10 bg-white/[0.03]" : "border-border bg-card"} shadow-2xl`}>
-          <div className="relative aspect-video">
-            <iframe
-              className="absolute inset-0 w-full h-full"
-              src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1"
-              title="Aikortex — Demo"
-              frameBorder={0}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-        </div>
 
         {/* CTA */}
         <button
