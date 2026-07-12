@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Mic, MicOff, MessageSquare, Settings, X, ArrowUp, RefreshCw, Sparkles, BarChart3, Square } from "lucide-react";
+import { Mic, MicOff, MessageSquare, Settings, X, ArrowUp, RefreshCw, Sparkles, BarChart3, Square, Video, VideoOff } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
 import { Button } from "@/components/ui/button";
@@ -118,6 +118,20 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
     if ((mode !== "voice" || !useLiveKit) && liveKitActive) livekit.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, useLiveKit]);
+
+  // Auto-start: clicar no menu "Stark" do sidebar manda starkAutoStart no
+  // navigation state — conecta direto, sem exigir 2o clique na esfera.
+  // O clique no menu ja' e' o gesto de consentimento. Limpa o state pra
+  // nao reconectar em back/refresh.
+  const location = useLocation();
+  useEffect(() => {
+    const auto = (location.state as any)?.starkAutoStart;
+    if (auto && useLiveKit && mode === "voice" && livekit.status === "idle") {
+      livekit.start();
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   // Mapeia status do provider pro OrbState legacy (mesma UI pra ambos).
   const liveKitOrbState: OrbState = useMemo(() => {
@@ -628,6 +642,11 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
               onClick={handleOrbClick}
               disabled={useLiveKit ? livekit.status === "connecting" : orbState === "processing"}
             />
+            {useLiveKit && livekit.videoEnabled && livekit.localVideoTrack && (
+              <div className="absolute -right-48 top-1/2 -translate-y-1/2 hidden md:block">
+                <LocalCameraPreview />
+              </div>
+            )}
           </div>
 
           <p className="text-sm text-muted-foreground text-center min-h-[1.5rem]">{orbHint}</p>
@@ -644,29 +663,45 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
             </button>
             <button
               onClick={() => {
+                if (useLiveKit) { livekit.toggleMute(); return; }
                 const stream = streamRef.current;
                 if (!stream) return;
                 const next = !muted;
                 stream.getAudioTracks().forEach((t) => { t.enabled = !next; });
                 setMuted(next);
               }}
-              disabled={!sessionActive}
-              title={muted ? "Reativar microfone" : "Mudo"}
+              disabled={useLiveKit ? !liveKitActive : !sessionActive}
+              title={(useLiveKit ? livekit.muted : muted) ? "Reativar microfone" : "Mudo"}
               className={cn(
                 "relative flex items-center justify-center w-10 h-10 rounded-full border-2 backdrop-blur-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed",
-                muted
+                (useLiveKit ? livekit.muted : muted)
                   ? "border-destructive bg-destructive/15 text-destructive shadow-[0_0_12px_-4px_hsl(var(--destructive))]"
                   : "border-border bg-card/50 text-muted-foreground hover:text-foreground hover:border-foreground/20",
               )}
             >
-              <Mic className={cn("w-4 h-4", muted && "text-destructive")} />
-              {muted && (
+              <Mic className={cn("w-4 h-4", (useLiveKit ? livekit.muted : muted) && "text-destructive")} />
+              {(useLiveKit ? livekit.muted : muted) && (
                 <span
                   aria-hidden
                   className="absolute left-1.5 right-1.5 h-[2.5px] rounded-full bg-destructive rotate-45 pointer-events-none"
                 />
               )}
             </button>
+            {useLiveKit && (
+              <button
+                onClick={livekit.toggleVideo}
+                disabled={!liveKitActive}
+                title={livekit.videoEnabled ? "Desligar câmera" : "Ligar câmera — Stark vê o que você mostrar"}
+                className={cn(
+                  "flex items-center justify-center w-10 h-10 rounded-full border-2 backdrop-blur-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+                  livekit.videoEnabled
+                    ? "border-primary bg-primary/15 text-primary shadow-[0_0_12px_-4px_hsl(var(--primary))]"
+                    : "border-border bg-card/50 text-muted-foreground hover:text-foreground hover:border-foreground/20",
+                )}
+              >
+                {livekit.videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+              </button>
+            )}
             <button
               onClick={() => setShowTranscript(true)}
               disabled={transcript.length === 0}
@@ -777,6 +812,27 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Preview local da camera (modulo visao do Stark) — mostra o que a
+ *  camera envia pro agente. Sempre muted (e' o proprio user). */
+function LocalCameraPreview() {
+  const { localVideoTrack } = useStarkVoice();
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !localVideoTrack) return;
+    localVideoTrack.attach(el);
+    return () => { localVideoTrack.detach(el); };
+  }, [localVideoTrack]);
+
+  if (!localVideoTrack) return null;
+  return (
+    <div className="rounded-xl overflow-hidden border border-primary/30 shadow-xl w-[176px] aspect-video bg-black">
+      <video ref={videoRef} muted playsInline className="w-full h-full object-cover" />
     </div>
   );
 }

@@ -355,7 +355,9 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
 
         <nav className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5 scrollbar-thin">
           <div className="mt-2 space-y-0.5">
-            <Link to="/home" onClick={handleNavigate} className={linkClasses(isItemActive("/home"))} title={collapsed && !isMobile ? "Stark" : undefined}>
+            {/* starkAutoStart: clicar no menu Stark ja' conecta a voz — o
+                clique e' o gesto de consentimento (mic/audio liberados). */}
+            <Link to="/home" state={{ starkAutoStart: true }} onClick={handleNavigate} className={linkClasses(isItemActive("/home"))} title={collapsed && !isMobile ? "Stark" : undefined}>
               <Zap className={`w-4 h-4 shrink-0 ${isItemActive("/home") ? "text-primary" : ""}`} />
               {(!collapsed || isMobile) && <span>Stark</span>}
             </Link>

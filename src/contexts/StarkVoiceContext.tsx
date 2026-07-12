@@ -16,7 +16,7 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import type { Room, RemoteTrack, RemoteAudioTrack } from "livekit-client";
+import type { Room, RemoteTrack, RemoteAudioTrack, LocalVideoTrack } from "livekit-client";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
 import { inferPageContext } from "@/lib/stark-page-context";
@@ -36,9 +36,17 @@ interface StarkVoiceValue {
   intensity: number;
   remainingMinutes: number | null;
   error: string | null;
+  /** Mic do user silenciado (sessao continua viva). */
+  muted: boolean;
+  /** Camera ligada — Stark VE o que o user mostra (modulo visao). */
+  videoEnabled: boolean;
+  /** Track local da camera pro preview (null quando video off). */
+  localVideoTrack: LocalVideoTrack | null;
   /** Conecta usando o contexto da pagina ATUAL. No-op se ja conectando/ativo. */
   start: () => void;
   stop: () => void;
+  toggleMute: () => void;
+  toggleVideo: () => void;
 }
 
 const StarkVoiceContext = createContext<StarkVoiceValue | null>(null);
@@ -58,6 +66,9 @@ export function StarkVoiceProvider({ children }: { children: ReactNode }) {
   const [intensity, setIntensity] = useState(0);
   const [remainingMinutes, setRemainingMinutes] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [muted, setMuted] = useState(false);
+  const [videoEnabled, setVideoEnabled] = useState(false);
+  const [localVideoTrack, setLocalVideoTrack] = useState<LocalVideoTrack | null>(null);
 
   const roomRef = useRef<Room | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -84,7 +95,40 @@ export function StarkVoiceProvider({ children }: { children: ReactNode }) {
       roomRef.current = null;
     }
     setIntensity(0);
+    setMuted(false);
+    setVideoEnabled(false);
+    setLocalVideoTrack(null);
     setStatus("idle");
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    const room = roomRef.current;
+    if (!room) return;
+    setMuted((prev) => {
+      const next = !prev;
+      room.localParticipant.setMicrophoneEnabled(!next).catch(() => { /* noop */ });
+      return next;
+    });
+  }, []);
+
+  const toggleVideo = useCallback(() => {
+    const room = roomRef.current;
+    if (!room) return;
+    setVideoEnabled((prev) => {
+      const next = !prev;
+      (async () => {
+        try {
+          const pub = await room.localParticipant.setCameraEnabled(next);
+          setLocalVideoTrack(next ? ((pub?.track as LocalVideoTrack) ?? null) : null);
+        } catch (e) {
+          console.error("[stark-voice] camera toggle falhou:", e);
+          setVideoEnabled(false);
+          setLocalVideoTrack(null);
+          toast.error("Não consegui acessar a câmera.");
+        }
+      })();
+      return next;
+    });
   }, []);
 
   const start = useCallback(() => {
@@ -265,7 +309,11 @@ export function StarkVoiceProvider({ children }: { children: ReactNode }) {
 
   return (
     <StarkVoiceContext.Provider
-      value={{ status, intensity, remainingMinutes, error, start, stop }}
+      value={{
+        status, intensity, remainingMinutes, error,
+        muted, videoEnabled, localVideoTrack,
+        start, stop, toggleMute, toggleVideo,
+      }}
     >
       {children}
     </StarkVoiceContext.Provider>

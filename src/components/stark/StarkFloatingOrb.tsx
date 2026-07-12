@@ -9,8 +9,9 @@
  * status, waveform animada pela intensidade real do audio e botao de
  * encerrar. Erro = pill vermelha clicavel pra tentar de novo.
  */
+import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { Mic, Loader2, AlertTriangle, X } from "lucide-react";
+import { Mic, MicOff, Loader2, AlertTriangle, X, Video, VideoOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStarkVoice } from "@/contexts/StarkVoiceContext";
 import { useStarkPrefs } from "@/hooks/use-stark-prefs";
@@ -33,10 +34,32 @@ const STATUS_LABEL: Record<string, string> = {
   speaking: "Falando",
 };
 
+function CameraPreview() {
+  const { localVideoTrack } = useStarkVoice();
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !localVideoTrack) return;
+    localVideoTrack.attach(el);
+    return () => { localVideoTrack.detach(el); };
+  }, [localVideoTrack]);
+
+  if (!localVideoTrack) return null;
+  return (
+    <div className="rounded-xl overflow-hidden border border-primary/30 shadow-xl w-[160px] aspect-video bg-black">
+      <video ref={videoRef} muted playsInline className="w-full h-full object-cover" />
+    </div>
+  );
+}
+
 export function StarkFloatingOrb() {
   const location = useLocation();
   const { prefs, loading } = useStarkPrefs();
-  const { status, intensity, error, start, stop } = useStarkVoice();
+  const {
+    status, intensity, error, muted, videoEnabled,
+    start, stop, toggleMute, toggleVideo,
+  } = useStarkVoice();
 
   if (loading) return null;
   if (!prefs.bubble_enabled) return null;
@@ -61,10 +84,11 @@ export function StarkFloatingOrb() {
     );
   }
 
-  // ── Ativo: pill expandida com waveform ──
+  // ── Ativo: pill expandida com waveform + controles ──
   if (isActive) {
     return (
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+        {videoEnabled && <CameraPreview />}
         <div className="flex items-center gap-3 rounded-full border border-primary/30 bg-background/80 backdrop-blur-md shadow-xl pl-4 pr-2 h-14">
           {/* Dot de status com pulso */}
           <span className="relative flex h-2.5 w-2.5 shrink-0">
@@ -105,6 +129,27 @@ export function StarkFloatingOrb() {
             )}
           </span>
 
+          {/* Controles: mute, video, encerrar */}
+          <button
+            onClick={toggleMute}
+            title={muted ? "Reativar microfone" : "Silenciar microfone"}
+            className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center transition shrink-0",
+              muted ? "bg-destructive/15 text-destructive hover:bg-destructive/25" : "hover:bg-muted",
+            )}
+          >
+            {muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={toggleVideo}
+            title={videoEnabled ? "Desligar câmera" : "Ligar câmera — Stark vê o que você mostrar"}
+            className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center transition shrink-0",
+              videoEnabled ? "bg-primary/15 text-primary hover:bg-primary/25" : "hover:bg-muted",
+            )}
+          >
+            {videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+          </button>
           <button
             onClick={stop}
             title="Encerrar Stark"
