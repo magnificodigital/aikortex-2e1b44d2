@@ -41,23 +41,14 @@ export function useStarkVoiceCredits(historyLimit = 10) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    // Agencia do user (pra ler tier minutes do agency_profiles)
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("agency_id")
-      .eq("id", user.id)
+    // Tier minutes direto de agency_profiles (lookup por user_id — mesmo
+    // caminho do stark-token; "profiles.agency_id" nao existe).
+    const { data: ap } = await (supabase.from("agency_profiles" as any) as any)
+      .select("monthly_voice_minutes, voice_minutes_used")
+      .eq("user_id", user.id)
       .maybeSingle();
-
-    let tierTotal = 0;
-    let tierUsed = 0;
-    if (profile?.agency_id) {
-      const { data: ap } = await (supabase.from("agency_profiles" as any) as any)
-        .select("monthly_voice_minutes, voice_minutes_used")
-        .eq("id", profile.agency_id)
-        .maybeSingle();
-      tierTotal = ap?.monthly_voice_minutes ?? 0;
-      tierUsed = Number(ap?.voice_minutes_used ?? 0);
-    }
+    const tierTotal = ap?.monthly_voice_minutes ?? 0;
+    const tierUsed = Number(ap?.voice_minutes_used ?? 0);
     const tierRemaining = Math.max(0, tierTotal - tierUsed);
 
     // Packs ativos (paid) — saldo = minutes_total - minutes_used

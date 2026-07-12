@@ -20,6 +20,33 @@ function base64url(data: Uint8Array): string {
 }
 
 /**
+ * Sanitiza o page_context vindo do frontend antes de entrar no JWT.
+ * Whitelist de campos + truncamento — evita: (a) JWT inflado com payload
+ * arbitrario, (b) prompt injection via strings longas/multilinha (o
+ * backend Python sanitiza de novo, defesa em profundidade).
+ */
+function sanitizePageContext(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const pc = raw as Record<string, unknown>;
+  const str = (v: unknown, max: number): string | undefined =>
+    typeof v === "string" && v.trim() ? v.replace(/[\r\n]+/g, " ").trim().slice(0, max) : undefined;
+
+  let entity: Record<string, unknown> | undefined;
+  if (pc.entity && typeof pc.entity === "object") {
+    const e = pc.entity as Record<string, unknown>;
+    const type = str(e.type, 40);
+    const id = str(e.id, 64);
+    const name = str(e.name, 120);
+    if (type || id || name) entity = { type, id, name };
+  }
+
+  const path = str(pc.path, 200);
+  const route = str(pc.route, 80);
+  if (!path && !route) return null;
+  return { path, route, entity };
+}
+
+/**
  * Gera JWT do LiveKit com grants pra entrar no room do Stark.
  * Identity = userId. Room = stark-{userId} (1 room por user, sempre).
  * Metadata transporta agencyId + locale pro Stark Agent (Python) pegar.
@@ -96,7 +123,7 @@ Deno.serve(async (req) => {
       const bodyText = await req.text();
       if (bodyText) {
         const parsed = JSON.parse(bodyText);
-        pageContext = parsed?.page_context ?? null;
+        pageContext = sanitizePageContext(parsed?.page_context);
       }
     } catch { /* body invalido — segue sem contexto */ }
 
@@ -128,12 +155,15 @@ Deno.serve(async (req) => {
     const tierRemaining = (creditCheck as any)?.remaining_tier ?? 0;
 
     // 3) Soma com packs pagos disponiveis
+    // NOTA: PostgREST nao avalia now() em filtros — precisa de timestamp
+    // literal. Com "now()" a query quebrava e packs eram ignorados.
+    const nowIso = new Date().toISOString();
     const { data: packs } = await admin
       .from("stark_voice_credit_packs")
       .select("minutes_total, minutes_used")
       .eq("user_id", userId)
       .eq("status", "paid")
-      .or("expires_at.is.null,expires_at.gt.now()");
+      .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
 
     const packRemaining = (packs ?? []).reduce(
       (sum: number, p: any) => sum + Math.max(0, (p.minutes_total ?? 0) - (p.minutes_used ?? 0)),
