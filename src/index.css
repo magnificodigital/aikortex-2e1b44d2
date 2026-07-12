@@ -247,6 +247,45 @@
   animation: none;
 }
 
+/* Rising stars — white dots floating up like a universe */
+.landing-stars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+.landing-stars .star {
+  position: absolute;
+  bottom: -10px;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6), 0 0 12px rgba(200, 220, 255, 0.35);
+  opacity: 0;
+  animation: star-rise linear infinite;
+  will-change: transform, opacity;
+}
+.landing-stars .star.sm { width: 1px; height: 1px; box-shadow: 0 0 4px rgba(255,255,255,0.5); }
+.landing-stars .star.lg { width: 3px; height: 3px; box-shadow: 0 0 10px rgba(255,255,255,0.8), 0 0 20px rgba(180,210,255,0.4); }
+
+/* In light mode make them softer/blueish so they read on white */
+:root:not(.dark) .landing-stars .star {
+  background: rgba(80, 120, 180, 0.55);
+  box-shadow: 0 0 6px rgba(80, 120, 180, 0.35);
+}
+:root:not(.dark) .landing-stars .star.lg {
+  box-shadow: 0 0 10px rgba(80, 120, 180, 0.5);
+}
+
+@keyframes star-rise {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(-110vh) translateX(var(--drift, 0px)); opacity: 0; }
+}
+
 .dark .landing-bg {
   background: hsl(230 22% 6%);
 }
