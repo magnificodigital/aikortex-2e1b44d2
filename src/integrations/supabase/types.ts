@@ -118,11 +118,14 @@ export type Database = {
           enabled_channels: string[] | null
           id: string
           logo_url: string | null
+          monthly_voice_minutes: number
           platform_fee_monthly: number | null
           tier: string
           tier_manually_overridden: boolean | null
           updated_at: string | null
           user_id: string
+          voice_minutes_used: number
+          voice_period_start: string
         }
         Insert: {
           active_clients_count?: number | null
@@ -135,11 +138,14 @@ export type Database = {
           enabled_channels?: string[] | null
           id?: string
           logo_url?: string | null
+          monthly_voice_minutes?: number
           platform_fee_monthly?: number | null
           tier?: string
           tier_manually_overridden?: boolean | null
           updated_at?: string | null
           user_id: string
+          voice_minutes_used?: number
+          voice_period_start?: string
         }
         Update: {
           active_clients_count?: number | null
@@ -152,11 +158,14 @@ export type Database = {
           enabled_channels?: string[] | null
           id?: string
           logo_url?: string | null
+          monthly_voice_minutes?: number
           platform_fee_monthly?: number | null
           tier?: string
           tier_manually_overridden?: boolean | null
           updated_at?: string | null
           user_id?: string
+          voice_minutes_used?: number
+          voice_period_start?: string
         }
         Relationships: []
       }
@@ -976,6 +985,66 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "user_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_stark_subscriptions: {
+        Row: {
+          activated_at: string | null
+          agency_id: string
+          agency_price_monthly: number
+          asaas_subscription_id: string | null
+          asaas_subscription_status: string | null
+          client_id: string
+          created_at: string
+          id: string
+          platform_price_monthly: number
+          status: string
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          agency_id: string
+          agency_price_monthly: number
+          asaas_subscription_id?: string | null
+          asaas_subscription_status?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          platform_price_monthly: number
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          agency_id?: string
+          agency_price_monthly?: number
+          asaas_subscription_id?: string | null
+          asaas_subscription_status?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          platform_price_monthly?: number
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_stark_subscriptions_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agency_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_stark_subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "agency_clients"
             referencedColumns: ["id"]
           },
         ]
@@ -2649,9 +2718,15 @@ export type Database = {
         Row: {
           bubble_enabled: boolean
           created_at: string | null
+          energy: number
+          language: string
+          last_session_summary: string | null
           monthly_token_limit: number | null
           persona_preset: string
           persona_prompt: string | null
+          response_length: number
+          tone: number
+          tools_enabled: Json | null
           updated_at: string | null
           user_id: string
           user_name: string | null
@@ -2659,9 +2734,15 @@ export type Database = {
         Insert: {
           bubble_enabled?: boolean
           created_at?: string | null
+          energy?: number
+          language?: string
+          last_session_summary?: string | null
           monthly_token_limit?: number | null
           persona_preset?: string
           persona_prompt?: string | null
+          response_length?: number
+          tone?: number
+          tools_enabled?: Json | null
           updated_at?: string | null
           user_id: string
           user_name?: string | null
@@ -2669,14 +2750,134 @@ export type Database = {
         Update: {
           bubble_enabled?: boolean
           created_at?: string | null
+          energy?: number
+          language?: string
+          last_session_summary?: string | null
           monthly_token_limit?: number | null
           persona_preset?: string
           persona_prompt?: string | null
+          response_length?: number
+          tone?: number
+          tools_enabled?: Json | null
           updated_at?: string | null
           user_id?: string
           user_name?: string | null
         }
         Relationships: []
+      }
+      stark_voice_credit_packs: {
+        Row: {
+          asaas_payment_id: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          minutes_total: number
+          minutes_used: number
+          paid_at: string | null
+          price_cents: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          asaas_payment_id?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          minutes_total: number
+          minutes_used?: number
+          paid_at?: string | null
+          price_cents: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          asaas_payment_id?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          minutes_total?: number
+          minutes_used?: number
+          paid_at?: string | null
+          price_cents?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stark_voice_sessions: {
+        Row: {
+          agency_id: string | null
+          created_at: string | null
+          credit_source: string | null
+          duration_seconds: number
+          ended_at: string | null
+          estimated_cost_cents: number | null
+          id: string
+          livekit_room_id: string | null
+          llm_completion_tokens: number | null
+          llm_model: string | null
+          llm_prompt_tokens: number | null
+          llm_provider: string | null
+          pack_id: string | null
+          stt_seconds: number | null
+          tools_called: string[] | null
+          tts_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          agency_id?: string | null
+          created_at?: string | null
+          credit_source?: string | null
+          duration_seconds?: number
+          ended_at?: string | null
+          estimated_cost_cents?: number | null
+          id?: string
+          livekit_room_id?: string | null
+          llm_completion_tokens?: number | null
+          llm_model?: string | null
+          llm_prompt_tokens?: number | null
+          llm_provider?: string | null
+          pack_id?: string | null
+          stt_seconds?: number | null
+          tools_called?: string[] | null
+          tts_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          agency_id?: string | null
+          created_at?: string | null
+          credit_source?: string | null
+          duration_seconds?: number
+          ended_at?: string | null
+          estimated_cost_cents?: number | null
+          id?: string
+          livekit_room_id?: string | null
+          llm_completion_tokens?: number | null
+          llm_model?: string | null
+          llm_prompt_tokens?: number | null
+          llm_provider?: string | null
+          pack_id?: string | null
+          stt_seconds?: number | null
+          tools_called?: string[] | null
+          tts_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stark_voice_sessions_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agency_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stark_voice_sessions_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "stark_voice_credit_packs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -3162,6 +3363,10 @@ export type Database = {
         Args: { p_agency_id: string; p_limit: number; p_window_start: string }
         Returns: boolean
       }
+      consume_stark_voice_minutes: {
+        Args: { p_agency_id: string; p_minutes: number }
+        Returns: Json
+      }
       current_client_id: { Args: never; Returns: string }
       get_agency_tool_usage: {
         Args: { p_agency_id: string; p_year_month: string }
@@ -3204,6 +3409,10 @@ export type Database = {
       publish_agent_version: {
         Args: { p_agent_id: string; p_label?: string; p_notes?: string }
         Returns: Json
+      }
+      reset_stark_voice_period_if_needed: {
+        Args: { p_agency_id: string }
+        Returns: undefined
       }
       seed_default_crm_stages: {
         Args: { p_agency_id: string }
