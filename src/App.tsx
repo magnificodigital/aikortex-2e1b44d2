@@ -7,9 +7,16 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { StarkFloatingOrb } from "@/components/stark/StarkFloatingOrb";
 // HelpBubble removido a pedido — conflitava visualmente com botões flutuantes
 // (ex: FAB "Ver configuração" no Modo Vibe).
+
+// LAZY obrigatorio: StarkFloatingOrb puxa livekit-client (~300KB). Import
+// estatico aqui jogava a lib no bundle principal de TODAS as paginas e
+// deixava o app inteiro lento pra carregar. Lazy = chunk separado, baixado
+// depois do primeiro paint.
+const StarkFloatingOrb = lazy(() =>
+  import("@/components/stark/StarkFloatingOrb").then((m) => ({ default: m.StarkFloatingOrb })),
+);
 
 // Lazy-loaded pages
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -132,7 +139,9 @@ const App = () => (
           {/* Orb flutuante do Stark — aparece em qualquer pagina autenticada,
               exceto onde o Stark ja' tem UI propria (/home, /aikortex/agents/*).
               Decisao de exibir mora dentro do componente (le prefs.bubble_enabled). */}
-          <StarkFloatingOrb />
+          <Suspense fallback={null}>
+            <StarkFloatingOrb />
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
       </WorkspaceProvider>
