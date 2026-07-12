@@ -274,7 +274,7 @@ const LandingPage = () => {
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 {/* Hover overlay with controls */}
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4">
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 pointer-events-none group-hover:pointer-events-auto">
                   <div className="flex items-center justify-between text-white/80 text-xs">
                     <span className="font-medium">Aikortex — Demo</span>
                     <div className="flex items-center gap-2">
@@ -284,7 +284,7 @@ const LandingPage = () => {
                   </div>
                   <button
                     onClick={() => setIsPlaying(true)}
-                    className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-white/95 text-black flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200"
+                    className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-white/95 text-black flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200 pointer-events-auto"
                     aria-label="Play"
                   >
                     <svg className="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
