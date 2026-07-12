@@ -139,9 +139,37 @@ const LandingPage = () => {
   const heroText1 = isDark ? "text-white/90" : "text-foreground";
   const heroText2 = isDark ? "text-white/80" : "text-foreground/80";
 
+  // Rising stars — memoized so they don't re-generate on each render
+  const stars = useRef(
+    Array.from({ length: 90 }, (_, i) => ({
+      left: Math.random() * 100,
+      delay: Math.random() * 20,
+      duration: 14 + Math.random() * 22,
+      drift: (Math.random() - 0.5) * 120,
+      size: i % 9 === 0 ? "lg" : i % 3 === 0 ? "" : "sm",
+    })),
+  ).current;
+
   return (
     <div className={`min-h-screen ${bg} flex flex-col landing-bg`}>
       <div className="landing-bg-orb" />
+
+      {/* Rising stars background */}
+      <div className="landing-stars" aria-hidden="true">
+        {stars.map((s, i) => (
+          <span
+            key={i}
+            className={`star ${s.size}`}
+            style={{
+              left: `${s.left}%`,
+              animationDelay: `${s.delay}s`,
+              animationDuration: `${s.duration}s`,
+              ["--drift" as any]: `${s.drift}px`,
+            }}
+          />
+        ))}
+      </div>
+
       {/* Top Navbar */}
       <header className="relative z-20 flex items-center justify-between px-4 sm:px-6 lg:px-10 h-14">
         <div className="flex items-center gap-6">
@@ -221,7 +249,14 @@ const LandingPage = () => {
       )}
 
       {/* Content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-10">
+        {/* Centered Aikortex Logo above banner */}
+        <img
+          src={isDark ? aikortexLogoWhite : aikortexLogoBlack}
+          alt="Aikortex"
+          className="h-12 sm:h-14 w-auto object-contain mb-6"
+        />
+
         {/* Announcement Banner */}
         <div className={`flex items-center gap-2 mb-10 text-sm ${textMuted}`}>
           <span className="text-[10px] font-bold uppercase bg-primary text-primary-foreground px-2 py-0.5 rounded-full">{t.newBadge}</span>
@@ -234,9 +269,23 @@ const LandingPage = () => {
           <span className={heroText1}>{t.heroTitle1}</span>
           <span className={`italic font-serif font-light ${heroText2}`}>{t.heroTitle2}</span>
         </h1>
-        <p className={`text-base lg:text-lg ${textLight} text-center max-w-lg mb-12 leading-relaxed whitespace-pre-line`}>
+        <p className={`text-base lg:text-lg ${textLight} text-center max-w-lg mb-10 leading-relaxed whitespace-pre-line`}>
           {t.heroSubtitle}
         </p>
+
+        {/* Video Player */}
+        <div className={`w-full max-w-2xl mb-10 rounded-2xl overflow-hidden border ${isDark ? "border-white/10 bg-white/[0.03]" : "border-border bg-card"} shadow-2xl`}>
+          <div className="relative aspect-video">
+            <iframe
+              className="absolute inset-0 w-full h-full"
+              src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1"
+              title="Aikortex — Demo"
+              frameBorder={0}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
 
         {/* CTA */}
         <button
