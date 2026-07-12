@@ -20,6 +20,7 @@ import { AlertTriangle, PowerOff, Power } from "lucide-react";
 // próprio do cliente). Partners é exclusivo da agência, não entra aqui.
 const WORKSPACE_MODULES: { key: string; group: "Aikortex" | "Gestão"; label: string; description: string }[] = [
   // Aikortex
+  { key: "stark.copilot",      group: "Aikortex", label: "Stark",      description: "Copiloto de IA por voz — habilitado ao vender o Stark" },
   { key: "aikortex.agentes",   group: "Aikortex", label: "Agentes",    description: "Agentes de IA configurados" },
   { key: "aikortex.crm",       group: "Aikortex", label: "CRM",        description: "Pipeline e contatos" },
   { key: "aikortex.ligacoes",  group: "Aikortex", label: "Ligações",   description: "Histórico de calls" },

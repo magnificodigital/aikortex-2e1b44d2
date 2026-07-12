@@ -8,12 +8,14 @@
  * Persistido em platform_config key='stark_tools_enabled' (JSON).
  */
 import { useEffect, useState } from "react";
-import { Loader2, Save, Sparkles, ShieldAlert } from "lucide-react";
+import { Loader2, Save, Sparkles, ShieldAlert, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 import { useStarkPlatformTools } from "@/hooks/use-stark-platform-tools";
 import { STARK_TOOL_CATALOG, STARK_TOOL_GROUPS } from "@/lib/stark-tools-catalog";
 import { toast } from "sonner";
@@ -70,6 +72,8 @@ export default function AdminStarkTab() {
         </div>
       </div>
 
+      <ResalePriceCard />
+
       {disabledCount > 0 && (
         <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
           <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
@@ -118,5 +122,85 @@ export default function AdminStarkTab() {
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Preço base da revenda do Stark — a agência vende por >= esse valor;
+ *  o base vira fixedValue do split Asaas (fica com a Aikortex). */
+function ResalePriceCard() {
+  const [price, setPrice] = useState("");
+  const [saved, setSaved] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await (supabase.from("platform_config" as any) as any)
+          .select("value")
+          .eq("key", "stark_resale")
+          .maybeSingle();
+        const parsed = data?.value ? JSON.parse(data.value) : {};
+        const v = String(parsed.base_price_monthly ?? 97);
+        setPrice(v); setSaved(v);
+      } catch {
+        setPrice("97"); setSaved("97");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  async function onSave() {
+    const n = parseFloat(price.replace(",", "."));
+    if (!Number.isFinite(n) || n <= 0) { toast.error("Preço inválido"); return; }
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await (supabase.from("platform_config" as any) as any)
+        .upsert({
+          key: "stark_resale",
+          value: JSON.stringify({ base_price_monthly: n }),
+          description: "Revenda do Stark: preco base mensal em reais (fixedValue do split Asaas)",
+          is_secret: false,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.id ?? null,
+        }, { onConflict: "key" });
+      if (error) { toast.error(`Erro: ${error.message}`); return; }
+      setSaved(price);
+      toast.success(`Preço base do Stark: R$ ${n.toFixed(2)}/mês`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-primary" /> Revenda do Stark
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Preço base mensal (sua parte, via split Asaas). A agência define o preço
+          de venda pro cliente final — nunca abaixo do base.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex items-end gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Preço base (R$/mês)</Label>
+          <Input
+            value={loading ? "…" : price}
+            onChange={(e) => setPrice(e.target.value)}
+            disabled={loading}
+            className="w-36"
+            inputMode="decimal"
+          />
+        </div>
+        <Button size="sm" className="gap-1.5" onClick={onSave} disabled={loading || saving || price === saved}>
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+          Salvar
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

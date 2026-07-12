@@ -17,8 +17,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Mail, Phone, FileText, DollarSign, LayoutTemplate,
-  Settings, AlertTriangle, Ban, Trash2, Loader2,
+  Settings, AlertTriangle, Ban, Trash2, Loader2, Sparkles as SparklesIcon,
 } from "lucide-react";
+import { SellStarkDialog } from "@/components/clients/SellStarkDialog";
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
   active: { label: "Ativo", class: "bg-green-500/10 text-green-600 border-green-500/20" },
@@ -36,6 +37,13 @@ const ClientDetail = () => {
   const [subs, setSubs] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sellStarkOpen, setSellStarkOpen] = useState(false);
+
+  const reloadClient = async () => {
+    if (!clientId) return;
+    const { data } = await supabase.from("agency_clients").select("*").eq("id", clientId).single();
+    if (data) setClient(data);
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -108,7 +116,24 @@ const ClientDetail = () => {
             </div>
             <p className="text-sm text-muted-foreground">{client.client_email}</p>
           </div>
+          {(client.enabled_modules as string[] | null)?.includes("stark.copilot") ? (
+            <Badge variant="secondary" className="gap-1">
+              <SparklesIcon className="w-3 h-3" /> Stark ativo
+            </Badge>
+          ) : (
+            <Button size="sm" className="gap-1.5" onClick={() => setSellStarkOpen(true)}>
+              <SparklesIcon className="w-3.5 h-3.5" /> Vender Stark
+            </Button>
+          )}
         </div>
+
+        <SellStarkDialog
+          open={sellStarkOpen}
+          onOpenChange={setSellStarkOpen}
+          clientId={clientId!}
+          clientName={client.client_name}
+          onSold={reloadClient}
+        />
 
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
