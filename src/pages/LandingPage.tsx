@@ -84,6 +84,7 @@ const LandingPage = () => {
   const [activeCreationTab, setActiveCreationTab] = useState<"app" | "agentes" | "flows">("app");
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
+  const [isPlaying, setIsPlaying] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [lang, setLang] = useState<Lang>(() => {
