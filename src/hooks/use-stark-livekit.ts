@@ -192,6 +192,15 @@ export function useStarkLiveKit({
             disconnect();
             return;
           }
+          if (msg.type === "navigate") {
+            // Stark navegando a UI (tools navigate_to / open_client).
+            // So aceita paths internos — nunca URLs externas.
+            const path = typeof msg.path === "string" ? msg.path : "";
+            if (path.startsWith("/") && !path.startsWith("//")) {
+              navigate(path);
+            }
+            return;
+          }
           if (msg.type === "open_agent_creator") {
             // Stark pediu pra abrir o wizard. Mesma rota do Home.navigateToNewAgent.
             // DESCONECTA antes do navigate — senao o LiveKit ainda tenta entregar

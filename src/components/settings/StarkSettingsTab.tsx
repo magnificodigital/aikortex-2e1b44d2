@@ -33,6 +33,8 @@ import { useStarkPrefs, type StarkPersonaPreset, type StarkLanguage } from "@/ho
 import { useStarkCommands } from "@/hooks/use-stark-commands";
 import { useStarkUsage } from "@/hooks/use-stark-usage";
 import { useStarkVoiceCredits } from "@/hooks/use-stark-voice-credits";
+import { useStarkPlatformTools } from "@/hooks/use-stark-platform-tools";
+import { STARK_TOOL_CATALOG } from "@/lib/stark-tools-catalog";
 import { toast } from "sonner";
 
 const DEFAULT_VOICE = "EXAVITQu4vr4xnSDxMaL"; // Sarah
@@ -51,21 +53,9 @@ const LANGUAGE_OPTIONS: { value: StarkLanguage; label: string }[] = [
   { value: "es",    label: "Español" },
 ];
 
-// Catalogo de tools — match com src/tools/__init__.py do Stark Agent.
-// Pra ativar/desativar individualmente o que o Stark pode consultar.
-const TOOL_CATALOG: { id: string; label: string; group: string; description: string }[] = [
-  { id: "list_agents",       label: "Listar agentes",       group: "Aikortex", description: "Lista os agentes cadastrados" },
-  { id: "query_messages",    label: "Mensagens",            group: "Aikortex", description: "Conta conversas no período" },
-  { id: "query_calls",       label: "Ligações",             group: "Aikortex", description: "Conta ligações telefônicas" },
-  { id: "query_cadences",    label: "Cadências",            group: "Aikortex", description: "Conta execuções de cadência" },
-  { id: "count_outcomes",    label: "Qualificações/Outcomes", group: "Aikortex", description: "Conta outcomes (qualified, booked etc)" },
-  { id: "list_clients",      label: "Clientes",             group: "Gestão",   description: "Lista clientes da agência" },
-  { id: "count_new_clients", label: "Novos clientes",       group: "Gestão",   description: "Conta clientes novos no período" },
-  { id: "list_meetings",     label: "Reuniões",             group: "Gestão",   description: "Lista reuniões agendadas/ocorridas" },
-  { id: "query_mrr",         label: "MRR (Receita)",        group: "Financeiro", description: "Soma a receita mensal recorrente" },
-  { id: "query_invoices",    label: "Faturas",              group: "Financeiro", description: "Lista faturas pendentes/pagas" },
-  { id: "open_agent_creator", label: "Criar agente por voz", group: "Ação",     description: "Abre o wizard ao pedir um novo agente" },
-];
+// Catalogo canonico compartilhado com o painel admin — ver
+// src/lib/stark-tools-catalog.ts. Tools bloqueadas pela PLATAFORMA
+// (admin) nem aparecem aqui.
 
 export default function StarkSettingsTab() {
   return (
@@ -552,21 +542,25 @@ function VoiceSection() {
 
 function ToolsSection() {
   const { prefs, loading, saving, save } = useStarkPrefs();
+  const { isAllowed, loading: platformLoading } = useStarkPlatformTools();
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
+
+  // So tools que a PLATAFORMA permite aparecem pro user decidir.
+  const visibleTools = STARK_TOOL_CATALOG.filter(t => isAllowed(t.id));
 
   useEffect(() => {
     if (loading) return;
     // Default: tudo ON quando tools_enabled é null/ausente.
     const map: Record<string, boolean> = {};
-    TOOL_CATALOG.forEach(t => {
+    STARK_TOOL_CATALOG.forEach(t => {
       map[t.id] = prefs.tools_enabled?.[t.id] ?? true;
     });
     setEnabled(map);
   }, [loading, prefs]);
 
-  const groups = Array.from(new Set(TOOL_CATALOG.map(t => t.group)));
+  const groups = Array.from(new Set(visibleTools.map(t => t.group)));
   const dirty = JSON.stringify(enabled) !== JSON.stringify(
-    Object.fromEntries(TOOL_CATALOG.map(t => [t.id, prefs.tools_enabled?.[t.id] ?? true])),
+    Object.fromEntries(STARK_TOOL_CATALOG.map(t => [t.id, prefs.tools_enabled?.[t.id] ?? true])),
   );
 
   async function onSave() {
@@ -574,12 +568,20 @@ function ToolsSection() {
     if (ok) toast.success("Ferramentas atualizadas");
   }
 
+  if (platformLoading) {
+    return (
+      <Card><CardContent className="flex items-center justify-center py-10">
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+      </CardContent></Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Ferramentas do Stark</CardTitle>
         <CardDescription className="text-xs">
-          Controle quais dados o Stark pode consultar via voz/texto. Útil pra ocultar Financeiro de membros não-admin.
+          Controle quais dados o Stark pode consultar e quais ações pode executar por voz.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -587,10 +589,13 @@ function ToolsSection() {
           <div key={g} className="space-y-2">
             <Label className="text-xs uppercase tracking-wider text-muted-foreground">{g}</Label>
             <div className="space-y-1.5">
-              {TOOL_CATALOG.filter(t => t.group === g).map(t => (
+              {visibleTools.filter(t => t.group === g).map(t => (
                 <div key={t.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
                   <div className="space-y-0.5 min-w-0">
-                    <p className="text-sm font-medium">{t.label}</p>
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      {t.label}
+                      {t.write && <Badge variant="outline" className="text-[9px] uppercase">ação</Badge>}
+                    </p>
                     <p className="text-[11px] text-muted-foreground">{t.description}</p>
                   </div>
                   <Switch

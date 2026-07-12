@@ -80,9 +80,12 @@ export function StarkFloatingOrb() {
   );
   const livekit = useStarkLiveKit({ active, pageContext });
 
-  // Reseta active quando muda de rota (evita carregar conexao pra pagina nova)
+  // Sessao SOBREVIVE a navegacao entre paginas de gestao — essencial pro
+  // fluxo Jarvis ("me leva pro financeiro" nao pode derrubar a ligacao).
+  // So desconecta ao entrar em pagina sem orb (/home tem orb proprio e
+  // usaria o MESMO room LiveKit — duplicaria participante).
   useEffect(() => {
-    setActive(false);
+    if (!shouldShow(location.pathname)) setActive(false);
   }, [location.pathname]);
 
   // Esconde quando hook reporta erro de credito (UX evita reabertura imediata)
