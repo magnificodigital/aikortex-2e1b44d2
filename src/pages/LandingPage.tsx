@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { useNavigate } from "react-router-dom";
 import aikortexLogoWhite from "@/assets/aikortex-logo-white.png";
@@ -140,36 +140,12 @@ const LandingPage = () => {
   const heroText1 = isDark ? "text-white/90" : "text-foreground";
   const heroText2 = isDark ? "text-white/80" : "text-foreground/80";
 
-  // Rising stars — memoized so they don't re-generate on each render
-  const stars = useRef(
-    Array.from({ length: 90 }, (_, i) => ({
-      left: Math.random() * 100,
-      delay: Math.random() * 20,
-      duration: 14 + Math.random() * 22,
-      drift: (Math.random() - 0.5) * 120,
-      size: i % 9 === 0 ? "lg" : i % 3 === 0 ? "" : "sm",
-    })),
-  ).current;
-
   return (
     <div className={`min-h-screen ${bg} flex flex-col landing-bg`}>
       <div className="landing-bg-orb" />
 
-      {/* Rising stars background */}
-      <div className="landing-stars" aria-hidden="true">
-        {stars.map((s, i) => (
-          <span
-            key={i}
-            className={`star ${s.size}`}
-            style={{
-              left: `${s.left}%`,
-              animationDelay: `${s.delay}s`,
-              animationDuration: `${s.duration}s`,
-              ["--drift" as any]: `${s.drift}px`,
-            }}
-          />
-        ))}
-      </div>
+      {/* Rising stars background — CSS-only for performance */}
+      <div className="landing-stars" aria-hidden="true" />
 
       {/* Top Navbar */}
       <header className="relative z-20 flex items-center justify-between px-4 sm:px-6 lg:px-10 h-14">

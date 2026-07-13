@@ -162,7 +162,7 @@
     letter-spacing: -0.01em;
   }
 
-  /* CTA button — modern cursor-aware glow, shimmer and lift */
+  /* CTA button — fast, transform-only hover with cursor glow */
   .cta-glow-btn {
     position: relative;
     overflow: hidden;
@@ -173,7 +173,8 @@
     box-shadow:
       0 0 22px -4px hsl(var(--primary) / 0.45),
       0 8px 24px -10px rgba(0,0,0,0.35);
-    transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease, border-color 0.25s ease;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+    will-change: transform;
   }
 
   .dark .cta-glow-btn {
@@ -186,33 +187,24 @@
 
   .cta-glow-btn:hover {
     transform: translateY(-3px) scale(1.04);
-    filter: brightness(1.1);
     border-color: hsl(var(--primary) / 0.75);
     box-shadow:
-      0 0 40px 0 hsl(var(--primary) / 0.55),
-      0 16px 40px -12px rgba(0,0,0,0.5);
+      0 0 34px 0 hsl(var(--primary) / 0.55),
+      0 14px 36px -12px rgba(0,0,0,0.45);
   }
 
   .dark .cta-glow-btn:hover {
     border-color: hsl(213 40% 60% / 0.7);
     box-shadow:
-      0 0 48px 0 hsl(213 40% 60% / 0.6),
-      0 18px 44px -12px rgba(0,0,0,0.7);
+      0 0 42px 0 hsl(213 40% 60% / 0.55),
+      0 16px 40px -12px rgba(0,0,0,0.65);
   }
 
-  /* Continuous diagonal shimmer */
-  .cta-glow-btn::before {
-    content: '';
-    position: absolute;
-    inset: -50%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transform: translateX(-100%) rotate(25deg);
-    animation: cta-shimmer 3.5s ease-in-out infinite;
-    pointer-events: none;
-    z-index: 1;
+  .cta-glow-btn:active {
+    transform: translateY(-1px) scale(0.985);
   }
 
-  /* Cursor-following spotlight reflection */
+  /* Cursor-following spotlight reflection (opacity-only animation) */
   .cta-glow-btn::after {
     content: '';
     position: absolute;
@@ -220,36 +212,27 @@
     border-radius: inherit;
     opacity: 0;
     background: radial-gradient(
-      ellipse 60% 100% at var(--mouse-x, 50%) var(--mouse-y, 50%),
-      rgba(255,255,255,0.22) 0%,
-      rgba(255,255,255,0.06) 35%,
-      transparent 65%
+      ellipse 70% 90% at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(255,255,255,0.18) 0%,
+      rgba(255,255,255,0.04) 35%,
+      transparent 60%
     );
-    transition: opacity 0.25s ease;
+    transition: opacity 0.2s ease;
     pointer-events: none;
-    z-index: 2;
+    z-index: 1;
   }
 
   .cta-glow-btn:hover::after {
     opacity: 1;
   }
 
-  .cta-glow-btn:active {
-    transform: translateY(-1px) scale(0.985);
-  }
-
   .cta-glow-btn .arrow-icon {
-    transition: transform 0.25s ease;
+    transition: transform 0.2s ease;
   }
 
   .cta-glow-btn:hover .arrow-icon {
     transform: translateX(4px);
   }
-}
-
-@keyframes cta-shimmer {
-  0% { transform: translateX(-100%) rotate(25deg); }
-  100% { transform: translateX(200%) rotate(25deg); }
 }
 
 /* Animated mesh gradient background for landing page */
@@ -336,48 +319,87 @@
   animation: none;
 }
 
-/* Rising stars — white dots floating up like a universe */
+/* Rising stars — performant CSS-only background layers */
 .landing-stars {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 1;
   overflow: hidden;
-  contain: layout style paint;
-}
-.landing-stars .star {
-  position: absolute;
-  bottom: -10px;
-  width: 2px;
-  height: 2px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.85);
-  opacity: 0;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  animation: star-rise linear infinite;
+  background:
+    radial-gradient(2px 2px at 12% 85%, rgba(255,255,255,0.85), transparent),
+    radial-gradient(1px 1px at 28% 55%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(2px 2px at 44% 90%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 58% 35%, rgba(255,255,255,0.65), transparent),
+    radial-gradient(2px 2px at 72% 75%, rgba(255,255,255,0.85), transparent),
+    radial-gradient(1px 1px at 86% 50%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 95% 92%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(2px 2px at 7% 40%, rgba(255,255,255,0.75), transparent),
+    radial-gradient(1px 1px at 65% 15%, rgba(255,255,255,0.55), transparent),
+    radial-gradient(2px 2px at 38% 25%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 83% 20%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 52% 65%, rgba(255,255,255,0.7), transparent);
+  background-size: 100% 100%;
+  animation: star-rise 18s linear infinite;
   will-change: transform;
+  transform: translate3d(0, 0, 0);
 }
-.landing-stars .star.sm { width: 1px; height: 1px; }
-.landing-stars .star.lg {
-  width: 3px;
-  height: 3px;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+
+.landing-stars::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.7;
+  background:
+    radial-gradient(1px 1px at 22% 30%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(2px 2px at 48% 80%, rgba(255,255,255,0.75), transparent),
+    radial-gradient(1px 1px at 68% 45%, rgba(255,255,255,0.55), transparent),
+    radial-gradient(1px 1px at 88% 15%, rgba(255,255,255,0.65), transparent),
+    radial-gradient(2px 2px at 10% 70%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 55% 10%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 78% 95%, rgba(255,255,255,0.6), transparent);
+  background-size: 100% 100%;
+  animation: star-rise 26s linear infinite;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 }
 
 /* In light mode make them softer/blueish so they read on white */
-:root:not(.dark) .landing-stars .star {
-  background: rgba(80, 120, 180, 0.5);
+:root:not(.dark) .landing-stars,
+:root:not(.dark) .landing-stars::after {
+  background-image: none;
 }
-:root:not(.dark) .landing-stars .star.lg {
-  box-shadow: 0 0 8px rgba(80, 120, 180, 0.4);
+
+:root:not(.dark) .landing-stars {
+  background:
+    radial-gradient(2px 2px at 12% 85%, rgba(80, 120, 180, 0.5), transparent),
+    radial-gradient(1px 1px at 28% 55%, rgba(80, 120, 180, 0.4), transparent),
+    radial-gradient(2px 2px at 44% 90%, rgba(80, 120, 180, 0.5), transparent),
+    radial-gradient(1px 1px at 58% 35%, rgba(80, 120, 180, 0.35), transparent),
+    radial-gradient(2px 2px at 72% 75%, rgba(80, 120, 180, 0.5), transparent),
+    radial-gradient(1px 1px at 86% 50%, rgba(80, 120, 180, 0.4), transparent),
+    radial-gradient(1px 1px at 95% 92%, rgba(80, 120, 180, 0.35), transparent),
+    radial-gradient(2px 2px at 7% 40%, rgba(80, 120, 180, 0.45), transparent),
+    radial-gradient(1px 1px at 65% 15%, rgba(80, 120, 180, 0.3), transparent),
+    radial-gradient(2px 2px at 38% 25%, rgba(80, 120, 180, 0.45), transparent),
+    radial-gradient(1px 1px at 83% 20%, rgba(80, 120, 180, 0.35), transparent),
+    radial-gradient(1px 1px at 52% 65%, rgba(80, 120, 180, 0.4), transparent);
+}
+
+:root:not(.dark) .landing-stars::after {
+  background:
+    radial-gradient(1px 1px at 22% 30%, rgba(80, 120, 180, 0.35), transparent),
+    radial-gradient(2px 2px at 48% 80%, rgba(80, 120, 180, 0.45), transparent),
+    radial-gradient(1px 1px at 68% 45%, rgba(80, 120, 180, 0.3), transparent),
+    radial-gradient(1px 1px at 88% 15%, rgba(80, 120, 180, 0.4), transparent),
+    radial-gradient(2px 2px at 10% 70%, rgba(80, 120, 180, 0.5), transparent),
+    radial-gradient(1px 1px at 55% 10%, rgba(80, 120, 180, 0.25), transparent),
+    radial-gradient(1px 1px at 78% 95%, rgba(80, 120, 180, 0.35), transparent);
 }
 
 @keyframes star-rise {
-  0%   { transform: translate3d(0, 0, 0); opacity: 0; }
-  8%   { opacity: 1; }
-  92%  { opacity: 1; }
-  100% { transform: translate3d(var(--drift, 0px), -120vh, 0); opacity: 0; }
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(0, -110vh, 0); }
 }
 
 .dark .landing-bg {
