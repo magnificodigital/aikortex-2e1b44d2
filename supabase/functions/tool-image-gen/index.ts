@@ -69,7 +69,7 @@ serve(async (req) => {
           headers: {
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://aikortex26.lovable.app",
+            "HTTP-Referer": "https://agents.aikortex.com",
             "X-Title": "Aikortex",
           },
           body: JSON.stringify({

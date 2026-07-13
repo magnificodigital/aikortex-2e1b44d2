@@ -34,7 +34,7 @@ async function pingModel(model_id: string, apiKey: string): Promise<PingResult> 
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://aikortex26.lovable.app",
+        "HTTP-Referer": "https://agents.aikortex.com",
         "X-Title": "Aikortex",
       },
       body: JSON.stringify({

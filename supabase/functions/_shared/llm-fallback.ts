@@ -20,7 +20,7 @@ type SupabaseClient = ReturnType<typeof createClient>;
 // ── Constants ──────────────────────────────────────────────────────────────
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_HEADERS = {
-  "HTTP-Referer": "https://aikortex26.lovable.app",
+  "HTTP-Referer": "https://agents.aikortex.com",
   "X-Title": "Aikortex",
 } as const;
 const DEFAULT_TIMEOUT_MS = 15000;

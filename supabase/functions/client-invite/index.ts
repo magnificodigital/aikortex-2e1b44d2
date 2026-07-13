@@ -7,7 +7,7 @@
 // 4. Atualiza agency_clients.status = 'pending' (vai virar 'active' quando
 //    o cliente finalizar o cadastro na página /client/:token)
 //
-// Link no email: https://aikortex26.lovable.app/client/{client_id}
+// Link no email: https://agents.aikortex.com/client/{client_id}
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -18,7 +18,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const APP_URL = "https://aikortex26.lovable.app";
+const APP_URL = "https://agents.aikortex.com";
 const AIKORTEX_RESEND_API_KEY = Deno.env.get("AIKORTEX_RESEND_API_KEY") ?? "";
 
 function json(body: unknown, status = 200): Response {

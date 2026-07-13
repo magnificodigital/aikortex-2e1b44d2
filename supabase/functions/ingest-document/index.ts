@@ -302,7 +302,7 @@ async function extractFromUrl(url: string): Promise<{ text: string; metadata: Re
     method: "GET",
     signal: AbortSignal.timeout(30000),
     headers: {
-      "User-Agent": "Aikortex-KB-Scraper/1.0 (+https://aikortex26.lovable.app)",
+      "User-Agent": "Aikortex-KB-Scraper/1.0 (+https://agents.aikortex.com)",
       Accept: "text/html,text/plain,application/xhtml+xml;q=0.9,*/*;q=0.8",
     },
     redirect: "manual",
