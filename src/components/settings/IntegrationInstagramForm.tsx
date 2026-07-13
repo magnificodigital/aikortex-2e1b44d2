@@ -19,11 +19,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
 import { loadFacebookSdk } from "./MetaEmbeddedSignupButton";
+import { useMetaIntegration } from "@/hooks/use-meta-integration";
 import { toast } from "sonner";
 
 const PROVIDERS = ["instagram_access_token", "instagram_account_id", "instagram_verify_token", "instagram_agent_id"] as const;
 const NONE_AGENT = "__none__";
-const META_IG_CONFIG_ID = import.meta.env.VITE_META_IG_CONFIG_ID || "";
 // Fallback sem config_id: login classico por escopos.
 const IG_SCOPES = "instagram_basic,instagram_manage_messages,pages_show_list,pages_manage_metadata,business_management";
 
@@ -39,11 +39,18 @@ export default function IntegrationInstagramForm({ onClose }: { onClose: () => v
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const webhookUrl = fnUrl("instagram-webhook");
+  // Config oficial do admin (app id + config id do Login for Business)
+  const meta = useMetaIntegration();
 
   useEffect(() => {
-    loadFacebookSdk().then(() => setSdkReady(true)).catch(() => {
+    if (meta.loading) return;
+    loadFacebookSdk(meta.appId).then(() => setSdkReady(true)).catch(() => {
       // SDK bloqueado (adblock etc) — caminho manual continua disponivel
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta.loading]);
+
+  useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
@@ -92,8 +99,8 @@ export default function IntegrationInstagramForm({ onClose }: { onClose: () => v
   function handleConnect() {
     if (!window.FB) { toast.error("SDK do Facebook não carregou — use o modo manual abaixo"); return; }
     setConnecting(true);
-    const loginOpts: any = META_IG_CONFIG_ID
-      ? { config_id: META_IG_CONFIG_ID, response_type: "code", override_default_response_type: true }
+    const loginOpts: any = meta.instagramConfigId
+      ? { config_id: meta.instagramConfigId, response_type: "code", override_default_response_type: true }
       : { scope: IG_SCOPES, response_type: "code", override_default_response_type: true };
 
     window.FB.login(async (response: any) => {

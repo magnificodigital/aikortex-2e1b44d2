@@ -4,6 +4,7 @@ import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
+import { useMetaIntegration } from "@/hooks/use-meta-integration";
 import { toast } from "sonner";
 
 /**
@@ -28,14 +29,14 @@ declare global {
   }
 }
 
-const META_APP_ID = import.meta.env.VITE_META_APP_ID || "2356582444746370";
-const META_CONFIG_ID = import.meta.env.VITE_META_EMBEDDED_CONFIG_ID || "";
+const FALLBACK_APP_ID = import.meta.env.VITE_META_APP_ID || "2356582444746370";
 const SDK_VERSION = "v21.0";
 
 let sdkLoadingPromise: Promise<void> | null = null;
 
-/** Exportado: reutilizado pelo connect do Instagram (mesmo SDK/app). */
-export function loadFacebookSdk(): Promise<void> {
+/** Exportado: reutilizado pelo connect do Instagram (mesmo SDK/app).
+ *  appId vem da config do admin (platform_config) via useMetaIntegration. */
+export function loadFacebookSdk(appId: string = FALLBACK_APP_ID): Promise<void> {
   if (typeof window === "undefined") return Promise.reject(new Error("SSR"));
   if (window.FB) return Promise.resolve();
   if (sdkLoadingPromise) return sdkLoadingPromise;
@@ -44,7 +45,7 @@ export function loadFacebookSdk(): Promise<void> {
     window.fbAsyncInit = () => {
       try {
         window.FB.init({
-          appId: META_APP_ID,
+          appId,
           autoLogAppEvents: true,
           xfbml: false,
           version: SDK_VERSION,
@@ -85,18 +86,20 @@ type Props = {
 export default function MetaEmbeddedSignupButton({ onConnected }: Props) {
   const [sdkReady, setSdkReady] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  // Config oficial gerenciada pelo admin em /admin?tab=api-keys
+  const meta = useMetaIntegration();
 
-  const configMissing = !META_CONFIG_ID;
+  const configMissing = !meta.loading && !meta.whatsappConfigId;
 
   useEffect(() => {
-    if (configMissing) return;
-    loadFacebookSdk()
+    if (meta.loading || configMissing) return;
+    loadFacebookSdk(meta.appId)
       .then(() => setSdkReady(true))
       .catch((e) => {
         console.error("Facebook SDK load failed:", e);
         toast.error("Não foi possível carregar o SDK do Facebook");
       });
-  }, [configMissing]);
+  }, [meta.loading, meta.appId, configMissing]);
 
   const handleClick = () => {
     if (!window.FB) {
@@ -159,7 +162,7 @@ export default function MetaEmbeddedSignupButton({ onConnected }: Props) {
         }
       },
       {
-        config_id: META_CONFIG_ID,
+        config_id: meta.whatsappConfigId,
         response_type: "code",
         override_default_response_type: true,
         extras: { setup: {}, featureType: "whatsapp_business_app_onboarding" },
@@ -167,13 +170,21 @@ export default function MetaEmbeddedSignupButton({ onConnected }: Props) {
     );
   };
 
+  if (meta.loading) {
+    return (
+      <Button type="button" className="w-full gap-2" disabled>
+        <Loader2 className="w-4 h-4 animate-spin" /> Carregando…
+      </Button>
+    );
+  }
+
   if (configMissing) {
     return (
       <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 text-center space-y-1">
-        <p className="text-xs font-medium text-foreground">Conectar via Meta — em breve</p>
+        <p className="text-xs font-medium text-foreground">Conectar via Meta — aguardando configuração</p>
         <p className="text-[11px] text-muted-foreground">
-          Onboarding em 1-clique via Embedded Signup. Disponível assim que o app Aikortex for aprovado
-          como Tech Provider pela Meta (em análise).
+          O administrador da plataforma precisa preencher o Config ID do WhatsApp em
+          Admin → Chaves de API → "Meta — Login Oficial".
         </p>
       </div>
     );

@@ -186,6 +186,20 @@ const PROVIDERS: ProviderGroup[] = [
     ],
   },
   {
+    id: "meta_login",
+    label: "Meta — Login Oficial (1-clique)",
+    category: "comunicacao",
+    description: "Configurações do Embedded Signup: com elas preenchidas, as agências conectam WhatsApp e Instagram só clicando em 'Conectar' e logando na Meta — sem colar token. O META_APP_SECRET fica nos secrets do Supabase (nunca aqui).",
+    logo: "https://cdn.simpleicons.org/meta/0081FB",
+    apiKeyUrl: "https://developers.facebook.com/apps",
+    apiKeyUrlLabel: "developers.facebook.com → Facebook Login for Business → Configurações",
+    fields: [
+      { key: "meta_app_id", label: "App ID", placeholder: "2356582444746370", description: "ID do app Aikortex na Meta (público)." },
+      { key: "meta_whatsapp_config_id", label: "Config ID — WhatsApp", placeholder: "ex: 123456...", description: "Configuração de Embedded Signup do WhatsApp (Login for Business)." },
+      { key: "meta_instagram_config_id", label: "Config ID — Instagram", placeholder: "ex: 123456...", description: "Configuração de Login for Business com instagram_manage_messages." },
+    ],
+  },
+  {
     id: "asaas",
     label: "Asaas (Master)",
     category: "pagamentos",
