@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
 import { callLLM } from "../_shared/llm-fallback.ts";
+import { recordInboxMessage } from "../_shared/inbox.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -174,9 +175,32 @@ serve(async (req) => {
         if (error) console.error("Error storing message:", error);
         console.log(`Received ${message.type} from ${message.from}: ${incomingData.content}`);
 
+        // ── Camada canonica (conversations/messages + lead CRM automatico) ──
+        // Dual-write: whatsapp_messages continua pra status de entrega; o
+        // inbox unificado, CRM e workspace do cliente leem conversations.
+        let aiEnabled = true;
+        if (ownerUserId) {
+          const inboxRes = await recordInboxMessage({
+            supabase,
+            ownerUserId,
+            channel: "whatsapp",
+            direction: "inbound",
+            contactPhone: message.from,
+            contactName: contactInfo?.profile?.name || null,
+            content: incomingData.content,
+            contentType: message.type === "text" ? "text" : message.type,
+            externalId: message.id,
+          });
+          aiEnabled = inboxRes.aiEnabled;
+        }
+
         // ── Auto-reply via Managed Session Agent ──
-        if (ownerUserId && incomingData.content && message.type === "text") {
+        // Human takeover: se ai_enabled=false na conversa, humano assumiu —
+        // agente fica em silencio.
+        if (ownerUserId && incomingData.content && message.type === "text" && aiEnabled) {
           handleAgentReply(supabase, ownerUserId, message.from, phoneNumberId, incomingData.content);
+        } else if (!aiEnabled) {
+          console.log(`[auto-reply] pausado (human takeover) contact=${message.from}`);
         }
       }
 
@@ -328,6 +352,15 @@ ${instructions ? `Instruções: ${instructions}\n` : ""}Responda sempre em portu
             status: "sent",
             phone_number_id: usedPhoneId,
             user_id: ownerUserId,
+          });
+          // Camada canonica: resposta do agente entra na conversa
+          await recordInboxMessage({
+            supabase,
+            ownerUserId,
+            channel: "whatsapp",
+            direction: "outbound",
+            contactPhone: contactNumber,
+            content: replyText,
           });
           console.log(`Agent replied to ${contactNumber}: ${replyText.substring(0, 80)}...`);
         }

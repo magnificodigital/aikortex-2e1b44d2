@@ -1,160 +1,184 @@
+/**
+ * AikortexMessages — inbox omnichannel da agencia (Bloco 1, camada canonica).
+ *
+ * Le conversations/messages (NAO whatsapp_messages — aquela e' so' log de
+ * entrega). Realtime via postgres_changes. Human takeover: switch "IA
+ * responde" por conversa (ai_enabled) — desligou, o webhook para de chamar
+ * o agente e o humano assume.
+ */
 import { fnUrl } from "@/lib/supabase-url";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import ConversationList, { Conversation } from "@/components/messages/ConversationList";
 import ChatArea, { ChatMessage } from "@/components/messages/ChatArea";
 import ContactPanel, { ContactInfo } from "@/components/messages/ContactPanel";
+import { Switch } from "@/components/ui/switch";
+import { Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const WHATSAPP_SEND_URL = fnUrl("whatsapp-send");
 
+interface ConvRow {
+  id: string;
+  contact_name: string | null;
+  contact_phone: string | null;
+  channel: string;
+  status: string;
+  unread_count: number;
+  last_message_at: string | null;
+  last_message_preview: string | null;
+  ai_enabled: boolean;
+  crm_contact_id: string | null;
+}
+
+function toConversation(r: ConvRow): Conversation {
+  const name = r.contact_name || r.contact_phone || "Contato";
+  return {
+    id: r.id,
+    contactName: name,
+    initials: name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase(),
+    lastMessage: r.last_message_preview?.slice(0, 50) || "—",
+    time: r.last_message_at ? new Date(r.last_message_at).toLocaleDateString("pt-BR") : "",
+    unread: r.unread_count,
+    online: false,
+    channel: (r.channel as Conversation["channel"]) || "whatsapp",
+    inbox: r.channel === "whatsapp" ? "WhatsApp Business" : r.channel,
+    status: r.status,
+  };
+}
+
 const AikortexMessages = () => {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [rows, setRows] = useState<ConvRow[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [contact, setContact] = useState<ContactInfo | null>(null);
   const [selectedConv, setSelectedConv] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("mine");
+  const [activeTab, setActiveTab] = useState("open");
   const [loading, setLoading] = useState(true);
+  const selectedRef = useRef<string | null>(null);
+  useEffect(() => { selectedRef.current = selectedConv; }, [selectedConv]);
 
-// Carrega lista de conversas agrupadas por número
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("whatsapp_messages")
-        .select("id, from_number, contact_name, content, direction, status, created_at, phone_number_id")
-        .order("created_at", { ascending: false });
-
-      if (cancelled || error || !data) { setLoading(false); return; }
-
-      // Agrupar por número de contato (from_number quando inbound)
-      const grouped = new Map<string, any[]>();
-      for (const msg of data) {
-        const key = msg.direction === "inbound" ? msg.from_number : (msg.from_number || "unknown");
-        if (!grouped.has(key)) grouped.set(key, []);
-        grouped.get(key)!.push(msg);
-      }
-
-      const convList: Conversation[] = Array.from(grouped.entries()).map(([number, msgs]) => {
-        const latest = msgs[0];
-        const inbound = msgs.find(m => m.direction === "inbound");
-        const name = inbound?.contact_name || number;
-        const initials = name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
-        const unread = msgs.filter(m => m.direction === "inbound" && m.status !== "read").length;
-        return {
-          id: number,
-          contactName: name,
-          initials,
-          lastMessage: latest.content?.slice(0, 50) || "—",
-          time: new Date(latest.created_at).toLocaleDateString("pt-BR"),
-          unread,
-          online: false,
-          channel: "whatsapp" as const,
-          inbox: "WhatsApp Business",
-        };
-      });
-
-      if (!cancelled) {
-        setConversations(convList);
-        if (convList.length > 0 && !selectedConv) setSelectedConv(convList[0].id);
-        setLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
+  const loadConversations = useCallback(async () => {
+    const { data, error } = await (supabase.from("conversations" as any) as any)
+      .select("id, contact_name, contact_phone, channel, status, unread_count, last_message_at, last_message_preview, ai_enabled, crm_contact_id")
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .limit(200);
+    if (!error && data) setRows(data as ConvRow[]);
+    setLoading(false);
   }, []);
 
-  // Carrega mensagens da conversa selecionada
+  const loadMessages = useCallback(async (convId: string) => {
+    const { data } = await (supabase.from("messages" as any) as any)
+      .select("id, role, content, created_at")
+      .eq("conversation_id", convId)
+      .order("created_at", { ascending: true })
+      .limit(500);
+    setMessages(((data as any[]) ?? []).map((m) => ({
+      id: m.id,
+      sender: m.role === "consumer" ? "contact" : "bot",
+      senderName: m.role === "consumer" ? "" : "Agente",
+      text: m.content,
+      time: new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    })));
+  }, []);
+
+  // ── Carga inicial + realtime ──
+  useEffect(() => {
+    loadConversations();
+
+    const channel = supabase
+      .channel("inbox-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {
+        loadConversations();
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload: any) => {
+        const m = payload.new;
+        if (m?.conversation_id && m.conversation_id === selectedRef.current) {
+          setMessages((prev) => {
+            if (prev.some((p) => p.id === m.id)) return prev;
+            return [...prev, {
+              id: m.id,
+              sender: m.role === "consumer" ? "contact" : "bot",
+              senderName: m.role === "consumer" ? "" : "Agente",
+              text: m.content,
+              time: new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+            }];
+          });
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [loadConversations]);
+
+  // ── Selecao: carrega mensagens + zera nao-lidas ──
   useEffect(() => {
     if (!selectedConv) return;
-    let cancelled = false;
-    const load = async () => {
-      const { data } = await supabase
-        .from("whatsapp_messages")
-        .select("id, from_number, contact_name, content, direction, status, created_at")
-        .eq("from_number", selectedConv)
-        .order("created_at", { ascending: true });
+    loadMessages(selectedConv);
+    (supabase.from("conversations" as any) as any)
+      .update({ unread_count: 0 })
+      .eq("id", selectedConv)
+      .then(() => {
+        setRows((prev) => prev.map((r) => r.id === selectedConv ? { ...r, unread_count: 0 } : r));
+      });
+  }, [selectedConv, loadMessages]);
 
-      if (!data || cancelled) return;
+  // Seleciona a primeira quando a lista carrega
+  useEffect(() => {
+    if (!selectedConv && rows.length > 0) setSelectedConv(rows[0].id);
+  }, [rows, selectedConv]);
 
-      const conv = conversations.find(c => c.id === selectedConv);
-      setContact(conv ? {
-        id: conv.id,
-        name: conv.contactName,
-        initials: conv.initials,
-        email: "—",
-        phone: selectedConv,
-        previousConversations: 0,
-      } : null);
-
-      setMessages(data.map(m => ({
-        id: m.id,
-        sender: m.direction === "inbound" ? "contact" : "bot",
-        senderName: m.direction === "outbound" ? "Agente" : m.contact_name || m.from_number,
-        text: m.content,
-        time: new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-        status: (m.status as ChatMessage["status"]) || undefined,
-      })));
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [selectedConv, conversations]);
+  const selectedRow = rows.find((r) => r.id === selectedConv) || null;
+  const conversations = rows.map(toConversation);
+  const conversation = conversations.find((c) => c.id === selectedConv) || null;
+  const contact: ContactInfo | null = selectedRow ? {
+    id: selectedRow.id,
+    name: selectedRow.contact_name || selectedRow.contact_phone || "Contato",
+    initials: (selectedRow.contact_name || "C").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase(),
+    email: "—",
+    phone: selectedRow.contact_phone || "—",
+    previousConversations: 0,
+  } : null;
 
   const handleSend = async (text: string) => {
-    if (!text.trim() || !selectedConv) return;
-
-    const optimisticId = `send-${Date.now()}`;
-    const now = new Date();
-
-    setMessages(prev => [...prev, {
-      id: optimisticId,
-      sender: "user",
-      senderName: "Agente",
-      text: text.trim(),
-      time: now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-      status: "sent",
-    }]);
+    if (!text.trim() || !selectedRow?.contact_phone) return;
+    // Humano respondeu manualmente → assume a conversa (pausa a IA), igual
+    // Chatwoot. Religa no switch quando quiser devolver pro agente.
+    if (selectedRow.ai_enabled) await toggleAi(false, { silent: true });
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        toast.error("Sessão expirada. Faça login novamente.");
-        setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, status: "failed" } : m));
-        return;
-      }
-
+      if (!session?.access_token) { toast.error("Sessão expirada."); return; }
       const resp = await fetch(WHATSAPP_SEND_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          to: selectedConv,
-          type: "text",
-          message: text.trim(),
-        }),
+        body: JSON.stringify({ to: selectedRow.contact_phone, type: "text", message: text.trim() }),
       });
-
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Erro ao enviar" }));
         toast.error(err.error || "Erro ao enviar mensagem");
-        setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, status: "failed" } : m));
-        return;
       }
-
-      setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, status: "delivered" } : m));
-    } catch (err) {
+      // A mensagem chega via realtime (whatsapp-send grava em messages).
+    } catch {
       toast.error("Sem conexão com o servidor.");
-      setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, status: "failed" } : m));
     }
   };
 
-  const conversation = conversations.find(c => c.id === selectedConv) || null;
+  const toggleAi = async (enabled: boolean, opts?: { silent?: boolean }) => {
+    if (!selectedConv) return;
+    const { error } = await (supabase.from("conversations" as any) as any)
+      .update({ ai_enabled: enabled })
+      .eq("id", selectedConv);
+    if (error) { toast.error("Não consegui atualizar"); return; }
+    setRows((prev) => prev.map((r) => r.id === selectedConv ? { ...r, ai_enabled: enabled } : r));
+    if (!opts?.silent) {
+      toast.success(enabled ? "Agente de IA reativado nesta conversa" : "Você assumiu a conversa — IA pausada");
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -166,7 +190,7 @@ const AikortexMessages = () => {
           </div>
         ) : conversations.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground p-8 text-center">
-            Nenhuma conversa ainda. As mensagens do WhatsApp aparecerão aqui automaticamente.
+            Nenhuma conversa ainda. As mensagens dos seus canais aparecerão aqui automaticamente.
           </div>
         ) : (
           <>
@@ -179,7 +203,22 @@ const AikortexMessages = () => {
               activeTab={activeTab}
               onTabChange={setActiveTab}
             />
-            <ChatArea conversation={conversation} messages={messages} onSend={handleSend} />
+            <div className="flex-1 flex flex-col min-w-0">
+              {selectedRow && (
+                <div className="flex items-center justify-between gap-3 border-b border-border bg-card/60 px-4 py-2">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Bot className={`w-4 h-4 ${selectedRow.ai_enabled ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className={selectedRow.ai_enabled ? "text-foreground" : "text-muted-foreground"}>
+                      {selectedRow.ai_enabled
+                        ? "Agente de IA respondendo automaticamente"
+                        : "Você assumiu — IA pausada nesta conversa"}
+                    </span>
+                  </div>
+                  <Switch checked={selectedRow.ai_enabled} onCheckedChange={(v) => toggleAi(v)} />
+                </div>
+              )}
+              <ChatArea conversation={conversation} messages={messages} onSend={handleSend} />
+            </div>
             <ContactPanel contact={contact} />
           </>
         )}

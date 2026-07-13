@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { recordInboxMessage } from "../_shared/inbox.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -170,6 +171,20 @@ serve(async (req) => {
     } catch (dbErr) {
       console.error("Error storing sent message:", dbErr);
     }
+
+    // Camada canonica do inbox (conversations/messages) — outbound manual.
+    // createCrmLead=false: envio ativo pra numero novo nao vira lead sozinho.
+    await recordInboxMessage({
+      supabase,
+      ownerUserId: user.id,
+      channel: "whatsapp",
+      direction: "outbound",
+      contactPhone: to,
+      content: message || template?.name || "[mídia]",
+      contentType: type === "text" ? "text" : type,
+      externalId: data.messages?.[0]?.id || null,
+      createCrmLead: false,
+    });
 
     return new Response(JSON.stringify({ success: true, message_id: data.messages?.[0]?.id, data }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

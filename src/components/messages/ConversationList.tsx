@@ -20,6 +20,8 @@ export interface Conversation {
   labels?: { name: string; color: string }[];
   inbox: string;
   priority?: "urgent" | "high" | "medium" | "low";
+  /** Status da conversa (open | resolved | ...) — usado nas tabs. */
+  status?: string;
 }
 
 interface ConversationListProps {
@@ -49,9 +51,17 @@ const ConversationList = ({
   activeTab,
   onTabChange,
 }: ConversationListProps) => {
-  const filtered = conversations.filter((c) =>
-    c.contactName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Contadores REAIS (antes eram numeros hardcoded no JSX).
+  const openCount = conversations.filter((c) => (c.status ?? "open") === "open").length;
+  const unreadCount = conversations.filter((c) => c.unread > 0).length;
+
+  const filtered = conversations
+    .filter((c) => c.contactName.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter((c) => {
+      if (activeTab === "unread") return c.unread > 0;
+      if (activeTab === "open") return (c.status ?? "open") === "open";
+      return true;
+    });
 
   return (
     <div className="w-[340px] min-w-[300px] border-r border-border bg-card flex flex-col h-full">
@@ -70,14 +80,14 @@ const ConversationList = ({
         </div>
         <Tabs value={activeTab} onValueChange={onTabChange}>
           <TabsList className="w-full h-8">
-            <TabsTrigger value="mine" className="flex-1 text-[11px] h-7 gap-1">
-              Minhas <Badge variant="secondary" className="h-4 px-1 text-[10px]">11</Badge>
+            <TabsTrigger value="open" className="flex-1 text-[11px] h-7 gap-1">
+              Abertas <Badge variant="secondary" className="h-4 px-1 text-[10px]">{openCount}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="unassigned" className="flex-1 text-[11px] h-7 gap-1">
-              Não atribuídas <Badge variant="secondary" className="h-4 px-1 text-[10px]">6</Badge>
+            <TabsTrigger value="unread" className="flex-1 text-[11px] h-7 gap-1">
+              Não lidas <Badge variant="secondary" className="h-4 px-1 text-[10px]">{unreadCount}</Badge>
             </TabsTrigger>
             <TabsTrigger value="all" className="flex-1 text-[11px] h-7 gap-1">
-              Todas <Badge variant="secondary" className="h-4 px-1 text-[10px]">19</Badge>
+              Todas <Badge variant="secondary" className="h-4 px-1 text-[10px]">{conversations.length}</Badge>
             </TabsTrigger>
           </TabsList>
         </Tabs>
