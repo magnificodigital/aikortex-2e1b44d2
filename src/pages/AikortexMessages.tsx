@@ -7,12 +7,14 @@
  * o agente e o humano assume.
  */
 import { fnUrl } from "@/lib/supabase-url";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
 import ConversationList, { Conversation } from "@/components/messages/ConversationList";
 import ChatArea, { ChatMessage } from "@/components/messages/ChatArea";
 import ContactPanel, { ContactInfo } from "@/components/messages/ContactPanel";
+import MessagesSidebar, { InboxFilter } from "@/components/messages/MessagesSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -30,6 +32,9 @@ interface ConvRow {
   ai_enabled: boolean;
   crm_contact_id: string | null;
   tags: string[] | null;
+  created_at: string | null;
+  last_message_direction: string | null;
+  metadata: Record<string, any> | null;
 }
 
 /** role da tabela messages → shape do ChatMessage. */
@@ -72,6 +77,8 @@ function toConversation(r: ConvRow): Conversation {
     inbox: r.channel === "whatsapp" ? "WhatsApp Business" : r.channel,
     status: r.status,
     labels: (r.tags ?? []).map((t) => ({ name: t, color: "bg-primary" })),
+    lastOutgoing: r.last_message_direction === "outbound",
+    createdAgo: relativeTime(r.created_at),
   };
 }
 
@@ -89,12 +96,22 @@ const AikortexMessages = () => {
   const [activeTab, setActiveTab] = useState("open");
   const [loading, setLoading] = useState(true);
   const [crmLead, setCrmLead] = useState<{ stage_slug: string | null; temperature: string | null; company: string | null; email: string | null } | null>(null);
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>({ view: "all", channel: null, tag: null });
+  const [searchParams] = useSearchParams();
   const selectedRef = useRef<string | null>(null);
   useEffect(() => { selectedRef.current = selectedConv; }, [selectedConv]);
 
+  // Deep-link: /aikortex/messages?conv=<id> abre direto a conversa
+  // (link do botao compartilhar).
+  useEffect(() => {
+    const convParam = searchParams.get("conv");
+    if (convParam) setSelectedConv(convParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const loadConversations = useCallback(async () => {
     const { data, error } = await (supabase.from("conversations" as any) as any)
-      .select("id, contact_name, contact_phone, channel, status, unread_count, last_message_at, last_message_preview, ai_enabled, crm_contact_id, tags")
+      .select("id, contact_name, contact_phone, channel, status, unread_count, last_message_at, last_message_preview, ai_enabled, crm_contact_id, tags, created_at, last_message_direction, metadata")
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
     if (error) {
@@ -170,8 +187,62 @@ const AikortexMessages = () => {
   }, [rows, selectedConv]);
 
   const selectedRow = rows.find((r) => r.id === selectedConv) || null;
-  const conversations = rows.map(toConversation);
+
+  // Filtros do sub-sidebar (canal / etiqueta / nao atendidas) — REAIS.
+  const filteredRows = rows.filter((r) => {
+    if (inboxFilter.channel && r.channel !== inboxFilter.channel) return false;
+    if (inboxFilter.tag && !(r.tags ?? []).includes(inboxFilter.tag)) return false;
+    if (inboxFilter.view === "unattended" && r.unread_count === 0) return false;
+    return true;
+  });
+  const conversations = filteredRows.map(toConversation);
   const conversation = conversations.find((c) => c.id === selectedConv) || null;
+
+  // Etiquetas agregadas (viram filtros no sub-sidebar)
+  const allTags = useMemo(
+    () => Array.from(new Set(rows.flatMap((r) => r.tags ?? []))).sort(),
+    [rows],
+  );
+
+  const toggleMute = async () => {
+    if (!selectedRow) return;
+    const next = { ...(selectedRow.metadata ?? {}), muted: !selectedRow.metadata?.muted };
+    const { error } = await (supabase.from("conversations" as any) as any)
+      .update({ metadata: next })
+      .eq("id", selectedRow.id);
+    if (error) { toast.error("Não consegui atualizar"); return; }
+    setRows((prev) => prev.map((r) => r.id === selectedRow.id ? { ...r, metadata: next } : r));
+    toast.success(next.muted ? "Conversa silenciada" : "Notificações reativadas");
+  };
+
+  const shareConversation = () => {
+    if (!selectedConv) return;
+    const url = `${window.location.origin}/aikortex/messages?conv=${selectedConv}`;
+    navigator.clipboard.writeText(url)
+      .then(() => toast.success("Link da conversa copiado"))
+      .catch(() => toast.error("Não consegui copiar"));
+  };
+
+  const setStatus = async (status: "open" | "waiting_client" | "resolved") => {
+    if (!selectedRow) return;
+    const { error } = await (supabase.from("conversations" as any) as any)
+      .update({ status })
+      .eq("id", selectedRow.id);
+    if (error) { toast.error("Não consegui atualizar o status"); return; }
+    setRows((prev) => prev.map((r) => r.id === selectedRow.id ? { ...r, status } : r));
+    const label = status === "resolved" ? "resolvida" : status === "waiting_client" ? "aguardando cliente" : "aberta";
+    logActivity(selectedRow.id, `Conversa marcada como ${label}`);
+    toast.success(`Status: ${label}`);
+  };
+
+  // Contexto do Copilot: ultimas 10 mensagens em texto (sem notas internas)
+  const copilotContext = useMemo(() => {
+    return messages
+      .filter((m) => !m.isPrivate && m.sender !== "system")
+      .slice(-10)
+      .map((m) => `${m.sender === "contact" ? "Cliente" : "Atendente"}: ${m.text}`)
+      .join("\n");
+  }, [messages]);
   const contact: ContactInfo | null = selectedRow ? {
     id: selectedRow.id,
     name: selectedRow.contact_name || selectedRow.contact_phone || "Contato",
@@ -287,8 +358,17 @@ const AikortexMessages = () => {
           </div>
         ) : (
           // Estrutura completa SEMPRE — mesmo sem conversas, o user ve as
-          // 3 colunas com empty states (nao um texto solto no vazio).
+          // 4 colunas com empty states (nao um texto solto no vazio).
           <>
+            <MessagesSidebar
+              filter={inboxFilter}
+              onFilterChange={setInboxFilter}
+              tags={allTags}
+              counts={{
+                all: rows.length,
+                unattended: rows.filter((r) => r.unread_count > 0).length,
+              }}
+            />
             <ConversationList
               conversations={conversations}
               selectedId={selectedConv || ""}
@@ -309,8 +389,20 @@ const AikortexMessages = () => {
               onSuggestReply={selectedRow ? suggestReply : undefined}
               tags={selectedRow?.tags ?? []}
               onTagsChange={selectedRow ? updateTags : undefined}
+              muted={!!selectedRow?.metadata?.muted}
+              onToggleMute={selectedRow ? toggleMute : undefined}
+              onShare={selectedRow ? shareConversation : undefined}
+              onSetStatus={selectedRow ? setStatus : undefined}
             />
-            <ContactPanel contact={contact} />
+            <ContactPanel
+              contact={contact}
+              copilotContext={copilotContext}
+              conversationInfo={selectedRow ? {
+                channel: selectedRow.channel,
+                createdAt: selectedRow.created_at,
+                status: selectedRow.status,
+              } : undefined}
+            />
           </>
         )}
       </div>

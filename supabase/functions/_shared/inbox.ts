@@ -115,6 +115,7 @@ export async function recordInboxMessage(input: RecordMessageInput): Promise<Rec
           contact_phone: contactPhone,
           last_message_at: now,
           last_message_preview: preview,
+          last_message_direction: direction,
           unread_count: direction === "inbound" ? 1 : 0,
           status: "open",
           crm_contact_id: crmContactId,
@@ -131,6 +132,7 @@ export async function recordInboxMessage(input: RecordMessageInput): Promise<Rec
       const updates: Record<string, unknown> = {
         last_message_at: now,
         last_message_preview: preview,
+        last_message_direction: direction,
         updated_at: now,
         status: "open",
       };

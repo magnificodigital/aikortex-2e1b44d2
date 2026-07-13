@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Mail, Phone, MapPin, Globe, Clock, Calendar, Building, Copy, MessageSquare, Flame, ArrowUpRight, X, Plus } from "lucide-react";
+import { Mail, Phone, MapPin, Globe, Clock, Calendar, Building, Copy, MessageSquare, Flame, ArrowUpRight, X, Plus, Sparkles, Loader2, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { fnUrl } from "@/lib/supabase-url";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,9 +47,14 @@ interface ContactPanelProps {
   /** Etiquetas da conversa (conversations.tags) + editor. */
   tags?: string[];
   onTagsChange?: (tags: string[]) => void;
+  /** Contexto da conversa pro Copilot (Stark) — ultimas mensagens em texto. */
+  copilotContext?: string;
+  /** Infos da conversa (acordeao "Informações da conversa"). */
+  conversationInfo?: { channel: string; createdAt: string | null; status: string };
 }
 
-const ContactPanel = ({ contact, tags = [], onTagsChange }: ContactPanelProps) => {
+const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, conversationInfo }: ContactPanelProps) => {
+  const [tab, setTab] = useState<"contact" | "copilot">("contact");
   // Coluna sempre presente — placeholder quando nada selecionado, pra
   // estrutura da tela nao "sumir" no estado vazio.
   if (!contact) {
@@ -68,9 +75,33 @@ const ContactPanel = ({ contact, tags = [], onTagsChange }: ContactPanelProps) =
 
   return (
     <div className="w-[300px] min-w-[260px] border-l border-border bg-card flex flex-col h-full overflow-hidden">
-      <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contato</span>
+      {/* Tabs Contato | Copilot (clone Chatwoot — Copilot = Stark) */}
+      <div className="h-14 shrink-0 px-3 flex items-center border-b border-border">
+        <div className="flex w-full bg-muted/50 rounded-lg p-0.5">
+          <button
+            onClick={() => setTab("contact")}
+            className={cn(
+              "flex-1 h-8 rounded-md text-xs font-medium transition",
+              tab === "contact" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Contato
+          </button>
+          <button
+            onClick={() => setTab("copilot")}
+            className={cn(
+              "flex-1 h-8 rounded-md text-xs font-medium transition flex items-center justify-center gap-1",
+              tab === "copilot" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Sparkles className="w-3 h-3" /> Copilot
+          </button>
+        </div>
       </div>
+
+      {tab === "copilot" ? (
+        <CopilotTab context={copilotContext} />
+      ) : (
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
               {/* Profile Header */}
@@ -186,8 +217,112 @@ const ContactPanel = ({ contact, tags = [], onTagsChange }: ContactPanelProps) =
                 </>
               )}
 
+              {/* Informações da conversa */}
+              {conversationInfo && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Informações da conversa</p>
+                    <div className="space-y-1.5 text-[11px]">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Canal</span><span className="capitalize">{conversationInfo.channel}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Status</span><span className="capitalize">{conversationInfo.status}</span></div>
+                      {conversationInfo.createdAt && (
+                        <div className="flex justify-between"><span className="text-muted-foreground">Criada em</span><span>{new Date(conversationInfo.createdAt).toLocaleDateString("pt-BR")}</span></div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </ScrollArea>
+      )}
+    </div>
+  );
+};
+
+/** Copilot = Stark analisando a conversa. Usa a edge stark-chat (mesma do
+ *  modo texto do Stark) com o contexto das ultimas mensagens embutido. */
+const CopilotTab = ({ context }: { context?: string }) => {
+  const [question, setQuestion] = useState("");
+  const [thread, setThread] = useState<{ q: string; a: string }[]>([]);
+  const [asking, setAsking] = useState(false);
+
+  const ask = async () => {
+    const q = question.trim();
+    if (!q || asking) return;
+    setAsking(true);
+    setQuestion("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) { toast.error("Sessão expirada"); return; }
+      const text = context
+        ? `${q}\n\n[Contexto — conversa em andamento no inbox]:\n${context}`
+        : q;
+      const resp = await fetch(fnUrl("stark-chat"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ text, history: [] }),
+      });
+      const j = await resp.json().catch(() => ({}));
+      if (!resp.ok) { toast.error(j?.message || "Copilot indisponível"); return; }
+      setThread((prev) => [...prev, { q, a: j.reply || "—" }]);
+    } catch {
+      toast.error("Sem conexão.");
+    } finally {
+      setAsking(false);
+    }
+  };
+
+  const SUGGESTIONS = [
+    "Resuma esta conversa",
+    "Qual o próximo passo com esse lead?",
+    "O cliente parece satisfeito?",
+  ];
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      <ScrollArea className="flex-1">
+        <div className="p-3 space-y-3">
+          {thread.length === 0 && (
+            <div className="space-y-2 pt-4">
+              <p className="text-[11px] text-muted-foreground text-center px-4">
+                Pergunte ao Stark sobre esta conversa — ele vê as últimas mensagens.
+              </p>
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setQuestion(s)}
+                  className="w-full text-left text-[11px] px-3 py-2 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition text-muted-foreground hover:text-foreground"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+          {thread.map((t, i) => (
+            <div key={i} className="space-y-1.5">
+              <p className="text-[11px] font-medium text-foreground bg-accent rounded-lg px-3 py-1.5">{t.q}</p>
+              <p className="text-[11px] text-muted-foreground whitespace-pre-wrap px-1">{t.a}</p>
+            </div>
+          ))}
+          {asking && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground mx-auto" />}
+        </div>
+      </ScrollArea>
+      <div className="p-2.5 border-t border-border flex items-center gap-1.5">
+        <Input
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") ask(); }}
+          placeholder="Pergunte ao Stark…"
+          className="h-8 text-xs"
+        />
+        <Button size="icon" className="h-8 w-8 shrink-0" onClick={ask} disabled={!question.trim() || asking}>
+          <Send className="w-3.5 h-3.5" />
+        </Button>
+      </div>
     </div>
   );
 };

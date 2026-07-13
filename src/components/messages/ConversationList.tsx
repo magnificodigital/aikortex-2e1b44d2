@@ -29,6 +29,10 @@ export interface Conversation {
   priority?: "urgent" | "high" | "medium" | "low";
   /** Status da conversa (open | resolved | ...) — usado nas tabs. */
   status?: string;
+  /** Ultima mensagem foi nossa (↩ no preview, estilo Chatwoot). */
+  lastOutgoing?: boolean;
+  /** Idade da conversa ("3mo") — mostrada junto do tempo da ultima msg. */
+  createdAgo?: string;
 }
 
 interface ConversationListProps {
@@ -134,7 +138,7 @@ const ConversationList = ({
                 >
 
                   {/* Avatar com badge do canal */}
-                  <div className="relative shrink-0">
+                  <div className="relative shrink-0 self-start mt-0.5">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="text-[11px] font-semibold bg-muted text-foreground/70">
                         {conv.initials.slice(0, 2)}
@@ -150,21 +154,25 @@ const ConversationList = ({
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className={cn(
-                        "text-sm truncate",
-                        conv.unread > 0 ? "font-semibold text-foreground" : "font-medium text-foreground/90",
-                      )}>
-                        {conv.contactName}
-                      </p>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{conv.time}</span>
+                    {/* Linha do inbox (canal) + tempo "criada • ultima" */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-muted-foreground truncate">{conv.inbox}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {conv.createdAgo ? `${conv.createdAgo} • ` : ""}{conv.time}
+                      </span>
                     </div>
+                    <p className={cn(
+                      "text-sm truncate mt-0.5",
+                      conv.unread > 0 ? "font-semibold text-foreground" : "font-medium text-foreground/90",
+                    )}>
+                      {conv.contactName}
+                    </p>
                     <div className="flex items-center justify-between gap-2 mt-0.5">
                       <p className={cn(
                         "text-xs truncate",
                         conv.unread > 0 ? "text-foreground/80" : "text-muted-foreground",
                       )}>
-                        {conv.lastMessage}
+                        {conv.lastOutgoing ? "↩ " : ""}{conv.lastMessage}
                       </p>
                       {conv.unread > 0 && (
                         <span className="shrink-0 h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold grid place-items-center">
