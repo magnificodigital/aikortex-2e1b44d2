@@ -548,7 +548,7 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
 
   const orbStateForVisual: "idle" | "connecting" | "listening" | "speaking" | "error" = useLiveKit
     ? (
-        liveKitOrbState === "recording" || liveKitOrbState === "listening" ? "listening"
+        liveKitOrbState === "listening" ? "listening"
         : liveKitOrbState === "processing" ? "connecting"
         : liveKitOrbState === "speaking" ? "speaking"
         : liveKitOrbState === "error" ? "error"
