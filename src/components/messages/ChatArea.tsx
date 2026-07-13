@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Send, CheckCheck, Check, AlertTriangle, Bot, User,
   CheckCircle2, RotateCcw, Sparkles, Loader2, StickyNote, Lock,
+  Tag, X, Plus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,9 @@ interface ChatAreaProps {
   onSendNote?: (text: string) => void;
   /** AI Assist: pede rascunho de resposta; retorna o texto ou null. */
   onSuggestReply?: () => Promise<string | null>;
+  /** Etiquetas da conversa — chips no topo do chat (estilo WhatsApp Web). */
+  tags?: string[];
+  onTagsChange?: (tags: string[]) => void;
 }
 
 /** Toggle IA/Humano — wired no banco via onToggleAi (era fake antes). */
@@ -59,11 +63,20 @@ const STATUS_LABELS: Record<string, string> = {
 
 const ChatArea = ({
   conversation, messages, onSend, aiEnabled = true, onToggleAi,
-  onToggleResolve, onSendNote, onSuggestReply,
+  onToggleResolve, onSendNote, onSuggestReply, tags = [], onTagsChange,
 }: ChatAreaProps) => {
   const [input, setInput] = useState("");
   const [composerMode, setComposerMode] = useState<"reply" | "note">("reply");
   const [suggesting, setSuggesting] = useState(false);
+  const [tagDraft, setTagDraft] = useState("");
+  const [addingTag, setAddingTag] = useState(false);
+
+  const commitTag = () => {
+    const t = tagDraft.trim().toLowerCase();
+    if (t && !tags.includes(t)) onTagsChange?.([...tags, t]);
+    setTagDraft("");
+    setAddingTag(false);
+  };
 
   const isResolved = conversation?.status === "resolved";
 
@@ -154,8 +167,44 @@ const ChatArea = ({
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 bg-muted/20">
+      {/* Etiquetas — strip fina no topo do chat (referencia WhatsApp Web) */}
+      {onTagsChange && (
+        <div className="shrink-0 px-4 py-1.5 border-b border-border bg-card/60 flex items-center gap-1.5 flex-wrap">
+          <Tag className="w-3 h-3 text-muted-foreground shrink-0" />
+          {tags.map((t) => (
+            <span key={t} className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-primary/10 text-primary text-[10px] font-medium">
+              {t}
+              <button onClick={() => onTagsChange(tags.filter((x) => x !== t))} className="hover:text-destructive transition-colors">
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </span>
+          ))}
+          {addingTag ? (
+            <input
+              autoFocus
+              value={tagDraft}
+              onChange={(e) => setTagDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitTag();
+                if (e.key === "Escape") { setTagDraft(""); setAddingTag(false); }
+              }}
+              onBlur={commitTag}
+              placeholder="etiqueta…"
+              className="h-5 w-28 px-2 rounded-full bg-muted text-[10px] outline-none border border-border focus:border-primary/50"
+            />
+          ) : (
+            <button
+              onClick={() => setAddingTag(true)}
+              className="inline-flex items-center gap-0.5 h-5 px-2 rounded-full border border-dashed border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-primary/40 transition"
+            >
+              <Plus className="w-2.5 h-2.5" /> tag
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Messages — fundo com textura de pontos (vibe WhatsApp Web) */}
+      <ScrollArea className="flex-1 bg-muted/20 [background-image:radial-gradient(hsl(var(--muted-foreground)/0.07)_1px,transparent_1px)] [background-size:18px_18px]">
         <div className="px-4 py-5 space-y-1.5 max-w-3xl mx-auto">
           {messages.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
@@ -198,15 +247,15 @@ const ChatArea = ({
             return (
               <div key={msg.id} className={cn("flex", isOutgoing ? "justify-end" : "justify-start", firstOfGroup && "pt-2")}>
                 <div className={cn(
-                  "px-3.5 py-2 text-sm max-w-[72%] shadow-sm",
-                  "rounded-2xl",
+                  "px-3 py-1.5 text-[13.5px] max-w-[68%] shadow-sm rounded-lg",
+                  // "Rabinho" WhatsApp: canto superior reto na 1a msg do grupo
                   isOutgoing
-                    ? cn("bg-primary text-primary-foreground", firstOfGroup && "rounded-tr-md")
-                    : cn("bg-card text-foreground border border-border/60", firstOfGroup && "rounded-tl-md"),
+                    ? cn("bg-primary text-primary-foreground", firstOfGroup && "rounded-tr-none")
+                    : cn("bg-card text-foreground border border-border/50", firstOfGroup && "rounded-tl-none"),
                 )}>
                   <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                   <div className={cn(
-                    "flex items-center justify-end gap-1 mt-0.5 -mb-0.5",
+                    "flex items-center justify-end gap-1 mt-0.5 -mb-0.5 select-none",
                     isOutgoing ? "text-primary-foreground/60" : "text-muted-foreground/70",
                   )}>
                     {msg.sender === "bot" && <Bot className="w-2.5 h-2.5" />}
@@ -246,39 +295,52 @@ const ChatArea = ({
               </button>
             )}
           </div>
-          {onSuggestReply && composerMode === "reply" && (
-            <button
-              onClick={handleSuggest}
-              disabled={suggesting}
-              className="flex items-center gap-1 h-6 px-2.5 rounded-md text-[11px] font-medium text-primary hover:bg-primary/10 transition disabled:opacity-50"
-              title="A IA rascunha uma resposta — você edita antes de enviar"
-            >
-              {suggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-              Sugerir resposta
-            </button>
-          )}
         </div>
         <div className="px-3 py-2 flex items-center gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              composerMode === "note"
-                ? "Nota interna — o cliente NÃO vê…"
-                : aiEnabled ? "Responder (assume a conversa e pausa a IA)…" : "Digite sua resposta…"
-            }
-            className={cn("h-9 text-sm", composerMode === "note" && "border-amber-500/40 bg-amber-500/5")}
-          />
-          <Button
-            size="sm"
-            className={cn("h-9 text-xs gap-1 shrink-0", composerMode === "note" && "bg-amber-600 hover:bg-amber-700 text-white")}
+          {/* Pilula estilo WhatsApp Web: input + varinha de IA dentro */}
+          <div className={cn(
+            "flex-1 flex items-center gap-1 rounded-full border px-4 h-11 transition-colors",
+            composerMode === "note"
+              ? "border-amber-500/40 bg-amber-500/5"
+              : "border-border bg-muted/40 focus-within:border-primary/40",
+          )}>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                composerMode === "note"
+                  ? "Nota interna — o cliente NÃO vê…"
+                  : "Digite sua mensagem…"
+              }
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+            {onSuggestReply && composerMode === "reply" && (
+              <button
+                onClick={handleSuggest}
+                disabled={suggesting}
+                title="A IA rascunha a resposta — você edita antes de enviar"
+                className="shrink-0 text-primary hover:text-primary/80 transition disabled:opacity-50"
+              >
+                {suggesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
+          {/* Botao circular de enviar */}
+          <button
             onClick={handleSend}
             disabled={!input.trim()}
+            title={composerMode === "note" ? "Salvar nota" : "Enviar"}
+            className={cn(
+              "shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition shadow-sm",
+              "disabled:opacity-40 disabled:cursor-not-allowed",
+              composerMode === "note"
+                ? "bg-amber-600 hover:bg-amber-700 text-white"
+                : "bg-primary hover:bg-primary/90 text-primary-foreground",
+            )}
           >
-            {composerMode === "note" ? <StickyNote className="w-3 h-3" /> : <Send className="w-3 h-3" />}
-            {composerMode === "note" ? "Salvar nota" : "Enviar"}
-          </Button>
+            {composerMode === "note" ? <StickyNote className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+          </button>
         </div>
       </div>
     </div>

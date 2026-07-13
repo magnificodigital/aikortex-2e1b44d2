@@ -284,12 +284,10 @@ const AikortexMessages = () => {
               onToggleResolve={selectedRow ? toggleResolve : undefined}
               onSendNote={selectedRow ? sendNote : undefined}
               onSuggestReply={selectedRow ? suggestReply : undefined}
-            />
-            <ContactPanel
-              contact={contact}
               tags={selectedRow?.tags ?? []}
               onTagsChange={selectedRow ? updateTags : undefined}
             />
+            <ContactPanel contact={contact} />
           </>
         )}
       </div>

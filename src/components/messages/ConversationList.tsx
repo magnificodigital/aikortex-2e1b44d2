@@ -126,12 +126,12 @@ const ConversationList = ({
                   key={conv.id}
                   onClick={() => onSelect(conv.id)}
                   className={cn(
-                    "relative w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors",
-                    "hover:bg-accent/50",
-                    selected && "bg-accent",
+                    "w-[calc(100%-12px)] mx-1.5 my-0.5 flex items-center gap-3 px-2.5 py-2.5 text-left transition-colors rounded-xl border",
+                    selected
+                      ? "bg-accent border-primary/40"
+                      : "border-transparent hover:bg-accent/50",
                   )}
                 >
-                  {selected && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-primary" />}
 
                   {/* Avatar com badge do canal */}
                   <div className="relative shrink-0">
