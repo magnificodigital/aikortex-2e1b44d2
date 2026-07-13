@@ -161,6 +161,68 @@
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     letter-spacing: -0.01em;
   }
+
+  /* CTA button — subtle glow, shimmer and lift */
+  .cta-glow-btn {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.92), hsl(var(--secondary) / 0.92));
+    color: hsl(0 0% 100%);
+    border: 1px solid hsl(var(--primary) / 0.45);
+    box-shadow:
+      0 0 22px -4px hsl(var(--primary) / 0.45),
+      0 8px 24px -10px rgba(0,0,0,0.35);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+  }
+
+  .dark .cta-glow-btn {
+    background: linear-gradient(135deg, hsl(217 35% 28% / 0.85), hsl(215 30% 18% / 0.85));
+    border-color: hsl(213 30% 45% / 0.45);
+    box-shadow:
+      0 0 26px -2px hsl(213 35% 45% / 0.5),
+      0 10px 28px -12px rgba(0,0,0,0.55);
+  }
+
+  .cta-glow-btn:hover {
+    transform: translateY(-2px) scale(1.03);
+    filter: brightness(1.08);
+    box-shadow:
+      0 0 34px -2px hsl(var(--primary) / 0.6),
+      0 14px 36px -12px rgba(0,0,0,0.45);
+  }
+
+  .dark .cta-glow-btn:hover {
+    box-shadow:
+      0 0 40px 0 hsl(213 35% 55% / 0.55),
+      0 16px 40px -12px rgba(0,0,0,0.65);
+  }
+
+  .cta-glow-btn::before {
+    content: '';
+    position: absolute;
+    inset: -50%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    transform: translateX(-100%) rotate(25deg);
+    animation: cta-shimmer 3.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .cta-glow-btn:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .cta-glow-btn .arrow-icon {
+    transition: transform 0.25s ease;
+  }
+
+  .cta-glow-btn:hover .arrow-icon {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes cta-shimmer {
+  0% { transform: translateX(-100%) rotate(25deg); }
+  100% { transform: translateX(200%) rotate(25deg); }
 }
 
 /* Animated mesh gradient background for landing page */
