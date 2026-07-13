@@ -1,5 +1,6 @@
-import { Mail, Phone, MapPin, Globe, Clock, Calendar, Building, Copy, MessageSquare, Pencil, Flame, ArrowUpRight } from "lucide-react";
+import { Mail, Phone, MapPin, Globe, Clock, Calendar, Building, Copy, MessageSquare, Flame, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +46,7 @@ const ContactPanel = ({ contact }: ContactPanelProps) => {
 
   return (
     <div className="w-[300px] min-w-[260px] border-l border-border bg-card flex flex-col h-full overflow-hidden">
-      <div className="border-b border-border px-3 py-2">
+      <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contato</span>
       </div>
       <ScrollArea className="flex-1">
@@ -58,15 +59,7 @@ const ContactPanel = ({ contact }: ContactPanelProps) => {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="flex items-center gap-1.5 justify-center">
-                    <h3 className="text-sm font-bold text-foreground">{contact.name}</h3>
-                    <Button variant="ghost" size="icon" className="h-5 w-5">
-                      <Pencil className="w-2.5 h-2.5 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-5 w-5">
-                      <Copy className="w-2.5 h-2.5 text-muted-foreground" />
-                    </Button>
-                  </div>
+                  <h3 className="text-sm font-bold text-foreground">{contact.name}</h3>
                   {contact.company && (
                     <p className="text-[11px] text-muted-foreground mt-0.5">{contact.company}</p>
                   )}
@@ -167,19 +160,30 @@ const ContactPanel = ({ contact }: ContactPanelProps) => {
   );
 };
 
-const InfoRow = ({ icon: Icon, label, value, copyable }: { icon: any; label: string; value: string; copyable?: boolean }) => (
-  <div className="flex items-center gap-2.5">
-    <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-    <div className="flex-1 min-w-0">
-      <p className="text-[10px] text-muted-foreground">{label}</p>
-      <p className="text-[11px] text-foreground truncate">{value}</p>
+const InfoRow = ({ icon: Icon, label, value, copyable }: { icon: any; label: string; value: string; copyable?: boolean }) => {
+  const hasValue = value && value !== "—";
+  return (
+    <div className="flex items-center gap-2.5">
+      <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] text-muted-foreground">{label}</p>
+        <p className="text-[11px] text-foreground truncate">{value}</p>
+      </div>
+      {copyable && hasValue && (
+        <Button
+          variant="ghost" size="icon" className="h-5 w-5 shrink-0"
+          title={`Copiar ${label.toLowerCase()}`}
+          onClick={() => {
+            navigator.clipboard.writeText(value)
+              .then(() => toast.success(`${label} copiado`))
+              .catch(() => toast.error("Não consegui copiar"));
+          }}
+        >
+          <Copy className="w-2.5 h-2.5 text-muted-foreground" />
+        </Button>
+      )}
     </div>
-    {copyable && (
-      <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0">
-        <Copy className="w-2.5 h-2.5 text-muted-foreground" />
-      </Button>
-    )}
-  </div>
-);
+  );
+};
 
 export default ContactPanel;
