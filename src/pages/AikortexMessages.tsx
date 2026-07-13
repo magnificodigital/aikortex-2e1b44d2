@@ -29,6 +29,19 @@ interface ConvRow {
   last_message_preview: string | null;
   ai_enabled: boolean;
   crm_contact_id: string | null;
+  tags: string[] | null;
+}
+
+/** role da tabela messages → shape do ChatMessage. */
+function mapMessage(m: any): ChatMessage {
+  return {
+    id: m.id,
+    sender: m.role === "consumer" ? "contact" : "bot",
+    senderName: m.role === "consumer" ? "" : "Agente",
+    text: m.content,
+    time: new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    isPrivate: m.role === "note",
+  };
 }
 
 function toConversation(r: ConvRow): Conversation {
@@ -60,7 +73,7 @@ const AikortexMessages = () => {
 
   const loadConversations = useCallback(async () => {
     const { data, error } = await (supabase.from("conversations" as any) as any)
-      .select("id, contact_name, contact_phone, channel, status, unread_count, last_message_at, last_message_preview, ai_enabled, crm_contact_id")
+      .select("id, contact_name, contact_phone, channel, status, unread_count, last_message_at, last_message_preview, ai_enabled, crm_contact_id, tags")
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
     if (error) {
@@ -80,13 +93,7 @@ const AikortexMessages = () => {
       .eq("conversation_id", convId)
       .order("created_at", { ascending: true })
       .limit(500);
-    setMessages(((data as any[]) ?? []).map((m) => ({
-      id: m.id,
-      sender: m.role === "consumer" ? "contact" : "bot",
-      senderName: m.role === "consumer" ? "" : "Agente",
-      text: m.content,
-      time: new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-    })));
+    setMessages(((data as any[]) ?? []).map(mapMessage));
   }, []);
 
   // ── Carga inicial + realtime ──
@@ -103,13 +110,7 @@ const AikortexMessages = () => {
         if (m?.conversation_id && m.conversation_id === selectedRef.current) {
           setMessages((prev) => {
             if (prev.some((p) => p.id === m.id)) return prev;
-            return [...prev, {
-              id: m.id,
-              sender: m.role === "consumer" ? "contact" : "bot",
-              senderName: m.role === "consumer" ? "" : "Agente",
-              text: m.content,
-              time: new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-            }];
+            return [...prev, mapMessage(m)];
           });
         }
       })
@@ -191,6 +192,56 @@ const AikortexMessages = () => {
     }
   };
 
+  const toggleResolve = async () => {
+    if (!selectedRow) return;
+    const next = selectedRow.status === "resolved" ? "open" : "resolved";
+    const { error } = await (supabase.from("conversations" as any) as any)
+      .update({ status: next })
+      .eq("id", selectedRow.id);
+    if (error) { toast.error("Não consegui atualizar o status"); return; }
+    setRows((prev) => prev.map((r) => r.id === selectedRow.id ? { ...r, status: next } : r));
+    toast.success(next === "resolved" ? "Conversa resolvida" : "Conversa reaberta");
+  };
+
+  const sendNote = async (text: string) => {
+    if (!selectedConv || !text.trim()) return;
+    const { error } = await (supabase.from("messages" as any) as any)
+      .insert({ conversation_id: selectedConv, role: "note", content: text.trim(), content_type: "text" });
+    if (error) toast.error(`Erro salvando nota: ${error.message}`);
+    // Render chega via realtime (INSERT em messages).
+  };
+
+  const suggestReply = async (): Promise<string | null> => {
+    if (!selectedConv) return null;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) { toast.error("Sessão expirada."); return null; }
+      const resp = await fetch(fnUrl("inbox-suggest-reply"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ conversation_id: selectedConv }),
+      });
+      const j = await resp.json().catch(() => ({}));
+      if (!resp.ok) { toast.error(j?.error || "Não consegui sugerir agora"); return null; }
+      return j.suggestion || null;
+    } catch {
+      toast.error("Sem conexão com o servidor.");
+      return null;
+    }
+  };
+
+  const updateTags = async (tags: string[]) => {
+    if (!selectedConv) return;
+    const { error } = await (supabase.from("conversations" as any) as any)
+      .update({ tags })
+      .eq("id", selectedConv);
+    if (error) { toast.error("Não consegui salvar as etiquetas"); return; }
+    setRows((prev) => prev.map((r) => r.id === selectedConv ? { ...r, tags } : r));
+  };
+
   const toggleAi = async (enabled: boolean, opts?: { silent?: boolean }) => {
     if (!selectedConv) return;
     const { error } = await (supabase.from("conversations" as any) as any)
@@ -230,8 +281,15 @@ const AikortexMessages = () => {
               onSend={handleSend}
               aiEnabled={selectedRow?.ai_enabled ?? true}
               onToggleAi={(v) => toggleAi(v)}
+              onToggleResolve={selectedRow ? toggleResolve : undefined}
+              onSendNote={selectedRow ? sendNote : undefined}
+              onSuggestReply={selectedRow ? suggestReply : undefined}
             />
-            <ContactPanel contact={contact} />
+            <ContactPanel
+              contact={contact}
+              tags={selectedRow?.tags ?? []}
+              onTagsChange={selectedRow ? updateTags : undefined}
+            />
           </>
         )}
       </div>

@@ -1,8 +1,10 @@
-import { Mail, Phone, MapPin, Globe, Clock, Calendar, Building, Copy, MessageSquare, Flame, ArrowUpRight } from "lucide-react";
+import { useState } from "react";
+import { Mail, Phone, MapPin, Globe, Clock, Calendar, Building, Copy, MessageSquare, Flame, ArrowUpRight, X, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -39,9 +41,12 @@ const TEMP_LABEL: Record<string, { label: string; className: string }> = {
 
 interface ContactPanelProps {
   contact: ContactInfo | null;
+  /** Etiquetas da conversa (conversations.tags) + editor. */
+  tags?: string[];
+  onTagsChange?: (tags: string[]) => void;
 }
 
-const ContactPanel = ({ contact }: ContactPanelProps) => {
+const ContactPanel = ({ contact, tags = [], onTagsChange }: ContactPanelProps) => {
   // Coluna sempre presente — placeholder quando nada selecionado, pra
   // estrutura da tela nao "sumir" no estado vazio.
   if (!contact) {
@@ -118,6 +123,14 @@ const ContactPanel = ({ contact }: ContactPanelProps) => {
                       </Link>
                     </Button>
                   </div>
+                </>
+              )}
+
+              {/* Etiquetas da conversa */}
+              {onTagsChange && (
+                <>
+                  <Separator />
+                  <TagsEditor tags={tags} onChange={onTagsChange} />
                 </>
               )}
 
@@ -203,3 +216,49 @@ const InfoRow = ({ icon: Icon, label, value, copyable }: { icon: any; label: str
 };
 
 export default ContactPanel;
+
+/** Editor de etiquetas da conversa — chips com remover + input pra criar. */
+const TagsEditor = ({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) => {
+  const [draft, setDraft] = useState("");
+
+  const add = () => {
+    const t = draft.trim().toLowerCase();
+    if (!t || tags.includes(t)) { setDraft(""); return; }
+    onChange([...tags, t]);
+    setDraft("");
+  };
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Etiquetas</p>
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {tags.map((t) => (
+            <Badge key={t} variant="secondary" className="text-[10px] h-5 gap-1 pr-1">
+              {t}
+              <button
+                onClick={() => onChange(tags.filter((x) => x !== t))}
+                className="hover:text-destructive transition-colors"
+                title="Remover etiqueta"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-1.5">
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          placeholder="Nova etiqueta…"
+          className="h-7 text-[11px]"
+        />
+        <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={add} disabled={!draft.trim()}>
+          <Plus className="w-3 h-3" />
+        </Button>
+      </div>
+    </div>
+  );
+};

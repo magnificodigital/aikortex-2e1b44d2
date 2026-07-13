@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Send, CheckCheck, Check, AlertTriangle, Bot, User,
+  CheckCircle2, RotateCcw, Sparkles, Loader2, StickyNote, Lock,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,12 @@ interface ChatAreaProps {
   /** Estado REAL do agente na conversa (conversations.ai_enabled). */
   aiEnabled?: boolean;
   onToggleAi?: (enabled: boolean) => void;
+  /** Resolver/reabrir a conversa (status open <-> resolved). */
+  onToggleResolve?: () => void;
+  /** Grava nota interna (role 'note' — nunca vai pro cliente). */
+  onSendNote?: (text: string) => void;
+  /** AI Assist: pede rascunho de resposta; retorna o texto ou null. */
+  onSuggestReply?: () => Promise<string | null>;
 }
 
 /** Toggle IA/Humano — wired no banco via onToggleAi (era fake antes). */
@@ -50,13 +57,38 @@ const STATUS_LABELS: Record<string, string> = {
   resolved: "Resolvida", closed: "Fechada",
 };
 
-const ChatArea = ({ conversation, messages, onSend, aiEnabled = true, onToggleAi }: ChatAreaProps) => {
+const ChatArea = ({
+  conversation, messages, onSend, aiEnabled = true, onToggleAi,
+  onToggleResolve, onSendNote, onSuggestReply,
+}: ChatAreaProps) => {
   const [input, setInput] = useState("");
+  const [composerMode, setComposerMode] = useState<"reply" | "note">("reply");
+  const [suggesting, setSuggesting] = useState(false);
+
+  const isResolved = conversation?.status === "resolved";
 
   const handleSend = () => {
     if (!input.trim()) return;
-    onSend(input);
+    if (composerMode === "note") {
+      onSendNote?.(input);
+    } else {
+      onSend(input);
+    }
     setInput("");
+  };
+
+  const handleSuggest = async () => {
+    if (!onSuggestReply || suggesting) return;
+    setSuggesting(true);
+    try {
+      const suggestion = await onSuggestReply();
+      if (suggestion) {
+        setComposerMode("reply");
+        setInput(suggestion);
+      }
+    } finally {
+      setSuggesting(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -105,7 +137,21 @@ const ChatArea = ({ conversation, messages, onSend, aiEnabled = true, onToggleAi
             </p>
           </div>
         </div>
-        {onToggleAi && <AiToggleButton aiEnabled={aiEnabled} onToggle={onToggleAi} />}
+        <div className="flex items-center gap-2">
+          {onToggleAi && <AiToggleButton aiEnabled={aiEnabled} onToggle={onToggleAi} />}
+          {onToggleResolve && (
+            <Button
+              size="sm"
+              variant={isResolved ? "outline" : "default"}
+              className="h-7 text-[11px] gap-1"
+              onClick={onToggleResolve}
+            >
+              {isResolved
+                ? (<><RotateCcw className="w-3 h-3" /> Reabrir</>)
+                : (<><CheckCircle2 className="w-3 h-3" /> Resolver</>)}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -124,6 +170,21 @@ const ChatArea = ({ conversation, messages, onSend, aiEnabled = true, onToggleAi
                   <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full">
                     {msg.text}
                   </span>
+                </div>
+              );
+            }
+
+            // Nota interna: card ambar central com cadeado — visivel so aqui.
+            if (msg.isPrivate) {
+              return (
+                <div key={msg.id} className="flex justify-center py-1.5">
+                  <div className="max-w-[80%] rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2 text-sm text-foreground">
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-600 mb-0.5">
+                      <Lock className="w-2.5 h-2.5" /> Nota interna
+                    </div>
+                    <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                    <p className="text-[10px] text-muted-foreground text-right mt-0.5">{msg.time}</p>
+                  </div>
                 </div>
               );
             }
@@ -159,26 +220,64 @@ const ChatArea = ({ conversation, messages, onSend, aiEnabled = true, onToggleAi
         </div>
       </ScrollArea>
 
-      {/* Composer — so' o que funciona. Nota interna/anexos/audio voltam
-          quando tiverem backend (a aba de nota antiga mandava a "nota" PRO
-          CLIENTE como mensagem normal — removida por seguranca). */}
+      {/* Composer: Responder | Nota interna (role 'note', so' interna) +
+          AI Assist (Erika rascunha, humano edita e envia). */}
       <div className="border-t border-border bg-card">
+        <div className="px-3 pt-2 flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setComposerMode("reply")}
+              className={cn(
+                "flex items-center gap-1 h-6 px-2.5 rounded-md text-[11px] font-medium transition",
+                composerMode === "reply" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Send className="w-3 h-3" /> Responder
+            </button>
+            {onSendNote && (
+              <button
+                onClick={() => setComposerMode("note")}
+                className={cn(
+                  "flex items-center gap-1 h-6 px-2.5 rounded-md text-[11px] font-medium transition",
+                  composerMode === "note" ? "bg-amber-500/15 text-amber-600" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <StickyNote className="w-3 h-3" /> Nota interna
+              </button>
+            )}
+          </div>
+          {onSuggestReply && composerMode === "reply" && (
+            <button
+              onClick={handleSuggest}
+              disabled={suggesting}
+              className="flex items-center gap-1 h-6 px-2.5 rounded-md text-[11px] font-medium text-primary hover:bg-primary/10 transition disabled:opacity-50"
+              title="A IA rascunha uma resposta — você edita antes de enviar"
+            >
+              {suggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              Sugerir resposta
+            </button>
+          )}
+        </div>
         <div className="px-3 py-2 flex items-center gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={aiEnabled ? "Responder (assume a conversa e pausa a IA)…" : "Digite sua resposta…"}
-            className="h-9 text-sm"
+            placeholder={
+              composerMode === "note"
+                ? "Nota interna — o cliente NÃO vê…"
+                : aiEnabled ? "Responder (assume a conversa e pausa a IA)…" : "Digite sua resposta…"
+            }
+            className={cn("h-9 text-sm", composerMode === "note" && "border-amber-500/40 bg-amber-500/5")}
           />
           <Button
             size="sm"
-            className="h-9 text-xs gap-1 shrink-0"
+            className={cn("h-9 text-xs gap-1 shrink-0", composerMode === "note" && "bg-amber-600 hover:bg-amber-700 text-white")}
             onClick={handleSend}
             disabled={!input.trim()}
           >
-            <Send className="w-3 h-3" />
-            Enviar
+            {composerMode === "note" ? <StickyNote className="w-3 h-3" /> : <Send className="w-3 h-3" />}
+            {composerMode === "note" ? "Salvar nota" : "Enviar"}
           </Button>
         </div>
       </div>
