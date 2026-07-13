@@ -34,7 +34,8 @@ const SDK_VERSION = "v21.0";
 
 let sdkLoadingPromise: Promise<void> | null = null;
 
-function loadFacebookSdk(): Promise<void> {
+/** Exportado: reutilizado pelo connect do Instagram (mesmo SDK/app). */
+export function loadFacebookSdk(): Promise<void> {
   if (typeof window === "undefined") return Promise.reject(new Error("SSR"));
   if (window.FB) return Promise.resolve();
   if (sdkLoadingPromise) return sdkLoadingPromise;
