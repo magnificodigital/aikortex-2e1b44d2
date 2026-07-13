@@ -47,6 +47,8 @@ const ClientDetailPage = lazy(() => import("./pages/ClientDetail"));
 const Workspace = lazy(() => import("./pages/Workspace"));
 
 const Pricing = lazy(() => import("./pages/Pricing"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
 const Templates = lazy(() => import("./pages/Templates"));
 
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -87,6 +89,9 @@ const App = () => (
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/pricing" element={<Pricing />} />
+              {/* Paginas legais publicas — exigidas pela analise de app da Meta */}
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
 
               {/* Agency routes */}
               <Route path="/home" element={<AgencyRoute><Home /></AgencyRoute>} />
