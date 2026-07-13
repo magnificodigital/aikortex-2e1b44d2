@@ -96,6 +96,7 @@ const AikortexMessages = () => {
   const [loading, setLoading] = useState(true);
   const [crmLead, setCrmLead] = useState<{ stage_slug: string | null; temperature: string | null; company: string | null; email: string | null } | null>(null);
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>({ view: "all", channel: null, tag: null });
+  const [panelOpen, setPanelOpen] = useState(true);
   const [searchParams] = useSearchParams();
   const selectedRef = useRef<string | null>(null);
   useEffect(() => { selectedRef.current = selectedConv; }, [selectedConv]);
@@ -232,6 +233,66 @@ const AikortexMessages = () => {
     const label = status === "resolved" ? "resolvida" : status === "waiting_client" ? "aguardando cliente" : "aberta";
     logActivity(selectedRow.id, `Conversa marcada como ${label}`);
     toast.success(`Status: ${label}`);
+  };
+
+  // Atendente preenche/corrige dados do contato — salva no lead do CRM
+  // (cria o lead se a conversa ainda nao tiver um) e espelha na conversa.
+  const saveContact = async (patch: { name?: string; email?: string; company?: string }) => {
+    if (!selectedRow) return;
+    try {
+      let leadId = selectedRow.crm_contact_id;
+
+      if (!leadId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: ap } = await (supabase.from("agency_profiles" as any) as any)
+          .select("id").eq("user_id", user?.id).maybeSingle();
+        if (!ap) { toast.error("Sem agência configurada"); return; }
+        const { data: lead, error: leadErr } = await (supabase.from("crm_contacts" as any) as any)
+          .insert({
+            agency_id: ap.id,
+            name: patch.name || selectedRow.contact_name || selectedRow.contact_phone,
+            phone: selectedRow.contact_phone,
+            stage_slug: "new",
+            temperature: "warm",
+            source: selectedRow.channel,
+          })
+          .select("id").single();
+        if (leadErr) { toast.error("Não consegui criar o lead"); return; }
+        leadId = lead.id;
+        await (supabase.from("conversations" as any) as any)
+          .update({ crm_contact_id: leadId }).eq("id", selectedRow.id);
+      }
+
+      const leadPatch: Record<string, string> = {};
+      if (patch.name) leadPatch.name = patch.name;
+      if (patch.email) leadPatch.email = patch.email;
+      if (patch.company) leadPatch.company = patch.company;
+      if (Object.keys(leadPatch).length > 0) {
+        const { error } = await (supabase.from("crm_contacts" as any) as any)
+          .update(leadPatch).eq("id", leadId);
+        if (error) { toast.error(`Erro salvando: ${error.message}`); return; }
+      }
+
+      // Espelha na conversa (nome aparece na lista; email no schema dela)
+      const convPatch: Record<string, unknown> = { crm_contact_id: leadId };
+      if (patch.name) convPatch.contact_name = patch.name;
+      if (patch.email) convPatch.contact_email = patch.email;
+      await (supabase.from("conversations" as any) as any)
+        .update(convPatch).eq("id", selectedRow.id);
+
+      setRows((prev) => prev.map((r) => r.id === selectedRow.id
+        ? { ...r, crm_contact_id: leadId, contact_name: patch.name ?? r.contact_name }
+        : r));
+      setCrmLead((prev) => ({
+        stage_slug: prev?.stage_slug ?? "new",
+        temperature: prev?.temperature ?? "warm",
+        company: patch.company ?? prev?.company ?? null,
+        email: patch.email ?? prev?.email ?? null,
+      }));
+      toast.success("Contato atualizado");
+    } catch (e) {
+      toast.error(`Erro: ${(e as Error).message}`);
+    }
   };
 
   // Contexto do Copilot: ultimas 10 mensagens em texto (sem notas internas)
@@ -388,16 +449,29 @@ const AikortexMessages = () => {
               onToggleMute={selectedRow ? toggleMute : undefined}
               onShare={selectedRow ? shareConversation : undefined}
               onSetStatus={selectedRow ? setStatus : undefined}
+              panelOpen={panelOpen}
+              onTogglePanel={() => setPanelOpen((v) => !v)}
             />
-            <ContactPanel
-              contact={contact}
-              copilotContext={copilotContext}
-              conversationInfo={selectedRow ? {
-                channel: selectedRow.channel,
-                createdAt: selectedRow.created_at,
-                status: selectedRow.status,
-              } : undefined}
-            />
+            {panelOpen && (
+              <ContactPanel
+                contact={contact}
+                copilotContext={copilotContext}
+                conversationInfo={selectedRow ? {
+                  channel: selectedRow.channel,
+                  createdAt: selectedRow.created_at,
+                  status: selectedRow.status,
+                } : undefined}
+                onSaveContact={selectedRow ? saveContact : undefined}
+                actions={selectedRow ? {
+                  status: selectedRow.status,
+                  aiEnabled: selectedRow.ai_enabled,
+                  muted: !!selectedRow.metadata?.muted,
+                  onToggleResolve: toggleResolve,
+                  onToggleAi: () => toggleAi(!selectedRow.ai_enabled),
+                  onToggleMute: toggleMute,
+                } : undefined}
+              />
+            )}
           </>
         )}
       </div>

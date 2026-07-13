@@ -48,6 +48,9 @@ interface ChatAreaProps {
   onShare?: () => void;
   /** Muda status direto (dropdown do Resolver). */
   onSetStatus?: (status: "open" | "waiting_client" | "resolved") => void;
+  /** Mostra/esconde o painel de detalhes ("Fechar detalhes" da referencia). */
+  panelOpen?: boolean;
+  onTogglePanel?: () => void;
 }
 
 const EMOJIS = [
@@ -81,6 +84,7 @@ const ChatArea = ({
   conversation, messages, onSend, aiEnabled = true, onToggleAi,
   onToggleResolve, onSendNote, onSuggestReply, tags = [], onTagsChange,
   muted = false, onToggleMute, onShare, onSetStatus,
+  panelOpen = true, onTogglePanel,
 }: ChatAreaProps) => {
   const [input, setInput] = useState("");
   const [composerMode, setComposerMode] = useState<"reply" | "note">("reply");
@@ -187,8 +191,13 @@ const ChatArea = ({
           </Avatar>
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-foreground truncate">{conversation.contactName}</h3>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
               {STATUS_LABELS[conversation.status ?? "open"] ?? conversation.status} · {conversation.inbox}
+              {onTogglePanel && (
+                <button onClick={onTogglePanel} className="text-primary hover:underline">
+                  {panelOpen ? "Fechar detalhes" : "Mostrar detalhes"}
+                </button>
+              )}
             </p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Phone, MapPin, Globe, Clock, Calendar, Building, Copy, MessageSquare, Flame, ArrowUpRight, X, Plus, Sparkles, Loader2, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Globe, Clock, Calendar, Building, Copy, MessageSquare, Flame, ArrowUpRight, X, Plus, Sparkles, Loader2, Send, Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,9 +51,20 @@ interface ContactPanelProps {
   copilotContext?: string;
   /** Infos da conversa (acordeao "Informações da conversa"). */
   conversationInfo?: { channel: string; createdAt: string | null; status: string };
+  /** Salva campos do contato/lead editados pelo atendente. */
+  onSaveContact?: (patch: { name?: string; email?: string; company?: string }) => void;
+  /** Acoes da conversa (acordeao, espelha o header — referencia Chatwoot). */
+  actions?: {
+    status: string;
+    aiEnabled: boolean;
+    muted: boolean;
+    onToggleResolve: () => void;
+    onToggleAi: () => void;
+    onToggleMute: () => void;
+  };
 }
 
-const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, conversationInfo }: ContactPanelProps) => {
+const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, conversationInfo, onSaveContact, actions }: ContactPanelProps) => {
   const [tab, setTab] = useState<"contact" | "copilot">("contact");
   // Coluna sempre presente — placeholder quando nada selecionado, pra
   // estrutura da tela nao "sumir" no estado vazio.
@@ -112,7 +123,7 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, conver
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-sm font-bold text-foreground">{contact.name}</h3>
+                  <NameEditor name={contact.name} onSave={onSaveContact ? (v) => onSaveContact({ name: v }) : undefined} />
                   {contact.company && (
                     <p className="text-[11px] text-muted-foreground mt-0.5">{contact.company}</p>
                   )}
@@ -120,13 +131,31 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, conver
               </div>
 
               {/* Secoes acordeao (estilo Chatwoot) */}
-              <Accordion type="multiple" defaultValue={["info", "crm"]} className="w-full">
+              <Accordion type="multiple" defaultValue={["actions", "info", "crm"]} className="w-full">
+                {actions && (
+                  <AccordionItem value="actions">
+                    <AccordionTrigger className="text-xs font-semibold py-2.5">Ações da conversa</AccordionTrigger>
+                    <AccordionContent className="space-y-1.5 pb-3">
+                      <Button variant="outline" size="sm" className="w-full h-7 text-[11px] justify-start gap-2" onClick={actions.onToggleResolve}>
+                        {actions.status === "resolved" ? "Reabrir conversa" : "Marcar como resolvida"}
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full h-7 text-[11px] justify-start gap-2" onClick={actions.onToggleAi}>
+                        {actions.aiEnabled ? "Assumir conversa (pausar IA)" : "Devolver pro agente de IA"}
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full h-7 text-[11px] justify-start gap-2" onClick={actions.onToggleMute}>
+                        {actions.muted ? "Reativar notificações" : "Silenciar conversa"}
+                      </Button>
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
                 <AccordionItem value="info">
                   <AccordionTrigger className="text-xs font-semibold py-2.5">Informações do contato</AccordionTrigger>
                   <AccordionContent className="space-y-2.5 pb-3">
-                    <InfoRow icon={Mail} label="Email" value={contact.email} copyable />
+                    <EditableRow icon={Mail} label="Email" value={contact.email}
+                      onSave={onSaveContact ? (v) => onSaveContact({ email: v }) : undefined} />
                     <InfoRow icon={Phone} label="Telefone" value={contact.phone} copyable />
-                    {contact.company && <InfoRow icon={Building} label="Empresa" value={contact.company} />}
+                    <EditableRow icon={Building} label="Empresa" value={contact.company || "—"}
+                      onSave={onSaveContact ? (v) => onSaveContact({ company: v }) : undefined} />
                     {contact.location && <InfoRow icon={MapPin} label="Localização" value={contact.location} />}
                     {contact.language && <InfoRow icon={Globe} label="Idioma" value={contact.language} />}
                     {contact.localTime && <InfoRow icon={Clock} label="Hora Local" value={contact.localTime} />}
@@ -323,6 +352,104 @@ const CopilotTab = ({ context }: { context?: string }) => {
           <Send className="w-3.5 h-3.5" />
         </Button>
       </div>
+    </div>
+  );
+};
+
+/** Nome do contato com edicao inline (lapis ao lado). */
+const NameEditor = ({ name, onSave }: { name: string; onSave?: (v: string) => void }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+
+  if (!onSave) return <h3 className="text-sm font-bold text-foreground">{name}</h3>;
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { setEditing(false); if (draft.trim() && draft.trim() !== name) onSave(draft.trim()); }
+          if (e.key === "Escape") setEditing(false);
+        }}
+        onBlur={() => { setEditing(false); if (draft.trim() && draft.trim() !== name) onSave(draft.trim()); }}
+        className="text-sm font-bold bg-muted rounded px-2 py-0.5 outline-none border border-border focus:border-primary/50 text-center w-44"
+      />
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <h3 className="text-sm font-bold text-foreground">{name}</h3>
+      <Button variant="ghost" size="icon" className="h-5 w-5" title="Editar nome"
+        onClick={() => { setDraft(name); setEditing(true); }}>
+        <Pencil className="w-2.5 h-2.5 text-muted-foreground" />
+      </Button>
+    </span>
+  );
+};
+
+/** Campo do contato editavel pelo atendente: vazio mostra "Adicionar…",
+ *  preenchido mostra valor + lapis. Enter/blur salva. */
+const EditableRow = ({ icon: Icon, label, value, onSave }: {
+  icon: any; label: string; value: string; onSave?: (v: string) => void;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const empty = !value || value === "—";
+
+  if (!onSave) return <InfoRow icon={Icon} label={label} value={value} copyable={!empty} />;
+
+  const commit = () => {
+    const v = draft.trim();
+    setEditing(false);
+    if (v && v !== value) onSave(v);
+  };
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] text-muted-foreground">{label}</p>
+        {editing ? (
+          <input
+            autoFocus
+            defaultValue={empty ? "" : value}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            onBlur={commit}
+            placeholder={`${label}…`}
+            className="w-full bg-muted rounded px-1.5 py-0.5 text-[11px] outline-none border border-border focus:border-primary/50"
+          />
+        ) : empty ? (
+          <button
+            onClick={() => { setDraft(""); setEditing(true); }}
+            className="text-[11px] text-primary/80 hover:text-primary transition"
+          >
+            + Adicionar {label.toLowerCase()}
+          </button>
+        ) : (
+          <p className="text-[11px] text-foreground truncate">{value}</p>
+        )}
+      </div>
+      {!editing && !empty && (
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Button variant="ghost" size="icon" className="h-5 w-5" title={`Editar ${label.toLowerCase()}`}
+            onClick={() => { setDraft(value); setEditing(true); }}>
+            <Pencil className="w-2.5 h-2.5 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-5 w-5" title={`Copiar ${label.toLowerCase()}`}
+            onClick={() => {
+              navigator.clipboard.writeText(value)
+                .then(() => toast.success(`${label} copiado`))
+                .catch(() => toast.error("Não consegui copiar"));
+            }}>
+            <Copy className="w-2.5 h-2.5 text-muted-foreground" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
