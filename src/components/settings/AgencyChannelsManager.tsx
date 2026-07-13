@@ -16,6 +16,8 @@ import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
 import IntegrationInstagramForm from "@/components/settings/IntegrationInstagramForm";
+import { loadFacebookSdk } from "@/components/settings/MetaEmbeddedSignupButton";
+import { useMetaIntegration } from "@/hooks/use-meta-integration";
 import EmailTemplatesPanel from "@/components/aikortex/EmailTemplatesPanel";
 import WhatsAppTemplatesPanel from "@/components/aikortex/WhatsAppTemplatesPanel";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
@@ -146,6 +148,17 @@ export default function AgencyChannelsManager() {
   // true quando o dialog foi aberto pelo CTA "Conectar X" do card —
   // o form dispara o popup da Meta direto, sem segundo clique.
   const [autoConnect, setAutoConnect] = useState(false);
+  const [sdkReady, setSdkReady] = useState(false);
+  const meta = useMetaIntegration();
+
+  // PRE-CARREGA o SDK do Facebook assim que a pagina de Canais abre.
+  // Sem isso, o 1o clique em "Conectar" acontecia com SDK ainda baixando:
+  // o FB.login disparava fora da janela de ativacao do clique → popup
+  // bloqueado → SDK caia em redirect de pagina inteira → tela preta.
+  useEffect(() => {
+    if (meta.loading) return;
+    loadFacebookSdk(meta.appId).then(() => setSdkReady(true)).catch(() => { /* manual continua ok */ });
+  }, [meta.loading, meta.appId]);
 
   // Status do Instagram: tem access token salvo? (recarrega ao fechar dialog)
   useEffect(() => {
@@ -290,7 +303,13 @@ export default function AgencyChannelsManager() {
                           : ""
                       }`}
                       variant={ch.key === "whatsapp" || ch.key === "instagram" ? "default" : "default"}
-                      onClick={() => { setAutoConnect(true); setOpenDialog(ch.configurable!); }}
+                      onClick={() => {
+                        // So auto-dispara se o SDK ja esta pronto (clique
+                        // ainda "quente" = popup permitido). SDK atrasado →
+                        // abre o dialog normal, user clica no botao de la.
+                        setAutoConnect(sdkReady);
+                        setOpenDialog(ch.configurable!);
+                      }}
                     >
                       Conectar {ch.name}
                     </Button>
