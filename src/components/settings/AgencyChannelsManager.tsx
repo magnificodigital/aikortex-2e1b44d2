@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import { Mail, Mic, Phone, Camera, Share2, Settings, CheckCircle2, FileText, Ext
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
+import IntegrationInstagramForm from "@/components/settings/IntegrationInstagramForm";
 import EmailTemplatesPanel from "@/components/aikortex/EmailTemplatesPanel";
 import WhatsAppTemplatesPanel from "@/components/aikortex/WhatsAppTemplatesPanel";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
@@ -21,7 +23,7 @@ import { useVoiceIntegrationStatus } from "@/hooks/use-voice-integration";
 import { useWhatsAppIntegrationStatus } from "@/hooks/use-whatsapp-integration";
 import { type ChannelKey, useEnabledChannels, useToggleChannel } from "@/hooks/use-enabled-channels";
 
-type ConfigurableKey = "email" | "whatsapp" | "voice";
+type ConfigurableKey = "email" | "whatsapp" | "voice" | "instagram";
 type TemplatesKey = "email" | "whatsapp";
 
 type ChannelDef = {
@@ -88,7 +90,7 @@ const CHANNELS: ChannelDef[] = [
     icon: Camera,
     iconBg: "bg-pink-500/10",
     iconColor: "text-pink-600",
-    comingSoon: true,
+    configurable: "instagram",
   },
   {
     key: "facebook",
@@ -140,11 +142,25 @@ export default function AgencyChannelsManager() {
   const { data: waStatus } = useWhatsAppIntegrationStatus();
   const [openDialog, setOpenDialog] = useState<ConfigurableKey | null>(null);
   const [openTemplates, setOpenTemplates] = useState<TemplatesKey | null>(null);
+  const [igConnected, setIgConnected] = useState(false);
+
+  // Status do Instagram: tem access token salvo? (recarrega ao fechar dialog)
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("user_api_keys").select("provider")
+        .eq("user_id", user.id).eq("provider", "instagram_access_token").limit(1);
+      setIgConnected(!!data?.length);
+    })();
+  }, [openDialog]);
 
   const isConfigured = (k: ConfigurableKey): boolean => {
     if (k === "email") return !!emailStatus?.connected;
     if (k === "whatsapp") return !!waStatus?.connected;
     if (k === "voice") return !!(voiceStatus?.telnyx_connected || voiceStatus?.elevenlabs_connected);
+    if (k === "instagram") return igConnected;
     return false;
   };
 
@@ -167,6 +183,7 @@ export default function AgencyChannelsManager() {
       if (voiceStatus?.elevenlabs_connected) parts.push("ElevenLabs");
       if (parts.length > 0) return parts.join(" + ");
     }
+    if (k === "instagram" && igConnected) return "Conta Business conectada";
     return null;
   };
 
@@ -310,6 +327,26 @@ export default function AgencyChannelsManager() {
             </div>
           </DialogHeader>
           <IntegrationWhatsAppForm onClose={() => setOpenDialog(null)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog do Instagram */}
+      <Dialog open={openDialog === "instagram"} onOpenChange={(o) => { if (!o) setOpenDialog(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
+                <Camera className="w-5 h-5 text-pink-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">Instagram (Meta API)</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  DMs da conta Business no inbox, com auto-reply do agente
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <IntegrationInstagramForm onClose={() => setOpenDialog(null)} />
         </DialogContent>
       </Dialog>
 

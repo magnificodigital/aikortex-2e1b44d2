@@ -17,7 +17,11 @@ import ContactPanel, { ContactInfo } from "@/components/messages/ContactPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const WHATSAPP_SEND_URL = fnUrl("whatsapp-send");
+// Envio roteado por canal da conversa — canais novos so' entram aqui.
+const SEND_URLS: Record<string, string> = {
+  whatsapp: fnUrl("whatsapp-send"),
+  instagram: fnUrl("instagram-send"),
+};
 
 interface ConvRow {
   id: string;
@@ -324,9 +328,11 @@ const AikortexMessages = () => {
     if (selectedRow.ai_enabled) await toggleAi(false, { silent: true });
 
     try {
+      const sendUrl = SEND_URLS[selectedRow.channel];
+      if (!sendUrl) { toast.error(`Canal ${selectedRow.channel} ainda não suporta envio`); return; }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) { toast.error("Sessão expirada."); return; }
-      const resp = await fetch(WHATSAPP_SEND_URL, {
+      const resp = await fetch(sendUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -338,7 +344,7 @@ const AikortexMessages = () => {
         const err = await resp.json().catch(() => ({ error: "Erro ao enviar" }));
         toast.error(err.error || "Erro ao enviar mensagem");
       }
-      // A mensagem chega via realtime (whatsapp-send grava em messages).
+      // A mensagem chega via realtime (a edge de envio grava em messages).
     } catch {
       toast.error("Sem conexão com o servidor.");
     }

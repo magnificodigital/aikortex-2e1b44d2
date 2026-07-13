@@ -62,8 +62,8 @@ interface ConversationListProps {
 
 const FILTER_CHANNELS: { key: string; label: string; dot: string; soon?: boolean }[] = [
   { key: "whatsapp",  label: "WhatsApp Business", dot: "bg-emerald-500" },
-  { key: "instagram", label: "Instagram (em breve)", dot: "bg-pink-500", soon: true },
-  { key: "email",     label: "E-mail (em breve)",    dot: "bg-blue-500", soon: true },
+  { key: "instagram", label: "Instagram",         dot: "bg-pink-500" },
+  { key: "email",     label: "E-mail (em breve)", dot: "bg-blue-500", soon: true },
 ];
 
 const channelBadge: Record<string, { label: string; className: string }> = {
