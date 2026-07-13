@@ -76,7 +76,7 @@ export default function PublishForClientDialog({
         .maybeSingle();
       const tplId = (agent as any)?.template_id;
       if (tplId && !cancelled) {
-        const { data: tpl } = await supabase
+        const { data: tpl } = await (supabase as any)
           .from("agent_templates")
           .select("retail_price_cents")
           .eq("id", tplId)
