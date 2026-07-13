@@ -11,10 +11,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import ModuleGate from "@/components/shared/ModuleGate";
-import ConversationList, { Conversation } from "@/components/messages/ConversationList";
+import ConversationList, { Conversation, InboxFilter } from "@/components/messages/ConversationList";
 import ChatArea, { ChatMessage } from "@/components/messages/ChatArea";
 import ContactPanel, { ContactInfo } from "@/components/messages/ContactPanel";
-import MessagesSidebar, { InboxFilter } from "@/components/messages/MessagesSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -358,17 +357,10 @@ const AikortexMessages = () => {
           </div>
         ) : (
           // Estrutura completa SEMPRE — mesmo sem conversas, o user ve as
-          // 4 colunas com empty states (nao um texto solto no vazio).
+          // 3 colunas com empty states (nao um texto solto no vazio).
+          // Filtros de canal/etiqueta moram no funil do header da lista
+          // (como no Chatwoot) — sem coluna extra redundante.
           <>
-            <MessagesSidebar
-              filter={inboxFilter}
-              onFilterChange={setInboxFilter}
-              tags={allTags}
-              counts={{
-                all: rows.length,
-                unattended: rows.filter((r) => r.unread_count > 0).length,
-              }}
-            />
             <ConversationList
               conversations={conversations}
               selectedId={selectedConv || ""}
@@ -377,6 +369,9 @@ const AikortexMessages = () => {
               onSearchChange={setSearchQuery}
               activeTab={activeTab}
               onTabChange={setActiveTab}
+              filter={inboxFilter}
+              onFilterChange={setInboxFilter}
+              availableTags={allTags}
             />
             <ChatArea
               conversation={conversation}

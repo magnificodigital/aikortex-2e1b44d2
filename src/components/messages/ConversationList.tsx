@@ -6,13 +6,23 @@
  * "WhatsApp Business" em tudo), selecao com barra lateral. Sem botoes
  * decorativos — so' o que funciona.
  */
-import { Search, Inbox } from "lucide-react";
+import { Search, Inbox, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator,
+  DropdownMenuCheckboxItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+
+export interface InboxFilter {
+  view: "all" | "unattended";
+  channel: string | null; // null = todos
+  tag: string | null;
+}
 
 export interface Conversation {
   id: string;
@@ -43,7 +53,18 @@ interface ConversationListProps {
   onSearchChange: (q: string) => void;
   activeTab: string;
   onTabChange: (tab: string) => void;
+  /** Filtro por canal/etiqueta/nao-atendidas (dropdown do funil). */
+  filter?: InboxFilter;
+  onFilterChange?: (f: InboxFilter) => void;
+  /** Etiquetas existentes (agregadas) pro dropdown. */
+  availableTags?: string[];
 }
+
+const FILTER_CHANNELS: { key: string; label: string; dot: string; soon?: boolean }[] = [
+  { key: "whatsapp",  label: "WhatsApp Business", dot: "bg-emerald-500" },
+  { key: "instagram", label: "Instagram (em breve)", dot: "bg-pink-500", soon: true },
+  { key: "email",     label: "E-mail (em breve)",    dot: "bg-blue-500", soon: true },
+];
 
 const channelBadge: Record<string, { label: string; className: string }> = {
   whatsapp:  { label: "WA", className: "bg-emerald-500 text-white" },
@@ -61,9 +82,13 @@ const ConversationList = ({
   onSearchChange,
   activeTab,
   onTabChange,
+  filter,
+  onFilterChange,
+  availableTags = [],
 }: ConversationListProps) => {
   const openCount = conversations.filter((c) => (c.status ?? "open") === "open").length;
   const unreadCount = conversations.filter((c) => c.unread > 0).length;
+  const activeFilters = (filter?.channel ? 1 : 0) + (filter?.tag ? 1 : 0) + (filter?.view === "unattended" ? 1 : 0);
 
   const filtered = conversations
     .filter((c) => c.contactName.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -75,13 +100,73 @@ const ConversationList = ({
 
   return (
     <div className="w-[340px] min-w-[300px] border-r border-border bg-card flex flex-col h-full">
-      {/* Header — mesma altura dos outros paineis (h-14) */}
+      {/* Header — mesma altura dos outros paineis (h-14) + funil de filtros */}
       <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
         <h2 className="text-sm font-semibold text-foreground">Conversas</h2>
         {unreadCount > 0 && (
           <Badge className="ml-2 h-5 px-1.5 text-[10px] bg-primary text-primary-foreground rounded-full">
             {unreadCount}
           </Badge>
+        )}
+        {filter && onFilterChange && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                title="Filtrar por canal, etiqueta e mais"
+                className={cn(
+                  "ml-auto relative w-7 h-7 rounded-md grid place-items-center transition",
+                  activeFilters > 0 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                )}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                {activeFilters > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-primary-foreground text-[8px] font-bold grid place-items-center">
+                    {activeFilters}
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider">Canal</DropdownMenuLabel>
+              {FILTER_CHANNELS.map((c) => (
+                <DropdownMenuCheckboxItem
+                  key={c.key}
+                  disabled={c.soon}
+                  checked={filter.channel === c.key}
+                  onCheckedChange={(v) => onFilterChange({ ...filter, channel: v ? c.key : null })}
+                  className="text-xs gap-2"
+                >
+                  <span className={cn("w-2 h-2 rounded-full", c.dot, c.soon && "opacity-40")} />
+                  {c.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider">Status</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={filter.view === "unattended"}
+                onCheckedChange={(v) => onFilterChange({ ...filter, view: v ? "unattended" : "all" })}
+                className="text-xs"
+              >
+                Só não atendidas
+              </DropdownMenuCheckboxItem>
+              {availableTags.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider">Etiqueta</DropdownMenuLabel>
+                  {availableTags.map((t) => (
+                    <DropdownMenuCheckboxItem
+                      key={t}
+                      checked={filter.tag === t}
+                      onCheckedChange={(v) => onFilterChange({ ...filter, tag: v ? t : null })}
+                      className="text-xs"
+                    >
+                      {t}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 
