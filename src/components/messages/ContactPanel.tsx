@@ -42,7 +42,23 @@ interface ContactPanelProps {
 }
 
 const ContactPanel = ({ contact }: ContactPanelProps) => {
-  if (!contact) return null;
+  // Coluna sempre presente — placeholder quando nada selecionado, pra
+  // estrutura da tela nao "sumir" no estado vazio.
+  if (!contact) {
+    return (
+      <div className="w-[300px] min-w-[260px] border-l border-border bg-card flex flex-col h-full">
+        <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contato</span>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6 text-center">
+          <MessageSquare className="w-7 h-7 text-muted-foreground/30" />
+          <p className="text-xs text-muted-foreground">
+            Os dados do contato e o lead do CRM aparecem aqui ao selecionar uma conversa.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-[300px] min-w-[260px] border-l border-border bg-card flex flex-col h-full overflow-hidden">

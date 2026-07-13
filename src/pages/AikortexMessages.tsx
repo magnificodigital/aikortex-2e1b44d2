@@ -63,7 +63,14 @@ const AikortexMessages = () => {
       .select("id, contact_name, contact_phone, channel, status, unread_count, last_message_at, last_message_preview, ai_enabled, crm_contact_id")
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
-    if (!error && data) setRows(data as ConvRow[]);
+    if (error) {
+      // NUNCA engolir: erro aqui geralmente e' migration nao aplicada
+      // (coluna inexistente) ou RLS — mostrando, a causa aparece na hora.
+      console.error("[inbox] load conversations:", error);
+      toast.error(`Erro carregando conversas: ${error.message}`);
+    } else if (data) {
+      setRows(data as ConvRow[]);
+    }
     setLoading(false);
   }, []);
 
@@ -204,11 +211,9 @@ const AikortexMessages = () => {
           <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
             Carregando conversas...
           </div>
-        ) : conversations.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground p-8 text-center">
-            Nenhuma conversa ainda. As mensagens dos seus canais aparecerão aqui automaticamente.
-          </div>
         ) : (
+          // Estrutura completa SEMPRE — mesmo sem conversas, o user ve as
+          // 3 colunas com empty states (nao um texto solto no vazio).
           <>
             <ConversationList
               conversations={conversations}
