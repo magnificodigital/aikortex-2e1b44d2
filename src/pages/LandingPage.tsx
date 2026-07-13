@@ -310,6 +310,13 @@ const LandingPage = () => {
         {/* CTA */}
         <button
           onClick={() => openAuthModal("signup")}
+          onMouseMove={(e) => {
+            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            (e.currentTarget as HTMLButtonElement).style.setProperty("--mouse-x", `${x}%`);
+            (e.currentTarget as HTMLButtonElement).style.setProperty("--mouse-y", `${y}%`);
+          }}
           className="cta-glow-btn flex items-center gap-2 mb-8 px-7 py-3.5 rounded-full text-sm font-medium"
         >
           {t.ctaExperts}
