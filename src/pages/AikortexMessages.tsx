@@ -36,12 +36,26 @@ interface ConvRow {
 function mapMessage(m: any): ChatMessage {
   return {
     id: m.id,
-    sender: m.role === "consumer" ? "contact" : "bot",
+    sender: m.role === "system" ? "system" : m.role === "consumer" ? "contact" : "bot",
     senderName: m.role === "consumer" ? "" : "Agente",
     text: m.content,
     time: new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     isPrivate: m.role === "note",
   };
+}
+
+/** "31/05/2026" → tempo relativo curto estilo Chatwoot ("2h", "3d"). */
+function relativeTime(iso: string | null): string {
+  if (!iso) return "";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "agora";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  return `${Math.floor(days / 30)}mo`;
 }
 
 function toConversation(r: ConvRow): Conversation {
@@ -51,13 +65,20 @@ function toConversation(r: ConvRow): Conversation {
     contactName: name,
     initials: name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase(),
     lastMessage: r.last_message_preview?.slice(0, 50) || "—",
-    time: r.last_message_at ? new Date(r.last_message_at).toLocaleDateString("pt-BR") : "",
+    time: relativeTime(r.last_message_at),
     unread: r.unread_count,
     online: false,
     channel: (r.channel as Conversation["channel"]) || "whatsapp",
     inbox: r.channel === "whatsapp" ? "WhatsApp Business" : r.channel,
     status: r.status,
+    labels: (r.tags ?? []).map((t) => ({ name: t, color: "bg-primary" })),
   };
+}
+
+/** Registra atividade na timeline (pill central, estilo Chatwoot). */
+async function logActivity(convId: string, text: string) {
+  await (supabase.from("messages" as any) as any)
+    .insert({ conversation_id: convId, role: "system", content: text, content_type: "text" });
 }
 
 const AikortexMessages = () => {
@@ -201,6 +222,7 @@ const AikortexMessages = () => {
     if (error) { toast.error("Não consegui atualizar o status"); return; }
     setRows((prev) => prev.map((r) => r.id === selectedRow.id ? { ...r, status: next } : r));
     toast.success(next === "resolved" ? "Conversa resolvida" : "Conversa reaberta");
+    logActivity(selectedRow.id, next === "resolved" ? "Conversa marcada como resolvida" : "Conversa reaberta");
   };
 
   const sendNote = async (text: string) => {
@@ -252,6 +274,7 @@ const AikortexMessages = () => {
     if (!opts?.silent) {
       toast.success(enabled ? "Agente de IA reativado nesta conversa" : "Você assumiu a conversa — IA pausada");
     }
+    logActivity(selectedConv, enabled ? "Agente de IA reativado" : "Atendente humano assumiu a conversa");
   };
 
   return (

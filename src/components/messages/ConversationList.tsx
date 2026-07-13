@@ -172,6 +172,18 @@ const ConversationList = ({
                         </span>
                       )}
                     </div>
+                    {conv.labels && conv.labels.length > 0 && (
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        {conv.labels.slice(0, 3).map((l) => (
+                          <span key={l.name} className="inline-flex items-center h-4 px-1.5 rounded bg-primary/10 text-primary text-[9px] font-medium">
+                            {l.name}
+                          </span>
+                        ))}
+                        {conv.labels.length > 3 && (
+                          <span className="text-[9px] text-muted-foreground">+{conv.labels.length - 3}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </button>
               );

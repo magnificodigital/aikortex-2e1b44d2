@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 
 export interface ContactInfo {
@@ -87,52 +88,54 @@ const ContactPanel = ({ contact, tags = [], onTagsChange }: ContactPanelProps) =
                 </div>
               </div>
 
-              <Separator />
+              {/* Secoes acordeao (estilo Chatwoot) */}
+              <Accordion type="multiple" defaultValue={["info", "crm"]} className="w-full">
+                <AccordionItem value="info">
+                  <AccordionTrigger className="text-xs font-semibold py-2.5">Informações do contato</AccordionTrigger>
+                  <AccordionContent className="space-y-2.5 pb-3">
+                    <InfoRow icon={Mail} label="Email" value={contact.email} copyable />
+                    <InfoRow icon={Phone} label="Telefone" value={contact.phone} copyable />
+                    {contact.company && <InfoRow icon={Building} label="Empresa" value={contact.company} />}
+                    {contact.location && <InfoRow icon={MapPin} label="Localização" value={contact.location} />}
+                    {contact.language && <InfoRow icon={Globe} label="Idioma" value={contact.language} />}
+                    {contact.localTime && <InfoRow icon={Clock} label="Hora Local" value={contact.localTime} />}
+                    {contact.firstContact && <InfoRow icon={Calendar} label="Primeiro Contato" value={contact.firstContact} />}
+                  </AccordionContent>
+                </AccordionItem>
 
-              {/* Contact Info */}
-              <div className="space-y-2.5">
-                <InfoRow icon={Mail} label="Email" value={contact.email} copyable />
-                <InfoRow icon={Phone} label="Telefone" value={contact.phone} copyable />
-                {contact.company && <InfoRow icon={Building} label="Empresa" value={contact.company} />}
-                {contact.location && <InfoRow icon={MapPin} label="Localização" value={contact.location} />}
-                {contact.language && <InfoRow icon={Globe} label="Idioma" value={contact.language} />}
-                {contact.localTime && <InfoRow icon={Clock} label="Hora Local" value={contact.localTime} />}
-                {contact.firstContact && <InfoRow icon={Calendar} label="Primeiro Contato" value={contact.firstContact} />}
-              </div>
+                {contact.crm && (
+                  <AccordionItem value="crm">
+                    <AccordionTrigger className="text-xs font-semibold py-2.5">Lead no CRM</AccordionTrigger>
+                    <AccordionContent className="pb-3">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                        {contact.crm.stage && (
+                          <Badge variant="outline" className="text-[10px] h-5">{contact.crm.stage}</Badge>
+                        )}
+                        {contact.crm.temperature && TEMP_LABEL[contact.crm.temperature] && (
+                          <Badge variant="outline" className={cn("text-[10px] h-5 gap-1", TEMP_LABEL[contact.crm.temperature].className)}>
+                            <Flame className="w-2.5 h-2.5" />
+                            {TEMP_LABEL[contact.crm.temperature].label}
+                          </Badge>
+                        )}
+                      </div>
+                      <Button asChild variant="outline" size="sm" className="w-full h-7 text-[11px] gap-1">
+                        <Link to="/aikortex/crm">
+                          Ver no CRM <ArrowUpRight className="w-3 h-3" />
+                        </Link>
+                      </Button>
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
 
-              {/* Lead do CRM (vinculo automatico do inbox) */}
-              {contact.crm && (
-                <>
-                  <Separator />
-                  <div>
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Lead no CRM</p>
-                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                      {contact.crm.stage && (
-                        <Badge variant="outline" className="text-[10px] h-5">{contact.crm.stage}</Badge>
-                      )}
-                      {contact.crm.temperature && TEMP_LABEL[contact.crm.temperature] && (
-                        <Badge variant="outline" className={cn("text-[10px] h-5 gap-1", TEMP_LABEL[contact.crm.temperature].className)}>
-                          <Flame className="w-2.5 h-2.5" />
-                          {TEMP_LABEL[contact.crm.temperature].label}
-                        </Badge>
-                      )}
-                    </div>
-                    <Button asChild variant="outline" size="sm" className="w-full h-7 text-[11px] gap-1">
-                      <Link to="/aikortex/crm">
-                        Ver no CRM <ArrowUpRight className="w-3 h-3" />
-                      </Link>
-                    </Button>
-                  </div>
-                </>
-              )}
-
-              {/* Etiquetas da conversa */}
-              {onTagsChange && (
-                <>
-                  <Separator />
-                  <TagsEditor tags={tags} onChange={onTagsChange} />
-                </>
-              )}
+                {onTagsChange && (
+                  <AccordionItem value="tags">
+                    <AccordionTrigger className="text-xs font-semibold py-2.5">Etiquetas</AccordionTrigger>
+                    <AccordionContent className="pb-3">
+                      <TagsEditor tags={tags} onChange={onTagsChange} />
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
+              </Accordion>
 
               {/* Social Links */}
               {contact.socialLinks && contact.socialLinks.length > 0 && (
@@ -230,7 +233,6 @@ const TagsEditor = ({ tags, onChange }: { tags: string[]; onChange: (t: string[]
 
   return (
     <div>
-      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Etiquetas</p>
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {tags.map((t) => (

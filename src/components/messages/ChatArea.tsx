@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Send, CheckCheck, Check, AlertTriangle, Bot, User,
   CheckCircle2, RotateCcw, Sparkles, Loader2, StickyNote, Lock,
@@ -70,6 +70,7 @@ const ChatArea = ({
   const [suggesting, setSuggesting] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
   const [addingTag, setAddingTag] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const commitTag = () => {
     const t = tagDraft.trim().toLowerCase();
@@ -88,6 +89,7 @@ const ChatArea = ({
       onSend(input);
     }
     setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
   const handleSuggest = async () => {
@@ -299,21 +301,28 @@ const ChatArea = ({
         <div className="px-3 py-2 flex items-center gap-2">
           {/* Pilula estilo WhatsApp Web: input + varinha de IA dentro */}
           <div className={cn(
-            "flex-1 flex items-center gap-1 rounded-full border px-4 h-11 transition-colors",
+            "flex-1 flex items-end gap-1 rounded-3xl border px-4 py-2.5 transition-colors",
             composerMode === "note"
               ? "border-amber-500/40 bg-amber-500/5"
               : "border-border bg-muted/40 focus-within:border-primary/40",
           )}>
-            <input
+            <textarea
+              ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // auto-grow ate 5 linhas
+                e.target.style.height = "auto";
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 110)}px`;
+              }}
               onKeyDown={handleKeyDown}
+              rows={1}
               placeholder={
                 composerMode === "note"
                   ? "Nota interna — o cliente NÃO vê…"
-                  : "Digite sua mensagem…"
+                  : "Digite sua mensagem… (Shift+Enter = nova linha)"
               }
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground resize-none leading-relaxed max-h-[110px]"
             />
             {onSuggestReply && composerMode === "reply" && (
               <button
