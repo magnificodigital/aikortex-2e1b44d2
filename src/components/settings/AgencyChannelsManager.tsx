@@ -244,45 +244,54 @@ export default function AgencyChannelsManager() {
               </div>
 
               {ch.configurable && !isComingSoon && isEnabled && (
-                <div className="space-y-2 pt-1 border-t border-border/50">
-                  {summary && (
-                    <p className="text-[11px] text-foreground/70 font-mono truncate" title={summary}>
-                      {summary}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 text-[10px]">
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          configured ? "bg-emerald-500" : "bg-muted-foreground/40"
-                        }`}
-                        aria-hidden
-                      />
-                      <span className={configured ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}>
-                        {configured ? "Provedor conectado" : "Provedor não conectado"}
+                <div className="space-y-2 pt-2 mt-auto border-t border-border/50">
+                  {configured ? (
+                    // ── Conectado: status verde + acoes discretas ──
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 text-[11px] min-w-0">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium truncate" title={summary ?? undefined}>
+                          {summary || "Conectado"}
+                        </span>
                       </span>
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {ch.templates && configured && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {ch.templates && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 gap-1.5 text-muted-foreground"
+                            onClick={() => setOpenTemplates(ch.templates!)}
+                          >
+                            <FileText className="w-3 h-3" /> Templates
+                          </Button>
+                        )}
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          className="text-xs h-7 gap-1.5"
-                          onClick={() => setOpenTemplates(ch.templates!)}
+                          className="text-xs h-7 gap-1.5 text-muted-foreground"
+                          onClick={() => setOpenDialog(ch.configurable!)}
                         >
-                          <FileText className="w-3 h-3" /> Templates
+                          <Settings className="w-3 h-3" /> Gerenciar
                         </Button>
-                      )}
-                      <Button
-                        variant={configured ? "outline" : "default"}
-                        size="sm"
-                        className="text-xs h-7 gap-1.5"
-                        onClick={() => setOpenDialog(ch.configurable!)}
-                      >
-                        <Settings className="w-3 h-3" /> Gerenciar
-                      </Button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    // ── Nao conectado: CTA forte com a cara do canal ──
+                    <Button
+                      size="sm"
+                      className={`w-full h-8 text-xs gap-1.5 text-white ${
+                        ch.key === "whatsapp"
+                          ? "bg-[#25D366] hover:bg-[#1da851]"
+                          : ch.key === "instagram"
+                          ? "bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600"
+                          : ""
+                      }`}
+                      variant={ch.key === "whatsapp" || ch.key === "instagram" ? "default" : "default"}
+                      onClick={() => setOpenDialog(ch.configurable!)}
+                    >
+                      Conectar {ch.name}
+                    </Button>
+                  )}
                 </div>
               )}
             </Card>
