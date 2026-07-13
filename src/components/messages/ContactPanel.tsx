@@ -1,4 +1,5 @@
-import { Mail, Phone, MapPin, Globe, Clock, Calendar, Building, Copy, MessageSquare, Pencil } from "lucide-react";
+import { Mail, Phone, MapPin, Globe, Clock, Calendar, Building, Copy, MessageSquare, Pencil, Flame, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,19 @@ export interface ContactInfo {
   customAttributes?: { label: string; value: string }[];
   socialLinks?: { platform: string; url: string }[];
   previousConversations?: number;
+  /** Lead do CRM vinculado a esta conversa (criado automatico no 1o contato). */
+  crm?: {
+    stage?: string | null;
+    temperature?: string | null;
+    company?: string | null;
+  } | null;
 }
+
+const TEMP_LABEL: Record<string, { label: string; className: string }> = {
+  hot:  { label: "Quente", className: "bg-red-500/10 text-red-600 border-red-500/30" },
+  warm: { label: "Morno",  className: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
+  cold: { label: "Frio",   className: "bg-blue-500/10 text-blue-600 border-blue-500/30" },
+};
 
 interface ContactPanelProps {
   contact: ContactInfo | null;
@@ -72,6 +85,32 @@ const ContactPanel = ({ contact }: ContactPanelProps) => {
                 {contact.localTime && <InfoRow icon={Clock} label="Hora Local" value={contact.localTime} />}
                 {contact.firstContact && <InfoRow icon={Calendar} label="Primeiro Contato" value={contact.firstContact} />}
               </div>
+
+              {/* Lead do CRM (vinculo automatico do inbox) */}
+              {contact.crm && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Lead no CRM</p>
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                      {contact.crm.stage && (
+                        <Badge variant="outline" className="text-[10px] h-5">{contact.crm.stage}</Badge>
+                      )}
+                      {contact.crm.temperature && TEMP_LABEL[contact.crm.temperature] && (
+                        <Badge variant="outline" className={cn("text-[10px] h-5 gap-1", TEMP_LABEL[contact.crm.temperature].className)}>
+                          <Flame className="w-2.5 h-2.5" />
+                          {TEMP_LABEL[contact.crm.temperature].label}
+                        </Badge>
+                      )}
+                    </div>
+                    <Button asChild variant="outline" size="sm" className="w-full h-7 text-[11px] gap-1">
+                      <Link to="/aikortex/crm">
+                        Ver no CRM <ArrowUpRight className="w-3 h-3" />
+                      </Link>
+                    </Button>
+                  </div>
+                </>
+              )}
 
               {/* Social Links */}
               {contact.socialLinks && contact.socialLinks.length > 0 && (

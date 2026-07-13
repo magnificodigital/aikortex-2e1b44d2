@@ -13,8 +13,6 @@ import ModuleGate from "@/components/shared/ModuleGate";
 import ConversationList, { Conversation } from "@/components/messages/ConversationList";
 import ChatArea, { ChatMessage } from "@/components/messages/ChatArea";
 import ContactPanel, { ContactInfo } from "@/components/messages/ContactPanel";
-import { Switch } from "@/components/ui/switch";
-import { Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -56,6 +54,7 @@ const AikortexMessages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("open");
   const [loading, setLoading] = useState(true);
+  const [crmLead, setCrmLead] = useState<{ stage_slug: string | null; temperature: string | null; company: string | null; email: string | null } | null>(null);
   const selectedRef = useRef<string | null>(null);
   useEffect(() => { selectedRef.current = selectedConv; }, [selectedConv]);
 
@@ -112,7 +111,7 @@ const AikortexMessages = () => {
     return () => { supabase.removeChannel(channel); };
   }, [loadConversations]);
 
-  // ── Selecao: carrega mensagens + zera nao-lidas ──
+  // ── Selecao: carrega mensagens + lead CRM + zera nao-lidas ──
   useEffect(() => {
     if (!selectedConv) return;
     loadMessages(selectedConv);
@@ -122,6 +121,18 @@ const AikortexMessages = () => {
       .then(() => {
         setRows((prev) => prev.map((r) => r.id === selectedConv ? { ...r, unread_count: 0 } : r));
       });
+
+    // Lead do CRM vinculado (pro painel de contato)
+    setCrmLead(null);
+    const row = rows.find((r) => r.id === selectedConv);
+    if (row?.crm_contact_id) {
+      (supabase.from("crm_contacts" as any) as any)
+        .select("stage_slug, temperature, company, email")
+        .eq("id", row.crm_contact_id)
+        .maybeSingle()
+        .then(({ data }: any) => { if (data) setCrmLead(data); });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedConv, loadMessages]);
 
   // Seleciona a primeira quando a lista carrega
@@ -136,9 +147,14 @@ const AikortexMessages = () => {
     id: selectedRow.id,
     name: selectedRow.contact_name || selectedRow.contact_phone || "Contato",
     initials: (selectedRow.contact_name || "C").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase(),
-    email: "—",
+    email: crmLead?.email || "—",
     phone: selectedRow.contact_phone || "—",
-    previousConversations: 0,
+    company: crmLead?.company || undefined,
+    crm: selectedRow.crm_contact_id ? {
+      stage: crmLead?.stage_slug ?? null,
+      temperature: crmLead?.temperature ?? null,
+      company: crmLead?.company ?? null,
+    } : null,
   } : null;
 
   const handleSend = async (text: string) => {
@@ -203,22 +219,13 @@ const AikortexMessages = () => {
               activeTab={activeTab}
               onTabChange={setActiveTab}
             />
-            <div className="flex-1 flex flex-col min-w-0">
-              {selectedRow && (
-                <div className="flex items-center justify-between gap-3 border-b border-border bg-card/60 px-4 py-2">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Bot className={`w-4 h-4 ${selectedRow.ai_enabled ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className={selectedRow.ai_enabled ? "text-foreground" : "text-muted-foreground"}>
-                      {selectedRow.ai_enabled
-                        ? "Agente de IA respondendo automaticamente"
-                        : "Você assumiu — IA pausada nesta conversa"}
-                    </span>
-                  </div>
-                  <Switch checked={selectedRow.ai_enabled} onCheckedChange={(v) => toggleAi(v)} />
-                </div>
-              )}
-              <ChatArea conversation={conversation} messages={messages} onSend={handleSend} />
-            </div>
+            <ChatArea
+              conversation={conversation}
+              messages={messages}
+              onSend={handleSend}
+              aiEnabled={selectedRow?.ai_enabled ?? true}
+              onToggleAi={(v) => toggleAi(v)}
+            />
             <ContactPanel contact={contact} />
           </>
         )}

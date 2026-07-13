@@ -1,15 +1,12 @@
 import { useState } from "react";
 import {
-  Send, Paperclip, Smile, MoreVertical, CheckCheck, Check, AlertTriangle,
-  ChevronDown, Bot, User, Mic, Image as ImageIcon, Bold, Italic, List, Link as LinkIcon,
-  Code, ArrowUpRight
+  Send, CheckCheck, Check, AlertTriangle, Bot, User,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Conversation } from "./ConversationList";
 
@@ -27,34 +24,35 @@ interface ChatAreaProps {
   conversation: Conversation | null;
   messages: ChatMessage[];
   onSend: (text: string) => void;
+  /** Estado REAL do agente na conversa (conversations.ai_enabled). */
+  aiEnabled?: boolean;
+  onToggleAi?: (enabled: boolean) => void;
 }
 
-const AiToggleButton = () => {
-  const [aiActive, setAiActive] = useState(true);
-  return (
-    <button
-      onClick={() => setAiActive(!aiActive)}
-      className={cn(
-        "flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium transition-all border",
-        aiActive
-          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20"
-          : "bg-muted text-muted-foreground border-border hover:bg-accent"
-      )}
-      title={aiActive ? "Clique para modo humano" : "Clique para ativar IA"}
-    >
-      {aiActive ? (
-        <Bot className="w-3.5 h-3.5 text-emerald-500" />
-      ) : (
-        <User className="w-3.5 h-3.5" />
-      )}
-      {aiActive ? "IA" : "Humano"}
-    </button>
-  );
+/** Toggle IA/Humano — wired no banco via onToggleAi (era fake antes). */
+const AiToggleButton = ({ aiEnabled, onToggle }: { aiEnabled: boolean; onToggle: (v: boolean) => void }) => (
+  <button
+    onClick={() => onToggle(!aiEnabled)}
+    className={cn(
+      "flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium transition-all border",
+      aiEnabled
+        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20"
+        : "bg-muted text-muted-foreground border-border hover:bg-accent"
+    )}
+    title={aiEnabled ? "IA respondendo — clique pra assumir a conversa" : "Você assumiu — clique pra devolver pra IA"}
+  >
+    {aiEnabled ? <Bot className="w-3.5 h-3.5 text-emerald-500" /> : <User className="w-3.5 h-3.5" />}
+    {aiEnabled ? "IA respondendo" : "Você assumiu"}
+  </button>
+);
+
+const STATUS_LABELS: Record<string, string> = {
+  open: "Aberta", in_progress: "Em andamento", waiting_client: "Aguardando",
+  resolved: "Resolvida", closed: "Fechada",
 };
 
-const ChatArea = ({ conversation, messages, onSend }: ChatAreaProps) => {
+const ChatArea = ({ conversation, messages, onSend, aiEnabled = true, onToggleAi }: ChatAreaProps) => {
   const [input, setInput] = useState("");
-  const [activeTab, setActiveTab] = useState<"reply" | "note">("reply");
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -110,25 +108,11 @@ const ChatArea = ({ conversation, messages, onSend }: ChatAreaProps) => {
             </div>
           </div>
           <Badge variant="outline" className="text-[10px] h-5 ml-2">
-            Aberta
+            {STATUS_LABELS[conversation.status ?? "open"] ?? conversation.status}
           </Badge>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7">
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7">
-            <MoreVertical className="w-3.5 h-3.5" />
-          </Button>
-          <AiToggleButton />
-        </div>
-      </div>
-
-      {/* Messages / Activity Tabs */}
-      <div className="border-b border-border bg-card px-4">
-        <div className="flex gap-4">
-          <button className="text-xs font-medium text-primary border-b-2 border-primary py-2">Mensagens</button>
-          <button className="text-xs font-medium text-muted-foreground py-2 hover:text-foreground transition-colors">Atividades</button>
+          {onToggleAi && <AiToggleButton aiEnabled={aiEnabled} onToggle={onToggleAi} />}
         </div>
       </div>
 
@@ -195,76 +179,26 @@ const ChatArea = ({ conversation, messages, onSend }: ChatAreaProps) => {
         </div>
       </ScrollArea>
 
-      {/* Reply / Note Input */}
+      {/* Composer — so' o que funciona. Nota interna/anexos/audio voltam
+          quando tiverem backend (a aba de nota antiga mandava a "nota" PRO
+          CLIENTE como mensagem normal — removida por seguranca). */}
       <div className="border-t border-border bg-card">
-        <div className="px-3 pt-2">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "reply" | "note")}>
-            <TabsList className="h-7">
-              <TabsTrigger value="reply" className="text-[11px] h-6 px-3">
-                <Send className="w-3 h-3 mr-1" /> Responder
-              </TabsTrigger>
-              <TabsTrigger value="note" className="text-[11px] h-6 px-3">
-                <User className="w-3 h-3 mr-1" /> Nota Interna
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        {/* Formatting toolbar */}
-        <div className="px-3 py-1.5 flex items-center gap-0.5 border-b border-border">
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
-            <Bold className="w-3 h-3" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
-            <Italic className="w-3 h-3" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
-            <List className="w-3 h-3" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
-            <LinkIcon className="w-3 h-3" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
-            <Code className="w-3 h-3" />
-          </Button>
-        </div>
-
-        <div className="px-3 py-2">
+        <div className="px-3 py-2 flex items-center gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={activeTab === "note" ? "Escreva uma nota interna..." : "Digite sua resposta..."}
-            className={cn(
-              "h-9 text-sm border-0 shadow-none focus-visible:ring-0 px-0",
-              activeTab === "note" && "bg-amber-500/5"
-            )}
+            placeholder={aiEnabled ? "Responder (assume a conversa e pausa a IA)…" : "Digite sua resposta…"}
+            className="h-9 text-sm"
           />
-        </div>
-
-        <div className="px-3 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-              <Paperclip className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-              <ImageIcon className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-              <Smile className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-              <Mic className="w-3.5 h-3.5" />
-            </Button>
-          </div>
           <Button
             size="sm"
-            className={cn("h-7 text-xs gap-1", activeTab === "note" && "bg-amber-600 hover:bg-amber-700")}
+            className="h-9 text-xs gap-1 shrink-0"
             onClick={handleSend}
             disabled={!input.trim()}
           >
             <Send className="w-3 h-3" />
-            {activeTab === "note" ? "Adicionar Nota" : "Enviar"}
+            Enviar
           </Button>
         </div>
       </div>
