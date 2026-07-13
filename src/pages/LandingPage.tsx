@@ -310,10 +310,10 @@ const LandingPage = () => {
         {/* CTA */}
         <button
           onClick={() => openAuthModal("signup")}
-          className={`flex items-center gap-2 mb-8 px-7 py-3.5 rounded-full border text-sm font-medium shadow-lg hover:shadow-xl transition-all ${isDark ? "bg-white text-[#0a0a0f] hover:bg-white/90 border-white" : "bg-foreground text-background hover:bg-foreground/90 border-foreground"}`}
+          className="cta-glow-btn flex items-center gap-2 mb-8 px-7 py-3.5 rounded-full text-sm font-medium"
         >
           {t.ctaExperts}
-          <ArrowRight className="w-4 h-4" />
+          <ArrowRight className="w-4 h-4 arrow-icon" />
         </button>
       </div>
 
