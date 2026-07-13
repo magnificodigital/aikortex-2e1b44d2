@@ -143,6 +143,9 @@ export default function AgencyChannelsManager() {
   const [openDialog, setOpenDialog] = useState<ConfigurableKey | null>(null);
   const [openTemplates, setOpenTemplates] = useState<TemplatesKey | null>(null);
   const [igConnected, setIgConnected] = useState(false);
+  // true quando o dialog foi aberto pelo CTA "Conectar X" do card —
+  // o form dispara o popup da Meta direto, sem segundo clique.
+  const [autoConnect, setAutoConnect] = useState(false);
 
   // Status do Instagram: tem access token salvo? (recarrega ao fechar dialog)
   useEffect(() => {
@@ -287,7 +290,7 @@ export default function AgencyChannelsManager() {
                           : ""
                       }`}
                       variant={ch.key === "whatsapp" || ch.key === "instagram" ? "default" : "default"}
-                      onClick={() => setOpenDialog(ch.configurable!)}
+                      onClick={() => { setAutoConnect(true); setOpenDialog(ch.configurable!); }}
                     >
                       Conectar {ch.name}
                     </Button>
@@ -320,7 +323,7 @@ export default function AgencyChannelsManager() {
       </Dialog>
 
       {/* Dialog do WhatsApp */}
-      <Dialog open={openDialog === "whatsapp"} onOpenChange={(o) => { if (!o) setOpenDialog(null); }}>
+      <Dialog open={openDialog === "whatsapp"} onOpenChange={(o) => { if (!o) { setOpenDialog(null); setAutoConnect(false); } }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3">
@@ -335,12 +338,12 @@ export default function AgencyChannelsManager() {
               </div>
             </div>
           </DialogHeader>
-          <IntegrationWhatsAppForm onClose={() => setOpenDialog(null)} />
+          <IntegrationWhatsAppForm onClose={() => setOpenDialog(null)} autoConnect={autoConnect} />
         </DialogContent>
       </Dialog>
 
       {/* Dialog do Instagram */}
-      <Dialog open={openDialog === "instagram"} onOpenChange={(o) => { if (!o) setOpenDialog(null); }}>
+      <Dialog open={openDialog === "instagram"} onOpenChange={(o) => { if (!o) { setOpenDialog(null); setAutoConnect(false); } }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3">
@@ -355,7 +358,7 @@ export default function AgencyChannelsManager() {
               </div>
             </div>
           </DialogHeader>
-          <IntegrationInstagramForm onClose={() => setOpenDialog(null)} />
+          <IntegrationInstagramForm onClose={() => setOpenDialog(null)} autoConnect={autoConnect} />
         </DialogContent>
       </Dialog>
 

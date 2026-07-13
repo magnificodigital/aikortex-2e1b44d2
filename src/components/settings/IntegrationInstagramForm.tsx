@@ -9,7 +9,7 @@
  * CAMINHO AVANCADO (collapse): campos manuais pra quem precisa
  * (token/IDs) — mesmo destino em user_api_keys.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Save, Copy, Camera, ChevronDown, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ const NONE_AGENT = "__none__";
 // Fallback sem config_id: login classico por escopos.
 const IG_SCOPES = "instagram_basic,instagram_manage_messages,pages_show_list,pages_manage_metadata,business_management";
 
-export default function IntegrationInstagramForm({ onClose }: { onClose: () => void }) {
+export default function IntegrationInstagramForm({ onClose, autoConnect = false }: { onClose: () => void; autoConnect?: boolean }) {
   const [fields, setFields] = useState<Record<string, string>>({});
   const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +37,27 @@ export default function IntegrationInstagramForm({ onClose }: { onClose: () => v
   const [connectedAs, setConnectedAs] = useState<string | null>(null);
   const [pagesToPick, setPagesToPick] = useState<{ id: string; name: string; ig_username: string | null }[] | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const autoStartedRef = useRef(false);
+
+  // Watchdog: popup bloqueado deixava "Conectando..." infinito.
+  useEffect(() => {
+    if (!connecting) return;
+    const t = setTimeout(() => {
+      setConnecting(false);
+      toast.error("O popup da Meta não respondeu — verifique se o navegador bloqueou popups deste site e tente de novo.");
+    }, 45000);
+    return () => clearTimeout(t);
+  }, [connecting]);
+
+  // Auto-start: aberto pelo botao 'Conectar Instagram' do card — o clique
+  // do card ja e' o gesto, dispara o popup direto sem segundo clique.
+  useEffect(() => {
+    if (autoConnect && sdkReady && !connecting && !connectedAs && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      handleConnect();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoConnect, sdkReady, connectedAs]);
 
   const webhookUrl = fnUrl("instagram-webhook");
   // Config oficial do admin (app id + config id do Login for Business)
