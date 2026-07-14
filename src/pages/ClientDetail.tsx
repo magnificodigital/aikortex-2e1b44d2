@@ -17,7 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Mail, Phone, FileText, DollarSign, LayoutTemplate,
-  Settings, AlertTriangle, Ban, Trash2, Loader2, Sparkles as SparklesIcon,
+  Settings, AlertTriangle, Ban, Trash2, Loader2, Zap as ZapIcon,
 } from "lucide-react";
 import { SellStarkDialog } from "@/components/clients/SellStarkDialog";
 
@@ -118,11 +118,11 @@ const ClientDetail = () => {
           </div>
           {(client.enabled_modules as string[] | null)?.includes("stark.copilot") ? (
             <Badge variant="secondary" className="gap-1">
-              <SparklesIcon className="w-3 h-3" /> Stark ativo
+              <ZapIcon className="w-3 h-3" /> Stark ativo
             </Badge>
           ) : (
             <Button size="sm" className="gap-1.5" onClick={() => setSellStarkOpen(true)}>
-              <SparklesIcon className="w-3.5 h-3.5" /> Vender Stark
+              <ZapIcon className="w-3.5 h-3.5" /> Vender Stark
             </Button>
           )}
         </div>
