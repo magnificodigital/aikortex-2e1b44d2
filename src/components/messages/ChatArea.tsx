@@ -4,8 +4,8 @@ import {
   CheckCircle2, RotateCcw, Sparkles, Loader2, StickyNote, Lock,
   Tag, X, Plus, Bold, Italic, Code, Smile, VolumeX, Volume2, Share2, ChevronDown, Clock,
   Link2, Undo2, Redo2, List, ListOrdered, Mic, PenLine, Paperclip, Maximize2, Globe,
-  PanelRightClose, PanelRightOpen,
 } from "lucide-react";
+
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -183,7 +183,7 @@ const ChatArea = ({
 
   return (
     <div className="flex-1 flex flex-col min-w-0 h-full">
-      {/* Chat Header — h-14, alinhado com os outros paineis */}
+      {/* Chat Header — layout clone Chatwoot: avatar + nome / inbox · Fechar detalhes | mute · share · Resolver */}
       <div className="h-14 shrink-0 border-b border-border flex items-center justify-between gap-3 px-4 bg-card">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Avatar className="h-9 w-9 shrink-0">
@@ -191,38 +191,69 @@ const ChatArea = ({
               {conversation.initials.slice(0, 2)}
             </AvatarFallback>
           </Avatar>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-foreground truncate">{conversation.contactName}</h3>
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold text-foreground truncate leading-tight">{conversation.contactName}</h3>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate mt-0.5">
               <Globe className="w-3 h-3 shrink-0" />
               <span className="truncate">{conversation.inbox}</span>
-              <span className="opacity-50">·</span>
-              <span className="truncate">{STATUS_LABELS[conversation.status ?? "open"] ?? conversation.status}</span>
+              {onTogglePanel && (
+                <>
+                  <span className="opacity-50">·</span>
+                  <button
+                    onClick={onTogglePanel}
+                    className="text-primary hover:underline shrink-0"
+                  >
+                    {panelOpen ? "Fechar detalhes" : "Mostrar detalhes"}
+                  </button>
+                </>
+              )}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           {onToggleAi && <AiToggleButton aiEnabled={aiEnabled} onToggle={onToggleAi} />}
+          {onToggleMute && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={onToggleMute}
+              title={muted ? "Reativar notificações" : "Silenciar conversa"}
+            >
+              {muted ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </Button>
+          )}
+          {onShare && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={onShare}
+              title="Copiar link da conversa"
+            >
+              <Share2 className="w-4 h-4" />
+            </Button>
+          )}
           {onToggleResolve && (
-            <div className="flex">
+            <div className="flex ml-1">
               <Button
                 size="sm"
                 variant={isResolved ? "outline" : "default"}
-                className="h-7 text-[11px] gap-1 rounded-r-none"
+                className="h-8 text-[12px] font-medium gap-1.5 rounded-r-none px-3"
                 onClick={onToggleResolve}
               >
                 {isResolved
-                  ? (<><RotateCcw className="w-3 h-3" /> Reabrir</>)
-                  : (<><CheckCircle2 className="w-3 h-3" /> Resolver</>)}
+                  ? (<><RotateCcw className="w-3.5 h-3.5" /> Reabrir</>)
+                  : (<><CheckCircle2 className="w-3.5 h-3.5" /> Resolver</>)}
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     size="sm"
                     variant={isResolved ? "outline" : "default"}
-                    className="h-7 w-6 px-0 rounded-l-none border-l border-primary-foreground/20"
+                    className="h-8 w-7 px-0 rounded-l-none border-l border-primary-foreground/20"
                   >
-                    <ChevronDown className="w-3 h-3" />
+                    <ChevronDown className="w-3.5 h-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -235,33 +266,13 @@ const ChatArea = ({
                   <DropdownMenuItem onClick={() => onSetStatus?.("resolved")} className="text-xs gap-2">
                     <CheckCircle2 className="w-3 h-3" /> Resolver
                   </DropdownMenuItem>
-                  {onToggleMute && (
-                    <DropdownMenuItem onClick={onToggleMute} className="text-xs gap-2">
-                      {muted ? <><Volume2 className="w-3 h-3" /> Reativar notificações</> : <><VolumeX className="w-3 h-3" /> Silenciar conversa</>}
-                    </DropdownMenuItem>
-                  )}
-                  {onShare && (
-                    <DropdownMenuItem onClick={onShare} className="text-xs gap-2">
-                      <Share2 className="w-3 h-3" /> Copiar link da conversa
-                    </DropdownMenuItem>
-                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           )}
-          {onTogglePanel && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={onTogglePanel}
-              title={panelOpen ? "Fechar detalhes" : "Mostrar detalhes"}
-            >
-              {panelOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
-            </Button>
-          )}
         </div>
       </div>
+
 
 
       {/* Messages — fundo com textura de pontos (vibe WhatsApp Web) */}
@@ -338,13 +349,15 @@ const ChatArea = ({
           "bg-gradient-to-br from-card via-card to-primary/[0.08]",
           composerMode === "note" ? "border-amber-500/40" : "border-border focus-within:border-primary/40",
         )}>
-          {/* Tabs */}
-          <div className="px-3 pt-2.5 flex items-center gap-1">
+          {/* Tabs — underline estilo Chatwoot */}
+          <div className="px-3 pt-1 flex items-center gap-5 border-b border-border/60">
             <button
               onClick={() => setComposerMode("reply")}
               className={cn(
-                "h-6 px-3 rounded-full text-[11px] font-medium transition",
-                composerMode === "reply" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
+                "relative h-9 text-[12px] font-medium transition",
+                composerMode === "reply"
+                  ? "text-foreground after:absolute after:left-0 after:right-0 after:-bottom-px after:h-[2px] after:bg-primary"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               Responder
@@ -353,14 +366,17 @@ const ChatArea = ({
               <button
                 onClick={() => setComposerMode("note")}
                 className={cn(
-                  "flex items-center gap-1 h-6 px-3 rounded-full text-[11px] font-medium transition",
-                  composerMode === "note" ? "bg-amber-500/15 text-amber-600" : "text-muted-foreground hover:text-foreground",
+                  "relative h-9 text-[12px] font-medium transition",
+                  composerMode === "note"
+                    ? "text-amber-600 after:absolute after:left-0 after:right-0 after:-bottom-px after:h-[2px] after:bg-amber-500"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Lock className="w-2.5 h-2.5" /> Nota interna
+                Mensagem Privada
               </button>
             )}
           </div>
+
 
           {/* Toolbar de formatacao (markdown do WhatsApp — funcional) */}
           <div className="px-3 py-1.5 flex items-center gap-0.5 border-b border-border/60">
