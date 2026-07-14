@@ -349,13 +349,15 @@ const ChatArea = ({
           "bg-gradient-to-br from-card via-card to-primary/[0.08]",
           composerMode === "note" ? "border-amber-500/40" : "border-border focus-within:border-primary/40",
         )}>
-          {/* Tabs */}
-          <div className="px-3 pt-2.5 flex items-center gap-1">
+          {/* Tabs — underline estilo Chatwoot */}
+          <div className="px-3 pt-1 flex items-center gap-5 border-b border-border/60">
             <button
               onClick={() => setComposerMode("reply")}
               className={cn(
-                "h-6 px-3 rounded-full text-[11px] font-medium transition",
-                composerMode === "reply" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
+                "relative h-9 text-[12px] font-medium transition",
+                composerMode === "reply"
+                  ? "text-foreground after:absolute after:left-0 after:right-0 after:-bottom-px after:h-[2px] after:bg-primary"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               Responder
@@ -364,14 +366,17 @@ const ChatArea = ({
               <button
                 onClick={() => setComposerMode("note")}
                 className={cn(
-                  "flex items-center gap-1 h-6 px-3 rounded-full text-[11px] font-medium transition",
-                  composerMode === "note" ? "bg-amber-500/15 text-amber-600" : "text-muted-foreground hover:text-foreground",
+                  "relative h-9 text-[12px] font-medium transition",
+                  composerMode === "note"
+                    ? "text-amber-600 after:absolute after:left-0 after:right-0 after:-bottom-px after:h-[2px] after:bg-amber-500"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Lock className="w-2.5 h-2.5" /> Nota interna
+                Mensagem Privada
               </button>
             )}
           </div>
+
 
           {/* Toolbar de formatacao (markdown do WhatsApp — funcional) */}
           <div className="px-3 py-1.5 flex items-center gap-0.5 border-b border-border/60">
