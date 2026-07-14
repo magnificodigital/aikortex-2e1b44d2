@@ -193,9 +193,12 @@ const ChatArea = ({
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-foreground truncate">{conversation.contactName}</h3>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              {STATUS_LABELS[conversation.status ?? "open"] ?? conversation.status} · {conversation.inbox}
+              <Globe className="w-3 h-3" />
+              <span>{conversation.inbox}</span>
+              <span className="opacity-50">·</span>
+              <span>{STATUS_LABELS[conversation.status ?? "open"] ?? conversation.status}</span>
               {onTogglePanel && (
-                <button onClick={onTogglePanel} className="text-primary hover:underline">
+                <button onClick={onTogglePanel} className="ml-1 text-primary hover:underline">
                   {panelOpen ? "Fechar detalhes" : "Mostrar detalhes"}
                 </button>
               )}
