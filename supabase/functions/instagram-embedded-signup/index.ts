@@ -58,17 +58,21 @@ serve(async (req) => {
   const { data: { user }, error: userErr } = await admin.auth.getUser(jwt);
   if (userErr || !user) return json({ error: "UNAUTHORIZED" }, 401);
 
-  let payload: { code?: string; page_id?: string };
+  let payload: { code?: string; page_id?: string; redirect_uri?: string };
   try { payload = await req.json(); } catch { return json({ error: "INVALID_JSON" }, 400); }
 
   try {
     let userToken: string | null = null;
 
     if (payload.code) {
-      // 1) code → user access token
+      // 1) code → user access token. Codes do fluxo de REDIRECT exigem o
+      // mesmo redirect_uri na troca; codes do JS SDK (popup) vem sem ele.
+      const redirectPart = payload.redirect_uri
+        ? `&redirect_uri=${encodeURIComponent(payload.redirect_uri)}`
+        : "";
       const tokenResp = await fetch(
         `${GRAPH_API}/oauth/access_token?client_id=${encodeURIComponent(META_APP_ID)}` +
-        `&client_secret=${encodeURIComponent(META_APP_SECRET)}&code=${encodeURIComponent(payload.code)}`,
+        `&client_secret=${encodeURIComponent(META_APP_SECRET)}&code=${encodeURIComponent(payload.code)}${redirectPart}`,
       );
       const tokenJson = await tokenResp.json();
       if (!tokenResp.ok || !tokenJson.access_token) {

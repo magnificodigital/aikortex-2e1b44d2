@@ -180,6 +180,21 @@ export default function AgencyChannelsManager() {
   const [igPagesToPick, setIgPagesToPick] = useState<{ id: string; name: string; ig_username: string | null }[] | null>(null);
   const [waLocalConnected, setWaLocalConnected] = useState(false);
 
+  // ── Retorno do OAuth do Instagram (redirect flow) ──
+  // O Facebook volta em /settings?tab=channels&code=...&state=ig_connect.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state");
+    if (!code || state !== "ig_connect") return;
+    // Limpa a URL (evita re-troca do code em refresh — code e' single-use)
+    window.history.replaceState({}, "", `${window.location.pathname}?tab=channels`);
+    setConnectingKey("instagram");
+    finishInstagram({ code, redirect_uri: `${window.location.origin}/settings?tab=channels` })
+      .finally(() => setConnectingKey(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Watchdog: popup sem resposta (bloqueado / dentro do editor Lovable)
   useEffect(() => {
     if (!connectingKey) return;
@@ -193,7 +208,12 @@ export default function AgencyChannelsManager() {
     return () => clearTimeout(t);
   }, [connectingKey]);
 
-  const finishInstagram = async (body: { code?: string; page_id?: string }) => {
+  // URI de retorno do OAuth (redirect flow). PRECISA estar registrada
+  // exatamente assim em "URIs de redirecionamento do OAuth válidos" no app
+  // Meta (agents + preview).
+  const igRedirectUri = `${window.location.origin}/settings?tab=channels`;
+
+  const finishInstagram = async (body: { code?: string; page_id?: string; redirect_uri?: string }) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { toast.error("Sessão expirada"); return; }
     const resp = await fetch(fnUrl("instagram-embedded-signup"), {
@@ -211,27 +231,27 @@ export default function AgencyChannelsManager() {
     }
   };
 
-  /** FB.login disparado DIRETO no onClick do card — unica forma que o
-   *  navegador garante o popup. Fallback: sem SDK/config → abre o dialog. */
+  /** Conexao 1-clique. Instagram = redirect flow (sem SDK, sem popup).
+   *  WhatsApp ES = popup obrigatorio (a Meta so entrega waba/phone ids por
+   *  postMessage). Fallback: sem config → abre o dialog de gestao. */
   const directConnect = (key: "whatsapp" | "instagram") => {
     const cfgId = key === "whatsapp" ? meta.whatsappConfigId : meta.instagramConfigId;
-    if (!window.FB || !cfgId) { setOpenDialog(key); return; }
+    if (!cfgId) { setOpenDialog(key); return; }
+    if (key !== "instagram" && !window.FB) { setOpenDialog(key); return; }
     setConnectingKey(key);
 
     if (key === "instagram") {
-      window.FB.login((response: any) => {
-        (async () => {
-          try {
-            if (response?.authResponse?.code) {
-              await finishInstagram({ code: response.authResponse.code });
-            } else if (response?.error) {
-              toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
-            }
-          } finally {
-            setConnectingKey(null);
-          }
-        })();
-      }, { config_id: cfgId, response_type: "code", override_default_response_type: true });
+      // REDIRECT flow (sem popup): navega pro Facebook, autoriza, volta em
+      // /settings?tab=channels&code=... — imune a bloqueador de popup.
+      const authUrl =
+        `https://www.facebook.com/v21.0/dialog/oauth` +
+        `?client_id=${encodeURIComponent(meta.appId)}` +
+        `&config_id=${encodeURIComponent(cfgId)}` +
+        `&redirect_uri=${encodeURIComponent(igRedirectUri)}` +
+        `&response_type=code` +
+        `&override_default_response_type=true` +
+        `&state=ig_connect`;
+      window.location.href = authUrl;
       return;
     }
 
