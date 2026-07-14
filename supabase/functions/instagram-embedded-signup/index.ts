@@ -134,15 +134,30 @@ serve(async (req) => {
     const igAccountId = chosen.instagram_business_account!.id;
     const igUsername = chosen.instagram_business_account!.username ?? null;
 
-    // 4) Inscreve a pagina no webhook do app (campo messages)
-    const subResp = await fetch(
+    // 4) Inscreve a pagina no app.
+    //    - subscribed_fields=messages → habilita TAMBEM o Messenger da
+    //      Pagina (exige pages_messaging)
+    //    - fallback subscribed_fields=name → suficiente pras DMs do
+    //      INSTAGRAM (que chegam pela assinatura do objeto instagram no
+    //      app, nao por campo de Pagina)
+    let messengerReady = true;
+    let subResp = await fetch(
       `${GRAPH_API}/${chosen.id}/subscribed_apps?subscribed_fields=messages&access_token=${encodeURIComponent(pageToken)}`,
       { method: "POST" },
     );
-    const subJson = await subResp.json();
     if (!subResp.ok) {
-      console.error("[ig-signup] subscribe failed:", subJson);
-      return json({ error: "SUBSCRIBE_FAILED", message: subJson?.error?.message || "Falha inscrevendo webhook" }, 502);
+      const firstErr = await subResp.json().catch(() => ({}));
+      console.warn("[ig-signup] subscribe messages falhou (sem pages_messaging?):", firstErr?.error?.message);
+      messengerReady = false;
+      subResp = await fetch(
+        `${GRAPH_API}/${chosen.id}/subscribed_apps?subscribed_fields=name&access_token=${encodeURIComponent(pageToken)}`,
+        { method: "POST" },
+      );
+      if (!subResp.ok) {
+        const subJson = await subResp.json().catch(() => ({}));
+        console.error("[ig-signup] subscribe fallback failed:", subJson);
+        return json({ error: "SUBSCRIBE_FAILED", message: subJson?.error?.message || "Falha inscrevendo webhook" }, 502);
+      }
     }
 
     // 5) Persiste credenciais + limpa token temporario
@@ -161,8 +176,8 @@ serve(async (req) => {
     await admin.from("user_api_keys").delete()
       .eq("user_id", user.id).eq("provider", "instagram_user_token");
 
-    console.log(`[ig-signup] connected user=${user.id} ig=@${igUsername ?? igAccountId}`);
-    return json({ connected: true, ig_username: igUsername, page_name: chosen.name });
+    console.log(`[ig-signup] connected user=${user.id} ig=@${igUsername ?? igAccountId} messenger=${messengerReady}`);
+    return json({ connected: true, ig_username: igUsername, page_name: chosen.name, messenger_ready: messengerReady });
   } catch (e) {
     console.error("[ig-signup] error:", e);
     return json({ error: "INTERNAL", message: (e as Error).message }, 500);

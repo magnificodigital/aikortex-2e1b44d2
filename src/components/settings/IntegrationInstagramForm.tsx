@@ -107,23 +107,31 @@ export default function IntegrationInstagramForm({ onClose }: { onClose: () => v
   }
 
   function handleConnect() {
-    if (!window.FB) { toast.error("SDK do Facebook não carregou — use o modo manual abaixo"); return; }
+    // REDIRECT flow — mesmo caminho do card (imune a bloqueio de popup).
+    // O retorno (?code&state=ig_connect) e' tratado pelo AgencyChannelsManager.
+    if (!meta.instagramConfigId) {
+      toast.error("Config ID do Instagram não configurado pelo admin (Admin → Chaves de API)");
+      return;
+    }
     setConnecting(true);
-    const loginOpts: any = meta.instagramConfigId
-      ? { config_id: meta.instagramConfigId, response_type: "code", override_default_response_type: true }
-      : { scope: IG_SCOPES, response_type: "code", override_default_response_type: true };
+    const redirectUri = `${window.location.origin}/settings?tab=channels`;
+    window.location.href =
+      `https://www.facebook.com/v21.0/dialog/oauth` +
+      `?client_id=${encodeURIComponent(meta.appId)}` +
+      `&config_id=${encodeURIComponent(meta.instagramConfigId)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&response_type=code&override_default_response_type=true&state=ig_connect`;
+  }
 
-    window.FB.login(async (response: any) => {
-      try {
-        if (response?.authResponse?.code) {
-          await completeSignup({ code: response.authResponse.code });
-        } else if (response?.error) {
-          toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
-        }
-      } finally {
-        setConnecting(false);
-      }
-    }, loginOpts);
+  async function handleDisconnect() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("user_api_keys").delete()
+      .eq("user_id", user.id)
+      .in("provider", ["instagram_access_token", "instagram_account_id", "instagram_page_id", "instagram_user_token"]);
+    setConnectedAs(null);
+    setFields((prev) => ({ ...prev, instagram_access_token: "", instagram_account_id: "" }));
+    toast.success("Instagram desconectado — tokens removidos");
   }
 
   async function handleManualSave() {
@@ -173,28 +181,40 @@ export default function IntegrationInstagramForm({ onClose }: { onClose: () => v
 
   return (
     <div className="space-y-4">
-      {/* ── Caminho 1-clique ── */}
+      {/* ── Estado da conexao ── */}
       {connectedAs ? (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-          <p className="text-xs text-foreground">
-            Instagram conectado: <span className="font-semibold">{connectedAs}</span>
-          </p>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <p className="text-xs text-foreground">
+              Instagram conectado: <span className="font-semibold">{connectedAs}</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="flex-1 h-8 text-xs gap-1.5" onClick={handleConnect}>
+              <Camera className="w-3.5 h-3.5" /> Trocar conta
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-destructive hover:text-destructive" onClick={handleDisconnect}>
+              Desconectar
+            </Button>
+          </div>
         </div>
       ) : (
-        <Button
-          className="w-full gap-2 bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600 text-white"
-          onClick={handleConnect}
-          disabled={!sdkReady || connecting}
-        >
-          {connecting
-            ? (<><Loader2 className="w-4 h-4 animate-spin" /> Conectando…</>)
-            : (<><Camera className="w-4 h-4" /> Conectar com Facebook</>)}
-        </Button>
+        <>
+          <Button
+            className="w-full gap-2 bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600 text-white"
+            onClick={handleConnect}
+            disabled={connecting}
+          >
+            {connecting
+              ? (<><Loader2 className="w-4 h-4 animate-spin" /> Conectando…</>)
+              : (<><Camera className="w-4 h-4" /> Conectar com Facebook</>)}
+          </Button>
+          <p className="text-[11px] text-muted-foreground text-center">
+            Faça login e autorize — a gente resolve token, conta e webhook automaticamente.
+          </p>
+        </>
       )}
-      <p className="text-[11px] text-muted-foreground text-center">
-        Faça login e autorize — a gente resolve token, conta e webhook automaticamente.
-      </p>
 
       {/* Seletor quando o user tem varias Paginas com IG */}
       {pagesToPick && (
