@@ -219,16 +219,18 @@ export default function AgencyChannelsManager() {
     setConnectingKey(key);
 
     if (key === "instagram") {
-      window.FB.login(async (response: any) => {
-        try {
-          if (response?.authResponse?.code) {
-            await finishInstagram({ code: response.authResponse.code });
-          } else if (response?.error) {
-            toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
+      window.FB.login((response: any) => {
+        (async () => {
+          try {
+            if (response?.authResponse?.code) {
+              await finishInstagram({ code: response.authResponse.code });
+            } else if (response?.error) {
+              toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
+            }
+          } finally {
+            setConnectingKey(null);
           }
-        } finally {
-          setConnectingKey(null);
-        }
+        })();
       }, { config_id: cfgId, response_type: "code", override_default_response_type: true });
       return;
     }
