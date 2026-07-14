@@ -400,9 +400,60 @@ const ChatArea = ({
               className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
               <Italic className="w-3 h-3" />
             </button>
+            <button
+              onClick={() => {
+                const url = window.prompt("URL do link");
+                if (url) insertAtCursor(`[${url}](${url})`);
+              }}
+              title="Inserir link"
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              <Link2 className="w-3 h-3" />
+            </button>
+            <div className="w-px h-3.5 bg-border mx-1" />
+            <button
+              onClick={() => document.execCommand?.("undo")}
+              title="Desfazer"
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              <Undo2 className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => document.execCommand?.("redo")}
+              title="Refazer"
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              <Redo2 className="w-3 h-3" />
+            </button>
+            <div className="w-px h-3.5 bg-border mx-1" />
+            <button
+              onClick={() => insertAtCursor("\n• ")}
+              title="Lista"
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              <List className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => insertAtCursor("\n1. ")}
+              title="Lista numerada"
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              <ListOrdered className="w-3 h-3" />
+            </button>
             <button onClick={() => wrapSelection("```")} title="Código (```texto```)"
               className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
               <Code className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => {
+                const el = textareaRef.current;
+                if (!el) return;
+                if (el.style.height === "260px") {
+                  el.style.height = "auto";
+                  el.style.height = `${Math.min(el.scrollHeight, 130)}px`;
+                } else {
+                  el.style.height = "260px";
+                }
+              }}
+              title="Expandir composer"
+              className="ml-auto w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
+            >
+              <Maximize2 className="w-3 h-3" />
             </button>
           </div>
 
