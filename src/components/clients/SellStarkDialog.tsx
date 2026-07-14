@@ -8,7 +8,7 @@
  * stark.copilot no workspace do cliente.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Zap } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -98,7 +98,7 @@ export function SellStarkDialog({ open, onOpenChange, clientId, clientName, onSo
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" /> Vender Stark
+            <Zap className="w-4 h-4 text-primary" /> Vender Stark
           </DialogTitle>
           <DialogDescription>
             Copiloto de IA por voz no workspace de <span className="font-medium">{clientName}</span>.
@@ -149,7 +149,7 @@ export function SellStarkDialog({ open, onOpenChange, clientId, clientName, onSo
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSell} disabled={loading || selling || invalid} className="gap-1.5">
-            {selling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            {selling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
             Vender Stark
           </Button>
         </DialogFooter>

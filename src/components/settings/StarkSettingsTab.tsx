@@ -10,7 +10,7 @@
  */
 import { useEffect, useState } from "react";
 import {
-  Mic, Play, Loader2, Save, AlertTriangle, Sparkles, Zap, BarChart3,
+  Mic, Play, Loader2, Save, AlertTriangle, Zap, BarChart3,
   Plus, Trash2, GripVertical, Bell, Wrench, Clock, History, ShoppingBag,
   Wallet,
 } from "lucide-react";
@@ -62,7 +62,7 @@ export default function StarkSettingsTab() {
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-primary" />
+          <Zap className="w-5 h-5 text-primary" />
         </div>
         <div>
           <h2 className="text-lg font-semibold text-foreground">Stark</h2>
@@ -76,7 +76,7 @@ export default function StarkSettingsTab() {
 
       <Tabs defaultValue="persona" className="space-y-4">
         <TabsList className="grid grid-cols-2 sm:grid-cols-5">
-          <TabsTrigger value="persona" className="gap-1.5"><Sparkles className="w-3.5 h-3.5" />Personalidade</TabsTrigger>
+          <TabsTrigger value="persona" className="gap-1.5"><Zap className="w-3.5 h-3.5" />Personalidade</TabsTrigger>
           <TabsTrigger value="voice" className="gap-1.5"><Mic className="w-3.5 h-3.5" />Voz</TabsTrigger>
           <TabsTrigger value="tools" className="gap-1.5"><Wrench className="w-3.5 h-3.5" />Ferramentas</TabsTrigger>
           <TabsTrigger value="commands" className="gap-1.5"><Zap className="w-3.5 h-3.5" />Atalhos</TabsTrigger>

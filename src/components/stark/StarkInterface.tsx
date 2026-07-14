@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Mic, MicOff, MessageSquare, Settings, X, ArrowUp, RefreshCw, Sparkles, BarChart3, Square, Video, VideoOff } from "lucide-react";
+import { Mic, MicOff, MessageSquare, Settings, X, ArrowUp, RefreshCw, Zap, BarChart3, Square, Video, VideoOff } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -603,7 +603,7 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
             )}
             title="Stark cria agentes pra você"
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Zap className="w-3.5 h-3.5" />
             Construir
           </button>
           <button

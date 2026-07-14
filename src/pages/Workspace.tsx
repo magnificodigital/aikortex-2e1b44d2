@@ -10,7 +10,7 @@ import aikortexLogoBlack from "@/assets/aikortex-logo-black.png";
 import {
   Bot, MessageSquare, Settings, Contact, Phone as PhoneIcon, AppWindow,
   Users, ShoppingCart, DollarSign, UserCheck, CheckSquare,
-  LogOut, Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Loader2, Sparkles,
+  LogOut, Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Loader2, Zap,
 } from "lucide-react";
 import { RightPanelProvider } from "@/components/RightPanel";
 import WorkspaceMessages from "@/pages/workspace/WorkspaceMessages";
@@ -26,7 +26,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   // Aikortex
   // stark.copilot: habilitado quando a agencia VENDE o Stark pro cliente
   // (edge stark-subscribe-client adiciona a key em enabled_modules).
-  { key: "stark.copilot",      group: "Aikortex", label: "Stark",      icon: Sparkles,       path: "/workspace/stark" },
+  { key: "stark.copilot",      group: "Aikortex", label: "Stark",      icon: Zap,            path: "/workspace/stark" },
   { key: "aikortex.agentes",   group: "Aikortex", label: "Agentes",    icon: Bot,            path: "/workspace/agents" },
   { key: "aikortex.crm",       group: "Aikortex", label: "CRM",        icon: Contact,        path: "/workspace/crm" },
   { key: "aikortex.ligacoes",  group: "Aikortex", label: "Ligações",   icon: PhoneIcon,      path: "/workspace/calls" },

@@ -8,7 +8,7 @@
  * Persistido em platform_config key='stark_tools_enabled' (JSON).
  */
 import { useEffect, useState } from "react";
-import { Loader2, Save, Sparkles, ShieldAlert, DollarSign } from "lucide-react";
+import { Loader2, Save, Zap, ShieldAlert, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +61,7 @@ export default function AdminStarkTab() {
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-primary" />
+          <Zap className="w-5 h-5 text-primary" />
         </div>
         <div>
           <h2 className="text-lg font-semibold">Stark — Funções da plataforma</h2>

@@ -40,7 +40,7 @@ import {
   Radio,
   DollarSign,
   Sparkles,
-  Mic,
+  Zap,
 } from "lucide-react";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS } from "@/components/shared/IntegrationsGrid";
 import AgencyChannelsManager from "@/components/settings/AgencyChannelsManager";
@@ -304,7 +304,7 @@ const SettingsPage = () => {
 
         <Tabs defaultValue={new URLSearchParams(window.location.search).get("tab") || "stark"} className="space-y-4">
           <TabsList className="flex h-auto w-full max-w-full gap-1 overflow-x-auto bg-muted/50 p-1 justify-start [scrollbar-width:none]">
-            <TabsTrigger value="stark" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Mic className="h-3.5 w-3.5" /> Stark</TabsTrigger>
+            <TabsTrigger value="stark" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Zap className="h-3.5 w-3.5" /> Stark</TabsTrigger>
             <TabsTrigger value="providers" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Sparkles className="h-3.5 w-3.5" /> Provedores</TabsTrigger>
             <TabsTrigger value="integrations" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Plug className="h-3.5 w-3.5" /> Conectores</TabsTrigger>
             <TabsTrigger value="channels" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Radio className="h-3.5 w-3.5" /> Canais</TabsTrigger>
