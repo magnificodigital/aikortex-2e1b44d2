@@ -46,7 +46,7 @@ const WABA_FIELDS = [
  * Form WABA reusado dentro do dialog do canal WhatsApp no AgencyChannelsManager.
  * Lê/grava campos diretamente em user_api_keys (padrão A: BYOK).
  */
-export default function IntegrationWhatsAppForm({ onClose, autoConnect = false }: Props & { autoConnect?: boolean }) {
+export default function IntegrationWhatsAppForm({ onClose }: Props) {
   const qc = useQueryClient();
   const [fields, setFields] = useState<Record<string, string>>({});
   const [show, setShow] = useState<Record<string, boolean>>({});
@@ -218,7 +218,6 @@ export default function IntegrationWhatsAppForm({ onClose, autoConnect = false }
       {!isAnyConfigured && (
         <div className="space-y-2">
           <MetaEmbeddedSignupButton
-            autoStart={autoConnect}
             onConnected={(info) => {
               setIdentity({
                 display_phone_number: info.display_phone_number,

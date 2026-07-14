@@ -145,10 +145,6 @@ export default function AgencyChannelsManager() {
   const [openDialog, setOpenDialog] = useState<ConfigurableKey | null>(null);
   const [openTemplates, setOpenTemplates] = useState<TemplatesKey | null>(null);
   const [igConnected, setIgConnected] = useState(false);
-  // true quando o dialog foi aberto pelo CTA "Conectar X" do card —
-  // o form dispara o popup da Meta direto, sem segundo clique.
-  const [autoConnect, setAutoConnect] = useState(false);
-  const [sdkReady, setSdkReady] = useState(false);
   const meta = useMetaIntegration();
 
   // PRE-CARREGA o SDK do Facebook assim que a pagina de Canais abre.
@@ -157,7 +153,7 @@ export default function AgencyChannelsManager() {
   // bloqueado → SDK caia em redirect de pagina inteira → tela preta.
   useEffect(() => {
     if (meta.loading) return;
-    loadFacebookSdk(meta.appId).then(() => setSdkReady(true)).catch(() => { /* manual continua ok */ });
+    loadFacebookSdk(meta.appId).catch(() => { /* manual continua ok */ });
   }, [meta.loading, meta.appId]);
 
   // Status do Instagram: tem access token salvo? (recarrega ao fechar dialog)
@@ -303,13 +299,7 @@ export default function AgencyChannelsManager() {
                           : ""
                       }`}
                       variant={ch.key === "whatsapp" || ch.key === "instagram" ? "default" : "default"}
-                      onClick={() => {
-                        // So auto-dispara se o SDK ja esta pronto (clique
-                        // ainda "quente" = popup permitido). SDK atrasado →
-                        // abre o dialog normal, user clica no botao de la.
-                        setAutoConnect(sdkReady);
-                        setOpenDialog(ch.configurable!);
-                      }}
+                      onClick={() => setOpenDialog(ch.configurable!)}
                     >
                       Conectar {ch.name}
                     </Button>
@@ -342,7 +332,7 @@ export default function AgencyChannelsManager() {
       </Dialog>
 
       {/* Dialog do WhatsApp */}
-      <Dialog open={openDialog === "whatsapp"} onOpenChange={(o) => { if (!o) { setOpenDialog(null); setAutoConnect(false); } }}>
+      <Dialog open={openDialog === "whatsapp"} onOpenChange={(o) => { if (!o) { setOpenDialog(null); } }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3">
@@ -357,12 +347,12 @@ export default function AgencyChannelsManager() {
               </div>
             </div>
           </DialogHeader>
-          <IntegrationWhatsAppForm onClose={() => setOpenDialog(null)} autoConnect={autoConnect} />
+          <IntegrationWhatsAppForm onClose={() => setOpenDialog(null)} />
         </DialogContent>
       </Dialog>
 
       {/* Dialog do Instagram */}
-      <Dialog open={openDialog === "instagram"} onOpenChange={(o) => { if (!o) { setOpenDialog(null); setAutoConnect(false); } }}>
+      <Dialog open={openDialog === "instagram"} onOpenChange={(o) => { if (!o) { setOpenDialog(null); } }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3">
@@ -377,7 +367,7 @@ export default function AgencyChannelsManager() {
               </div>
             </div>
           </DialogHeader>
-          <IntegrationInstagramForm onClose={() => setOpenDialog(null)} autoConnect={autoConnect} />
+          <IntegrationInstagramForm onClose={() => setOpenDialog(null)} />
         </DialogContent>
       </Dialog>
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { Button } from "@/components/ui/button";
@@ -81,15 +81,11 @@ type Props = {
     display_phone_number: string | null;
     verified_name: string | null;
   }) => void;
-  /** Dispara o FB.login sozinho assim que o SDK estiver pronto (fluxo
-   *  "clicou no card Conectar → popup direto", sem segundo clique). */
-  autoStart?: boolean;
 };
 
-export default function MetaEmbeddedSignupButton({ onConnected, autoStart = false }: Props) {
+export default function MetaEmbeddedSignupButton({ onConnected }: Props) {
   const [sdkReady, setSdkReady] = useState(false);
   const [connecting, setConnecting] = useState(false);
-  const autoStartedRef = useRef(false);
   // Config oficial gerenciada pelo admin em /admin?tab=api-keys
   const meta = useMetaIntegration();
 
@@ -104,15 +100,6 @@ export default function MetaEmbeddedSignupButton({ onConnected, autoStart = fals
         toast.error("Não foi possível carregar o SDK do Facebook");
       });
   }, [meta.loading, meta.appId, configMissing]);
-
-  // Auto-start: clique no card ja foi o gesto do user — abre o popup direto.
-  useEffect(() => {
-    if (autoStart && sdkReady && !connecting && !autoStartedRef.current) {
-      autoStartedRef.current = true;
-      handleClick();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, sdkReady]);
 
   // Watchdog: FB.login sem retorno (popup bloqueado) travava o spinner
   // pra sempre. 45s sem callback → reseta e orienta.
