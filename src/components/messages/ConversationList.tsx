@@ -87,8 +87,8 @@ const ConversationList = ({
   onFilterChange,
   availableTags = [],
 }: ConversationListProps) => {
-  const openCount = conversations.filter((c) => (c.status ?? "open") === "open").length;
-  const unreadCount = conversations.filter((c) => c.unread > 0).length;
+  const mineCount = conversations.filter((c) => (c.status ?? "open") === "open").length;
+  const unassignedCount = conversations.filter((c) => c.unread > 0).length;
   const activeFilters = (filter?.channel ? 1 : 0) + (filter?.tag ? 1 : 0) + (filter?.view === "unattended" ? 1 : 0);
 
   const filtered = conversations
@@ -104,9 +104,9 @@ const ConversationList = ({
       {/* Header — mesma altura dos outros paineis (h-14) + funil de filtros */}
       <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
         <h2 className="text-sm font-semibold text-foreground">Conversas</h2>
-        {unreadCount > 0 && (
+        {unassignedCount > 0 && (
           <Badge className="ml-2 h-5 px-1.5 text-[10px] bg-primary text-primary-foreground rounded-full">
-            {unreadCount}
+            {unassignedCount}
           </Badge>
         )}
         {filter && onFilterChange && (
@@ -174,15 +174,24 @@ const ConversationList = ({
       {/* Tabs + busca */}
       <div className="px-3 pt-3 pb-2 space-y-2 border-b border-border">
         <Tabs value={activeTab} onValueChange={onTabChange}>
-          <TabsList className="w-full h-8">
-            <TabsTrigger value="open" className="flex-1 text-[11px] h-7">
-              Abertas · {openCount}
+          <TabsList className="w-full h-8 bg-transparent p-0 gap-4 rounded-none border-b border-border justify-start">
+            <TabsTrigger
+              value="open"
+              className="relative h-8 px-0 text-[12px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
+            >
+              Minhas <span className="ml-1 text-[10px] opacity-70">· {mineCount}</span>
             </TabsTrigger>
-            <TabsTrigger value="unread" className="flex-1 text-[11px] h-7">
-              Não lidas · {unreadCount}
+            <TabsTrigger
+              value="unread"
+              className="relative h-8 px-0 text-[12px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
+            >
+              Não atribuídas <span className="ml-1 text-[10px] opacity-70">· {unassignedCount}</span>
             </TabsTrigger>
-            <TabsTrigger value="all" className="flex-1 text-[11px] h-7">
-              Todas · {conversations.length}
+            <TabsTrigger
+              value="all"
+              className="relative h-8 px-0 text-[12px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
+            >
+              Todas <span className="ml-1 text-[10px] opacity-70">· {conversations.length}</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>

@@ -3,6 +3,7 @@ import {
   Send, CheckCheck, Check, AlertTriangle, Bot, User,
   CheckCircle2, RotateCcw, Sparkles, Loader2, StickyNote, Lock,
   Tag, X, Plus, Bold, Italic, Code, Smile, VolumeX, Volume2, Share2, ChevronDown, Clock,
+  Link2, Undo2, Redo2, List, ListOrdered, Mic, PenLine, Paperclip, Maximize2, Globe,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -192,9 +193,12 @@ const ChatArea = ({
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-foreground truncate">{conversation.contactName}</h3>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              {STATUS_LABELS[conversation.status ?? "open"] ?? conversation.status} · {conversation.inbox}
+              <Globe className="w-3 h-3" />
+              <span>{conversation.inbox}</span>
+              <span className="opacity-50">·</span>
+              <span>{STATUS_LABELS[conversation.status ?? "open"] ?? conversation.status}</span>
               {onTogglePanel && (
-                <button onClick={onTogglePanel} className="text-primary hover:underline">
+                <button onClick={onTogglePanel} className="ml-1 text-primary hover:underline">
                   {panelOpen ? "Fechar detalhes" : "Mostrar detalhes"}
                 </button>
               )}
@@ -399,9 +403,60 @@ const ChatArea = ({
               className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
               <Italic className="w-3 h-3" />
             </button>
+            <button
+              onClick={() => {
+                const url = window.prompt("URL do link");
+                if (url) insertAtCursor(`[${url}](${url})`);
+              }}
+              title="Inserir link"
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              <Link2 className="w-3 h-3" />
+            </button>
+            <div className="w-px h-3.5 bg-border mx-1" />
+            <button
+              onClick={() => document.execCommand?.("undo")}
+              title="Desfazer"
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              <Undo2 className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => document.execCommand?.("redo")}
+              title="Refazer"
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              <Redo2 className="w-3 h-3" />
+            </button>
+            <div className="w-px h-3.5 bg-border mx-1" />
+            <button
+              onClick={() => insertAtCursor("\n• ")}
+              title="Lista"
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              <List className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => insertAtCursor("\n1. ")}
+              title="Lista numerada"
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              <ListOrdered className="w-3 h-3" />
+            </button>
             <button onClick={() => wrapSelection("```")} title="Código (```texto```)"
               className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
               <Code className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => {
+                const el = textareaRef.current;
+                if (!el) return;
+                if (el.style.height === "260px") {
+                  el.style.height = "auto";
+                  el.style.height = `${Math.min(el.scrollHeight, 130)}px`;
+                } else {
+                  el.style.height = "260px";
+                }
+              }}
+              title="Expandir composer"
+              className="ml-auto w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
+            >
+              <Maximize2 className="w-3 h-3" />
             </button>
           </div>
 
@@ -427,37 +482,57 @@ const ChatArea = ({
             )}
           />
 
-          {/* Rodape: emoji | AI Assist + Enviar */}
+          {/* Rodape: emoji + anexo + audio + assinatura | AI Assist + Enviar */}
           <div className="px-2.5 pb-2.5 flex items-center justify-between">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button title="Emoji"
-                  className="w-7 h-7 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
-                  <Smile className="w-4 h-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="top" align="start" className="w-56 p-2">
-                <div className="grid grid-cols-8 gap-0.5">
-                  {EMOJIS.map((e) => (
-                    <button key={e} onClick={() => insertAtCursor(e)}
-                      className="w-6 h-6 rounded grid place-items-center hover:bg-accent text-base">
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <div className="flex items-center gap-0.5">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button title="Emoji"
+                    className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                    <Smile className="w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-56 p-2">
+                  <div className="grid grid-cols-8 gap-0.5">
+                    {EMOJIS.map((e) => (
+                      <button key={e} onClick={() => insertAtCursor(e)}
+                        className="w-6 h-6 rounded grid place-items-center hover:bg-accent text-base">
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <button title="Anexar arquivo"
+                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                <Paperclip className="w-4 h-4" />
+              </button>
+              <button title="Gravar áudio"
+                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                <Mic className="w-4 h-4" />
+              </button>
+              <button title="Assinatura"
+                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                <PenLine className="w-4 h-4" />
+              </button>
+            </div>
 
             <div className="flex items-center gap-2">
               {onSuggestReply && composerMode === "reply" && (
                 <button
                   onClick={handleSuggest}
                   disabled={suggesting}
-                  className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-medium bg-gradient-to-r from-primary/15 to-primary/5 text-primary border border-primary/30 hover:border-primary/50 transition disabled:opacity-50"
+                  className="relative flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-medium bg-gradient-to-r from-primary/15 to-primary/5 text-primary border border-primary/30 hover:border-primary/50 transition disabled:opacity-50"
                   title="A IA rascunha — você edita antes de enviar"
                 >
                   {suggesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                   AI Assist
+                  {!suggesting && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                  )}
                 </button>
               )}
               <Button
