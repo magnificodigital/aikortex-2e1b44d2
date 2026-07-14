@@ -18,6 +18,9 @@ import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppFo
 import IntegrationInstagramForm from "@/components/settings/IntegrationInstagramForm";
 import { loadFacebookSdk } from "@/components/settings/MetaEmbeddedSignupButton";
 import { useMetaIntegration } from "@/hooks/use-meta-integration";
+import { fnUrl } from "@/lib/supabase-url";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import EmailTemplatesPanel from "@/components/aikortex/EmailTemplatesPanel";
 import WhatsAppTemplatesPanel from "@/components/aikortex/WhatsAppTemplatesPanel";
 import { useEmailIntegrationStatus } from "@/hooks/use-email-integration";
@@ -168,9 +171,114 @@ export default function AgencyChannelsManager() {
     })();
   }, [openDialog]);
 
+  // ── Conexao 1-clique DIRETO no card (FB.login no gesto sincrono) ──
+  const [connectingKey, setConnectingKey] = useState<"whatsapp" | "instagram" | null>(null);
+  const [igPagesToPick, setIgPagesToPick] = useState<{ id: string; name: string; ig_username: string | null }[] | null>(null);
+  const [waLocalConnected, setWaLocalConnected] = useState(false);
+
+  // Watchdog: popup sem resposta (bloqueado / dentro do editor Lovable)
+  useEffect(() => {
+    if (!connectingKey) return;
+    const t = setTimeout(() => {
+      setConnectingKey(null);
+      toast.error(
+        "O popup da Meta não abriu. Se você está dentro do editor do Lovable, abra o app numa aba própria; e confira o bloqueio de popups do navegador.",
+        { duration: 10000 },
+      );
+    }, 45000);
+    return () => clearTimeout(t);
+  }, [connectingKey]);
+
+  const finishInstagram = async (body: { code?: string; page_id?: string }) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { toast.error("Sessão expirada"); return; }
+    const resp = await fetch(fnUrl("instagram-embedded-signup"), {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const j = await resp.json().catch(() => ({}));
+    if (!resp.ok) { toast.error(j?.message || "Falha na conexão com o Instagram"); return; }
+    if (j.needs_selection) { setIgPagesToPick(j.pages ?? []); return; }
+    if (j.connected) {
+      setIgPagesToPick(null);
+      setIgConnected(true);
+      toast.success(`Instagram conectado${j.ig_username ? `: @${j.ig_username}` : ""} — DMs já caem no inbox`);
+    }
+  };
+
+  /** FB.login disparado DIRETO no onClick do card — unica forma que o
+   *  navegador garante o popup. Fallback: sem SDK/config → abre o dialog. */
+  const directConnect = (key: "whatsapp" | "instagram") => {
+    const cfgId = key === "whatsapp" ? meta.whatsappConfigId : meta.instagramConfigId;
+    if (!window.FB || !cfgId) { setOpenDialog(key); return; }
+    setConnectingKey(key);
+
+    if (key === "instagram") {
+      window.FB.login(async (response: any) => {
+        try {
+          if (response?.authResponse?.code) {
+            await finishInstagram({ code: response.authResponse.code });
+          } else if (response?.error) {
+            toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
+          }
+        } finally {
+          setConnectingKey(null);
+        }
+      }, { config_id: cfgId, response_type: "code", override_default_response_type: true });
+      return;
+    }
+
+    // WhatsApp Embedded Signup: o popup manda waba_id/phone_number_id via
+    // postMessage ANTES do callback resolver com o code.
+    let signupData: { phone_number_id?: string; waba_id?: string } = {};
+    const messageHandler = (event: MessageEvent) => {
+      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+      try {
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (data?.type === "WA_EMBEDDED_SIGNUP" && data?.event === "FINISH") {
+          signupData = { phone_number_id: data?.data?.phone_number_id, waba_id: data?.data?.waba_id };
+        }
+      } catch { /* nao-JSON */ }
+    };
+    window.addEventListener("message", messageHandler);
+    window.FB.login(async (response: any) => {
+      window.removeEventListener("message", messageHandler);
+      try {
+        if (response?.authResponse?.code) {
+          const { phone_number_id, waba_id } = signupData;
+          if (!phone_number_id || !waba_id) {
+            toast.error("Onboarding incompleto: faltaram dados do número selecionado");
+            return;
+          }
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) { toast.error("Sessão expirada"); return; }
+          const resp = await fetch(fnUrl("whatsapp-embedded-signup"), {
+            method: "POST",
+            headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ code: response.authResponse.code, phone_number_id, waba_id }),
+          });
+          const j = await resp.json().catch(() => ({}));
+          if (!resp.ok) { toast.error(j?.message || j?.error || "Falha ao salvar conexão"); return; }
+          setWaLocalConnected(true);
+          toast.success("WhatsApp Business conectado via Meta");
+        } else if (response?.error) {
+          toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
+        }
+      } finally {
+        setConnectingKey(null);
+      }
+    }, {
+      config_id: cfgId,
+      response_type: "code",
+      override_default_response_type: true,
+      extras: { setup: {}, featureType: "whatsapp_business_app_onboarding" },
+    });
+  };
+
   const isConfigured = (k: ConfigurableKey): boolean => {
     if (k === "email") return !!emailStatus?.connected;
-    if (k === "whatsapp") return !!waStatus?.connected;
+    if (k === "whatsapp") return !!waStatus?.connected || waLocalConnected;
     if (k === "voice") return !!(voiceStatus?.telnyx_connected || voiceStatus?.elevenlabs_connected);
     if (k === "instagram") return igConnected;
     return false;
@@ -298,10 +406,19 @@ export default function AgencyChannelsManager() {
                           ? "bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600"
                           : ""
                       }`}
-                      variant={ch.key === "whatsapp" || ch.key === "instagram" ? "default" : "default"}
-                      onClick={() => setOpenDialog(ch.configurable!)}
+                      disabled={connectingKey !== null}
+                      onClick={() => {
+                        // 1 clique: FB.login no proprio gesto → popup garantido.
+                        if (ch.key === "whatsapp" || ch.key === "instagram") {
+                          directConnect(ch.key);
+                        } else {
+                          setOpenDialog(ch.configurable!);
+                        }
+                      }}
                     >
-                      Conectar {ch.name}
+                      {connectingKey === ch.key
+                        ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Conectando…</>)
+                        : <>Conectar {ch.name}</>}
                     </Button>
                   )}
                 </div>
@@ -348,6 +465,30 @@ export default function AgencyChannelsManager() {
             </div>
           </DialogHeader>
           <IntegrationWhatsAppForm onClose={() => setOpenDialog(null)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Seletor de Pagina (conexao Instagram com varias Paginas) */}
+      <Dialog open={!!igPagesToPick} onOpenChange={(o) => { if (!o) setIgPagesToPick(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Qual conta Instagram usar?</DialogTitle>
+            <DialogDescription className="text-xs">
+              Você administra mais de uma Página com Instagram — escolha qual conectar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {(igPagesToPick ?? []).map((p) => (
+              <button
+                key={p.id}
+                onClick={() => finishInstagram({ page_id: p.id })}
+                className="w-full text-left text-sm px-3 py-2.5 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition"
+              >
+                <span className="font-medium">{p.ig_username ? `@${p.ig_username}` : p.name}</span>
+                <span className="text-muted-foreground text-xs"> — Página {p.name}</span>
+              </button>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
 
