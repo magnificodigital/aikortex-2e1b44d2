@@ -11,8 +11,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Mail, Mic, Phone, Camera, Share2, Settings, CheckCircle2, FileText, ExternalLink } from "lucide-react";
+import { Mail, Mic, Phone, Share2, Settings, CheckCircle2, FileText, ExternalLink } from "lucide-react";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
+import InstagramIcon from "@/components/icons/InstagramIcon";
+import LinkedInIcon from "@/components/icons/LinkedInIcon";
+import TikTokIcon from "@/components/icons/TikTokIcon";
+import TelegramIcon from "@/components/icons/TelegramIcon";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
 import IntegrationInstagramForm from "@/components/settings/IntegrationInstagramForm";
@@ -92,7 +96,7 @@ const CHANNELS: ChannelDef[] = [
     name: "Instagram",
     provider: "Meta API",
     description: "DM via API do Instagram Business",
-    icon: Camera,
+    icon: InstagramIcon,
     iconBg: "bg-pink-500/10",
     iconColor: "text-pink-600",
     configurable: "instagram",
@@ -112,7 +116,7 @@ const CHANNELS: ChannelDef[] = [
     name: "LinkedIn",
     provider: "LinkedIn API",
     description: "Mensagens e InMail",
-    icon: Share2,
+    icon: LinkedInIcon,
     iconBg: "bg-sky-500/10",
     iconColor: "text-sky-600",
     comingSoon: true,
@@ -122,7 +126,7 @@ const CHANNELS: ChannelDef[] = [
     name: "TikTok",
     provider: "TikTok API",
     description: "Mensagens via TikTok Business",
-    icon: Share2,
+    icon: TikTokIcon,
     iconBg: "bg-rose-500/10",
     iconColor: "text-rose-600",
     comingSoon: true,
@@ -132,7 +136,7 @@ const CHANNELS: ChannelDef[] = [
     name: "Telegram",
     provider: "Telegram Bot API",
     description: "Bot e conversas via Telegram",
-    icon: Share2,
+    icon: TelegramIcon,
     iconBg: "bg-cyan-500/10",
     iconColor: "text-cyan-600",
     comingSoon: true,
@@ -215,16 +219,18 @@ export default function AgencyChannelsManager() {
     setConnectingKey(key);
 
     if (key === "instagram") {
-      window.FB.login(async (response: any) => {
-        try {
-          if (response?.authResponse?.code) {
-            await finishInstagram({ code: response.authResponse.code });
-          } else if (response?.error) {
-            toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
+      window.FB.login((response: any) => {
+        (async () => {
+          try {
+            if (response?.authResponse?.code) {
+              await finishInstagram({ code: response.authResponse.code });
+            } else if (response?.error) {
+              toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
+            }
+          } finally {
+            setConnectingKey(null);
           }
-        } finally {
-          setConnectingKey(null);
-        }
+        })();
       }, { config_id: cfgId, response_type: "code", override_default_response_type: true });
       return;
     }
@@ -242,32 +248,34 @@ export default function AgencyChannelsManager() {
       } catch { /* nao-JSON */ }
     };
     window.addEventListener("message", messageHandler);
-    window.FB.login(async (response: any) => {
+    window.FB.login((response: any) => {
       window.removeEventListener("message", messageHandler);
-      try {
-        if (response?.authResponse?.code) {
-          const { phone_number_id, waba_id } = signupData;
-          if (!phone_number_id || !waba_id) {
-            toast.error("Onboarding incompleto: faltaram dados do número selecionado");
-            return;
+      (async () => {
+        try {
+          if (response?.authResponse?.code) {
+            const { phone_number_id, waba_id } = signupData;
+            if (!phone_number_id || !waba_id) {
+              toast.error("Onboarding incompleto: faltaram dados do número selecionado");
+              return;
+            }
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) { toast.error("Sessão expirada"); return; }
+            const resp = await fetch(fnUrl("whatsapp-embedded-signup"), {
+              method: "POST",
+              headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ code: response.authResponse.code, phone_number_id, waba_id }),
+            });
+            const j = await resp.json().catch(() => ({}));
+            if (!resp.ok) { toast.error(j?.message || j?.error || "Falha ao salvar conexão"); return; }
+            setWaLocalConnected(true);
+            toast.success("WhatsApp Business conectado via Meta");
+          } else if (response?.error) {
+            toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
           }
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) { toast.error("Sessão expirada"); return; }
-          const resp = await fetch(fnUrl("whatsapp-embedded-signup"), {
-            method: "POST",
-            headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ code: response.authResponse.code, phone_number_id, waba_id }),
-          });
-          const j = await resp.json().catch(() => ({}));
-          if (!resp.ok) { toast.error(j?.message || j?.error || "Falha ao salvar conexão"); return; }
-          setWaLocalConnected(true);
-          toast.success("WhatsApp Business conectado via Meta");
-        } else if (response?.error) {
-          toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
+        } finally {
+          setConnectingKey(null);
         }
-      } finally {
-        setConnectingKey(null);
-      }
+      })();
     }, {
       config_id: cfgId,
       response_type: "code",
@@ -498,7 +506,7 @@ export default function AgencyChannelsManager() {
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
-                <Camera className="w-5 h-5 text-pink-600" />
+                <InstagramIcon className="w-5 h-5 text-pink-600" />
               </div>
               <div>
                 <DialogTitle className="text-base">Instagram (Meta API)</DialogTitle>
