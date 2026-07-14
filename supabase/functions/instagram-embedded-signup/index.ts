@@ -140,24 +140,24 @@ serve(async (req) => {
     //    - fallback subscribed_fields=name → suficiente pras DMs do
     //      INSTAGRAM (que chegam pela assinatura do objeto instagram no
     //      app, nao por campo de Pagina)
-    let messengerReady = true;
-    let subResp = await fetch(
-      `${GRAPH_API}/${chosen.id}/subscribed_apps?subscribed_fields=messages&access_token=${encodeURIComponent(pageToken)}`,
-      { method: "POST" },
-    );
-    if (!subResp.ok) {
-      const firstErr = await subResp.json().catch(() => ({}));
-      console.warn("[ig-signup] subscribe messages falhou (sem pages_messaging?):", firstErr?.error?.message);
-      messengerReady = false;
-      subResp = await fetch(
-        `${GRAPH_API}/${chosen.id}/subscribed_apps?subscribed_fields=name&access_token=${encodeURIComponent(pageToken)}`,
+    // BEST-EFFORT: a conexao NUNCA falha por causa da inscricao — envio
+    // funciona so com o token. Sem inscricao, receber DMs fica pendente
+    // ate a agencia ter pages_messaging (ou pages_manage_metadata) e
+    // reconectar.
+    let messengerReady = false;
+    let webhookSubscribed = false;
+    for (const field of ["messages", "name"]) {
+      const subResp = await fetch(
+        `${GRAPH_API}/${chosen.id}/subscribed_apps?subscribed_fields=${field}&access_token=${encodeURIComponent(pageToken)}`,
         { method: "POST" },
       );
-      if (!subResp.ok) {
-        const subJson = await subResp.json().catch(() => ({}));
-        console.error("[ig-signup] subscribe fallback failed:", subJson);
-        return json({ error: "SUBSCRIBE_FAILED", message: subJson?.error?.message || "Falha inscrevendo webhook" }, 502);
+      if (subResp.ok) {
+        webhookSubscribed = true;
+        if (field === "messages") messengerReady = true;
+        break;
       }
+      const err = await subResp.json().catch(() => ({}));
+      console.warn(`[ig-signup] subscribe ${field} falhou:`, err?.error?.message);
     }
 
     // 5) Persiste credenciais + limpa token temporario
@@ -176,8 +176,14 @@ serve(async (req) => {
     await admin.from("user_api_keys").delete()
       .eq("user_id", user.id).eq("provider", "instagram_user_token");
 
-    console.log(`[ig-signup] connected user=${user.id} ig=@${igUsername ?? igAccountId} messenger=${messengerReady}`);
-    return json({ connected: true, ig_username: igUsername, page_name: chosen.name, messenger_ready: messengerReady });
+    console.log(`[ig-signup] connected user=${user.id} ig=@${igUsername ?? igAccountId} messenger=${messengerReady} subscribed=${webhookSubscribed}`);
+    return json({
+      connected: true,
+      ig_username: igUsername,
+      page_name: chosen.name,
+      messenger_ready: messengerReady,
+      webhook_subscribed: webhookSubscribed,
+    });
   } catch (e) {
     console.error("[ig-signup] error:", e);
     return json({ error: "INTERNAL", message: (e as Error).message }, 500);

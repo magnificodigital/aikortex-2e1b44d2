@@ -228,7 +228,17 @@ export default function AgencyChannelsManager() {
     if (j.connected) {
       setIgPagesToPick(null);
       setIgConnected(true);
-      toast.success(`Instagram conectado${j.ig_username ? `: @${j.ig_username}` : ""} — DMs já caem no inbox`);
+      const who = j.ig_username ? `: @${j.ig_username}` : "";
+      if (j.webhook_subscribed) {
+        toast.success(`Instagram conectado${who} — DMs já caem no inbox`);
+      } else {
+        // Conexao salva (envio funciona), mas o webhook nao pode ser
+        // inscrito por falta de permissao — receber DMs fica pendente.
+        toast.warning(
+          `Instagram conectado${who}, mas o recebimento de DMs está pendente: falta a permissão pages_manage_metadata (ou pages_messaging) no app Meta. Adicione em App Review → Permissions e reconecte.`,
+          { duration: 12000 },
+        );
+      }
     }
   };
 
