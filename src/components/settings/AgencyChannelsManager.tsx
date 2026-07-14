@@ -248,32 +248,34 @@ export default function AgencyChannelsManager() {
       } catch { /* nao-JSON */ }
     };
     window.addEventListener("message", messageHandler);
-    window.FB.login(async (response: any) => {
+    window.FB.login((response: any) => {
       window.removeEventListener("message", messageHandler);
-      try {
-        if (response?.authResponse?.code) {
-          const { phone_number_id, waba_id } = signupData;
-          if (!phone_number_id || !waba_id) {
-            toast.error("Onboarding incompleto: faltaram dados do número selecionado");
-            return;
+      (async () => {
+        try {
+          if (response?.authResponse?.code) {
+            const { phone_number_id, waba_id } = signupData;
+            if (!phone_number_id || !waba_id) {
+              toast.error("Onboarding incompleto: faltaram dados do número selecionado");
+              return;
+            }
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) { toast.error("Sessão expirada"); return; }
+            const resp = await fetch(fnUrl("whatsapp-embedded-signup"), {
+              method: "POST",
+              headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ code: response.authResponse.code, phone_number_id, waba_id }),
+            });
+            const j = await resp.json().catch(() => ({}));
+            if (!resp.ok) { toast.error(j?.message || j?.error || "Falha ao salvar conexão"); return; }
+            setWaLocalConnected(true);
+            toast.success("WhatsApp Business conectado via Meta");
+          } else if (response?.error) {
+            toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
           }
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) { toast.error("Sessão expirada"); return; }
-          const resp = await fetch(fnUrl("whatsapp-embedded-signup"), {
-            method: "POST",
-            headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ code: response.authResponse.code, phone_number_id, waba_id }),
-          });
-          const j = await resp.json().catch(() => ({}));
-          if (!resp.ok) { toast.error(j?.message || j?.error || "Falha ao salvar conexão"); return; }
-          setWaLocalConnected(true);
-          toast.success("WhatsApp Business conectado via Meta");
-        } else if (response?.error) {
-          toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
+        } finally {
+          setConnectingKey(null);
         }
-      } finally {
-        setConnectingKey(null);
-      }
+      })();
     }, {
       config_id: cfgId,
       response_type: "code",
