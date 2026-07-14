@@ -11,12 +11,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Mail, Mic, Phone, Share2, Settings, CheckCircle2, FileText, ExternalLink } from "lucide-react";
+import { Mail, Mic, Phone, Settings, CheckCircle2, FileText, ExternalLink } from "lucide-react";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import InstagramIcon from "@/components/icons/InstagramIcon";
 import LinkedInIcon from "@/components/icons/LinkedInIcon";
 import TikTokIcon from "@/components/icons/TikTokIcon";
 import TelegramIcon from "@/components/icons/TelegramIcon";
+import FacebookIcon from "@/components/icons/FacebookIcon";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
 import IntegrationInstagramForm from "@/components/settings/IntegrationInstagramForm";
@@ -53,7 +54,7 @@ const CHANNELS: ChannelDef[] = [
     key: "email",
     name: "Email",
     provider: "Resend",
-    description: "Cadências, lembretes, transacional",
+    description: "Envie cadências, lembretes e mensagens transacionais direto pela sua caixa.",
     icon: Mail,
     iconBg: "bg-emerald-500/10",
     iconColor: "text-emerald-600",
@@ -64,7 +65,7 @@ const CHANNELS: ChannelDef[] = [
     key: "whatsapp",
     name: "WhatsApp",
     provider: "Meta Cloud API",
-    description: "Templates aprovados + auto-reply do agente",
+    description: "Atenda clientes no WhatsApp com templates aprovados e respostas automáticas do agente.",
     icon: WhatsAppIcon,
     iconBg: "bg-[#25D366]/10",
     iconColor: "text-[#25D366]",
@@ -75,7 +76,7 @@ const CHANNELS: ChannelDef[] = [
     key: "voice",
     name: "Voz",
     provider: "Telnyx + ElevenLabs",
-    description: "Chamadas reais com voz sintética",
+    description: "Faça e receba chamadas reais com voz sintética natural do seu agente.",
     icon: Mic,
     iconBg: "bg-purple-500/10",
     iconColor: "text-purple-600",
@@ -85,7 +86,7 @@ const CHANNELS: ChannelDef[] = [
     key: "sms",
     name: "SMS",
     provider: "Twilio",
-    description: "Envio de SMS transacional",
+    description: "Dispare SMS transacionais e notificações rápidas para seus contatos.",
     icon: Phone,
     iconBg: "bg-blue-500/10",
     iconColor: "text-blue-600",
@@ -95,7 +96,7 @@ const CHANNELS: ChannelDef[] = [
     key: "instagram",
     name: "Instagram",
     provider: "Meta API",
-    description: "DM via API do Instagram Business",
+    description: "Responda DMs do Instagram Business automaticamente pelo seu agente.",
     icon: InstagramIcon,
     iconBg: "bg-pink-500/10",
     iconColor: "text-pink-600",
@@ -105,17 +106,17 @@ const CHANNELS: ChannelDef[] = [
     key: "facebook",
     name: "Facebook",
     provider: "Messenger API",
-    description: "Conversas via Messenger — usa a mesma conexão Meta do Instagram",
-    icon: Share2,
-    iconBg: "bg-blue-600/10",
-    iconColor: "text-blue-600",
+    description: "Converse no Messenger usando a mesma conexão Meta do Instagram.",
+    icon: FacebookIcon,
+    iconBg: "bg-[#1877F2]/10",
+    iconColor: "text-[#1877F2]",
     configurable: "facebook",
   },
   {
     key: "linkedin",
     name: "LinkedIn",
     provider: "LinkedIn API",
-    description: "Mensagens e InMail",
+    description: "Envie mensagens e InMail para prospects direto do LinkedIn.",
     icon: LinkedInIcon,
     iconBg: "bg-sky-500/10",
     iconColor: "text-sky-600",
@@ -125,7 +126,7 @@ const CHANNELS: ChannelDef[] = [
     key: "tiktok",
     name: "TikTok",
     provider: "TikTok API",
-    description: "Mensagens via TikTok Business",
+    description: "Gerencie mensagens da sua conta TikTok Business em um só lugar.",
     icon: TikTokIcon,
     iconBg: "bg-rose-500/10",
     iconColor: "text-rose-600",
@@ -135,7 +136,7 @@ const CHANNELS: ChannelDef[] = [
     key: "telegram",
     name: "Telegram",
     provider: "Telegram Bot API",
-    description: "Bot e conversas via Telegram",
+    description: "Crie um bot no Telegram e converse com seus clientes por lá.",
     icon: TelegramIcon,
     iconBg: "bg-cyan-500/10",
     iconColor: "text-cyan-600",
@@ -385,11 +386,11 @@ export default function AgencyChannelsManager() {
                         checked={isEnabled}
                         onCheckedChange={(v) => toggle.mutate({ channel: ch.key, enabled: v })}
                         disabled={toggle.isPending}
+                        className="scale-75 origin-right data-[state=unchecked]:bg-muted data-[state=checked]:bg-primary/70"
                       />
                     )}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">{ch.provider}</p>
-                  <p className="text-[10px] text-muted-foreground/80 leading-snug pt-0.5">{ch.description}</p>
+                  <p className="text-[11px] text-muted-foreground leading-snug">{ch.description}</p>
                 </div>
               </div>
 
