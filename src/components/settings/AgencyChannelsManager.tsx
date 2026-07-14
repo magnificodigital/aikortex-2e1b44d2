@@ -136,7 +136,7 @@ const CHANNELS: ChannelDef[] = [
     name: "Telegram",
     provider: "Telegram Bot API",
     description: "Bot e conversas via Telegram",
-    icon: Share2,
+    icon: TelegramIcon,
     iconBg: "bg-cyan-500/10",
     iconColor: "text-cyan-600",
     comingSoon: true,
