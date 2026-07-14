@@ -96,7 +96,7 @@ const CHANNELS: ChannelDef[] = [
     name: "Instagram",
     provider: "Meta API",
     description: "DM via API do Instagram Business",
-    icon: Camera,
+    icon: InstagramIcon,
     iconBg: "bg-pink-500/10",
     iconColor: "text-pink-600",
     configurable: "instagram",
