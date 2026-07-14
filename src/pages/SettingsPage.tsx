@@ -40,7 +40,7 @@ import {
   Radio,
   DollarSign,
   Sparkles,
-  Mic,
+  Zap,
 } from "lucide-react";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS } from "@/components/shared/IntegrationsGrid";
 import AgencyChannelsManager from "@/components/settings/AgencyChannelsManager";

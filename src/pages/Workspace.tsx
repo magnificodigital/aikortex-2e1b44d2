@@ -10,7 +10,7 @@ import aikortexLogoBlack from "@/assets/aikortex-logo-black.png";
 import {
   Bot, MessageSquare, Settings, Contact, Phone as PhoneIcon, AppWindow,
   Users, ShoppingCart, DollarSign, UserCheck, CheckSquare,
-  LogOut, Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Loader2, Sparkles,
+  LogOut, Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Loader2, Zap,
 } from "lucide-react";
 import { RightPanelProvider } from "@/components/RightPanel";
 import WorkspaceMessages from "@/pages/workspace/WorkspaceMessages";

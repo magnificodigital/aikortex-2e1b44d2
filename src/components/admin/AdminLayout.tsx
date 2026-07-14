@@ -5,7 +5,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, CreditCard, LayoutTemplate, DollarSign, Key, BookOpen, MessageSquare,
-  ArrowLeft, Sun, Moon, BarChart3, Search, X, Tags, Cpu, Sparkles,
+  ArrowLeft, Sun, Moon, BarChart3, Search, X, Tags, Cpu, Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
