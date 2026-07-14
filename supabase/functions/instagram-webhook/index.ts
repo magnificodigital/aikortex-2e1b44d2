@@ -20,7 +20,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GRAPH_API = "https://graph.facebook.com/v21.0";
+// Instagram Login API: envio e' pelo graph.instagram.com (nao facebook).
+const GRAPH_API = "https://graph.instagram.com/v21.0";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

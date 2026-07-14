@@ -194,9 +194,10 @@ const PROVIDERS: ProviderGroup[] = [
     apiKeyUrl: "https://developers.facebook.com/apps",
     apiKeyUrlLabel: "developers.facebook.com → Facebook Login for Business → Configurações",
     fields: [
-      { key: "meta_app_id", label: "App ID", placeholder: "2356582444746370", description: "ID do app Aikortex na Meta (público)." },
+      { key: "meta_app_id", label: "App ID (Facebook)", placeholder: "2356582444746370", description: "ID do app Aikortex na Meta — usado por WhatsApp e Facebook (público)." },
       { key: "meta_whatsapp_config_id", label: "Config ID — WhatsApp", placeholder: "ex: 123456...", description: "Configuração de Embedded Signup do WhatsApp (Login for Business)." },
-      { key: "meta_instagram_config_id", label: "Config ID — Instagram", placeholder: "ex: 123456...", description: "Configuração de Login for Business com instagram_manage_messages." },
+      { key: "meta_instagram_app_id", label: "Instagram App ID", placeholder: "ex: 1389188739737107", description: "ID do app do INSTAGRAM (produto Instagram → API setup with Instagram login). NÃO é o Facebook App ID." },
+      { key: "meta_facebook_config_id", label: "Config ID — Facebook Messenger", placeholder: "ex: 123456...", description: "Configuração de Login for Business com pages_messaging + pages_manage_metadata." },
     ],
   },
   {

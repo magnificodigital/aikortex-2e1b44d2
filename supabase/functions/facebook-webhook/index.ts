@@ -2,7 +2,7 @@
 // ================
 // Messenger da Pagina (object=page). Mesmo pattern do instagram-webhook:
 // HMAC fail-closed, camada canonica do inbox, auto-reply respeitando
-// human takeover. Owner resolvido por instagram_page_id (a Pagina vem da
+// human takeover. Owner resolvido por facebook_page_id (conexao propria do Facebook).
 // MESMA conexao Meta do Instagram — um login habilita os dois canais).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -73,7 +73,7 @@ serve(async (req) => {
       const pageId = String(entry.id ?? "");
       const { data: ownerRows } = await supabase
         .from("user_api_keys").select("user_id")
-        .eq("provider", "instagram_page_id").eq("api_key", pageId).limit(1);
+        .eq("provider", "facebook_page_id").eq("api_key", pageId).limit(1);
       const ownerUserId: string | null = ownerRows?.[0]?.user_id ?? null;
 
       for (const event of entry.messaging ?? []) {
@@ -123,11 +123,11 @@ function handleAgentReply(supabase: any, ownerUserId: string, recipientId: strin
       const { data: keys } = await supabase
         .from("user_api_keys").select("provider, api_key")
         .eq("user_id", ownerUserId)
-        .in("provider", ["instagram_agent_id", "whatsapp_agent_id", "instagram_access_token"]);
+        .in("provider", ["instagram_agent_id", "whatsapp_agent_id", "facebook_page_token"]);
       const keyMap: Record<string, string> = {};
       (keys || []).forEach((k: any) => { keyMap[k.provider] = k.api_key; });
       const agentId = keyMap.instagram_agent_id || keyMap.whatsapp_agent_id;
-      const accessToken = keyMap.instagram_access_token; // page token — serve pro Messenger
+      const accessToken = keyMap.facebook_page_token;
       if (!agentId || !accessToken) return;
 
       const { data: agent } = await supabase

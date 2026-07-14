@@ -20,7 +20,6 @@ import TelegramIcon from "@/components/icons/TelegramIcon";
 import FacebookIcon from "@/components/icons/FacebookIcon";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
-import IntegrationInstagramForm from "@/components/settings/IntegrationInstagramForm";
 import { loadFacebookSdk } from "@/components/settings/MetaEmbeddedSignupButton";
 import { useMetaIntegration } from "@/hooks/use-meta-integration";
 import { fnUrl } from "@/lib/supabase-url";
@@ -153,6 +152,11 @@ export default function AgencyChannelsManager() {
   const [openDialog, setOpenDialog] = useState<ConfigurableKey | null>(null);
   const [openTemplates, setOpenTemplates] = useState<TemplatesKey | null>(null);
   const [igConnected, setIgConnected] = useState(false);
+  const [fbConnected, setFbConnected] = useState(false);
+  const [connectingKey, setConnectingKey] = useState<"whatsapp" | "instagram" | "facebook" | null>(null);
+  const [fbPagesToPick, setFbPagesToPick] = useState<{ id: string; name: string }[] | null>(null);
+  const [waLocalConnected, setWaLocalConnected] = useState(false);
+  const [manageChannel, setManageChannel] = useState<"instagram" | "facebook" | null>(null);
   const meta = useMetaIntegration();
 
   // PRE-CARREGA o SDK do Facebook assim que a pagina de Canais abre.
@@ -164,107 +168,144 @@ export default function AgencyChannelsManager() {
     loadFacebookSdk(meta.appId).catch(() => { /* manual continua ok */ });
   }, [meta.loading, meta.appId]);
 
-  // Status do Instagram: tem access token salvo? (recarrega ao fechar dialog)
+  // Status de Instagram e Facebook (tokens salvos?) — recarrega ao
+  // fechar dialog e apos conexao.
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase
         .from("user_api_keys").select("provider")
-        .eq("user_id", user.id).eq("provider", "instagram_access_token").limit(1);
-      setIgConnected(!!data?.length);
+        .eq("user_id", user.id)
+        .in("provider", ["instagram_access_token", "facebook_page_token"]);
+      const set = new Set((data ?? []).map((r: any) => r.provider));
+      setIgConnected(set.has("instagram_access_token"));
+      setFbConnected(set.has("facebook_page_token"));
     })();
   }, [openDialog]);
 
-  // ── Conexao 1-clique DIRETO no card (FB.login no gesto sincrono) ──
-  const [connectingKey, setConnectingKey] = useState<"whatsapp" | "instagram" | null>(null);
-  const [igPagesToPick, setIgPagesToPick] = useState<{ id: string; name: string; ig_username: string | null }[] | null>(null);
-  const [waLocalConnected, setWaLocalConnected] = useState(false);
+  // ── Conexao dos canais Meta ──
+  const disconnectMeta = async (key: "instagram" | "facebook") => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const providers = key === "instagram"
+      ? ["instagram_access_token", "instagram_account_id", "instagram_agent_id"]
+      : ["facebook_page_token", "facebook_page_id"];
+    await supabase.from("user_api_keys").delete().eq("user_id", user.id).in("provider", providers);
+    if (key === "instagram") setIgConnected(false); else setFbConnected(false);
+    setManageChannel(null);
+    toast.success(`${key === "instagram" ? "Instagram" : "Facebook"} desconectado`);
+  };
 
-  // ── Retorno do OAuth do Instagram (redirect flow) ──
-  // O Facebook volta em /settings?tab=channels&code=...&state=ig_connect.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const state = params.get("state");
-    if (!code || state !== "ig_connect") return;
-    // Limpa a URL (evita re-troca do code em refresh — code e' single-use)
-    window.history.replaceState({}, "", `${window.location.pathname}?tab=channels`);
-    setConnectingKey("instagram");
-    finishInstagram({ code, redirect_uri: `${window.location.origin}/settings?tab=channels` })
-      .finally(() => setConnectingKey(null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const redirectUri = `${window.location.origin}/settings?tab=channels`;
 
-  // Watchdog: popup sem resposta (bloqueado / dentro do editor Lovable)
-  useEffect(() => {
-    if (!connectingKey) return;
-    const t = setTimeout(() => {
-      setConnectingKey(null);
-      toast.error(
-        "O popup da Meta não abriu. Se você está dentro do editor do Lovable, abra o app numa aba própria; e confira o bloqueio de popups do navegador.",
-        { duration: 10000 },
-      );
-    }, 45000);
-    return () => clearTimeout(t);
-  }, [connectingKey]);
-
-  // URI de retorno do OAuth (redirect flow). PRECISA estar registrada
-  // exatamente assim em "URIs de redirecionamento do OAuth válidos" no app
-  // Meta (agents + preview).
-  const igRedirectUri = `${window.location.origin}/settings?tab=channels`;
-
-  const finishInstagram = async (body: { code?: string; page_id?: string; redirect_uri?: string }) => {
+  const finishInstagram = async (code: string) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { toast.error("Sessão expirada"); return; }
-    const resp = await fetch(fnUrl("instagram-embedded-signup"), {
+    const resp = await fetch(fnUrl("instagram-connect"), {
       method: "POST",
       headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ code, redirect_uri: redirectUri }),
     });
     const j = await resp.json().catch(() => ({}));
     if (!resp.ok) { toast.error(j?.message || "Falha na conexão com o Instagram"); return; }
-    if (j.needs_selection) { setIgPagesToPick(j.pages ?? []); return; }
     if (j.connected) {
-      setIgPagesToPick(null);
       setIgConnected(true);
-      const who = j.ig_username ? `: @${j.ig_username}` : "";
+      toast.success(`Instagram conectado${j.ig_username ? `: @${j.ig_username}` : ""} — DMs já caem no inbox`);
+    }
+  };
+
+  const finishFacebook = async (body: { code?: string; page_id?: string }) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { toast.error("Sessão expirada"); return; }
+    const resp = await fetch(fnUrl("facebook-connect"), {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, redirect_uri: redirectUri }),
+    });
+    const j = await resp.json().catch(() => ({}));
+    if (!resp.ok) { toast.error(j?.message || "Falha na conexão com o Facebook"); return; }
+    if (j.needs_selection) { setFbPagesToPick(j.pages ?? []); return; }
+    if (j.connected) {
+      setFbPagesToPick(null);
+      setFbConnected(true);
+      const who = j.page_name ? `: ${j.page_name}` : "";
       if (j.webhook_subscribed) {
-        toast.success(`Instagram conectado${who} — DMs já caem no inbox`);
+        toast.success(`Facebook conectado${who} — mensagens do Messenger caem no inbox`);
       } else {
-        // Conexao salva (envio funciona), mas o webhook nao pode ser
-        // inscrito por falta de permissao — receber DMs fica pendente.
         toast.warning(
-          `Instagram conectado${who}, mas o recebimento de DMs está pendente: falta a permissão pages_manage_metadata (ou pages_messaging) no app Meta. Adicione em App Review → Permissions e reconecte.`,
+          `Facebook conectado${who}, mas receber mensagens está pendente: falta pages_messaging/pages_manage_metadata no app Meta (produto Messenger). Adicione e reconecte.`,
           { duration: 12000 },
         );
       }
     }
   };
 
-  /** Conexao 1-clique. Instagram = redirect flow (sem SDK, sem popup).
-   *  WhatsApp ES = popup obrigatorio (a Meta so entrega waba/phone ids por
-   *  postMessage). Fallback: sem config → abre o dialog de gestao. */
-  const directConnect = (key: "whatsapp" | "instagram" | "facebook") => {
-    const cfgId = key === "whatsapp" ? meta.whatsappConfigId : meta.instagramConfigId;
-    if (!cfgId) { setOpenDialog(key === "facebook" ? "instagram" : key); return; }
-    if (key === "whatsapp" && !window.FB) { setOpenDialog(key); return; }
-    setConnectingKey(key === "facebook" ? "instagram" : key);
+  // ── Retorno dos redirects OAuth ──
+  //   state=ig_login → Instagram Login  |  state=fb_connect → Facebook
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state");
+    if (!code || (state !== "ig_login" && state !== "fb_connect")) return;
+    window.history.replaceState({}, "", `${window.location.pathname}?tab=channels`);
+    if (state === "ig_login") {
+      setConnectingKey("instagram");
+      finishInstagram(code).finally(() => setConnectingKey(null));
+    } else {
+      setConnectingKey("facebook");
+      finishFacebook({ code }).finally(() => setConnectingKey(null));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    if (key === "instagram" || key === "facebook") {
-      // REDIRECT flow (sem popup): navega pro Facebook, autoriza, volta em
-      // /settings?tab=channels&code=... — imune a bloqueador de popup.
-      const authUrl =
-        `https://www.facebook.com/v21.0/dialog/oauth` +
-        `?client_id=${encodeURIComponent(meta.appId)}` +
-        `&config_id=${encodeURIComponent(cfgId)}` +
-        `&redirect_uri=${encodeURIComponent(igRedirectUri)}` +
+  // Watchdog do WhatsApp (popup)
+  useEffect(() => {
+    if (connectingKey !== "whatsapp") return;
+    const t = setTimeout(() => {
+      setConnectingKey(null);
+      toast.error(
+        "O popup da Meta não abriu. Abra o app numa aba própria (fora do editor) e libere popups do site.",
+        { duration: 10000 },
+      );
+    }, 45000);
+    return () => clearTimeout(t);
+  }, [connectingKey]);
+
+  /** Conexao por canal. Cada um usa o login NATIVO dele (sem popup, exceto
+   *  WhatsApp que exige Embedded Signup). Sem config → abre o dialog. */
+  const directConnect = (key: "whatsapp" | "instagram" | "facebook") => {
+    if (key === "instagram") {
+      if (!meta.instagramAppId) { toast.error("Instagram App ID não configurado pelo admin (Admin → Chaves de API)."); return; }
+      setConnectingKey("instagram");
+      // Login DIRETO com Instagram (sem Pagina do Facebook)
+      window.location.href =
+        `https://www.instagram.com/oauth/authorize` +
+        `?client_id=${encodeURIComponent(meta.instagramAppId)}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
         `&response_type=code` +
-        `&override_default_response_type=true` +
-        `&state=ig_connect`;
-      window.location.href = authUrl;
+        `&scope=${encodeURIComponent("instagram_business_basic,instagram_business_manage_messages")}` +
+        `&state=ig_login`;
       return;
     }
+
+    if (key === "facebook") {
+      if (!meta.facebookConfigId) { toast.error("Config ID do Facebook não configurado pelo admin (Admin → Chaves de API)."); return; }
+      setConnectingKey("facebook");
+      window.location.href =
+        `https://www.facebook.com/v21.0/dialog/oauth` +
+        `?client_id=${encodeURIComponent(meta.appId)}` +
+        `&config_id=${encodeURIComponent(meta.facebookConfigId)}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code&override_default_response_type=true&state=fb_connect`;
+      return;
+    }
+
+    // WhatsApp
+    if (!meta.whatsappConfigId) { setOpenDialog("whatsapp"); return; }
+    if (!window.FB) { setOpenDialog("whatsapp"); return; }
+    setConnectingKey("whatsapp");
+    const cfgId = meta.whatsappConfigId;
 
     // WhatsApp Embedded Signup: o popup manda waba_id/phone_number_id via
     // postMessage ANTES do callback resolver com o code.
@@ -320,7 +361,7 @@ export default function AgencyChannelsManager() {
     if (k === "whatsapp") return !!waStatus?.connected || waLocalConnected;
     if (k === "voice") return !!(voiceStatus?.telnyx_connected || voiceStatus?.elevenlabs_connected);
     if (k === "instagram") return igConnected;
-    if (k === "facebook") return igConnected; // mesma Pagina/token da conexao Meta
+    if (k === "facebook") return fbConnected;
     return false;
   };
 
@@ -343,8 +384,8 @@ export default function AgencyChannelsManager() {
       if (voiceStatus?.elevenlabs_connected) parts.push("ElevenLabs");
       if (parts.length > 0) return parts.join(" + ");
     }
-    if (k === "instagram" && igConnected) return "Conta Business conectada";
-    if (k === "facebook" && igConnected) return "Página conectada (via login Meta)";
+    if (k === "instagram" && igConnected) return "Conta Instagram conectada";
+    if (k === "facebook" && fbConnected) return "Página do Facebook conectada";
     return null;
   };
 
@@ -407,7 +448,7 @@ export default function AgencyChannelsManager() {
               {ch.configurable && !isComingSoon && isEnabled && (
                 <div className="space-y-2 pt-2 mt-auto border-t border-border/50">
                   {configured ? (
-                    // ── Conectado: status verde + acoes discretas ──
+                    // ── Conectado: status verde + Gerenciar ──
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 text-[11px] min-w-0">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -417,21 +458,18 @@ export default function AgencyChannelsManager() {
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {ch.templates && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs h-7 gap-1.5 text-muted-foreground"
-                            onClick={() => setOpenTemplates(ch.templates!)}
-                          >
+                          <Button variant="ghost" size="sm" className="text-xs h-7 gap-1.5 text-muted-foreground"
+                            onClick={() => setOpenTemplates(ch.templates!)}>
                             <FileText className="w-3 h-3" /> Templates
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs h-7 gap-1.5 text-muted-foreground"
-                          onClick={() => setOpenDialog(ch.configurable === "facebook" ? "instagram" : ch.configurable!)}
-                        >
+                        <Button variant="ghost" size="sm" className="text-xs h-7 gap-1.5 text-muted-foreground"
+                          onClick={() => {
+                            // IG/FB: gestao propria (agente + reconectar + desconectar).
+                            // Demais: dialog de config manual existente.
+                            if (ch.key === "instagram" || ch.key === "facebook") setManageChannel(ch.key);
+                            else setOpenDialog(ch.configurable!);
+                          }}>
                           <Settings className="w-3 h-3" /> Gerenciar
                         </Button>
                       </div>
@@ -439,36 +477,38 @@ export default function AgencyChannelsManager() {
                   ) : (
                     // ── Nao conectado: CTA forte com a cara do canal ──
                     <div className="flex items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      className={`flex-1 h-8 text-xs gap-1.5 text-white ${
-                        ch.key === "whatsapp"
-                          ? "bg-[#25D366] hover:bg-[#1da851]"
-                          : ch.key === "instagram"
-                          ? "bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600"
-                          : ""
-                      }`}
-                      disabled={connectingKey !== null}
-                      onClick={() => {
-                        // 1 clique: FB.login no proprio gesto → popup garantido.
-                        if (ch.key === "whatsapp" || ch.key === "instagram" || ch.key === "facebook") {
-                          directConnect(ch.key);
-                        } else {
-                          setOpenDialog(ch.configurable!);
-                        }
-                      }}
-                    >
-                      {connectingKey === ch.key || (ch.key === "facebook" && connectingKey === "instagram")
-                        ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Conectando…</>)
-                        : <>Conectar {ch.name}</>}
-                    </Button>
-                    <Button
-                      variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground"
-                      title="Configuração manual / avançado"
-                      onClick={() => setOpenDialog(ch.configurable === "facebook" ? "instagram" : ch.configurable!)}
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                    </Button>
+                      <Button
+                        size="sm"
+                        className={`flex-1 h-8 text-xs gap-1.5 text-white ${
+                          ch.key === "whatsapp"
+                            ? "bg-[#25D366] hover:bg-[#1da851]"
+                            : ch.key === "instagram"
+                            ? "bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600"
+                            : ch.key === "facebook"
+                            ? "bg-[#1877F2] hover:bg-[#0f6ae0]"
+                            : ""
+                        }`}
+                        disabled={connectingKey !== null}
+                        onClick={() => {
+                          if (ch.key === "whatsapp" || ch.key === "instagram" || ch.key === "facebook") {
+                            directConnect(ch.key);
+                          } else {
+                            setOpenDialog(ch.configurable!);
+                          }
+                        }}
+                      >
+                        {connectingKey === ch.key
+                          ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Conectando…</>)
+                          : <>Conectar {ch.name}</>}
+                      </Button>
+                      {/* Config manual so' pros canais que tem form (nao IG/FB) */}
+                      {ch.key !== "instagram" && ch.key !== "facebook" && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground"
+                          title="Configuração avançada"
+                          onClick={() => setOpenDialog(ch.configurable!)}>
+                          <Settings className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -518,47 +558,58 @@ export default function AgencyChannelsManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Seletor de Pagina (conexao Instagram com varias Paginas) */}
-      <Dialog open={!!igPagesToPick} onOpenChange={(o) => { if (!o) setIgPagesToPick(null); }}>
+      {/* Seletor de Pagina do Facebook (varias Paginas) */}
+      <Dialog open={!!fbPagesToPick} onOpenChange={(o) => { if (!o) setFbPagesToPick(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base">Qual conta Instagram usar?</DialogTitle>
+            <DialogTitle className="text-base">Qual Página do Facebook usar?</DialogTitle>
             <DialogDescription className="text-xs">
-              Você administra mais de uma Página com Instagram — escolha qual conectar.
+              Você administra mais de uma Página — escolha qual conectar ao Messenger.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            {(igPagesToPick ?? []).map((p) => (
+            {(fbPagesToPick ?? []).map((p) => (
               <button
                 key={p.id}
-                onClick={() => finishInstagram({ page_id: p.id })}
+                onClick={() => finishFacebook({ page_id: p.id })}
                 className="w-full text-left text-sm px-3 py-2.5 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition"
               >
-                <span className="font-medium">{p.ig_username ? `@${p.ig_username}` : p.name}</span>
-                <span className="text-muted-foreground text-xs"> — Página {p.name}</span>
+                <span className="font-medium">{p.name}</span>
               </button>
             ))}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog do Instagram */}
-      <Dialog open={openDialog === "instagram"} onOpenChange={(o) => { if (!o) { setOpenDialog(null); } }}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      {/* Dialog de gestao IG / FB (reconectar + desconectar) */}
+      <Dialog open={!!manageChannel} onOpenChange={(o) => { if (!o) setManageChannel(null); }}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
-                <InstagramIcon className="w-5 h-5 text-pink-600" />
-              </div>
-              <div>
-                <DialogTitle className="text-base">Instagram (Meta API)</DialogTitle>
-                <DialogDescription className="text-xs mt-0.5">
-                  DMs da conta Business no inbox, com auto-reply do agente
-                </DialogDescription>
-              </div>
-            </div>
+            <DialogTitle className="text-base">
+              Gerenciar {manageChannel === "instagram" ? "Instagram" : "Facebook Messenger"}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {manageChannel === "instagram"
+                ? "Conta Instagram conectada — DMs caem no inbox com resposta do agente."
+                : "Página do Facebook conectada — mensagens do Messenger caem no inbox."}
+            </DialogDescription>
           </DialogHeader>
-          <IntegrationInstagramForm onClose={() => setOpenDialog(null)} />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <p className="text-xs">Conectado e ativo.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="flex-1 h-8 text-xs"
+                onClick={() => { const k = manageChannel!; setManageChannel(null); directConnect(k); }}>
+                Reconectar / trocar conta
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 text-xs text-destructive hover:text-destructive"
+                onClick={() => disconnectMeta(manageChannel!)}>
+                Desconectar
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

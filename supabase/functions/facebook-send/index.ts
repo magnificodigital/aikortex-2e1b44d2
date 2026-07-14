@@ -38,11 +38,11 @@ serve(async (req) => {
       .from("user_api_keys")
       .select("provider, api_key")
       .eq("user_id", user.id)
-      .eq("provider", "instagram_access_token")
+      .eq("provider", "facebook_page_token")
       .limit(1);
     const accessToken = keys?.[0]?.api_key;
     if (!accessToken) {
-      return json({ error: "Configure o Instagram em Configurações → Canais" }, 400);
+      return json({ error: "Conecte o Facebook em Configurações → Canais" }, 400);
     }
 
     const body = await req.json();
