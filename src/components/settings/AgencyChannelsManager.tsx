@@ -126,7 +126,7 @@ const CHANNELS: ChannelDef[] = [
     name: "TikTok",
     provider: "TikTok API",
     description: "Mensagens via TikTok Business",
-    icon: Share2,
+    icon: TikTokIcon,
     iconBg: "bg-rose-500/10",
     iconColor: "text-rose-600",
     comingSoon: true,
