@@ -21,6 +21,7 @@ import { toast } from "sonner";
 const SEND_URLS: Record<string, string> = {
   whatsapp: fnUrl("whatsapp-send"),
   instagram: fnUrl("instagram-send"),
+  facebook: fnUrl("facebook-send"),
 };
 
 interface ConvRow {

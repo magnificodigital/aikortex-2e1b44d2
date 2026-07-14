@@ -32,7 +32,7 @@ import { useVoiceIntegrationStatus } from "@/hooks/use-voice-integration";
 import { useWhatsAppIntegrationStatus } from "@/hooks/use-whatsapp-integration";
 import { type ChannelKey, useEnabledChannels, useToggleChannel } from "@/hooks/use-enabled-channels";
 
-type ConfigurableKey = "email" | "whatsapp" | "voice" | "instagram";
+type ConfigurableKey = "email" | "whatsapp" | "voice" | "instagram" | "facebook";
 type TemplatesKey = "email" | "whatsapp";
 
 type ChannelDef = {
@@ -105,11 +105,11 @@ const CHANNELS: ChannelDef[] = [
     key: "facebook",
     name: "Facebook",
     provider: "Messenger API",
-    description: "Conversas via Messenger",
+    description: "Conversas via Messenger — usa a mesma conexão Meta do Instagram",
     icon: Share2,
     iconBg: "bg-blue-600/10",
     iconColor: "text-blue-600",
-    comingSoon: true,
+    configurable: "facebook",
   },
   {
     key: "linkedin",
@@ -234,13 +234,13 @@ export default function AgencyChannelsManager() {
   /** Conexao 1-clique. Instagram = redirect flow (sem SDK, sem popup).
    *  WhatsApp ES = popup obrigatorio (a Meta so entrega waba/phone ids por
    *  postMessage). Fallback: sem config → abre o dialog de gestao. */
-  const directConnect = (key: "whatsapp" | "instagram") => {
+  const directConnect = (key: "whatsapp" | "instagram" | "facebook") => {
     const cfgId = key === "whatsapp" ? meta.whatsappConfigId : meta.instagramConfigId;
-    if (!cfgId) { setOpenDialog(key); return; }
-    if (key !== "instagram" && !window.FB) { setOpenDialog(key); return; }
-    setConnectingKey(key);
+    if (!cfgId) { setOpenDialog(key === "facebook" ? "instagram" : key); return; }
+    if (key === "whatsapp" && !window.FB) { setOpenDialog(key); return; }
+    setConnectingKey(key === "facebook" ? "instagram" : key);
 
-    if (key === "instagram") {
+    if (key === "instagram" || key === "facebook") {
       // REDIRECT flow (sem popup): navega pro Facebook, autoriza, volta em
       // /settings?tab=channels&code=... — imune a bloqueador de popup.
       const authUrl =
@@ -309,6 +309,7 @@ export default function AgencyChannelsManager() {
     if (k === "whatsapp") return !!waStatus?.connected || waLocalConnected;
     if (k === "voice") return !!(voiceStatus?.telnyx_connected || voiceStatus?.elevenlabs_connected);
     if (k === "instagram") return igConnected;
+    if (k === "facebook") return igConnected; // mesma Pagina/token da conexao Meta
     return false;
   };
 
@@ -332,6 +333,7 @@ export default function AgencyChannelsManager() {
       if (parts.length > 0) return parts.join(" + ");
     }
     if (k === "instagram" && igConnected) return "Conta Business conectada";
+    if (k === "facebook" && igConnected) return "Página conectada (via login Meta)";
     return null;
   };
 
@@ -417,7 +419,7 @@ export default function AgencyChannelsManager() {
                           variant="ghost"
                           size="sm"
                           className="text-xs h-7 gap-1.5 text-muted-foreground"
-                          onClick={() => setOpenDialog(ch.configurable!)}
+                          onClick={() => setOpenDialog(ch.configurable === "facebook" ? "instagram" : ch.configurable!)}
                         >
                           <Settings className="w-3 h-3" /> Gerenciar
                         </Button>
@@ -425,9 +427,10 @@ export default function AgencyChannelsManager() {
                     </div>
                   ) : (
                     // ── Nao conectado: CTA forte com a cara do canal ──
+                    <div className="flex items-center gap-1.5">
                     <Button
                       size="sm"
-                      className={`w-full h-8 text-xs gap-1.5 text-white ${
+                      className={`flex-1 h-8 text-xs gap-1.5 text-white ${
                         ch.key === "whatsapp"
                           ? "bg-[#25D366] hover:bg-[#1da851]"
                           : ch.key === "instagram"
@@ -437,17 +440,25 @@ export default function AgencyChannelsManager() {
                       disabled={connectingKey !== null}
                       onClick={() => {
                         // 1 clique: FB.login no proprio gesto → popup garantido.
-                        if (ch.key === "whatsapp" || ch.key === "instagram") {
+                        if (ch.key === "whatsapp" || ch.key === "instagram" || ch.key === "facebook") {
                           directConnect(ch.key);
                         } else {
                           setOpenDialog(ch.configurable!);
                         }
                       }}
                     >
-                      {connectingKey === ch.key
+                      {connectingKey === ch.key || (ch.key === "facebook" && connectingKey === "instagram")
                         ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Conectando…</>)
                         : <>Conectar {ch.name}</>}
                     </Button>
+                    <Button
+                      variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground"
+                      title="Configuração manual / avançado"
+                      onClick={() => setOpenDialog(ch.configurable === "facebook" ? "instagram" : ch.configurable!)}
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                    </Button>
+                    </div>
                   )}
                 </div>
               )}

@@ -15,7 +15,7 @@
 export interface RecordMessageInput {
   supabase: any; // service-role client
   ownerUserId: string; // user da agencia (dono do canal)
-  channel: "whatsapp" | "instagram" | "email" | "sms";
+  channel: "whatsapp" | "instagram" | "facebook" | "email" | "sms";
   direction: "inbound" | "outbound";
   contactPhone: string; // identificador do contato no canal
   contactName?: string | null;
