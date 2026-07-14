@@ -11,8 +11,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Mail, Mic, Phone, Camera, Share2, Settings, CheckCircle2, FileText, ExternalLink } from "lucide-react";
+import { Mail, Mic, Phone, Share2, Settings, CheckCircle2, FileText, ExternalLink } from "lucide-react";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
+import InstagramIcon from "@/components/icons/InstagramIcon";
+import LinkedInIcon from "@/components/icons/LinkedInIcon";
+import TikTokIcon from "@/components/icons/TikTokIcon";
+import TelegramIcon from "@/components/icons/TelegramIcon";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
 import IntegrationInstagramForm from "@/components/settings/IntegrationInstagramForm";
