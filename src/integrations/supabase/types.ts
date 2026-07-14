@@ -1236,6 +1236,7 @@ export type Database = {
         Row: {
           agency_id: string
           agent_id: string | null
+          ai_enabled: boolean
           assigned_to: string | null
           channel: string
           client_id: string | null
@@ -1243,12 +1244,15 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string
+          crm_contact_id: string | null
           direction: string
           id: string
           last_message_at: string | null
+          last_message_direction: string | null
           last_message_preview: string | null
           metadata: Json | null
           outcome_tags: string[] | null
+          owner_user_id: string | null
           status: string
           tags: string[] | null
           unread_count: number
@@ -1257,6 +1261,7 @@ export type Database = {
         Insert: {
           agency_id: string
           agent_id?: string | null
+          ai_enabled?: boolean
           assigned_to?: string | null
           channel?: string
           client_id?: string | null
@@ -1264,12 +1269,15 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          crm_contact_id?: string | null
           direction: string
           id?: string
           last_message_at?: string | null
+          last_message_direction?: string | null
           last_message_preview?: string | null
           metadata?: Json | null
           outcome_tags?: string[] | null
+          owner_user_id?: string | null
           status?: string
           tags?: string[] | null
           unread_count?: number
@@ -1278,6 +1286,7 @@ export type Database = {
         Update: {
           agency_id?: string
           agent_id?: string | null
+          ai_enabled?: boolean
           assigned_to?: string | null
           channel?: string
           client_id?: string | null
@@ -1285,12 +1294,15 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          crm_contact_id?: string | null
           direction?: string
           id?: string
           last_message_at?: string | null
+          last_message_direction?: string | null
           last_message_preview?: string | null
           metadata?: Json | null
           outcome_tags?: string[] | null
+          owner_user_id?: string | null
           status?: string
           tags?: string[] | null
           unread_count?: number
@@ -1316,6 +1328,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "agency_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_crm_contact_id_fkey"
+            columns: ["crm_contact_id"]
+            isOneToOne: false
+            referencedRelation: "crm_contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -1423,6 +1442,7 @@ export type Database = {
           phone: string | null
           primary_agent_id: string | null
           role: string | null
+          source: string | null
           source_channel: string | null
           stage_slug: string
           temperature: string | null
@@ -1450,6 +1470,7 @@ export type Database = {
           phone?: string | null
           primary_agent_id?: string | null
           role?: string | null
+          source?: string | null
           source_channel?: string | null
           stage_slug?: string
           temperature?: string | null
@@ -1477,6 +1498,7 @@ export type Database = {
           phone?: string | null
           primary_agent_id?: string | null
           role?: string | null
+          source?: string | null
           source_channel?: string | null
           stage_slug?: string
           temperature?: string | null
