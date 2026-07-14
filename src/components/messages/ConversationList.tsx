@@ -87,8 +87,8 @@ const ConversationList = ({
   onFilterChange,
   availableTags = [],
 }: ConversationListProps) => {
-  const openCount = conversations.filter((c) => (c.status ?? "open") === "open").length;
-  const unreadCount = conversations.filter((c) => c.unread > 0).length;
+  const mineCount = conversations.filter((c) => (c.status ?? "open") === "open").length;
+  const unassignedCount = conversations.filter((c) => c.unread > 0).length;
   const activeFilters = (filter?.channel ? 1 : 0) + (filter?.tag ? 1 : 0) + (filter?.view === "unattended" ? 1 : 0);
 
   const filtered = conversations
