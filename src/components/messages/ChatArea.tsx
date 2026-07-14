@@ -70,10 +70,10 @@ const AiToggleButton = ({ aiEnabled, onToggle }: { aiEnabled: boolean; onToggle:
         ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20"
         : "bg-muted text-muted-foreground border-border hover:bg-accent"
     )}
-    title={aiEnabled ? "IA respondendo — clique pra assumir a conversa" : "Você assumiu — clique pra devolver pra IA"}
+    title={aiEnabled ? "Agente de IA respondendo — clique pra assumir a conversa" : "Você assumiu — clique pra devolver pra IA"}
   >
     {aiEnabled ? <Bot className="w-3.5 h-3.5 text-emerald-500" /> : <User className="w-3.5 h-3.5" />}
-    {aiEnabled ? "IA respondendo" : "Você assumiu"}
+    {aiEnabled ? "Agente de IA" : "Você assumiu"}
   </button>
 );
 
