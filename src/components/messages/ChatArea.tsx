@@ -3,6 +3,7 @@ import {
   Send, CheckCheck, Check, AlertTriangle, Bot, User,
   CheckCircle2, RotateCcw, Sparkles, Loader2, StickyNote, Lock,
   Tag, X, Plus, Bold, Italic, Code, Smile, VolumeX, Volume2, Share2, ChevronDown, Clock,
+  Link2, Undo2, Redo2, List, ListOrdered, Mic, PenLine, Paperclip, Maximize2, Globe,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
