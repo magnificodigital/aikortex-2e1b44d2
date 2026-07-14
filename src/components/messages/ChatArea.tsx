@@ -184,44 +184,25 @@ const ChatArea = ({
   return (
     <div className="flex-1 flex flex-col min-w-0 h-full">
       {/* Chat Header — h-14, alinhado com os outros paineis */}
-      <div className="h-14 shrink-0 border-b border-border flex items-center justify-between px-4 bg-card">
-        <div className="flex items-center gap-3 min-w-0">
-          <Avatar className="h-9 w-9">
+      <div className="h-14 shrink-0 border-b border-border flex items-center justify-between gap-3 px-4 bg-card">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <Avatar className="h-9 w-9 shrink-0">
             <AvatarFallback className="text-[11px] font-semibold bg-muted text-foreground/70">
               {conversation.initials.slice(0, 2)}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-foreground truncate">{conversation.contactName}</h3>
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <Globe className="w-3 h-3" />
-              <span>{conversation.inbox}</span>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
+              <Globe className="w-3 h-3 shrink-0" />
+              <span className="truncate">{conversation.inbox}</span>
               <span className="opacity-50">·</span>
-              <span>{STATUS_LABELS[conversation.status ?? "open"] ?? conversation.status}</span>
-              {onTogglePanel && (
-                <button onClick={onTogglePanel} className="ml-1 text-primary hover:underline">
-                  {panelOpen ? "Fechar detalhes" : "Mostrar detalhes"}
-                </button>
-              )}
+              <span className="truncate">{STATUS_LABELS[conversation.status ?? "open"] ?? conversation.status}</span>
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           {onToggleAi && <AiToggleButton aiEnabled={aiEnabled} onToggle={onToggleAi} />}
-          {onToggleMute && (
-            <Button
-              variant="ghost" size="icon" className="h-7 w-7"
-              onClick={onToggleMute}
-              title={muted ? "Reativar notificações" : "Silenciar conversa"}
-            >
-              {muted ? <VolumeX className="w-3.5 h-3.5 text-destructive" /> : <Volume2 className="w-3.5 h-3.5" />}
-            </Button>
-          )}
-          {onShare && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onShare} title="Copiar link da conversa">
-              <Share2 className="w-3.5 h-3.5" />
-            </Button>
-          )}
           {onToggleResolve && (
             <div className="flex">
               <Button
@@ -254,9 +235,30 @@ const ChatArea = ({
                   <DropdownMenuItem onClick={() => onSetStatus?.("resolved")} className="text-xs gap-2">
                     <CheckCircle2 className="w-3 h-3" /> Resolver
                   </DropdownMenuItem>
+                  {onToggleMute && (
+                    <DropdownMenuItem onClick={onToggleMute} className="text-xs gap-2">
+                      {muted ? <><Volume2 className="w-3 h-3" /> Reativar notificações</> : <><VolumeX className="w-3 h-3" /> Silenciar conversa</>}
+                    </DropdownMenuItem>
+                  )}
+                  {onShare && (
+                    <DropdownMenuItem onClick={onShare} className="text-xs gap-2">
+                      <Share2 className="w-3 h-3" /> Copiar link da conversa
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+          )}
+          {onTogglePanel && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onTogglePanel}
+              title={panelOpen ? "Fechar detalhes" : "Mostrar detalhes"}
+            >
+              {panelOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+            </Button>
           )}
         </div>
       </div>
