@@ -479,37 +479,57 @@ const ChatArea = ({
             )}
           />
 
-          {/* Rodape: emoji | AI Assist + Enviar */}
+          {/* Rodape: emoji + anexo + audio + assinatura | AI Assist + Enviar */}
           <div className="px-2.5 pb-2.5 flex items-center justify-between">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button title="Emoji"
-                  className="w-7 h-7 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
-                  <Smile className="w-4 h-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="top" align="start" className="w-56 p-2">
-                <div className="grid grid-cols-8 gap-0.5">
-                  {EMOJIS.map((e) => (
-                    <button key={e} onClick={() => insertAtCursor(e)}
-                      className="w-6 h-6 rounded grid place-items-center hover:bg-accent text-base">
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <div className="flex items-center gap-0.5">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button title="Emoji"
+                    className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                    <Smile className="w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-56 p-2">
+                  <div className="grid grid-cols-8 gap-0.5">
+                    {EMOJIS.map((e) => (
+                      <button key={e} onClick={() => insertAtCursor(e)}
+                        className="w-6 h-6 rounded grid place-items-center hover:bg-accent text-base">
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <button title="Anexar arquivo"
+                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                <Paperclip className="w-4 h-4" />
+              </button>
+              <button title="Gravar áudio"
+                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                <Mic className="w-4 h-4" />
+              </button>
+              <button title="Assinatura"
+                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                <PenLine className="w-4 h-4" />
+              </button>
+            </div>
 
             <div className="flex items-center gap-2">
               {onSuggestReply && composerMode === "reply" && (
                 <button
                   onClick={handleSuggest}
                   disabled={suggesting}
-                  className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-medium bg-gradient-to-r from-primary/15 to-primary/5 text-primary border border-primary/30 hover:border-primary/50 transition disabled:opacity-50"
+                  className="relative flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-medium bg-gradient-to-r from-primary/15 to-primary/5 text-primary border border-primary/30 hover:border-primary/50 transition disabled:opacity-50"
                   title="A IA rascunha — você edita antes de enviar"
                 >
                   {suggesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                   AI Assist
+                  {!suggesting && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                  )}
                 </button>
               )}
               <Button
