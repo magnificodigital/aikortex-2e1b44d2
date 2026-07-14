@@ -116,7 +116,7 @@ const CHANNELS: ChannelDef[] = [
     name: "LinkedIn",
     provider: "LinkedIn API",
     description: "Mensagens e InMail",
-    icon: Share2,
+    icon: LinkedInIcon,
     iconBg: "bg-sky-500/10",
     iconColor: "text-sky-600",
     comingSoon: true,
