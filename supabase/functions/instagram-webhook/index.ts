@@ -50,26 +50,35 @@ serve(async (req) => {
 
   try {
     const rawBody = await req.text();
+    console.log(`[ig-webhook] POST recebido (${rawBody.length} bytes)`);
 
-    // HMAC fail-closed (mesmo app Meta do WhatsApp)
-    const appSecret = Deno.env.get("META_APP_SECRET");
+    // HMAC fail-closed. IMPORTANTE: o webhook do Instagram (Instagram
+    // Login API) assina com o INSTAGRAM App Secret — NAO o Facebook
+    // (META_APP_SECRET). Fallback pro META_APP_SECRET por compat.
+    const appSecret = Deno.env.get("INSTAGRAM_APP_SECRET") || Deno.env.get("META_APP_SECRET");
     if (!appSecret) {
-      console.error("META_APP_SECRET not configured — rejecting");
+      console.error("[ig-webhook] sem INSTAGRAM_APP_SECRET/META_APP_SECRET");
       return new Response("Forbidden", { status: 403 });
     }
     const sigHeader = req.headers.get("x-hub-signature-256") || "";
     const expected = sigHeader.startsWith("sha256=") ? sigHeader.slice(7) : "";
-    if (!expected) return new Response("Forbidden", { status: 403 });
+    if (!expected) { console.warn("[ig-webhook] sem assinatura"); return new Response("Forbidden", { status: 403 }); }
     const enc = new TextEncoder();
     const key = await crypto.subtle.importKey(
       "raw", enc.encode(appSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
     );
     const sig = await crypto.subtle.sign("HMAC", key, enc.encode(rawBody));
     const computed = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    if (computed.length !== expected.length) return new Response("Forbidden", { status: 403 });
-    let diff = 0;
-    for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ expected.charCodeAt(i);
-    if (diff !== 0) return new Response("Forbidden", { status: 403 });
+    let ok = computed.length === expected.length;
+    if (ok) {
+      let diff = 0;
+      for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ expected.charCodeAt(i);
+      ok = diff === 0;
+    }
+    if (!ok) {
+      console.warn("[ig-webhook] assinatura invalida — confira o INSTAGRAM_APP_SECRET");
+      return new Response("Forbidden", { status: 403 });
+    }
 
     const body = JSON.parse(rawBody);
     if (body.object !== "instagram") {
