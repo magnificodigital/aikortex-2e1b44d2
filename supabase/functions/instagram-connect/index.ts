@@ -120,6 +120,7 @@ serve(async (req) => {
     const rows = [
       { user_id: user.id, provider: "instagram_access_token", api_key: accessToken },
       { user_id: user.id, provider: "instagram_account_id", api_key: igId },
+      { user_id: user.id, provider: "instagram_username", api_key: username || igId },
     ];
     const { error: upErr } = await admin
       .from("user_api_keys").upsert(rows, { onConflict: "user_id,provider" });

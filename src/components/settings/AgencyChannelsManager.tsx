@@ -153,6 +153,8 @@ export default function AgencyChannelsManager() {
   const [openTemplates, setOpenTemplates] = useState<TemplatesKey | null>(null);
   const [igConnected, setIgConnected] = useState(false);
   const [fbConnected, setFbConnected] = useState(false);
+  const [igUsername, setIgUsername] = useState<string | null>(null);
+  const [fbPageName, setFbPageName] = useState<string | null>(null);
   const [connectingKey, setConnectingKey] = useState<"whatsapp" | "instagram" | "facebook" | null>(null);
   const [fbPagesToPick, setFbPagesToPick] = useState<{ id: string; name: string }[] | null>(null);
   const [waLocalConnected, setWaLocalConnected] = useState(false);
@@ -175,14 +177,16 @@ export default function AgencyChannelsManager() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase
-        .from("user_api_keys").select("provider")
+        .from("user_api_keys").select("provider, api_key")
         .eq("user_id", user.id)
-        .in("provider", ["instagram_access_token", "facebook_page_token"]);
-      const set = new Set((data ?? []).map((r: any) => r.provider));
-      setIgConnected(set.has("instagram_access_token"));
-      setFbConnected(set.has("facebook_page_token"));
+        .in("provider", ["instagram_access_token", "facebook_page_token", "instagram_username", "facebook_page_name"]);
+      const map = new Map((data ?? []).map((r: any) => [r.provider, r.api_key]));
+      setIgConnected(map.has("instagram_access_token"));
+      setFbConnected(map.has("facebook_page_token"));
+      setIgUsername(map.get("instagram_username") ?? null);
+      setFbPageName(map.get("facebook_page_name") ?? null);
     })();
-  }, [openDialog]);
+  }, [openDialog, igConnected, fbConnected]);
 
   // ── Conexao dos canais Meta ──
   const disconnectMeta = async (key: "instagram" | "facebook") => {
@@ -386,8 +390,8 @@ export default function AgencyChannelsManager() {
       if (voiceStatus?.elevenlabs_connected) parts.push("ElevenLabs");
       if (parts.length > 0) return parts.join(" + ");
     }
-    if (k === "instagram" && igConnected) return "Conta Instagram conectada";
-    if (k === "facebook" && fbConnected) return "Página do Facebook conectada";
+    if (k === "instagram" && igConnected) return igUsername ? `@${igUsername}` : "Conta Instagram conectada";
+    if (k === "facebook" && fbConnected) return fbPageName || "Página do Facebook conectada";
     return null;
   };
 
@@ -599,7 +603,14 @@ export default function AgencyChannelsManager() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
               <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              <p className="text-xs">Conectado e ativo.</p>
+              <p className="text-xs">
+                <span className="font-semibold">
+                  {manageChannel === "instagram"
+                    ? (igUsername ? `@${igUsername}` : "Conta Instagram")
+                    : (fbPageName || "Página do Facebook")}
+                </span>
+                {" "}— conectado e ativo.
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="flex-1 h-8 text-xs"

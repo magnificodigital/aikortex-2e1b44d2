@@ -112,6 +112,7 @@ serve(async (req) => {
     const rows = [
       { user_id: user.id, provider: "facebook_page_token", api_key: chosen.access_token },
       { user_id: user.id, provider: "facebook_page_id", api_key: chosen.id },
+      { user_id: user.id, provider: "facebook_page_name", api_key: chosen.name },
     ];
     const { error: upErr } = await admin
       .from("user_api_keys").upsert(rows, { onConflict: "user_id,provider" });
