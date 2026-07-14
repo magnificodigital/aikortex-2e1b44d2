@@ -263,41 +263,6 @@ const ChatArea = ({
         </div>
       </div>
 
-      {/* Etiquetas — strip fina no topo do chat (referencia WhatsApp Web) */}
-      {onTagsChange && (
-        <div className="shrink-0 px-4 py-1.5 border-b border-border bg-card/60 flex items-center gap-1.5 flex-wrap">
-          <Tag className="w-3 h-3 text-muted-foreground shrink-0" />
-          {tags.map((t) => (
-            <span key={t} className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-primary/10 text-primary text-[10px] font-medium">
-              {t}
-              <button onClick={() => onTagsChange(tags.filter((x) => x !== t))} className="hover:text-destructive transition-colors">
-                <X className="w-2.5 h-2.5" />
-              </button>
-            </span>
-          ))}
-          {addingTag ? (
-            <input
-              autoFocus
-              value={tagDraft}
-              onChange={(e) => setTagDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitTag();
-                if (e.key === "Escape") { setTagDraft(""); setAddingTag(false); }
-              }}
-              onBlur={commitTag}
-              placeholder="etiqueta…"
-              className="h-5 w-28 px-2 rounded-full bg-muted text-[10px] outline-none border border-border focus:border-primary/50"
-            />
-          ) : (
-            <button
-              onClick={() => setAddingTag(true)}
-              className="inline-flex items-center gap-0.5 h-5 px-2 rounded-full border border-dashed border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-primary/40 transition"
-            >
-              <Plus className="w-2.5 h-2.5" /> tag
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Messages — fundo com textura de pontos (vibe WhatsApp Web) */}
       <ScrollArea className="flex-1 bg-muted/20 [background-image:radial-gradient(hsl(var(--muted-foreground)/0.07)_1px,transparent_1px)] [background-size:18px_18px]">
@@ -367,9 +332,10 @@ const ChatArea = ({
 
       {/* Composer clone Chatwoot: tabs Reply|Nota → toolbar → textarea →
           [emoji] ....... [AI Assist] [Enviar (↵)] */}
-      <div className="p-3">
+      <div className="p-3 bg-gradient-to-b from-transparent to-primary/[0.04]">
         <div className={cn(
-          "rounded-xl border bg-card shadow-sm overflow-hidden transition-colors",
+          "rounded-xl border shadow-sm overflow-hidden transition-colors",
+          "bg-gradient-to-br from-card via-card to-primary/[0.08]",
           composerMode === "note" ? "border-amber-500/40" : "border-border focus-within:border-primary/40",
         )}>
           {/* Tabs */}

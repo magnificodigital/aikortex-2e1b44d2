@@ -99,7 +99,7 @@ const AikortexMessages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("open");
   const [loading, setLoading] = useState(true);
-  const [crmLead, setCrmLead] = useState<{ stage_slug: string | null; temperature: string | null; company: string | null; email: string | null } | null>(null);
+  const [crmLead, setCrmLead] = useState<{ id: string; stage_slug: string | null; temperature: string | null; company: string | null; email: string | null; phone: string | null; custom_fields: Record<string, any> | null } | null>(null);
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>({ view: "all", channel: null, tag: null });
   const [panelOpen, setPanelOpen] = useState(true);
   const [searchParams] = useSearchParams();
@@ -178,7 +178,7 @@ const AikortexMessages = () => {
     const row = rows.find((r) => r.id === selectedConv);
     if (row?.crm_contact_id) {
       (supabase.from("crm_contacts" as any) as any)
-        .select("stage_slug, temperature, company, email")
+        .select("id, stage_slug, temperature, company, email, phone, custom_fields")
         .eq("id", row.crm_contact_id)
         .maybeSingle()
         .then(({ data }: any) => { if (data) setCrmLead(data); });
@@ -242,7 +242,10 @@ const AikortexMessages = () => {
 
   // Atendente preenche/corrige dados do contato — salva no lead do CRM
   // (cria o lead se a conversa ainda nao tiver um) e espelha na conversa.
-  const saveContact = async (patch: { name?: string; email?: string; company?: string }) => {
+  const saveContact = async (patch: {
+    name?: string; email?: string; company?: string; phone?: string;
+    stage_slug?: string; custom?: Record<string, string>;
+  }) => {
     if (!selectedRow) return;
     try {
       let leadId = selectedRow.crm_contact_id;
@@ -257,7 +260,7 @@ const AikortexMessages = () => {
             agency_id: ap.id,
             name: patch.name || selectedRow.contact_name || selectedRow.contact_phone,
             phone: selectedRow.contact_phone,
-            stage_slug: "new",
+            stage_slug: patch.stage_slug ?? "new",
             temperature: "warm",
             source: selectedRow.channel,
           })
@@ -268,17 +271,22 @@ const AikortexMessages = () => {
           .update({ crm_contact_id: leadId }).eq("id", selectedRow.id);
       }
 
-      const leadPatch: Record<string, string> = {};
-      if (patch.name) leadPatch.name = patch.name;
-      if (patch.email) leadPatch.email = patch.email;
-      if (patch.company) leadPatch.company = patch.company;
+      const leadPatch: Record<string, unknown> = {};
+      if (patch.name !== undefined) leadPatch.name = patch.name;
+      if (patch.email !== undefined) leadPatch.email = patch.email;
+      if (patch.company !== undefined) leadPatch.company = patch.company;
+      if (patch.phone !== undefined) leadPatch.phone = patch.phone;
+      if (patch.stage_slug !== undefined) leadPatch.stage_slug = patch.stage_slug;
+      if (patch.custom) {
+        leadPatch.custom_fields = { ...(crmLead?.custom_fields ?? {}), ...patch.custom };
+      }
       if (Object.keys(leadPatch).length > 0) {
         const { error } = await (supabase.from("crm_contacts" as any) as any)
           .update(leadPatch).eq("id", leadId);
         if (error) { toast.error(`Erro salvando: ${error.message}`); return; }
       }
 
-      // Espelha na conversa (nome aparece na lista; email no schema dela)
+      // Espelha na conversa
       const convPatch: Record<string, unknown> = { crm_contact_id: leadId };
       if (patch.name) convPatch.contact_name = patch.name;
       if (patch.email) convPatch.contact_email = patch.email;
@@ -289,10 +297,15 @@ const AikortexMessages = () => {
         ? { ...r, crm_contact_id: leadId, contact_name: patch.name ?? r.contact_name }
         : r));
       setCrmLead((prev) => ({
-        stage_slug: prev?.stage_slug ?? "new",
+        id: leadId!,
+        stage_slug: patch.stage_slug ?? prev?.stage_slug ?? "new",
         temperature: prev?.temperature ?? "warm",
         company: patch.company ?? prev?.company ?? null,
         email: patch.email ?? prev?.email ?? null,
+        phone: patch.phone ?? prev?.phone ?? null,
+        custom_fields: patch.custom
+          ? { ...(prev?.custom_fields ?? {}), ...patch.custom }
+          : prev?.custom_fields ?? null,
       }));
       toast.success("Contato atualizado");
     } catch (e) {
@@ -313,9 +326,11 @@ const AikortexMessages = () => {
     name: selectedRow.contact_name || selectedRow.contact_phone || "Contato",
     initials: (selectedRow.contact_name || "C").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase(),
     email: crmLead?.email || "—",
-    phone: selectedRow.contact_phone || "—",
+    phone: crmLead?.phone || selectedRow.contact_phone || "—",
     company: crmLead?.company || undefined,
+    customFields: (crmLead?.custom_fields ?? {}) as any,
     crm: selectedRow.crm_contact_id ? {
+      id: selectedRow.crm_contact_id,
       stage: crmLead?.stage_slug ?? null,
       temperature: crmLead?.temperature ?? null,
       company: crmLead?.company ?? null,
@@ -463,20 +478,9 @@ const AikortexMessages = () => {
               <ContactPanel
                 contact={contact}
                 copilotContext={copilotContext}
-                conversationInfo={selectedRow ? {
-                  channel: selectedRow.channel,
-                  createdAt: selectedRow.created_at,
-                  status: selectedRow.status,
-                } : undefined}
+                tags={selectedRow?.tags ?? []}
+                onTagsChange={selectedRow ? updateTags : undefined}
                 onSaveContact={selectedRow ? saveContact : undefined}
-                actions={selectedRow ? {
-                  status: selectedRow.status,
-                  aiEnabled: selectedRow.ai_enabled,
-                  muted: !!selectedRow.metadata?.muted,
-                  onToggleResolve: toggleResolve,
-                  onToggleAi: () => toggleAi(!selectedRow.ai_enabled),
-                  onToggleMute: toggleMute,
-                } : undefined}
               />
             )}
           </>
