@@ -502,7 +502,7 @@ export default function AgencyChannelsManager() {
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
-                <Camera className="w-5 h-5 text-pink-600" />
+                <InstagramIcon className="w-5 h-5 text-pink-600" />
               </div>
               <div>
                 <DialogTitle className="text-base">Instagram (Meta API)</DialogTitle>
