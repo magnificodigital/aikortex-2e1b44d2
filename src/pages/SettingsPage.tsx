@@ -302,7 +302,13 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        <Tabs defaultValue={new URLSearchParams(window.location.search).get("tab") || "stark"} className="space-y-4">
+        <Tabs defaultValue={(() => {
+          const p = new URLSearchParams(window.location.search);
+          // Retorno do OAuth (Instagram/Facebook) volta em /settings SEM
+          // ?tab (o redirect_uri e' limpo) — força a aba Canais.
+          if (p.get("state") === "ig_login" || p.get("state") === "fb_connect") return "channels";
+          return p.get("tab") || "stark";
+        })()} className="space-y-4">
           <TabsList className="flex h-auto w-full max-w-full gap-1 overflow-x-auto bg-muted/50 p-1 justify-start [scrollbar-width:none]">
             <TabsTrigger value="stark" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Zap className="h-3.5 w-3.5" /> Stark</TabsTrigger>
             <TabsTrigger value="providers" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Sparkles className="h-3.5 w-3.5" /> Provedores</TabsTrigger>

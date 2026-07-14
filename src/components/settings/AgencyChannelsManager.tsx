@@ -197,7 +197,9 @@ export default function AgencyChannelsManager() {
     toast.success(`${key === "instagram" ? "Instagram" : "Facebook"} desconectado`);
   };
 
-  const redirectUri = `${window.location.origin}/settings?tab=channels`;
+  // redirect_uri LIMPO (sem query) — o Instagram OAuth rejeita query
+  // string no redirect. A aba Canais e' forcada pelo state no SettingsPage.
+  const redirectUri = `${window.location.origin}/settings`;
 
   const finishInstagram = async (code: string) => {
     const { data: { session } } = await supabase.auth.getSession();
