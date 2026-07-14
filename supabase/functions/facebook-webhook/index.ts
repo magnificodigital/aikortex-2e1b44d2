@@ -28,16 +28,13 @@ serve(async (req) => {
   );
 
   if (req.method === "GET") {
+    // Token FIXO de plataforma (mesmo secret do Instagram webhook).
     const mode = url.searchParams.get("hub.mode");
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
-    if (mode !== "subscribe" || !token) return new Response("Forbidden", { status: 403 });
-    // Reusa o verify token do Instagram (mesmo app Meta, mesma config)
-    const { data: rows } = await supabase
-      .from("user_api_keys").select("api_key")
-      .eq("provider", "instagram_verify_token").eq("api_key", token).limit(1);
-    if (rows && rows.length > 0) {
-      return new Response(challenge, { status: 200, headers: { "Content-Type": "text/plain" } });
+    const expected = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN");
+    if (mode === "subscribe" && expected && token === expected) {
+      return new Response(challenge ?? "", { status: 200, headers: { "Content-Type": "text/plain" } });
     }
     return new Response("Forbidden", { status: 403 });
   }

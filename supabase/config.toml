@@ -24,3 +24,9 @@ verify_jwt = false
 
 [functions.facebook-webhook]
 verify_jwt = false
+
+[functions.meta-deauth]
+verify_jwt = false
+
+[functions.meta-data-deletion]
+verify_jwt = false

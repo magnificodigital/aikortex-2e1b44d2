@@ -33,20 +33,15 @@ serve(async (req) => {
   );
 
   // ── GET: verificacao do webhook (hub.challenge) ──
+  // Token FIXO de plataforma (secret META_WEBHOOK_VERIFY_TOKEN). O admin
+  // define o mesmo valor aqui e no painel Meta — webhook e' de app, 1x.
   if (req.method === "GET") {
     const mode = url.searchParams.get("hub.mode");
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
-    if (mode !== "subscribe" || !token) return new Response("Forbidden", { status: 403 });
-
-    const { data: rows } = await supabase
-      .from("user_api_keys")
-      .select("api_key")
-      .eq("provider", "instagram_verify_token")
-      .eq("api_key", token)
-      .limit(1);
-    if (rows && rows.length > 0) {
-      return new Response(challenge, { status: 200, headers: { "Content-Type": "text/plain" } });
+    const expected = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN");
+    if (mode === "subscribe" && expected && token === expected) {
+      return new Response(challenge ?? "", { status: 200, headers: { "Content-Type": "text/plain" } });
     }
     return new Response("Forbidden", { status: 403 });
   }
