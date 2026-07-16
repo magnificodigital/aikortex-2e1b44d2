@@ -355,18 +355,21 @@ export default function AgencyChannelsManager() {
         try {
           if (response?.authResponse?.code) {
             const { phone_number_id, waba_id, coexistence } = signupData;
-            // Na coexistência a Meta manda só o waba_id — o phone_number_id
-            // é resolvido no backend. Então só o waba_id é obrigatório aqui.
-            if (!waba_id) {
-              toast.error("Onboarding incompleto: a Meta não retornou a conta. Tente novamente.");
-              return;
-            }
+            // NÃO bloqueia se faltar waba_id/phone_number_id: o postMessage da
+            // Meta nem sempre chega. Basta o code — o backend resolve a conta
+            // e o número pelo próprio token (debug_token). O fluxo usa o
+            // featureType de coexistência, então default coexistence=true.
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { toast.error("Sessão expirada"); return; }
             const resp = await fetch(fnUrl("whatsapp-embedded-signup"), {
               method: "POST",
               headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ code: response.authResponse.code, phone_number_id, waba_id, coexistence }),
+              body: JSON.stringify({
+                code: response.authResponse.code,
+                phone_number_id,
+                waba_id,
+                coexistence: coexistence ?? true,
+              }),
             });
             const j = await resp.json().catch(() => ({}));
             if (!resp.ok) { toast.error(j?.message || j?.error || "Falha ao salvar conexão"); return; }

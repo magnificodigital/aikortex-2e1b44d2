@@ -100,15 +100,14 @@ serve(async (req) => {
     return jsonRes({ error: "INVALID_JSON" }, 400);
   }
 
-  const { code, waba_id, coexistence } = payload ?? {};
-  // phone_number_id é opcional: na coexistência a Meta retorna só o waba_id
-  // no callback — resolvemos o número a partir do WABA mais abaixo.
+  const { code, coexistence } = payload ?? {};
+  // waba_id e phone_number_id são OPCIONAIS: o postMessage do Embedded Signup
+  // (sobretudo na coexistência) às vezes não entrega eles. Resolvemos tudo a
+  // partir do próprio token (debug_token → WABA → número) mais abaixo.
+  let waba_id: string | undefined = payload?.waba_id;
   let phone_number_id: string | undefined = payload?.phone_number_id;
-  if (!code || !waba_id) {
-    return jsonRes({
-      error: "MISSING_FIELDS",
-      message: "code e waba_id são obrigatórios",
-    }, 400);
+  if (!code) {
+    return jsonRes({ error: "MISSING_FIELDS", message: "code é obrigatório" }, 400);
   }
   const isCoexistence = coexistence === true;
 
@@ -131,7 +130,31 @@ serve(async (req) => {
       }, 502);
     }
     const accessToken: string = tokenJson.access_token;
-    console.log(`[embedded-signup] token exchanged for user=${user.id} waba=${waba_id} coexistence=${isCoexistence} phone_id_from_callback=${phone_number_id ?? "(none)"}`);
+    console.log(`[embedded-signup] token exchanged user=${user.id} coexistence=${isCoexistence} waba_from_callback=${waba_id ?? "(none)"} phone_from_callback=${phone_number_id ?? "(none)"}`);
+
+    // 1a) Resolve o waba_id a partir do TOKEN quando o callback não mandou.
+    //     debug_token expõe granular_scopes com os target_ids (as WABAs que o
+    //     token pode gerenciar). Não depende do postMessage do popup.
+    if (!waba_id) {
+      const appToken = `${META_APP_ID}|${META_APP_SECRET}`;
+      const dbgResp = await fetch(
+        `${GRAPH_API}/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(appToken)}`,
+      );
+      const dbgJson = await dbgResp.json();
+      console.log(`[embedded-signup] debug_token status=${dbgResp.status} body=${JSON.stringify(dbgJson).slice(0, 900)}`);
+      const scopes: any[] = dbgJson?.data?.granular_scopes ?? [];
+      const waScope = scopes.find(
+        (s) => s.scope === "whatsapp_business_management" || s.scope === "whatsapp_business_messaging",
+      );
+      waba_id = waScope?.target_ids?.[0];
+      if (!waba_id) {
+        return jsonRes({
+          error: "NO_WABA",
+          message: "Não consegui identificar a conta WhatsApp Business a partir da autorização. Refaça a conexão autorizando uma conta WhatsApp Business.",
+        }, 502);
+      }
+      console.log(`[embedded-signup] waba_id resolvido via debug_token = ${waba_id}`);
+    }
 
     // 1b) Resolve o phone_number_id a partir do WABA quando o callback não
     //     mandou (caso da COEXISTÊNCIA — só vem o waba_id). Pega o 1º número.
