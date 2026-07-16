@@ -124,22 +124,28 @@ export default function MetaEmbeddedSignupButton({ onConnected }: Props) {
 
     setConnecting(true);
 
-    // Escuta o postMessage que o Embedded Signup envia com waba_id +
-    // phone_number_id ANTES do callback do FB.login resolver com o code.
-    let signupData: { phone_number_id?: string; waba_id?: string } = {};
+    // postMessage do Embedded Signup (best-effort). Aceita qualquer
+    // *.facebook.com e os eventos de coexistência. waba_id/phone_number_id
+    // são opcionais — o backend resolve pelo token se não vierem.
+    let signupData: { phone_number_id?: string; waba_id?: string; coexistence?: boolean } = {};
     const messageHandler = (event: MessageEvent) => {
-      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+      let host = "";
+      try { host = new URL(event.origin).host; } catch { return; }
+      if (!host.endsWith("facebook.com")) return;
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        if (data?.type === "WA_EMBEDDED_SIGNUP" && data?.event === "FINISH") {
+        if (data?.type !== "WA_EMBEDDED_SIGNUP") return;
+        const finished = data?.event === "FINISH"
+          || data?.event === "FINISH_ONLY_WABA"
+          || data?.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING";
+        if (finished && data?.data?.waba_id) {
           signupData = {
             phone_number_id: data?.data?.phone_number_id,
             waba_id: data?.data?.waba_id,
+            coexistence: data?.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING",
           };
         }
-      } catch {
-        // payload não-JSON, ignora
-      }
+      } catch { /* payload não-JSON, ignora */ }
     };
     window.addEventListener("message", messageHandler);
 
@@ -148,20 +154,19 @@ export default function MetaEmbeddedSignupButton({ onConnected }: Props) {
         window.removeEventListener("message", messageHandler);
 
         if (response?.authResponse?.code) {
-          const code = response.authResponse.code as string;
-          const { phone_number_id, waba_id } = signupData;
-          if (!phone_number_id || !waba_id) {
-            toast.error("Onboarding incompleto: faltaram dados do número selecionado");
-            setConnecting(false);
-            return;
-          }
-          await exchangeAndSave({ code, phone_number_id, waba_id })
+          // NÃO bloqueia por falta de waba_id — backend resolve via debug_token.
+          await exchangeAndSave({
+            code: response.authResponse.code as string,
+            phone_number_id: signupData.phone_number_id,
+            waba_id: signupData.waba_id,
+            coexistence: signupData.coexistence ?? true,
+          })
             .then((info) => {
               toast.success("WhatsApp Business conectado via Meta");
               onConnected?.(info);
             })
             .catch((err) => {
-              toast.error(`Falha ao salvar conexão: ${err.message}`);
+              toast.error(`Falha ao conectar: ${err.message}`);
             })
             .finally(() => setConnecting(false));
         } else {
@@ -176,7 +181,7 @@ export default function MetaEmbeddedSignupButton({ onConnected }: Props) {
         config_id: meta.whatsappConfigId,
         response_type: "code",
         override_default_response_type: true,
-        extras: { setup: {}, featureType: "whatsapp_business_app_onboarding" },
+        extras: { setup: {}, featureType: "whatsapp_business_app_onboarding", sessionInfoVersion: "3" },
       },
     );
   };
@@ -223,8 +228,9 @@ export default function MetaEmbeddedSignupButton({ onConnected }: Props) {
 
 async function exchangeAndSave(params: {
   code: string;
-  phone_number_id: string;
-  waba_id: string;
+  phone_number_id?: string;
+  waba_id?: string;
+  coexistence?: boolean;
 }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Não autenticado");
@@ -234,7 +240,8 @@ async function exchangeAndSave(params: {
       Authorization: `Bearer ${session.access_token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(params),
+    // redirect_uri de fallback pro backend testar na troca do code (36008)
+    body: JSON.stringify({ ...params, redirect_uri: `${window.location.origin}/settings` }),
   });
   const json = await resp.json();
   if (!resp.ok) throw new Error(json?.message || json?.error || `HTTP ${resp.status}`);
