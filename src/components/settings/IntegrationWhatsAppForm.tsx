@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot, CheckCircle2, ChevronDown, Copy, ExternalLink, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Bot, CheckCircle2, Copy, ExternalLink, Eye, EyeOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
-import MetaEmbeddedSignupButton from "./MetaEmbeddedSignupButton";
 
 interface Props {
   onClose?: () => void;
@@ -73,18 +72,25 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
           ...WABA_FIELDS.map((f) => f.key),
           "whatsapp_agent_id",
           "whatsapp_connection_type",
+          "whatsapp_display_phone_number",
+          "whatsapp_verified_name",
         ]);
       const fieldMap: Record<string, string> = {};
       let agentId = "";
       let connType: "meta_manual" | "meta_embedded" | "" = "";
+      let displayPhone: string | null = null;
+      let verifiedName: string | null = null;
       (keys ?? []).forEach((row: any) => {
         if (row.provider === "whatsapp_agent_id") agentId = row.api_key ?? "";
         else if (row.provider === "whatsapp_connection_type") connType = (row.api_key ?? "") as any;
+        else if (row.provider === "whatsapp_display_phone_number") displayPhone = row.api_key ?? null;
+        else if (row.provider === "whatsapp_verified_name") verifiedName = row.api_key ?? null;
         else fieldMap[row.provider] = row.api_key ?? "";
       });
       setFields(fieldMap);
       setSelectedAgent(agentId);
-      // Se já tem credenciais salvas mas sem connection_type explícito, assume manual (compat retro)
+      if (displayPhone || verifiedName) setIdentity({ display_phone_number: displayPhone, verified_name: verifiedName });
+      // Se já tem credenciais salvas mas sem connection_type explícito, assume embedded (novo padrão)
       setConnectionType(connType || (Object.keys(fieldMap).length > 0 ? "meta_manual" : ""));
 
       const { data: ag } = await supabase
@@ -214,38 +220,12 @@ export default function IntegrationWhatsAppForm({ onClose }: Props) {
         </div>
       )}
 
-      {/* Embedded Signup — sempre visível como caminho recomendado */}
-      {!isAnyConfigured && (
-        <div className="space-y-2">
-          <MetaEmbeddedSignupButton
-            onConnected={(info) => {
-              setIdentity({
-                display_phone_number: info.display_phone_number,
-                verified_name: info.verified_name,
-              });
-              setConnectionType("meta_embedded");
-              // Recarrega fields salvos pela edge function
-              setFields({
-                whatsapp_phone_number_id: info.phone_number_id,
-                whatsapp_business_account_id: info.waba_id,
-                whatsapp_access_token: "•••• (gerenciado via Meta)",
-              });
-              qc.invalidateQueries({ queryKey: ["whatsapp-integration-status"] });
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowManual((s) => !s)}
-            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground mx-auto"
-          >
-            <ChevronDown className={`w-3 h-3 transition-transform ${showManual ? "rotate-180" : ""}`} />
-            {showManual ? "Esconder configuração manual" : "Prefere conectar manualmente?"}
-          </button>
-        </div>
-      )}
+      {/* Este dialog é a config MANUAL/avançada. O 1-clique (Embedded Signup)
+          fica no botão "Conectar WhatsApp" do card. Aqui: colar credenciais
+          na mão (ex: número de teste) + escolher o agente + desconectar. */}
 
-      {/* Campos manuais — escondidos por padrão quando nada configurado, sempre visíveis quando já tem manual */}
-      {(isAnyConfigured && !isEmbedded) || showManual ? (
+      {/* Campos manuais — ocultos só quando conectado via Embedded Signup */}
+      {!isEmbedded ? (
         <>
           {!isAnyConfigured && (
             <div className="border-t border-border pt-3">

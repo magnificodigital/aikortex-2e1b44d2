@@ -512,9 +512,9 @@ export default function AgencyChannelsManager() {
                         )}
                         <Button variant="ghost" size="sm" className="text-xs h-7 gap-1.5 text-muted-foreground"
                           onClick={() => {
-                            // IG/FB/WhatsApp: gestao propria (status + reconectar + desconectar).
-                            // Demais: dialog de config manual existente.
-                            if (ch.key === "instagram" || ch.key === "facebook" || ch.key === "whatsapp") setManageChannel(ch.key);
+                            // IG/FB: gestao propria (status + reconectar + desconectar).
+                            // WhatsApp/email/voz: dialog completo (identidade + agente + desconectar).
+                            if (ch.key === "instagram" || ch.key === "facebook") setManageChannel(ch.key);
                             else setOpenDialog(ch.configurable!);
                           }}>
                           <Settings className="w-3 h-3" /> Gerenciar
@@ -522,39 +522,49 @@ export default function AgencyChannelsManager() {
                       </div>
                     </div>
                   ) : (
-                    // ── Nao conectado: CTA forte com a cara do canal ──
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        size="sm"
-                        className={`flex-1 h-8 text-xs gap-1.5 text-white ${
-                          ch.key === "whatsapp"
-                            ? "bg-[#25D366] hover:bg-[#1da851]"
-                            : ch.key === "instagram"
-                            ? "bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600"
-                            : ch.key === "facebook"
-                            ? "bg-[#1877F2] hover:bg-[#0f6ae0]"
-                            : ""
-                        }`}
-                        disabled={connectingKey !== null}
-                        onClick={() => {
-                          if (ch.key === "whatsapp" || ch.key === "instagram" || ch.key === "facebook") {
-                            directConnect(ch.key);
-                          } else {
-                            setOpenDialog(ch.configurable!);
-                          }
-                        }}
-                      >
-                        {connectingKey === ch.key
-                          ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Conectando…</>)
-                          : <>Conectar {ch.name}</>}
-                      </Button>
-                      {/* Config manual so' pros canais que tem form (nao IG/FB) */}
-                      {ch.key !== "instagram" && ch.key !== "facebook" && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground"
-                          title="Configuração avançada"
-                          onClick={() => setOpenDialog(ch.configurable!)}>
-                          <Settings className="w-3.5 h-3.5" />
+                    // ── Nao conectado: um CTA unico com a cara do canal ──
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          className={`flex-1 h-8 text-xs gap-1.5 text-white ${
+                            ch.key === "whatsapp"
+                              ? "bg-[#25D366] hover:bg-[#1da851]"
+                              : ch.key === "instagram"
+                              ? "bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600"
+                              : ch.key === "facebook"
+                              ? "bg-[#1877F2] hover:bg-[#0f6ae0]"
+                              : ""
+                          }`}
+                          disabled={connectingKey !== null}
+                          onClick={() => {
+                            if (ch.key === "whatsapp" || ch.key === "instagram" || ch.key === "facebook") {
+                              directConnect(ch.key);
+                            } else {
+                              setOpenDialog(ch.configurable!);
+                            }
+                          }}
+                        >
+                          {connectingKey === ch.key
+                            ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Conectando…</>)
+                            : <>Conectar {ch.name}</>}
                         </Button>
+                        {/* Config manual so' pros canais sem login nativo (email/voz) */}
+                        {ch.key !== "instagram" && ch.key !== "facebook" && ch.key !== "whatsapp" && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground"
+                            title="Configuração avançada"
+                            onClick={() => setOpenDialog(ch.configurable!)}>
+                            <Settings className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      {/* WhatsApp: link discreto pra colar credenciais na mão (avançado) */}
+                      {ch.key === "whatsapp" && (
+                        <button type="button"
+                          className="block mx-auto text-[10px] text-muted-foreground hover:text-foreground"
+                          onClick={() => setOpenDialog("whatsapp")}>
+                          conectar manualmente
+                        </button>
                       )}
                     </div>
                   )}
