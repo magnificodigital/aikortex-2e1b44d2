@@ -100,11 +100,14 @@ serve(async (req) => {
     return jsonRes({ error: "INVALID_JSON" }, 400);
   }
 
-  const { code, phone_number_id, waba_id, coexistence } = payload ?? {};
-  if (!code || !phone_number_id || !waba_id) {
+  const { code, waba_id, coexistence } = payload ?? {};
+  // phone_number_id é opcional: na coexistência a Meta retorna só o waba_id
+  // no callback — resolvemos o número a partir do WABA mais abaixo.
+  let phone_number_id: string | undefined = payload?.phone_number_id;
+  if (!code || !waba_id) {
     return jsonRes({
       error: "MISSING_FIELDS",
-      message: "code, phone_number_id e waba_id são obrigatórios",
+      message: "code e waba_id são obrigatórios",
     }, 400);
   }
   const isCoexistence = coexistence === true;
@@ -128,7 +131,25 @@ serve(async (req) => {
       }, 502);
     }
     const accessToken: string = tokenJson.access_token;
-    console.log(`[embedded-signup] token exchanged for user=${user.id} waba=${waba_id}`);
+    console.log(`[embedded-signup] token exchanged for user=${user.id} waba=${waba_id} coexistence=${isCoexistence} phone_id_from_callback=${phone_number_id ?? "(none)"}`);
+
+    // 1b) Resolve o phone_number_id a partir do WABA quando o callback não
+    //     mandou (caso da COEXISTÊNCIA — só vem o waba_id). Pega o 1º número.
+    if (!phone_number_id) {
+      const pnResp = await fetch(
+        `${GRAPH_API}/${waba_id}/phone_numbers?fields=id,display_phone_number,verified_name&access_token=${encodeURIComponent(accessToken)}`,
+      );
+      const pnJson = await pnResp.json();
+      console.log(`[embedded-signup] phone_numbers status=${pnResp.status} body=${JSON.stringify(pnJson).slice(0, 500)}`);
+      const first = pnJson?.data?.[0];
+      if (!pnResp.ok || !first?.id) {
+        return jsonRes({
+          error: "NO_PHONE_NUMBER",
+          message: pnJson?.error?.message || "Não achei nenhum número de telefone nesse WhatsApp Business.",
+        }, 502);
+      }
+      phone_number_id = String(first.id);
+    }
 
     // 2) Inscreve o WABA no webhook do nosso app
     const subscribeResp = await fetch(`${GRAPH_API}/${waba_id}/subscribed_apps`, {

@@ -346,8 +346,10 @@ export default function AgencyChannelsManager() {
         try {
           if (response?.authResponse?.code) {
             const { phone_number_id, waba_id, coexistence } = signupData;
-            if (!phone_number_id || !waba_id) {
-              toast.error("Onboarding incompleto: faltaram dados do número selecionado");
+            // Na coexistência a Meta manda só o waba_id — o phone_number_id
+            // é resolvido no backend. Então só o waba_id é obrigatório aqui.
+            if (!waba_id) {
+              toast.error("Onboarding incompleto: a Meta não retornou a conta. Tente novamente.");
               return;
             }
             const { data: { session } } = await supabase.auth.getSession();
