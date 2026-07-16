@@ -326,11 +326,20 @@ export default function AgencyChannelsManager() {
     //  - FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING → Coexistência (padrão nosso)
     let signupData: { phone_number_id?: string; waba_id?: string; coexistence?: boolean } = {};
     const messageHandler = (event: MessageEvent) => {
-      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+      // Aceita qualquer subdomínio *.facebook.com (a coexistência pode mandar
+      // de business.facebook.com, não só www).
+      let host = "";
+      try { host = new URL(event.origin).host; } catch { return; }
+      if (!host.endsWith("facebook.com")) return;
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        const finished = data?.event === "FINISH" || data?.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING";
-        if (data?.type === "WA_EMBEDDED_SIGNUP" && finished) {
+        if (data?.type !== "WA_EMBEDDED_SIGNUP") return;
+        // eslint-disable-next-line no-console
+        console.log("[wa-signup] evento Meta:", data?.event, data?.data);
+        const finished = data?.event === "FINISH"
+          || data?.event === "FINISH_ONLY_WABA"
+          || data?.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING";
+        if (finished && data?.data?.waba_id) {
           signupData = {
             phone_number_id: data?.data?.phone_number_id,
             waba_id: data?.data?.waba_id,
@@ -377,7 +386,9 @@ export default function AgencyChannelsManager() {
       config_id: cfgId,
       response_type: "code",
       override_default_response_type: true,
-      extras: { setup: {}, featureType: "whatsapp_business_app_onboarding" },
+      // sessionInfoVersion:"3" é OBRIGATÓRIO pra Meta devolver waba_id/
+      // phone_number_id no postMessage. Sem ele o retorno vem vazio.
+      extras: { setup: {}, featureType: "whatsapp_business_app_onboarding", sessionInfoVersion: "3" },
     });
   };
 
