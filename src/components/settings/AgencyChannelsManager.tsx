@@ -369,6 +369,9 @@ export default function AgencyChannelsManager() {
                 phone_number_id,
                 waba_id,
                 coexistence: coexistence ?? true,
+                // fallback_redirect_uri que o FB.login usa — o backend testa
+                // essa variação na troca do code (resolve o 36008).
+                redirect_uri: `${window.location.origin}/settings`,
               }),
             });
             const j = await resp.json().catch(() => ({}));

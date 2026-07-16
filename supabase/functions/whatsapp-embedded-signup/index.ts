@@ -112,24 +112,40 @@ serve(async (req) => {
   const isCoexistence = coexistence === true;
 
   try {
-    // 1) Troca code por system user access token (permanente quando vem de
-    //    Embedded Signup com config configurado pra permanência)
-    const tokenUrl = `${GRAPH_API}/oauth/access_token?` +
-      `client_id=${encodeURIComponent(META_APP_ID)}&` +
-      `client_secret=${encodeURIComponent(META_APP_SECRET)}&` +
-      `code=${encodeURIComponent(code)}`;
+    // 1) Troca code por access token. O FB.login (JS SDK) amarra o code a um
+    //    redirect_uri interno; dependendo do modo (popup xd_arbiter vs
+    //    fallback), o valor esperado na troca muda — e sem o certo dá
+    //    error_subcode 36008. Testamos as variações conhecidas e usamos a
+    //    primeira que a Meta aceitar. (Um code rejeitado NÃO é consumido,
+    //    então dá pra tentar mais de uma vez dentro do TTL de 30s.)
+    const base = `${GRAPH_API}/oauth/access_token?` +
+      `client_id=${encodeURIComponent(META_APP_ID)}&client_secret=${encodeURIComponent(META_APP_SECRET)}&code=${encodeURIComponent(code)}`;
+    const redirectCandidates: (string | null)[] = [null]; // null = sem redirect_uri (Embedded Signup padrão)
+    if (payload?.redirect_uri) redirectCandidates.push(payload.redirect_uri); // fallback_redirect_uri do front
+    redirectCandidates.push(""); // popup JS SDK: redirect_uri vazio
 
-    const tokenResp = await fetch(tokenUrl, { method: "GET" });
-    const tokenJson = await tokenResp.json();
-    if (!tokenResp.ok || !tokenJson.access_token) {
-      console.error("[embedded-signup] token exchange failed:", tokenResp.status, tokenJson);
+    let accessToken: string | null = null;
+    let lastErr: any = null;
+    for (const cand of redirectCandidates) {
+      const url = cand === null ? base : `${base}&redirect_uri=${encodeURIComponent(cand)}`;
+      const r = await fetch(url, { method: "GET" });
+      const j = await r.json();
+      if (r.ok && j.access_token) {
+        accessToken = j.access_token;
+        console.log(`[embedded-signup] token OK (redirect_uri=${cand === null ? "(nenhum)" : `"${cand}"`})`);
+        break;
+      }
+      lastErr = j?.error ?? { status: r.status };
+      console.log(`[embedded-signup] token falhou (redirect_uri=${cand === null ? "(nenhum)" : `"${cand}"`}) code=${j?.error?.code} subcode=${j?.error?.error_subcode}`);
+    }
+    if (!accessToken) {
+      console.error("[embedded-signup] token exchange falhou em todas as variações:", lastErr);
       return jsonRes({
         error: "TOKEN_EXCHANGE_FAILED",
-        message: tokenJson?.error?.message || "Falha ao trocar code por token",
-        details: tokenJson,
+        message: lastErr?.message || "Falha ao trocar code por token",
+        details: lastErr,
       }, 502);
     }
-    const accessToken: string = tokenJson.access_token;
     console.log(`[embedded-signup] token exchanged user=${user.id} coexistence=${isCoexistence} waba_from_callback=${waba_id ?? "(none)"} phone_from_callback=${phone_number_id ?? "(none)"}`);
 
     // 1a) Resolve o waba_id a partir do TOKEN quando o callback não mandou.
