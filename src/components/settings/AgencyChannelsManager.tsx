@@ -315,13 +315,21 @@ export default function AgencyChannelsManager() {
 
     // WhatsApp Embedded Signup: o popup manda waba_id/phone_number_id via
     // postMessage ANTES do callback resolver com o code.
-    let signupData: { phone_number_id?: string; waba_id?: string } = {};
+    // Coexistência (app + API) e Cloud API pura chegam com eventos diferentes:
+    //  - FINISH                               → Cloud API pura
+    //  - FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING → Coexistência (padrão nosso)
+    let signupData: { phone_number_id?: string; waba_id?: string; coexistence?: boolean } = {};
     const messageHandler = (event: MessageEvent) => {
       if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        if (data?.type === "WA_EMBEDDED_SIGNUP" && data?.event === "FINISH") {
-          signupData = { phone_number_id: data?.data?.phone_number_id, waba_id: data?.data?.waba_id };
+        const finished = data?.event === "FINISH" || data?.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING";
+        if (data?.type === "WA_EMBEDDED_SIGNUP" && finished) {
+          signupData = {
+            phone_number_id: data?.data?.phone_number_id,
+            waba_id: data?.data?.waba_id,
+            coexistence: data?.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING",
+          };
         }
       } catch { /* nao-JSON */ }
     };
@@ -331,7 +339,7 @@ export default function AgencyChannelsManager() {
       (async () => {
         try {
           if (response?.authResponse?.code) {
-            const { phone_number_id, waba_id } = signupData;
+            const { phone_number_id, waba_id, coexistence } = signupData;
             if (!phone_number_id || !waba_id) {
               toast.error("Onboarding incompleto: faltaram dados do número selecionado");
               return;
@@ -341,12 +349,14 @@ export default function AgencyChannelsManager() {
             const resp = await fetch(fnUrl("whatsapp-embedded-signup"), {
               method: "POST",
               headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ code: response.authResponse.code, phone_number_id, waba_id }),
+              body: JSON.stringify({ code: response.authResponse.code, phone_number_id, waba_id, coexistence }),
             });
             const j = await resp.json().catch(() => ({}));
             if (!resp.ok) { toast.error(j?.message || j?.error || "Falha ao salvar conexão"); return; }
             setWaLocalConnected(true);
-            toast.success("WhatsApp Business conectado via Meta");
+            toast.success(coexistence
+              ? "WhatsApp conectado (coexistência) — você continua usando o app no celular"
+              : "WhatsApp Business conectado via Meta");
           } else if (response?.error) {
             toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
           }

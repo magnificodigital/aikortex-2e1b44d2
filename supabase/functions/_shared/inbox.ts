@@ -43,6 +43,28 @@ async function resolveAgencyId(supabase: any, ownerUserId: string): Promise<stri
   return data?.id ?? null;
 }
 
+/**
+ * Liga/desliga a IA de uma conversa (human takeover). Usado pela
+ * coexistência do WhatsApp: quando o dono responde pelo celular, pausamos
+ * o agente pra ele não responder por cima.
+ */
+export async function setConversationAi(
+  supabase: any,
+  ownerUserId: string,
+  channel: string,
+  contactPhone: string,
+  enabled: boolean,
+): Promise<void> {
+  const agencyId = await resolveAgencyId(supabase, ownerUserId);
+  if (!agencyId) return;
+  await supabase
+    .from("conversations")
+    .update({ ai_enabled: enabled, updated_at: new Date().toISOString() })
+    .eq("agency_id", agencyId)
+    .eq("channel", channel)
+    .eq("contact_phone", contactPhone);
+}
+
 export async function recordInboxMessage(input: RecordMessageInput): Promise<RecordMessageResult> {
   const {
     supabase, ownerUserId, channel, direction,

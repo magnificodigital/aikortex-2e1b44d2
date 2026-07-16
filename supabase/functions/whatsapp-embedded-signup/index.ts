@@ -33,6 +33,34 @@ function jsonRes(body: unknown, status = 200) {
   });
 }
 
+/**
+ * COEXISTÊNCIA — SMB App Data API. Dispara a sincronização de contatos
+ * (smb_app_state_sync) ou de histórico (history) do app do celular. Os
+ * dados retornam depois via webhook nos campos de mesmo nome.
+ */
+async function triggerSmbSync(
+  phoneNumberId: string,
+  accessToken: string,
+  syncType: "smb_app_state_sync" | "history",
+): Promise<boolean> {
+  try {
+    const resp = await fetch(`${GRAPH_API}/${phoneNumberId}/smb_app_data`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ messaging_product: "whatsapp", sync_type: syncType }),
+    });
+    const bodyText = await resp.text();
+    console.log(`[embedded-signup] smb_app_data ${syncType} status=${resp.status} body=${bodyText}`);
+    return resp.ok;
+  } catch (e) {
+    console.warn(`[embedded-signup] smb_app_data ${syncType} err:`, e);
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -72,13 +100,14 @@ serve(async (req) => {
     return jsonRes({ error: "INVALID_JSON" }, 400);
   }
 
-  const { code, phone_number_id, waba_id } = payload ?? {};
+  const { code, phone_number_id, waba_id, coexistence } = payload ?? {};
   if (!code || !phone_number_id || !waba_id) {
     return jsonRes({
       error: "MISSING_FIELDS",
       message: "code, phone_number_id e waba_id são obrigatórios",
     }, 400);
   }
+  const isCoexistence = coexistence === true;
 
   try {
     // 1) Troca code por system user access token (permanente quando vem de
@@ -143,8 +172,8 @@ serve(async (req) => {
       { user_id: user.id, provider: "whatsapp_access_token", api_key: accessToken },
       { user_id: user.id, provider: "whatsapp_phone_number_id", api_key: phone_number_id },
       { user_id: user.id, provider: "whatsapp_business_account_id", api_key: waba_id },
-      // Marca que essa agência onboardou via Embedded Signup (vs manual)
-      { user_id: user.id, provider: "whatsapp_connection_type", api_key: "meta_embedded" },
+      // Marca o tipo de onboarding: coexistência (app + API) ou Cloud API pura
+      { user_id: user.id, provider: "whatsapp_connection_type", api_key: isCoexistence ? "meta_coexistence" : "meta_embedded" },
     ];
     for (const row of upserts) {
       const { error } = await admin
@@ -158,7 +187,18 @@ serve(async (req) => {
         }, 500);
       }
     }
-    console.log(`[embedded-signup] credentials persisted for user=${user.id}`);
+    console.log(`[embedded-signup] credentials persisted for user=${user.id} coexistence=${isCoexistence}`);
+
+    // 5) COEXISTÊNCIA: dispara sync de contatos + histórico (SMB App Data API).
+    //    Obrigatório em ate 24h ou a Meta exige re-onboarding. Não-bloqueante —
+    //    os dados chegam depois via webhook (history / smb_app_state_sync).
+    let syncTriggered: Record<string, boolean> | undefined;
+    if (isCoexistence) {
+      syncTriggered = {
+        contacts: await triggerSmbSync(phone_number_id, accessToken, "smb_app_state_sync"),
+        history: await triggerSmbSync(phone_number_id, accessToken, "history"),
+      };
+    }
 
     return jsonRes({
       ok: true,
@@ -166,6 +206,8 @@ serve(async (req) => {
       waba_id,
       display_phone_number: displayPhone,
       verified_name: verifiedName,
+      coexistence: isCoexistence,
+      sync_triggered: syncTriggered,
     });
   } catch (err) {
     console.error("[embedded-signup] unexpected error:", err);

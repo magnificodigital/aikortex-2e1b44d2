@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
 import { callLLM } from "../_shared/llm-fallback.ts";
-import { recordInboxMessage } from "../_shared/inbox.ts";
+import { recordInboxMessage, setConversationAi } from "../_shared/inbox.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,7 +45,7 @@ serve(async (req) => {
     return new Response("Forbidden", { status: 403 });
   }
 
-  // ── POST: Incoming messages ──
+  // ── POST: eventos do webhook (mensagens, status de entrega e coexistência) ──
   if (req.method === "POST") {
     try {
       const rawBody = await req.text();
@@ -76,135 +76,33 @@ serve(async (req) => {
       if (diff !== 0) return new Response("Forbidden", { status: 403 });
 
       const body = JSON.parse(rawBody);
-      const entry = body.entry?.[0];
-      const changes = entry?.changes?.[0];
-      const value = changes?.value;
 
-      if (!value) {
-        return new Response(JSON.stringify({ status: "no_data" }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      if (value.statuses) {
-        console.log("Status update:", JSON.stringify(value.statuses));
-        // Tenta correlacionar com cadence_executions via wamid armazenado em metadata.last_wamid
-        for (const st of value.statuses) {
-          const wamid = st.id;
-          const newStatus = st.status; // sent | delivered | read | failed
-          if (!wamid || !newStatus) continue;
+      // Despacha por change.field. Cloud API "pura" só manda "messages";
+      // a Coexistência manda também smb_message_echoes / history /
+      // smb_app_state_sync. Iteramos TODAS as entries/changes.
+      for (const entry of body.entry ?? []) {
+        for (const change of entry.changes ?? []) {
+          const field = change.field;
+          const value = change.value;
+          if (!value) continue;
           try {
-            const { data: exec } = await supabase
-              .from("cadence_executions")
-              .select("id, metadata")
-              .eq("metadata->>last_wamid", wamid)
-              .maybeSingle();
-            if (exec) {
-              const prevMeta = (exec.metadata ?? {}) as Record<string, unknown>;
-              const updates: Record<string, unknown> = {
-                metadata: { ...prevMeta, whatsapp_last_status: newStatus, whatsapp_status_at: new Date().toISOString() },
-              };
-              // Se falhou no provedor, marca execution como failed
-              if (newStatus === "failed") {
-                const errMsg = st.errors?.[0]?.title || st.errors?.[0]?.message || "WhatsApp delivery failed";
-                updates.status = "failed";
-                updates.last_error = `WhatsApp: ${errMsg}`;
-              }
-              await supabase
-                .from("cadence_executions")
-                .update(updates)
-                .eq("id", exec.id);
+            if (field === "smb_message_echoes") {
+              await handleMessageEchoes(supabase, value);
+            } else if (field === "history") {
+              await handleHistorySync(supabase, value);
+            } else if (field === "smb_app_state_sync") {
+              await handleContactsSync(supabase, value);
+            } else {
+              // "messages" (padrão): entrada de cliente + status de entrega
+              await handleMessagesValue(supabase, value);
             }
-            // Atualiza também whatsapp_messages se houver row com esse wamid
-            await supabase
-              .from("whatsapp_messages")
-              .update({ status: newStatus })
-              .eq("wamid", wamid);
-          } catch (err) {
-            console.error("status update error", err);
+          } catch (innerErr) {
+            console.error(`[wa-webhook] erro processando field=${field}:`, innerErr);
           }
         }
-        return new Response(JSON.stringify({ status: "status_received" }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
       }
 
-      const messages = value.messages;
-      if (!messages || messages.length === 0) {
-        return new Response(JSON.stringify({ status: "no_messages" }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const phoneNumberId = value.metadata?.phone_number_id;
-
-      // Find the user who owns this phone_number_id
-      let ownerUserId: string | null = null;
-      if (phoneNumberId) {
-        const { data: ownerRows } = await supabase
-          .from("user_api_keys")
-          .select("user_id")
-          .eq("provider", "whatsapp_phone_number_id")
-          .eq("api_key", phoneNumberId)
-          .limit(1);
-        if (ownerRows && ownerRows.length > 0) {
-          ownerUserId = ownerRows[0].user_id;
-        }
-      }
-
-      const contactInfo = value.contacts?.[0];
-
-      for (const message of messages) {
-        const incomingData = {
-          wamid: message.id,
-          from_number: message.from,
-          phone_number_id: phoneNumberId,
-          contact_name: contactInfo?.profile?.name || message.from,
-          message_type: message.type,
-          content: extractContent(message),
-          raw_payload: message,
-          timestamp: message.timestamp
-            ? new Date(parseInt(message.timestamp) * 1000).toISOString()
-            : new Date().toISOString(),
-          direction: "incoming",
-          status: "received",
-          user_id: ownerUserId,
-        };
-
-        const { error } = await supabase.from("whatsapp_messages").insert(incomingData);
-        if (error) console.error("Error storing message:", error);
-        console.log(`Received ${message.type} from ${message.from}: ${incomingData.content}`);
-
-        // ── Camada canonica (conversations/messages + lead CRM automatico) ──
-        // Dual-write: whatsapp_messages continua pra status de entrega; o
-        // inbox unificado, CRM e workspace do cliente leem conversations.
-        let aiEnabled = true;
-        if (ownerUserId) {
-          const inboxRes = await recordInboxMessage({
-            supabase,
-            ownerUserId,
-            channel: "whatsapp",
-            direction: "inbound",
-            contactPhone: message.from,
-            contactName: contactInfo?.profile?.name || null,
-            content: incomingData.content,
-            contentType: message.type === "text" ? "text" : message.type,
-            externalId: message.id,
-          });
-          aiEnabled = inboxRes.aiEnabled;
-        }
-
-        // ── Auto-reply via Managed Session Agent ──
-        // Human takeover: se ai_enabled=false na conversa, humano assumiu —
-        // agente fica em silencio.
-        if (ownerUserId && incomingData.content && message.type === "text" && aiEnabled) {
-          handleAgentReply(supabase, ownerUserId, message.from, phoneNumberId, incomingData.content);
-        } else if (!aiEnabled) {
-          console.log(`[auto-reply] pausado (human takeover) contact=${message.from}`);
-        }
-      }
-
-      return new Response(JSON.stringify({ status: "ok", count: messages.length }), {
+      return new Response(JSON.stringify({ status: "ok" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } catch (e) {
@@ -217,6 +115,218 @@ serve(async (req) => {
 
   return new Response("Method not allowed", { status: 405 });
 });
+
+/** Resolve o user dono do canal a partir do phone_number_id do WABA. */
+async function ownerFromPhoneId(supabase: any, phoneNumberId: string | undefined): Promise<string | null> {
+  if (!phoneNumberId) return null;
+  const { data } = await supabase
+    .from("user_api_keys")
+    .select("user_id")
+    .eq("provider", "whatsapp_phone_number_id")
+    .eq("api_key", phoneNumberId)
+    .limit(1);
+  return data?.[0]?.user_id ?? null;
+}
+
+/** Campo "messages": mensagens que o CLIENTE manda + status de entrega. */
+async function handleMessagesValue(supabase: any, value: any) {
+  // ── Status de entrega (sent | delivered | read | failed) ──
+  if (value.statuses) {
+    console.log("Status update:", JSON.stringify(value.statuses));
+    for (const st of value.statuses) {
+      const wamid = st.id;
+      const newStatus = st.status;
+      if (!wamid || !newStatus) continue;
+      try {
+        const { data: exec } = await supabase
+          .from("cadence_executions")
+          .select("id, metadata")
+          .eq("metadata->>last_wamid", wamid)
+          .maybeSingle();
+        if (exec) {
+          const prevMeta = (exec.metadata ?? {}) as Record<string, unknown>;
+          const updates: Record<string, unknown> = {
+            metadata: { ...prevMeta, whatsapp_last_status: newStatus, whatsapp_status_at: new Date().toISOString() },
+          };
+          if (newStatus === "failed") {
+            const errMsg = st.errors?.[0]?.title || st.errors?.[0]?.message || "WhatsApp delivery failed";
+            updates.status = "failed";
+            updates.last_error = `WhatsApp: ${errMsg}`;
+          }
+          await supabase.from("cadence_executions").update(updates).eq("id", exec.id);
+        }
+        await supabase.from("whatsapp_messages").update({ status: newStatus }).eq("wamid", wamid);
+      } catch (err) {
+        console.error("status update error", err);
+      }
+    }
+    return;
+  }
+
+  // ── Mensagens entrantes do cliente ──
+  const messages = value.messages;
+  if (!messages || messages.length === 0) return;
+
+  const phoneNumberId = value.metadata?.phone_number_id;
+  const ownerUserId = await ownerFromPhoneId(supabase, phoneNumberId);
+  const contactInfo = value.contacts?.[0];
+
+  for (const message of messages) {
+    const incomingData = {
+      wamid: message.id,
+      from_number: message.from,
+      phone_number_id: phoneNumberId,
+      contact_name: contactInfo?.profile?.name || message.from,
+      message_type: message.type,
+      content: extractContent(message),
+      raw_payload: message,
+      timestamp: message.timestamp
+        ? new Date(parseInt(message.timestamp) * 1000).toISOString()
+        : new Date().toISOString(),
+      direction: "incoming",
+      status: "received",
+      user_id: ownerUserId,
+    };
+
+    const { error } = await supabase.from("whatsapp_messages").insert(incomingData);
+    if (error) console.error("Error storing message:", error);
+    console.log(`Received ${message.type} from ${message.from}: ${incomingData.content}`);
+
+    // ── Camada canonica (conversations/messages + lead CRM automatico) ──
+    let aiEnabled = true;
+    if (ownerUserId) {
+      const inboxRes = await recordInboxMessage({
+        supabase,
+        ownerUserId,
+        channel: "whatsapp",
+        direction: "inbound",
+        contactPhone: message.from,
+        contactName: contactInfo?.profile?.name || null,
+        content: incomingData.content,
+        contentType: message.type === "text" ? "text" : message.type,
+        externalId: message.id,
+      });
+      aiEnabled = inboxRes.aiEnabled;
+    }
+
+    // ── Auto-reply via Managed Session Agent (respeita human takeover) ──
+    if (ownerUserId && incomingData.content && message.type === "text" && aiEnabled) {
+      handleAgentReply(supabase, ownerUserId, message.from, phoneNumberId, incomingData.content);
+    } else if (!aiEnabled) {
+      console.log(`[auto-reply] pausado (human takeover) contact=${message.from}`);
+    }
+  }
+}
+
+/**
+ * COEXISTÊNCIA — campo "smb_message_echoes".
+ * Mensagens que o DONO envia pelo app do WhatsApp Business no celular são
+ * ecoadas pra ca. Gravamos como OUTBOUND (pra o inbox ficar em sincronia com
+ * o celular) e PAUSAMOS a IA nessa conversa — o humano assumiu pelo fone,
+ * então o agente não deve responder por cima.
+ */
+async function handleMessageEchoes(supabase: any, value: any) {
+  const phoneNumberId = value.metadata?.phone_number_id;
+  const ownerUserId = await ownerFromPhoneId(supabase, phoneNumberId);
+  if (!ownerUserId) {
+    console.warn(`[wa-echo] dono nao encontrado p/ phone_id=${phoneNumberId}`);
+    return;
+  }
+  const echoes = value.message_echoes ?? [];
+  console.log(`[wa-echo] ${echoes.length} echo(s) do celular p/ phone_id=${phoneNumberId}`);
+  for (const echo of echoes) {
+    const to = echo.to ?? echo.recipient_id;
+    if (!to) continue;
+    const content = extractContent(echo);
+    await recordInboxMessage({
+      supabase,
+      ownerUserId,
+      channel: "whatsapp",
+      direction: "outbound",
+      contactPhone: to,
+      content,
+      contentType: echo.type === "text" ? "text" : echo.type,
+      externalId: echo.id ?? null,
+      createCrmLead: false,
+    });
+    // Humano respondeu pelo celular → pausa a IA nessa conversa (takeover).
+    await setConversationAi(supabase, ownerUserId, "whatsapp", to, false);
+    console.log(`[wa-echo] outbound do celular -> ${to}: ${content.slice(0, 60)}`);
+  }
+}
+
+/**
+ * COEXISTÊNCIA — campo "history" (histórico de conversas do celular).
+ * A estrutura exata do payload varia; por segurança gravamos apenas o que
+ * vier com direção reconhecível e logamos o shape pra refinar no 1º sync real.
+ */
+async function handleHistorySync(supabase: any, value: any) {
+  const phoneNumberId = value.metadata?.phone_number_id;
+  const ownerUserId = await ownerFromPhoneId(supabase, phoneNumberId);
+  console.log(`[wa-history] recebido owner=${ownerUserId ?? "?"} keys=${Object.keys(value).join(",")} payload=${JSON.stringify(value).slice(0, 1500)}`);
+  if (!ownerUserId) return;
+
+  const threads = value.history ?? [];
+  for (const thread of threads) {
+    const msgs = thread.messages ?? [];
+    for (const m of msgs) {
+      try {
+        // history_context.from_me = true → mensagem que o dono enviou
+        const fromMe = m.history_context?.from_me ?? m.from_me ?? false;
+        const direction = fromMe ? "outbound" : "inbound";
+        const contact = fromMe ? (m.to ?? thread.contact_id) : (m.from ?? thread.contact_id);
+        if (!contact) continue;
+        await recordInboxMessage({
+          supabase,
+          ownerUserId,
+          channel: "whatsapp",
+          direction,
+          contactPhone: contact,
+          content: extractContent(m),
+          contentType: m.type === "text" ? "text" : m.type,
+          externalId: m.id ?? null,
+          createCrmLead: false,
+        });
+      } catch (e) {
+        console.warn("[wa-history] falha parseando msg:", e);
+      }
+    }
+  }
+}
+
+/**
+ * COEXISTÊNCIA — campo "smb_app_state_sync" (contatos do celular).
+ * Best-effort: cria leads no CRM. Logamos o shape pra refinar no 1º sync real.
+ */
+async function handleContactsSync(supabase: any, value: any) {
+  const phoneNumberId = value.metadata?.phone_number_id;
+  const ownerUserId = await ownerFromPhoneId(supabase, phoneNumberId);
+  console.log(`[wa-contacts] recebido owner=${ownerUserId ?? "?"} keys=${Object.keys(value).join(",")} payload=${JSON.stringify(value).slice(0, 1500)}`);
+  if (!ownerUserId) return;
+
+  const contacts = value.contacts ?? value.state_sync ?? [];
+  for (const c of contacts) {
+    try {
+      const phone = c.wa_id ?? c.phone ?? c.contact_id;
+      const name = c.full_name ?? c.name ?? c.profile?.name ?? phone;
+      if (!phone) continue;
+      // Só registra o contato como conversa/lead leve; sem mensagem.
+      await recordInboxMessage({
+        supabase,
+        ownerUserId,
+        channel: "whatsapp",
+        direction: "outbound",
+        contactPhone: phone,
+        contactName: name,
+        content: "[contato sincronizado do celular]",
+        contentType: "system",
+        createCrmLead: true,
+      });
+    } catch (e) {
+      console.warn("[wa-contacts] falha parseando contato:", e);
+    }
+  }
+}
 
 async function callOpenRouterDirect(
   supabase: any,
@@ -388,6 +498,6 @@ function extractContent(message: any): string {
       return "[Interativo]";
     case "button": return message.button?.text || "[Botão]";
     case "order": return "[Pedido]";
-    default: return `[${message.type}]`;
+    default: return `[${message.type || "mensagem"}]`;
   }
 }

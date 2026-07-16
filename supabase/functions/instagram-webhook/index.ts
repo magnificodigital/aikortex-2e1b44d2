@@ -52,36 +52,49 @@ serve(async (req) => {
     const rawBody = await req.text();
     console.log(`[ig-webhook] POST recebido (${rawBody.length} bytes)`);
 
-    // HMAC fail-closed. IMPORTANTE: o webhook do Instagram (Instagram
-    // Login API) assina com o INSTAGRAM App Secret — NAO o Facebook
-    // (META_APP_SECRET). Fallback pro META_APP_SECRET por compat.
-    const appSecret = Deno.env.get("INSTAGRAM_APP_SECRET") || Deno.env.get("META_APP_SECRET");
-    if (!appSecret) {
-      console.error("[ig-webhook] sem INSTAGRAM_APP_SECRET/META_APP_SECRET");
+    // HMAC fail-closed. O webhook do Instagram (Instagram Login API) pode
+    // assinar com o INSTAGRAM App Secret OU, em apps unificados (WA+IG no
+    // mesmo app), com o App Secret do Facebook. Testamos OS DOIS e aceitamos
+    // se qualquer um casar — remove a ambiguidade de qual secret a Meta usou.
+    const igSecret = Deno.env.get("INSTAGRAM_APP_SECRET");
+    const fbSecret = Deno.env.get("META_APP_SECRET");
+    const secrets: { name: string; value: string }[] = [];
+    if (igSecret) secrets.push({ name: "INSTAGRAM_APP_SECRET", value: igSecret });
+    if (fbSecret) secrets.push({ name: "META_APP_SECRET", value: fbSecret });
+    if (secrets.length === 0) {
+      console.log("[ig-webhook] ERRO: nenhum secret (INSTAGRAM_APP_SECRET/META_APP_SECRET)");
       return new Response("Forbidden", { status: 403 });
     }
     const sigHeader = req.headers.get("x-hub-signature-256") || "";
-    const expected = sigHeader.startsWith("sha256=") ? sigHeader.slice(7) : "";
-    if (!expected) { console.warn("[ig-webhook] sem assinatura"); return new Response("Forbidden", { status: 403 }); }
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      "raw", enc.encode(appSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
-    );
-    const sig = await crypto.subtle.sign("HMAC", key, enc.encode(rawBody));
-    const computed = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    let ok = computed.length === expected.length;
-    if (ok) {
-      let diff = 0;
-      for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ expected.charCodeAt(i);
-      ok = diff === 0;
-    }
-    if (!ok) {
-      console.warn("[ig-webhook] assinatura invalida — confira o INSTAGRAM_APP_SECRET");
+    const expectedSig = sigHeader.startsWith("sha256=") ? sigHeader.slice(7) : "";
+    if (!expectedSig) {
+      console.log("[ig-webhook] REJEITADO: sem header x-hub-signature-256");
       return new Response("Forbidden", { status: 403 });
     }
+    const enc = new TextEncoder();
+    let matchedSecret: string | null = null;
+    for (const s of secrets) {
+      const key = await crypto.subtle.importKey(
+        "raw", enc.encode(s.value), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+      );
+      const sig = await crypto.subtle.sign("HMAC", key, enc.encode(rawBody));
+      const computed = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+      if (computed.length === expectedSig.length) {
+        let diff = 0;
+        for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ expectedSig.charCodeAt(i);
+        if (diff === 0) { matchedSecret = s.name; break; }
+      }
+    }
+    if (!matchedSecret) {
+      console.log(`[ig-webhook] REJEITADO: assinatura nao casou com nenhum secret (testados: ${secrets.map((s) => s.name).join(", ")}) — confira o valor no painel Meta`);
+      return new Response("Forbidden", { status: 403 });
+    }
+    console.log(`[ig-webhook] assinatura OK via ${matchedSecret}`);
 
     const body = JSON.parse(rawBody);
+    console.log(`[ig-webhook] object=${body.object} entries=${(body.entry ?? []).length}`);
     if (body.object !== "instagram") {
+      console.log(`[ig-webhook] IGNORADO: object=${body.object} (esperado "instagram")`);
       return new Response(JSON.stringify({ status: "ignored" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -89,6 +102,7 @@ serve(async (req) => {
 
     for (const entry of body.entry ?? []) {
       const igAccountId = String(entry.id ?? "");
+      console.log(`[ig-webhook] entry id=${igAccountId} messaging=${(entry.messaging ?? []).length} changes=${(entry.changes ?? []).length}`);
       // Dono do canal: user com instagram_account_id == entry.id
       const { data: ownerRows } = await supabase
         .from("user_api_keys")
@@ -97,6 +111,15 @@ serve(async (req) => {
         .eq("api_key", igAccountId)
         .limit(1);
       const ownerUserId: string | null = ownerRows?.[0]?.user_id ?? null;
+      if (!ownerUserId) {
+        // Fallback: talvez o entry.id do webhook difira do user_id do perfil.
+        // Loga todos os IDs salvos pra comparar no diagnostico.
+        const { data: allIg } = await supabase
+          .from("user_api_keys").select("api_key").eq("provider", "instagram_account_id");
+        console.log(`[ig-webhook] DONO NAO ENCONTRADO p/ entry.id=${igAccountId}. IDs salvos: ${(allIg ?? []).map((r: any) => r.api_key).join(", ") || "(nenhum)"}`);
+      } else {
+        console.log(`[ig-webhook] dono=${ownerUserId} p/ entry.id=${igAccountId}`);
+      }
 
       for (const event of entry.messaging ?? []) {
         const msg = event.message;

@@ -93,9 +93,9 @@ serve(async (req) => {
     const longJson = await longResp.json();
     const accessToken: string = longJson?.access_token || shortToken;
 
-    // 3) perfil (user_id + username)
+    // 3) perfil (user_id + username + account_type)
     const meResp = await fetch(
-      `${IG_GRAPH}/me?fields=user_id,username&access_token=${encodeURIComponent(accessToken)}`,
+      `${IG_GRAPH}/me?fields=user_id,username,account_type&access_token=${encodeURIComponent(accessToken)}`,
     );
     const me = await meResp.json();
     if (!meResp.ok || !me?.user_id) {
@@ -104,16 +104,25 @@ serve(async (req) => {
     }
     const igId = String(me.user_id);
     const username = me.username ?? null;
+    console.log(`[ig-connect] perfil: id=${igId} @${username} account_type=${me.account_type ?? "?"}`);
 
-    // 4) best-effort subscribe (webhook e' de app; isso so reforca)
+    // 4) inscreve a conta no webhook (campo messages) e VERIFICA de fato.
+    // Sem isso, a Meta NAO entrega DM nenhuma pra esta conta.
     let webhookSubscribed = false;
     try {
-      const sub = await fetch(
+      const subResp = await fetch(
         `${IG_GRAPH}/v21.0/me/subscribed_apps?subscribed_fields=messages&access_token=${encodeURIComponent(accessToken)}`,
         { method: "POST" },
       );
-      webhookSubscribed = sub.ok;
-      if (!sub.ok) console.warn("[ig-connect] subscribe:", await sub.text());
+      const subBody = await subResp.text();
+      console.log(`[ig-connect] subscribe POST status=${subResp.status} body=${subBody}`);
+      webhookSubscribed = subResp.ok && subBody.includes("true");
+
+      // Confirma o que a Meta realmente registrou pra esta conta
+      const checkResp = await fetch(
+        `${IG_GRAPH}/v21.0/me/subscribed_apps?access_token=${encodeURIComponent(accessToken)}`,
+      );
+      console.log(`[ig-connect] subscribed_apps GET status=${checkResp.status} body=${await checkResp.text()}`);
     } catch (e) { console.warn("[ig-connect] subscribe err:", e); }
 
     // 5) salva credenciais (limpa page_id/user_token do fluxo antigo)
