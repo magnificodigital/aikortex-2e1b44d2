@@ -148,7 +148,7 @@ export default function AgencyChannelsManager() {
   const toggle = useToggleChannel();
   const { data: emailStatus } = useEmailIntegrationStatus();
   const { data: voiceStatus } = useVoiceIntegrationStatus();
-  const { data: waStatus } = useWhatsAppIntegrationStatus();
+  const { data: waStatus, refetch: refetchWa } = useWhatsAppIntegrationStatus();
   const [openDialog, setOpenDialog] = useState<ConfigurableKey | null>(null);
   const [openTemplates, setOpenTemplates] = useState<TemplatesKey | null>(null);
   const [igConnected, setIgConnected] = useState(false);
@@ -158,7 +158,7 @@ export default function AgencyChannelsManager() {
   const [connectingKey, setConnectingKey] = useState<"whatsapp" | "instagram" | "facebook" | null>(null);
   const [fbPagesToPick, setFbPagesToPick] = useState<{ id: string; name: string }[] | null>(null);
   const [waLocalConnected, setWaLocalConnected] = useState(false);
-  const [manageChannel, setManageChannel] = useState<"instagram" | "facebook" | null>(null);
+  const [manageChannel, setManageChannel] = useState<"instagram" | "facebook" | "whatsapp" | null>(null);
   const meta = useMetaIntegration();
 
   // PRE-CARREGA o SDK do Facebook assim que a pagina de Canais abre.
@@ -189,16 +189,22 @@ export default function AgencyChannelsManager() {
   }, [openDialog, igConnected, fbConnected]);
 
   // ── Conexao dos canais Meta ──
-  const disconnectMeta = async (key: "instagram" | "facebook") => {
+  const disconnectMeta = async (key: "instagram" | "facebook" | "whatsapp") => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const providers = key === "instagram"
       ? ["instagram_access_token", "instagram_account_id", "instagram_agent_id"]
-      : ["facebook_page_token", "facebook_page_id"];
+      : key === "facebook"
+      ? ["facebook_page_token", "facebook_page_id"]
+      : ["whatsapp_access_token", "whatsapp_phone_number_id", "whatsapp_business_account_id",
+         "whatsapp_connection_type", "whatsapp_display_phone_number", "whatsapp_verified_name"];
     await supabase.from("user_api_keys").delete().eq("user_id", user.id).in("provider", providers);
-    if (key === "instagram") setIgConnected(false); else setFbConnected(false);
+    if (key === "instagram") setIgConnected(false);
+    else if (key === "facebook") setFbConnected(false);
+    else { setWaLocalConnected(false); refetchWa(); }
     setManageChannel(null);
-    toast.success(`${key === "instagram" ? "Instagram" : "Facebook"} desconectado`);
+    const label = key === "instagram" ? "Instagram" : key === "facebook" ? "Facebook" : "WhatsApp";
+    toast.success(`${label} desconectado`);
   };
 
   // redirect_uri LIMPO (sem query) — o Instagram OAuth rejeita query
@@ -354,6 +360,7 @@ export default function AgencyChannelsManager() {
             const j = await resp.json().catch(() => ({}));
             if (!resp.ok) { toast.error(j?.message || j?.error || "Falha ao salvar conexão"); return; }
             setWaLocalConnected(true);
+            refetchWa();
             toast.success(coexistence
               ? "WhatsApp conectado (coexistência) — você continua usando o app no celular"
               : "WhatsApp Business conectado via Meta");
@@ -391,8 +398,13 @@ export default function AgencyChannelsManager() {
         return `${emailStatus?.trial_remaining} emails cortesia disponíveis`;
       }
     }
-    if (k === "whatsapp" && waStatus?.connected) {
-      return waStatus.phone_number_id_suffix ? `Phone ID ••••${waStatus.phone_number_id_suffix}` : "WABA configurada";
+    if (k === "whatsapp" && (waStatus?.connected || waLocalConnected)) {
+      const name = waStatus?.verified_name?.trim();
+      const phone = waStatus?.display_phone_number?.trim();
+      if (name && phone) return `${name} · ${phone}`;
+      if (phone) return phone;
+      if (name) return name;
+      return waStatus?.phone_number_id_suffix ? `Phone ID ••••${waStatus.phone_number_id_suffix}` : "WhatsApp conectado";
     }
     if (k === "voice") {
       const parts: string[] = [];
@@ -481,9 +493,9 @@ export default function AgencyChannelsManager() {
                         )}
                         <Button variant="ghost" size="sm" className="text-xs h-7 gap-1.5 text-muted-foreground"
                           onClick={() => {
-                            // IG/FB: gestao propria (agente + reconectar + desconectar).
+                            // IG/FB/WhatsApp: gestao propria (status + reconectar + desconectar).
                             // Demais: dialog de config manual existente.
-                            if (ch.key === "instagram" || ch.key === "facebook") setManageChannel(ch.key);
+                            if (ch.key === "instagram" || ch.key === "facebook" || ch.key === "whatsapp") setManageChannel(ch.key);
                             else setOpenDialog(ch.configurable!);
                           }}>
                           <Settings className="w-3 h-3" /> Gerenciar
@@ -597,31 +609,52 @@ export default function AgencyChannelsManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de gestao IG / FB (reconectar + desconectar) */}
+      {/* Dialog de gestao IG / FB / WhatsApp (status + reconectar + desconectar) */}
       <Dialog open={!!manageChannel} onOpenChange={(o) => { if (!o) setManageChannel(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-base">
-              Gerenciar {manageChannel === "instagram" ? "Instagram" : "Facebook Messenger"}
+              Gerenciar {manageChannel === "instagram" ? "Instagram" : manageChannel === "facebook" ? "Facebook Messenger" : "WhatsApp"}
             </DialogTitle>
             <DialogDescription className="text-xs">
               {manageChannel === "instagram"
                 ? "Conta Instagram conectada — DMs caem no inbox com resposta do agente."
-                : "Página do Facebook conectada — mensagens do Messenger caem no inbox."}
+                : manageChannel === "facebook"
+                ? "Página do Facebook conectada — mensagens do Messenger caem no inbox."
+                : "Conta WhatsApp Business conectada — mensagens caem no inbox com resposta do agente."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              <p className="text-xs">
-                <span className="font-semibold">
-                  {manageChannel === "instagram"
-                    ? (igUsername ? `@${igUsername}` : "Conta Instagram")
-                    : (fbPageName || "Página do Facebook")}
-                </span>
-                {" "}— conectado e ativo.
-              </p>
+            <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+              <div className="text-xs min-w-0">
+                <p className="truncate">
+                  <span className="font-semibold">
+                    {manageChannel === "instagram"
+                      ? (igUsername ? `@${igUsername}` : "Conta Instagram")
+                      : manageChannel === "facebook"
+                      ? (fbPageName || "Página do Facebook")
+                      : (waStatus?.verified_name && waStatus?.display_phone_number
+                          ? `${waStatus.verified_name} · ${waStatus.display_phone_number}`
+                          : waStatus?.display_phone_number || waStatus?.verified_name || "WhatsApp Business")}
+                  </span>
+                  {" "}— conectado e ativo.
+                </p>
+                {manageChannel === "whatsapp" && waStatus?.connection_type === "meta_coexistence" && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Coexistência — você continua usando o app no celular normalmente.
+                  </p>
+                )}
+              </div>
             </div>
+
+            {manageChannel === "whatsapp" && (
+              <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5"
+                onClick={() => { setManageChannel(null); setOpenTemplates("whatsapp"); }}>
+                <FileText className="w-3 h-3" /> Criar / gerenciar templates
+              </Button>
+            )}
+
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="flex-1 h-8 text-xs"
                 onClick={() => { const k = manageChannel!; setManageChannel(null); directConnect(k); }}>

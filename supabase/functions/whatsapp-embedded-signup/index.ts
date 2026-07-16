@@ -175,6 +175,9 @@ serve(async (req) => {
       // Marca o tipo de onboarding: coexistência (app + API) ou Cloud API pura
       { user_id: user.id, provider: "whatsapp_connection_type", api_key: isCoexistence ? "meta_coexistence" : "meta_embedded" },
     ];
+    // Identidade da conta (pra UI mostrar qual número/nome está conectado)
+    if (displayPhone) upserts.push({ user_id: user.id, provider: "whatsapp_display_phone_number", api_key: displayPhone });
+    if (verifiedName) upserts.push({ user_id: user.id, provider: "whatsapp_verified_name", api_key: verifiedName });
     for (const row of upserts) {
       const { error } = await admin
         .from("user_api_keys")
