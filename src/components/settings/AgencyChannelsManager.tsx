@@ -353,25 +353,21 @@ export default function AgencyChannelsManager() {
       window.removeEventListener("message", messageHandler);
       (async () => {
         try {
-          if (response?.authResponse?.code) {
+          // Pegamos o TOKEN direto (sem response_type=code) → backend troca
+          // curto→longo via fb_exchange_token, sem redirect_uri (imune ao 36008).
+          const token = response?.authResponse?.accessToken;
+          if (token) {
             const { phone_number_id, waba_id, coexistence } = signupData;
-            // NÃO bloqueia se faltar waba_id/phone_number_id: o postMessage da
-            // Meta nem sempre chega. Basta o code — o backend resolve a conta
-            // e o número pelo próprio token (debug_token). O fluxo usa o
-            // featureType de coexistência, então default coexistence=true.
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { toast.error("Sessão expirada"); return; }
             const resp = await fetch(fnUrl("whatsapp-embedded-signup"), {
               method: "POST",
               headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
               body: JSON.stringify({
-                code: response.authResponse.code,
+                access_token: token,
                 phone_number_id,
                 waba_id,
                 coexistence: coexistence ?? true,
-                // fallback_redirect_uri que o FB.login usa — o backend testa
-                // essa variação na troca do code (resolve o 36008).
-                redirect_uri: `${window.location.origin}/settings`,
               }),
             });
             const j = await resp.json().catch(() => ({}));
@@ -383,6 +379,8 @@ export default function AgencyChannelsManager() {
               : "WhatsApp Business conectado via Meta");
           } else if (response?.error) {
             toast.error(`Meta: ${response.error.message ?? "erro desconhecido"}`);
+          } else {
+            toast.error("Conexão cancelada ou a Meta não retornou o token.");
           }
         } finally {
           setConnectingKey(null);
@@ -390,10 +388,8 @@ export default function AgencyChannelsManager() {
       })();
     }, {
       config_id: cfgId,
-      response_type: "code",
-      override_default_response_type: true,
-      // sessionInfoVersion:"3" é OBRIGATÓRIO pra Meta devolver waba_id/
-      // phone_number_id no postMessage. Sem ele o retorno vem vazio.
+      // SEM response_type=code / override: assim o FB.login devolve o
+      // accessToken direto e evitamos a troca de code (que dá 36008).
       extras: { setup: {}, featureType: "whatsapp_business_app_onboarding", sessionInfoVersion: "3" },
     });
   };

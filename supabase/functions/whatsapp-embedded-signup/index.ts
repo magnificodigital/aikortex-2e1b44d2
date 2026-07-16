@@ -100,53 +100,54 @@ serve(async (req) => {
     return jsonRes({ error: "INVALID_JSON" }, 400);
   }
 
-  const { code, coexistence } = payload ?? {};
-  // waba_id e phone_number_id são OPCIONAIS: o postMessage do Embedded Signup
-  // (sobretudo na coexistência) às vezes não entrega eles. Resolvemos tudo a
-  // partir do próprio token (debug_token → WABA → número) mais abaixo.
+  const { code, access_token: clientToken, coexistence } = payload ?? {};
+  // waba_id e phone_number_id são OPCIONAIS: resolvemos tudo a partir do
+  // próprio token (debug_token → WABA → número) mais abaixo.
   let waba_id: string | undefined = payload?.waba_id;
   let phone_number_id: string | undefined = payload?.phone_number_id;
-  if (!code) {
-    return jsonRes({ error: "MISSING_FIELDS", message: "code é obrigatório" }, 400);
+  if (!code && !clientToken) {
+    return jsonRes({ error: "MISSING_FIELDS", message: "code ou access_token é obrigatório" }, 400);
   }
   const isCoexistence = coexistence === true;
 
   try {
-    // 1) Troca code por access token. O FB.login (JS SDK) amarra o code a um
-    //    redirect_uri interno; dependendo do modo (popup xd_arbiter vs
-    //    fallback), o valor esperado na troca muda — e sem o certo dá
-    //    error_subcode 36008. Testamos as variações conhecidas e usamos a
-    //    primeira que a Meta aceitar. (Um code rejeitado NÃO é consumido,
-    //    então dá pra tentar mais de uma vez dentro do TTL de 30s.)
-    const base = `${GRAPH_API}/oauth/access_token?` +
-      `client_id=${encodeURIComponent(META_APP_ID)}&client_secret=${encodeURIComponent(META_APP_SECRET)}&code=${encodeURIComponent(code)}`;
-    const redirectCandidates: (string | null)[] = [null]; // null = sem redirect_uri (Embedded Signup padrão)
-    if (payload?.redirect_uri) redirectCandidates.push(payload.redirect_uri); // fallback_redirect_uri do front
-    redirectCandidates.push(""); // popup JS SDK: redirect_uri vazio
-
     let accessToken: string | null = null;
-    let lastErr: any = null;
-    for (const cand of redirectCandidates) {
-      const url = cand === null ? base : `${base}&redirect_uri=${encodeURIComponent(cand)}`;
-      const r = await fetch(url, { method: "GET" });
-      const j = await r.json();
-      if (r.ok && j.access_token) {
-        accessToken = j.access_token;
-        console.log(`[embedded-signup] token OK (redirect_uri=${cand === null ? "(nenhum)" : `"${cand}"`})`);
-        break;
+
+    if (clientToken) {
+      // ── PLANO B (padrão novo): o FB.login devolve o token direto no cliente.
+      //    Trocamos curto→longo (60 dias) via fb_exchange_token — que NÃO usa
+      //    redirect_uri, então imune ao 36008 da troca de code.
+      const longResp = await fetch(
+        `${GRAPH_API}/oauth/access_token?grant_type=fb_exchange_token` +
+        `&client_id=${encodeURIComponent(META_APP_ID)}&client_secret=${encodeURIComponent(META_APP_SECRET)}` +
+        `&fb_exchange_token=${encodeURIComponent(clientToken)}`,
+      );
+      const lj = await longResp.json();
+      accessToken = lj?.access_token || clientToken; // usa o longo; se falhar, o curto
+      console.log(`[embedded-signup] fb_exchange_token status=${longResp.status} long=${!!lj?.access_token}`);
+    } else {
+      // ── Fallback (code flow): mantido por compat. O FB.login popup amarra o
+      //    code a um redirect_uri interno (xd_arbiter) → costuma dar 36008.
+      const base = `${GRAPH_API}/oauth/access_token?` +
+        `client_id=${encodeURIComponent(META_APP_ID)}&client_secret=${encodeURIComponent(META_APP_SECRET)}&code=${encodeURIComponent(code)}`;
+      const redirectCandidates: (string | null)[] = [null];
+      if (payload?.redirect_uri) redirectCandidates.push(payload.redirect_uri);
+      redirectCandidates.push("");
+      let lastErr: any = null;
+      for (const cand of redirectCandidates) {
+        const url = cand === null ? base : `${base}&redirect_uri=${encodeURIComponent(cand)}`;
+        const r = await fetch(url, { method: "GET" });
+        const j = await r.json();
+        if (r.ok && j.access_token) { accessToken = j.access_token; break; }
+        lastErr = j?.error ?? { status: r.status };
+        console.log(`[embedded-signup] token falhou (redirect_uri=${cand === null ? "(nenhum)" : `"${cand}"`}) subcode=${j?.error?.error_subcode}`);
       }
-      lastErr = j?.error ?? { status: r.status };
-      console.log(`[embedded-signup] token falhou (redirect_uri=${cand === null ? "(nenhum)" : `"${cand}"`}) code=${j?.error?.code} subcode=${j?.error?.error_subcode}`);
+      if (!accessToken) {
+        console.error("[embedded-signup] code exchange falhou em todas as variações:", lastErr);
+        return jsonRes({ error: "TOKEN_EXCHANGE_FAILED", message: lastErr?.message || "Falha na troca do code", details: lastErr }, 502);
+      }
     }
-    if (!accessToken) {
-      console.error("[embedded-signup] token exchange falhou em todas as variações:", lastErr);
-      return jsonRes({
-        error: "TOKEN_EXCHANGE_FAILED",
-        message: lastErr?.message || "Falha ao trocar code por token",
-        details: lastErr,
-      }, 502);
-    }
-    console.log(`[embedded-signup] token exchanged user=${user.id} coexistence=${isCoexistence} waba_from_callback=${waba_id ?? "(none)"} phone_from_callback=${phone_number_id ?? "(none)"}`);
+    console.log(`[embedded-signup] token pronto user=${user.id} coexistence=${isCoexistence} via=${clientToken ? "fb_exchange_token" : "code"}`);
 
     // 1a) Resolve o waba_id a partir do TOKEN quando o callback não mandou.
     //     debug_token expõe granular_scopes com os target_ids (as WABAs que o
