@@ -173,19 +173,6 @@ const PROVIDERS: ProviderGroup[] = [
     ],
   },
   {
-    id: "whatsapp",
-    label: "WhatsApp Cloud API",
-    category: "comunicacao",
-    description: "Mensagens via WhatsApp Business da Meta (templates aprovados + chat ativo).",
-    logo: "https://cdn.simpleicons.org/whatsapp/25D366",
-    apiKeyUrl: "https://developers.facebook.com/apps",
-    apiKeyUrlLabel: "developers.facebook.com",
-    fields: [
-      { key: "whatsapp_token", label: "Access Token", placeholder: "EAAx...", description: "Token de acesso da Meta." },
-      { key: "whatsapp_phone_number_id", label: "Phone Number ID", placeholder: "123456789012345", description: "ID do número configurado." },
-    ],
-  },
-  {
     id: "meta_login",
     label: "Meta — Login Oficial (1-clique)",
     category: "comunicacao",
