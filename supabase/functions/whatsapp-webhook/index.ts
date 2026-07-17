@@ -30,6 +30,15 @@ serve(async (req) => {
       return new Response("Forbidden", { status: 403 });
     }
 
+    // 1) Token FIXO de plataforma (webhook do app é configurado 1x). Mesmo
+    //    esquema do Instagram — imune a não ter whatsapp_verify_token por user.
+    const fixed = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN");
+    if (fixed && token === fixed) {
+      console.log("[wa-webhook] verificado via META_WEBHOOK_VERIFY_TOKEN");
+      return new Response(challenge, { status: 200, headers: { "Content-Type": "text/plain" } });
+    }
+
+    // 2) Fallback: token por agência salvo em user_api_keys (fluxo manual)
     const { data: verifyRows } = await supabase
       .from("user_api_keys")
       .select("api_key")
@@ -38,10 +47,11 @@ serve(async (req) => {
       .limit(1);
 
     if (verifyRows && verifyRows.length > 0) {
-      console.log("Webhook verified successfully");
+      console.log("[wa-webhook] verificado via whatsapp_verify_token (user)");
       return new Response(challenge, { status: 200, headers: { "Content-Type": "text/plain" } });
     }
 
+    console.log("[wa-webhook] verificação FALHOU — token não bate");
     return new Response("Forbidden", { status: 403 });
   }
 
