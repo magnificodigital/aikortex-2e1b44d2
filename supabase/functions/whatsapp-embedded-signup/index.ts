@@ -191,7 +191,8 @@ serve(async (req) => {
       phone_number_id = String(first.id);
     }
 
-    // 2) Inscreve o WABA no webhook do nosso app
+    // 2) Inscreve o WABA no webhook do nosso app + VERIFICA de fato.
+    //    Sem essa inscrição ativa, a Meta NÃO entrega mensagem recebida.
     const subscribeResp = await fetch(`${GRAPH_API}/${waba_id}/subscribed_apps`, {
       method: "POST",
       headers: {
@@ -199,13 +200,23 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
     });
-    const subscribeJson = await subscribeResp.json();
+    const subBodyText = await subscribeResp.text();
+    console.log(`[embedded-signup] subscribe POST status=${subscribeResp.status} body=${subBodyText}`);
+
+    // Confirma o que a Meta realmente registrou pra esse WABA
+    try {
+      const checkResp = await fetch(
+        `${GRAPH_API}/${waba_id}/subscribed_apps?access_token=${encodeURIComponent(accessToken)}`,
+      );
+      console.log(`[embedded-signup] subscribed_apps GET status=${checkResp.status} body=${(await checkResp.text()).slice(0, 700)}`);
+    } catch (e) { console.warn("[embedded-signup] subscribed_apps GET err:", e); }
+
     if (!subscribeResp.ok) {
-      console.error("[embedded-signup] webhook subscribe failed:", subscribeResp.status, subscribeJson);
+      console.error("[embedded-signup] webhook subscribe failed:", subscribeResp.status, subBodyText);
       return jsonRes({
         error: "WEBHOOK_SUBSCRIBE_FAILED",
-        message: subscribeJson?.error?.message || "Falha ao inscrever webhook no WABA",
-        details: subscribeJson,
+        message: "Falha ao inscrever o webhook no WABA. Confira se o token tem whatsapp_business_management.",
+        details: subBodyText,
       }, 502);
     }
     console.log(`[embedded-signup] webhook subscribed for waba=${waba_id}`);
