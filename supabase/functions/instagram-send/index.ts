@@ -6,6 +6,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { recordInboxMessage } from "../_shared/inbox.ts";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,6 +35,11 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
+
+    // Rate limit de envio manual (anti-spam) — fail-open. 60/min por usuário.
+    if (!(await checkRateLimit(user.id))) {
+      return json({ error: "Muitas mensagens em pouco tempo. Aguarde um instante." }, 429);
+    }
 
     const { data: keys } = await supabase
       .from("user_api_keys")
