@@ -366,6 +366,54 @@ const AikortexMessages = () => {
     }
   };
 
+  // Anexo: sobe pro bucket público e envia como mídia (imagem/documento).
+  // Só WhatsApp por enquanto (send suporta media). Manual → pausa a IA.
+  const [attaching, setAttaching] = useState(false);
+  const handleAttach = async (file: File) => {
+    if (!selectedRow?.contact_phone) return;
+    if (selectedRow.channel !== "whatsapp") {
+      toast.error("Anexos por enquanto só no WhatsApp — nos outros canais, em breve.");
+      return;
+    }
+    if (file.size > 16 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 16 MB)."); return; }
+    setAttaching(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error("Sessão expirada."); return; }
+      const isImage = file.type.startsWith("image/");
+      const safeName = file.name.replace(/[^\w.\-]/g, "_");
+      const path = `${user.id}/${selectedRow.id}/${Date.now()}-${safeName}`;
+      const { error: upErr } = await supabase.storage
+        .from("inbox-attachments")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) { toast.error(`Falha no upload: ${upErr.message}`); return; }
+      const { data: urlData } = supabase.storage.from("inbox-attachments").getPublicUrl(path);
+
+      if (selectedRow.ai_enabled) await toggleAi(false, { silent: true });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) { toast.error("Sessão expirada."); return; }
+      const resp = await fetch(SEND_URLS.whatsapp, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          to: selectedRow.contact_phone,
+          type: isImage ? "image" : "document",
+          media: { url: urlData.publicUrl, filename: file.name, caption: "" },
+        }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        toast.error(err.error || "Falha ao enviar o anexo");
+      }
+      // A mensagem entra via realtime (o send grava em messages).
+    } catch (e) {
+      toast.error(`Erro: ${(e as Error).message}`);
+    } finally {
+      setAttaching(false);
+    }
+  };
+
   const toggleResolve = async () => {
     if (!selectedRow) return;
     const next = selectedRow.status === "resolved" ? "open" : "resolved";
@@ -473,6 +521,8 @@ const AikortexMessages = () => {
               onSetStatus={selectedRow ? setStatus : undefined}
               panelOpen={panelOpen}
               onTogglePanel={() => setPanelOpen((v) => !v)}
+              onAttach={selectedRow ? handleAttach : undefined}
+              attaching={attaching}
             />
             {panelOpen && (
               <ContactPanel

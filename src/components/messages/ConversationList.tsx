@@ -179,13 +179,13 @@ const ConversationList = ({
               value="open"
               className="relative h-8 px-0 text-[12px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
             >
-              Minhas <span className="ml-1 text-[10px] opacity-70">· {mineCount}</span>
+              Abertas <span className="ml-1 text-[10px] opacity-70">· {mineCount}</span>
             </TabsTrigger>
             <TabsTrigger
               value="unread"
               className="relative h-8 px-0 text-[12px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
             >
-              Não atribuídas <span className="ml-1 text-[10px] opacity-70">· {unassignedCount}</span>
+              Não lidas <span className="ml-1 text-[10px] opacity-70">· {unassignedCount}</span>
             </TabsTrigger>
             <TabsTrigger
               value="all"

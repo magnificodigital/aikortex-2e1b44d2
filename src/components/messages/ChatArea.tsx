@@ -3,7 +3,7 @@ import {
   Send, CheckCheck, Check, AlertTriangle, Bot, User,
   CheckCircle2, RotateCcw, Sparkles, Loader2, StickyNote, Lock,
   Tag, X, Plus, Bold, Italic, Code, Smile, VolumeX, Volume2, Share2, ChevronDown, Clock,
-  Link2, Undo2, Redo2, List, ListOrdered, Mic, PenLine, Paperclip, Maximize2, Globe,
+  Link2, Undo2, Redo2, List, ListOrdered, Paperclip, Maximize2, Globe,
 } from "lucide-react";
 
 import {
@@ -53,6 +53,10 @@ interface ChatAreaProps {
   /** Mostra/esconde o painel de detalhes ("Fechar detalhes" da referencia). */
   panelOpen?: boolean;
   onTogglePanel?: () => void;
+  /** Anexa um arquivo (imagem/documento) — sobe pro storage e envia. */
+  onAttach?: (file: File) => void;
+  /** true enquanto um anexo está subindo/enviando. */
+  attaching?: boolean;
 }
 
 const EMOJIS = [
@@ -86,7 +90,7 @@ const ChatArea = ({
   conversation, messages, onSend, aiEnabled = true, onToggleAi,
   onToggleResolve, onSendNote, onSuggestReply, tags = [], onTagsChange,
   muted = false, onToggleMute, onShare, onSetStatus,
-  panelOpen = true, onTogglePanel,
+  panelOpen = true, onTogglePanel, onAttach, attaching = false,
 }: ChatAreaProps) => {
   const [input, setInput] = useState("");
   const [composerMode, setComposerMode] = useState<"reply" | "note">("reply");
@@ -94,6 +98,7 @@ const ChatArea = ({
   const [tagDraft, setTagDraft] = useState("");
   const [addingTag, setAddingTag] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   /** Formatacao WhatsApp: *negrito* _italico_ ```codigo``` na selecao. */
   const wrapSelection = (marker: string) => {
@@ -488,17 +493,25 @@ const ChatArea = ({
                   </div>
                 </PopoverContent>
               </Popover>
-              <button title="Anexar arquivo"
-                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
-                <Paperclip className="w-4 h-4" />
-              </button>
-              <button title="Gravar áudio"
-                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
-                <Mic className="w-4 h-4" />
-              </button>
-              <button title="Assinatura"
-                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
-                <PenLine className="w-4 h-4" />
+              {/* Anexar imagem/documento — sobe pro storage e envia como mídia */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && onAttach) onAttach(file);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                title="Anexar imagem ou documento"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!onAttach || attaching || composerMode === "note"}
+                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition disabled:opacity-40"
+              >
+                {attaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
               </button>
             </div>
 
