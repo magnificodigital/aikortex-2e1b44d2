@@ -241,6 +241,7 @@ const ConversationList = ({
                   {/* Avatar com badge do canal */}
                   <div className="relative shrink-0 self-start mt-0.5">
                     <Avatar className="h-10 w-10">
+                      {(() => { const u = getConversationAvatar(conv.id); return u ? <AvatarImage src={u} alt={conv.contactName} /> : null; })()}
                       <AvatarFallback className="text-[11px] font-semibold bg-muted text-foreground/70">
                         {conv.initials.slice(0, 2)}
                       </AvatarFallback>
