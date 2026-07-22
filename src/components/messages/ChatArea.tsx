@@ -13,7 +13,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useEffect } from "react";
+import { getConversationAvatar, setConversationAvatar, subscribeAvatar, fileToDataUrl } from "@/lib/conversation-avatars";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Conversation } from "./ConversationList";
 import EmojiPicker from "./EmojiPicker";
