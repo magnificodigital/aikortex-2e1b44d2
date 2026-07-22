@@ -105,6 +105,22 @@ const ChatArea = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => getConversationAvatar(conversation?.id));
+  useEffect(() => { setAvatarUrl(getConversationAvatar(conversation?.id)); }, [conversation?.id]);
+  useEffect(() => subscribeAvatar(() => setAvatarUrl(getConversationAvatar(conversation?.id))), [conversation?.id]);
+
+  const handleAvatarPick = async (file: File | null | undefined) => {
+    if (!file || !conversation?.id) return;
+    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Imagem maior que 2MB"); return; }
+    try {
+      const url = await fileToDataUrl(file);
+      setConversationAvatar(conversation.id, url);
+      toast.success("Foto atualizada");
+    } catch { toast.error("Não consegui carregar a imagem"); }
+  };
+
   /** Formatacao WhatsApp: *negrito* _italico_ ```codigo``` na selecao. */
   const wrapSelection = (marker: string) => {
     const el = textareaRef.current;
