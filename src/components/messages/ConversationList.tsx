@@ -234,7 +234,7 @@ const ConversationList = ({
                     "w-[calc(100%-12px)] mx-1.5 my-0.5 flex items-center gap-3 px-2.5 py-2.5 text-left transition-colors rounded-xl border",
                     selected
                       ? "bg-accent border-primary/40"
-                      : "border-transparent hover:bg-muted/40/50",
+                      : "border-transparent hover:bg-muted/40",
                   )}
                 >
 
