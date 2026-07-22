@@ -22,8 +22,10 @@ import { cn } from "@/lib/utils";
 
 export interface InboxFilter {
   view: "all" | "unattended";
-  channel: string | null; // null = todos
-  tag: string | null;
+  /** Multi-select: canais marcados; vazio = todos. */
+  channels: string[];
+  /** Multi-select: etiquetas marcadas; vazio = todas. */
+  tags: string[];
 }
 
 export interface Conversation {
