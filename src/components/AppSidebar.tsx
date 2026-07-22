@@ -305,7 +305,9 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
       )}
 
       <aside
-        className={`flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 ${
+        // "dark" força o tema escuro só na sidebar — no Modo claro o conteúdo
+        // fica claro mas o menu permanece escuro (padrão dashboard moderno).
+        className={`dark flex h-screen flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300 ${
           isMobile
             ? `fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] ${mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`
             : collapsed
@@ -315,10 +317,8 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
       >
         <div className={`flex h-14 items-center border-b border-sidebar-border px-4 ${isMobile ? "justify-between" : "justify-center"}`}>
           <img
-            src={collapsed && !isMobile
-              ? (theme === "dark" ? aikortexIconWhite : aikortexIconBlack)
-              : (theme === "dark" ? aikortexLogoWhite : aikortexLogoBlack)
-            }
+            // Sidebar é sempre escura → logo sempre na versão branca.
+            src={collapsed && !isMobile ? aikortexIconWhite : aikortexLogoWhite}
             alt="Aikortex"
             className={collapsed && !isMobile ? "h-7 w-7 object-contain" : "h-7 w-auto object-contain"}
           />
