@@ -158,6 +158,7 @@ const ConversationList = ({
                 checked={filter.view === "unattended"}
                 onCheckedChange={(v) => onFilterChange({ ...filter, view: v ? "unattended" : "all" })}
                 className="text-[13px]"
+                onSelect={(e) => e.preventDefault()}
               >
                 Só não atendidas
               </DropdownMenuCheckboxItem>
@@ -168,13 +169,25 @@ const ConversationList = ({
                   {availableTags.map((t) => (
                     <DropdownMenuCheckboxItem
                       key={t}
-                      checked={filter.tag === t}
-                      onCheckedChange={(v) => onFilterChange({ ...filter, tag: v ? t : null })}
+                      checked={filter.tags.includes(t)}
+                      onCheckedChange={(v) => onFilterChange({ ...filter, tags: toggleIn(filter.tags, t, !!v) })}
                       className="text-[13px]"
+                      onSelect={(e) => e.preventDefault()}
                     >
                       {t}
                     </DropdownMenuCheckboxItem>
                   ))}
+                </>
+              )}
+              {activeFilters > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <button
+                    onClick={() => onFilterChange({ view: "all", channels: [], tags: [] })}
+                    className="w-full text-left text-[12px] px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded-sm transition"
+                  >
+                    Limpar filtros
+                  </button>
                 </>
               )}
             </DropdownMenuContent>
