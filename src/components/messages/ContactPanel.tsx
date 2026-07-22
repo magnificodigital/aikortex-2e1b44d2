@@ -133,7 +133,7 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
                 onSave={onSaveContact ? (v) => onSaveContact({ phone: v }) : undefined} />
               <EditableRow icon={Building} label="Empresa" value={contact.company || "—"}
                 onSave={onSaveContact ? (v) => onSaveContact({ company: v }) : undefined} />
-              {(showMore || cf.whatsapp) && <EditableRow icon={MessageCircle} label="WhatsApp" value={cf.whatsapp || "—"}
+              {(showMore || cf.whatsapp) && <EditableRow icon={WhatsAppIcon} label="WhatsApp" value={cf.whatsapp || "—"}
                 onSave={onSaveContact ? (v) => saveCustom("whatsapp", v) : undefined} />}
               {(showMore || cf.cnpj) && <EditableRow icon={FileText} label="CNPJ" value={cf.cnpj || "—"}
                 onSave={onSaveContact ? (v) => saveCustom("cnpj", v) : undefined} />}
