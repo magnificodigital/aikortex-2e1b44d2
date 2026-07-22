@@ -100,7 +100,7 @@ const AikortexMessages = () => {
   const [activeTab, setActiveTab] = useState("open");
   const [loading, setLoading] = useState(true);
   const [crmLead, setCrmLead] = useState<{ id: string; stage_slug: string | null; temperature: string | null; company: string | null; email: string | null; phone: string | null; custom_fields: Record<string, any> | null } | null>(null);
-  const [inboxFilter, setInboxFilter] = useState<InboxFilter>({ view: "all", channel: null, tag: null });
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>({ view: "all", channels: [], tags: [] });
   const [panelOpen, setPanelOpen] = useState(true);
   const [searchParams] = useSearchParams();
   const selectedRef = useRef<string | null>(null);
