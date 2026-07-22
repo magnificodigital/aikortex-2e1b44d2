@@ -97,6 +97,7 @@ const ChatArea = ({
   const [suggesting, setSuggesting] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
   const [addingTag, setAddingTag] = useState(false);
+  const [showFormat, setShowFormat] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -316,30 +317,44 @@ const ChatArea = ({
             }
 
             const isOutgoing = msg.sender === "user" || msg.sender === "bot";
-            // Agrupamento: 1a msg de uma sequencia do mesmo lado ganha canto
-            // "de balao"; as seguintes ficam retas (visual messenger).
-            const prev = messages[i - 1];
-            const firstOfGroup = !prev || (prev.sender === "user" || prev.sender === "bot") !== isOutgoing;
+            // Agrupamento por lado: avatar aparece só na última msg do grupo,
+            // no lado de fora (estilo Chative/Intercom). Bolhas uniformes.
+            const sideOf = (m?: ChatMessage) => (m ? (m.sender === "user" || m.sender === "bot") : null);
+            const firstOfGroup = sideOf(messages[i - 1]) !== isOutgoing;
+            const lastOfGroup = sideOf(messages[i + 1]) !== isOutgoing;
+
+            const avatar = (
+              <div className="w-7 shrink-0 self-end">
+                {lastOfGroup && (
+                  <div className={cn(
+                    "w-7 h-7 rounded-full grid place-items-center text-[10px] font-semibold",
+                    isOutgoing ? "bg-primary/15 text-primary" : "bg-foreground/10 text-muted-foreground",
+                  )}>
+                    {isOutgoing ? <Bot className="w-3.5 h-3.5" /> : (conversation?.initials ?? "?")}
+                  </div>
+                )}
+              </div>
+            );
 
             return (
-              <div key={msg.id} className={cn("flex", isOutgoing ? "justify-end" : "justify-start", firstOfGroup && "pt-2")}>
+              <div key={msg.id} className={cn("flex items-end gap-2", isOutgoing ? "justify-end" : "justify-start", firstOfGroup && "pt-2.5")}>
+                {!isOutgoing && avatar}
                 <div className={cn(
-                  "px-3.5 py-2 text-[14px] max-w-[72%] shadow-sm rounded-2xl",
-                  // "Rabinho" WhatsApp: canto superior reto na 1a msg do grupo
+                  "px-3.5 py-2 text-[14px] max-w-[70%] shadow-sm rounded-2xl",
                   isOutgoing
-                    ? cn("bg-primary text-primary-foreground", firstOfGroup && "rounded-tr-none")
-                    : cn("bg-foreground/[0.07] text-foreground border border-foreground/[0.08]", firstOfGroup && "rounded-tl-none"),
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-foreground/[0.07] text-foreground border border-foreground/[0.08]",
                 )}>
                   <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                   <div className={cn(
                     "flex items-center justify-end gap-1 mt-0.5 -mb-0.5 select-none",
                     isOutgoing ? "text-primary-foreground/60" : "text-muted-foreground/70",
                   )}>
-                    {msg.sender === "bot" && <Bot className="w-2.5 h-2.5" />}
                     <span className="text-[10px]">{msg.time}</span>
                     {isOutgoing && msg.status && getStatusIcon(msg.status)}
                   </div>
                 </div>
+                {isOutgoing && avatar}
               </div>
             );
           })}
@@ -383,7 +398,8 @@ const ChatArea = ({
           </div>
 
 
-          {/* Toolbar de formatacao (markdown do WhatsApp — funcional) */}
+          {/* Toolbar de formatacao — escondida por padrão (toggle "Aa" no rodapé) */}
+          {showFormat && (
           <div className="px-3 py-1.5 flex items-center gap-0.5 border-b border-border/60">
             <button onClick={() => wrapSelection("*")} title="Negrito (*texto*)"
               className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
@@ -449,6 +465,7 @@ const ChatArea = ({
               <Maximize2 className="w-3 h-3" />
             </button>
           </div>
+          )}
 
           {/* Textarea */}
           <textarea
@@ -512,6 +529,16 @@ const ChatArea = ({
                 className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition disabled:opacity-40"
               >
                 {attaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+              </button>
+              <button
+                title="Formatação (negrito, itálico, listas…)"
+                onClick={() => setShowFormat((v) => !v)}
+                className={cn(
+                  "w-8 h-8 rounded-md grid place-items-center text-[13px] font-semibold transition",
+                  showFormat ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                )}
+              >
+                Aa
               </button>
             </div>
 
