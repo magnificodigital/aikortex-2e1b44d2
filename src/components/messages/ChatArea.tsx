@@ -281,8 +281,8 @@ const ChatArea = ({
 
 
       {/* Messages — fundo com textura de pontos (vibe WhatsApp Web) */}
-      <ScrollArea className="flex-1 bg-muted/20 [background-image:radial-gradient(hsl(var(--muted-foreground)/0.07)_1px,transparent_1px)] [background-size:18px_18px]">
-        <div className="px-4 py-5 space-y-1.5 max-w-3xl mx-auto">
+      <ScrollArea className="flex-1 bg-background [background-image:radial-gradient(hsl(var(--muted-foreground)/0.05)_1px,transparent_1px)] [background-size:22px_22px]">
+        <div className="px-5 py-6 space-y-2 max-w-3xl mx-auto">
           {messages.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
               <Bot className="w-8 h-8 text-muted-foreground/40" />
@@ -324,11 +324,11 @@ const ChatArea = ({
             return (
               <div key={msg.id} className={cn("flex", isOutgoing ? "justify-end" : "justify-start", firstOfGroup && "pt-2")}>
                 <div className={cn(
-                  "px-3 py-1.5 text-[13.5px] max-w-[68%] shadow-sm rounded-lg",
+                  "px-3.5 py-2 text-[14px] max-w-[72%] shadow-sm rounded-2xl",
                   // "Rabinho" WhatsApp: canto superior reto na 1a msg do grupo
                   isOutgoing
                     ? cn("bg-primary text-primary-foreground", firstOfGroup && "rounded-tr-none")
-                    : cn("bg-card text-foreground border border-border/50", firstOfGroup && "rounded-tl-none"),
+                    : cn("bg-foreground/[0.07] text-foreground border border-foreground/[0.08]", firstOfGroup && "rounded-tl-none"),
                 )}>
                   <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                   <div className={cn(

@@ -72,6 +72,7 @@ interface ContactPanelProps {
 const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSaveContact }: ContactPanelProps) => {
   const [tab, setTab] = useState<"contact" | "copilot">("contact");
   const [stages, setStages] = useState<Stage[]>([]);
+  const [showMore, setShowMore] = useState(false);
 
   useEffect(() => {
     (supabase.from("crm_pipeline_stages" as any) as any)
@@ -130,7 +131,7 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
         <CopilotTab context={copilotContext} />
       ) : (
         <ScrollArea className="flex-1">
-          <div className="p-4 space-y-5">
+          <div className="p-5 space-y-6">
             {/* Header do contato */}
             <div className="flex flex-col items-center text-center space-y-2">
               <Avatar className="h-14 w-14">
@@ -141,27 +142,35 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
               <NameEditor name={contact.name} onSave={onSaveContact ? (v) => onSaveContact({ name: v }) : undefined} />
             </div>
 
-            {/* Informações do contato — sempre visíveis, logo abaixo do nome */}
-            <section className="space-y-2">
+            {/* Informações — 3 essenciais sempre; extras vazios atrás de "Mais
+                campos" (campos já preenchidos aparecem sempre). Menos parede
+                de "+ Adicionar" quando o lead é novo. */}
+            <section className="space-y-2.5">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Informações</p>
               <EditableRow icon={Mail} label="Email" value={contact.email}
                 onSave={onSaveContact ? (v) => onSaveContact({ email: v }) : undefined} />
               <EditableRow icon={Phone} label="Telefone" value={contact.phone}
                 onSave={onSaveContact ? (v) => onSaveContact({ phone: v }) : undefined} />
-              <EditableRow icon={MessageCircle} label="WhatsApp" value={cf.whatsapp || "—"}
-                onSave={onSaveContact ? (v) => saveCustom("whatsapp", v) : undefined} />
               <EditableRow icon={Building} label="Empresa" value={contact.company || "—"}
                 onSave={onSaveContact ? (v) => onSaveContact({ company: v }) : undefined} />
-              <EditableRow icon={FileText} label="CNPJ" value={cf.cnpj || "—"}
-                onSave={onSaveContact ? (v) => saveCustom("cnpj", v) : undefined} />
-              <EditableRow icon={Globe} label="Website" value={cf.website || "—"}
-                onSave={onSaveContact ? (v) => saveCustom("website", v) : undefined} />
-              <EditableRow icon={MapPin} label="Endereço" value={cf.address || "—"}
-                onSave={onSaveContact ? (v) => saveCustom("address", v) : undefined} />
-              <EditableRow icon={Linkedin} label="LinkedIn" value={cf.linkedin || "—"}
-                onSave={onSaveContact ? (v) => saveCustom("linkedin", v) : undefined} />
-              <EditableRow icon={Instagram} label="Instagram" value={cf.instagram || "—"}
-                onSave={onSaveContact ? (v) => saveCustom("instagram", v) : undefined} />
+              {(showMore || cf.whatsapp) && <EditableRow icon={MessageCircle} label="WhatsApp" value={cf.whatsapp || "—"}
+                onSave={onSaveContact ? (v) => saveCustom("whatsapp", v) : undefined} />}
+              {(showMore || cf.cnpj) && <EditableRow icon={FileText} label="CNPJ" value={cf.cnpj || "—"}
+                onSave={onSaveContact ? (v) => saveCustom("cnpj", v) : undefined} />}
+              {(showMore || cf.website) && <EditableRow icon={Globe} label="Website" value={cf.website || "—"}
+                onSave={onSaveContact ? (v) => saveCustom("website", v) : undefined} />}
+              {(showMore || cf.address) && <EditableRow icon={MapPin} label="Endereço" value={cf.address || "—"}
+                onSave={onSaveContact ? (v) => saveCustom("address", v) : undefined} />}
+              {(showMore || cf.linkedin) && <EditableRow icon={Linkedin} label="LinkedIn" value={cf.linkedin || "—"}
+                onSave={onSaveContact ? (v) => saveCustom("linkedin", v) : undefined} />}
+              {(showMore || cf.instagram) && <EditableRow icon={Instagram} label="Instagram" value={cf.instagram || "—"}
+                onSave={onSaveContact ? (v) => saveCustom("instagram", v) : undefined} />}
+              <button
+                onClick={() => setShowMore((v) => !v)}
+                className="text-[11px] font-medium text-primary/80 hover:text-primary transition flex items-center gap-1 pt-1"
+              >
+                {showMore ? "− Menos campos" : "+ Mais campos"}
+              </button>
             </section>
 
             {/* CRM — inclui/edita a etapa direto daqui */}
