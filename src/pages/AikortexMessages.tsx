@@ -186,9 +186,10 @@ const AikortexMessages = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedConv, loadMessages]);
 
-  // Seleciona a primeira quando a lista carrega
+  // Seleciona a primeira quando a lista carrega — só no desktop/tablet.
+  // No mobile (<768) o usuário vê a LISTA primeiro (layout de 1 coluna).
   useEffect(() => {
-    if (!selectedConv && rows.length > 0) setSelectedConv(rows[0].id);
+    if (!selectedConv && rows.length > 0 && window.innerWidth >= 768) setSelectedConv(rows[0].id);
   }, [rows, selectedConv]);
 
   const selectedRow = rows.find((r) => r.id === selectedConv) || null;
@@ -492,18 +493,23 @@ const AikortexMessages = () => {
           // Filtros de canal/etiqueta moram no funil do header da lista
           // (como no Chatwoot) — sem coluna extra redundante.
           <>
-            <ConversationList
-              conversations={conversations}
-              selectedId={selectedConv || ""}
-              onSelect={setSelectedConv}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              filter={inboxFilter}
-              onFilterChange={setInboxFilter}
-              availableTags={allTags}
-            />
+            {/* Coluna 1 — Lista. Mobile: some quando abre uma conversa. */}
+            <div className={`h-full w-full md:w-[340px] md:min-w-[300px] shrink-0 ${selectedConv ? "hidden md:block" : "block"}`}>
+              <ConversationList
+                conversations={conversations}
+                selectedId={selectedConv || ""}
+                onSelect={setSelectedConv}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                filter={inboxFilter}
+                onFilterChange={setInboxFilter}
+                availableTags={allTags}
+              />
+            </div>
+            {/* Coluna 2 — Chat. Mobile: só aparece com conversa aberta. */}
+            <div className={`h-full flex-1 min-w-0 ${selectedConv ? "flex" : "hidden md:flex"}`}>
             <ChatArea
               conversation={conversation}
               messages={messages}
@@ -521,9 +527,11 @@ const AikortexMessages = () => {
               onSetStatus={selectedRow ? setStatus : undefined}
               panelOpen={panelOpen}
               onTogglePanel={() => setPanelOpen((v) => !v)}
+              onBack={() => setSelectedConv(null)}
               onAttach={selectedRow ? handleAttach : undefined}
               attaching={attaching}
             />
+            </div>
             {panelOpen && (
               <ContactPanel
                 contact={contact}

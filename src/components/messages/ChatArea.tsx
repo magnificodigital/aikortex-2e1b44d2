@@ -57,6 +57,8 @@ interface ChatAreaProps {
   /** Mostra/esconde o painel de detalhes ("Fechar detalhes" da referencia). */
   panelOpen?: boolean;
   onTogglePanel?: () => void;
+  /** Volta pra lista de conversas (mobile — layout de 1 coluna). */
+  onBack?: () => void;
   /** Anexa um arquivo (imagem/documento) — sobe pro storage e envia. */
   onAttach?: (file: File) => void;
   /** true enquanto um anexo está subindo/enviando. */
@@ -94,7 +96,7 @@ const ChatArea = ({
   conversation, messages, onSend, aiEnabled = true, onToggleAi,
   onToggleResolve, onSendNote, onSuggestReply, tags = [], onTagsChange,
   muted = false, onToggleMute, onShare, onSetStatus,
-  panelOpen = true, onTogglePanel, onAttach, attaching = false,
+  panelOpen = true, onTogglePanel, onBack, onAttach, attaching = false,
 }: ChatAreaProps) => {
   const [input, setInput] = useState("");
   const [composerMode, setComposerMode] = useState<"reply" | "note">("reply");
@@ -212,6 +214,17 @@ const ChatArea = ({
       {/* Chat Header — layout clone Chatwoot: avatar + nome / inbox · Fechar detalhes | mute · share · Resolver */}
       <div className="h-14 shrink-0 border-b border-border flex items-center justify-between gap-3 px-4 bg-card">
         <div className="flex items-center gap-3 min-w-0 flex-1">
+          {/* Voltar pra lista — só no mobile (layout de 1 coluna) */}
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="md:hidden -ml-1 mr-0.5 w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition shrink-0"
+              title="Voltar pras conversas"
+            >
+              <ChevronDown className="w-5 h-5 rotate-90" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => avatarInputRef.current?.click()}

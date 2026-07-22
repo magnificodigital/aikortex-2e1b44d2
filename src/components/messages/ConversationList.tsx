@@ -110,7 +110,7 @@ const ConversationList = ({
     });
 
   return (
-    <div className="w-[340px] min-w-[300px] border-r border-border bg-card flex flex-col h-full">
+    <div className="w-full border-r border-border bg-card flex flex-col h-full">
       {/* Header — mesma altura dos outros paineis (h-14) + funil de filtros */}
       <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
         <h2 className="text-[14px] font-semibold text-foreground">Conversas</h2>
