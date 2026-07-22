@@ -249,19 +249,18 @@ const ConversationList = ({
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    {/* Linha do inbox (canal) + tempo "criada • ultima" */}
+                    {/* Nome do contato (destaque) + hora da última msg.
+                        O canal já aparece no badge do avatar — sem linha
+                        redundante de "WhatsApp Business". */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-muted-foreground truncate">{conv.inbox}</span>
-                      <span className="text-[11px] text-muted-foreground shrink-0">
-                        {conv.createdAgo ? `${conv.createdAgo} • ` : ""}{conv.time}
-                      </span>
+                      <p className={cn(
+                        "text-[14px] truncate",
+                        conv.unread > 0 ? "font-semibold text-foreground" : "font-medium text-foreground/90",
+                      )}>
+                        {conv.contactName}
+                      </p>
+                      <span className="text-[11px] text-muted-foreground shrink-0">{conv.time}</span>
                     </div>
-                    <p className={cn(
-                      "text-[14px] truncate mt-0.5",
-                      conv.unread > 0 ? "font-semibold text-foreground" : "font-medium text-foreground/90",
-                    )}>
-                      {conv.contactName}
-                    </p>
                     <div className="flex items-center justify-between gap-2 mt-0.5">
                       <p className={cn(
                         "text-[13px] truncate",
