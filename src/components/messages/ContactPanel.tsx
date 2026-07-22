@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import {
   Mail, Phone, MapPin, Globe, Building, Copy, MessageSquare, Flame,
   ArrowUpRight, X, Plus, Sparkles, Loader2, Send, Pencil, FileText,
-  Instagram, Linkedin, MessageCircle, ChevronDown,
+  Instagram, Linkedin, ChevronDown,
 } from "lucide-react";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
