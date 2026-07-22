@@ -93,7 +93,9 @@ const ConversationList = ({
 }: ConversationListProps) => {
   const mineCount = conversations.filter((c) => (c.status ?? "open") === "open").length;
   const unassignedCount = conversations.filter((c) => c.unread > 0).length;
-  const activeFilters = (filter?.channel ? 1 : 0) + (filter?.tag ? 1 : 0) + (filter?.view === "unattended" ? 1 : 0);
+  const activeFilters = (filter?.channels?.length ?? 0) + (filter?.tags?.length ?? 0) + (filter?.view === "unattended" ? 1 : 0);
+  const toggleIn = (arr: string[], key: string, on: boolean) =>
+    on ? Array.from(new Set([...arr, key])) : arr.filter((x) => x !== key);
 
   // Re-render quando um avatar for trocado no header do chat.
   const [avatarTick, setAvatarTick] = useState(0);
