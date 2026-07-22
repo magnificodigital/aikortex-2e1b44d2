@@ -13,7 +13,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useEffect } from "react";
+import { getConversationAvatar, setConversationAvatar, subscribeAvatar, fileToDataUrl } from "@/lib/conversation-avatars";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Conversation } from "./ConversationList";
 import EmojiPicker from "./EmojiPicker";
@@ -73,7 +76,7 @@ const AiToggleButton = ({ aiEnabled, onToggle }: { aiEnabled: boolean; onToggle:
       "flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium transition-all border",
       aiEnabled
         ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20"
-        : "bg-muted text-muted-foreground border-border hover:bg-accent"
+        : "bg-muted text-muted-foreground border-border hover:bg-muted/40"
     )}
     title={aiEnabled ? "Agente de IA respondendo — clique pra assumir a conversa" : "Você assumiu — clique pra devolver pra IA"}
   >
@@ -101,6 +104,22 @@ const ChatArea = ({
   const [showFormat, setShowFormat] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => getConversationAvatar(conversation?.id));
+  useEffect(() => { setAvatarUrl(getConversationAvatar(conversation?.id)); }, [conversation?.id]);
+  useEffect(() => subscribeAvatar(() => setAvatarUrl(getConversationAvatar(conversation?.id))), [conversation?.id]);
+
+  const handleAvatarPick = async (file: File | null | undefined) => {
+    if (!file || !conversation?.id) return;
+    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Imagem maior que 2MB"); return; }
+    try {
+      const url = await fileToDataUrl(file);
+      setConversationAvatar(conversation.id, url);
+      toast.success("Foto atualizada");
+    } catch { toast.error("Não consegui carregar a imagem"); }
+  };
 
   /** Formatacao WhatsApp: *negrito* _italico_ ```codigo``` na selecao. */
   const wrapSelection = (marker: string) => {
@@ -193,11 +212,29 @@ const ChatArea = ({
       {/* Chat Header — layout clone Chatwoot: avatar + nome / inbox · Fechar detalhes | mute · share · Resolver */}
       <div className="h-14 shrink-0 border-b border-border flex items-center justify-between gap-3 px-4 bg-card">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <Avatar className="h-9 w-9 shrink-0">
-            <AvatarFallback className="text-[11px] font-semibold bg-muted text-foreground/70">
-              {conversation.initials.slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            className="relative group rounded-full shrink-0"
+            title="Trocar foto do contato"
+          >
+            <Avatar className="h-9 w-9">
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={conversation.contactName} />}
+              <AvatarFallback className="text-[11px] font-semibold bg-muted text-foreground/70">
+                {conversation.initials.slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[9px] font-medium text-white">
+              Trocar
+            </span>
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { handleAvatarPick(e.target.files?.[0]); e.currentTarget.value = ""; }}
+          />
           <div className="min-w-0 flex-1">
             <h3 className="text-[14px] font-semibold text-foreground truncate leading-tight">{conversation.contactName}</h3>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate mt-0.5">
@@ -393,7 +430,7 @@ const ChatArea = ({
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                Mensagem Privada
+                Notas
               </button>
             )}
           </div>
@@ -403,11 +440,11 @@ const ChatArea = ({
           {showFormat && (
           <div className="px-3 py-1.5 flex items-center gap-0.5 border-b border-border/60">
             <button onClick={() => wrapSelection("*")} title="Negrito (*texto*)"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Bold className="w-3 h-3" />
             </button>
             <button onClick={() => wrapSelection("_")} title="Itálico (_texto_)"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Italic className="w-3 h-3" />
             </button>
             <button
@@ -416,37 +453,37 @@ const ChatArea = ({
                 if (url) insertAtCursor(`[${url}](${url})`);
               }}
               title="Inserir link"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Link2 className="w-3 h-3" />
             </button>
             <div className="w-px h-3.5 bg-border mx-1" />
             <button
               onClick={() => document.execCommand?.("undo")}
               title="Desfazer"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Undo2 className="w-3 h-3" />
             </button>
             <button
               onClick={() => document.execCommand?.("redo")}
               title="Refazer"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Redo2 className="w-3 h-3" />
             </button>
             <div className="w-px h-3.5 bg-border mx-1" />
             <button
               onClick={() => insertAtCursor("\n• ")}
               title="Lista"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <List className="w-3 h-3" />
             </button>
             <button
               onClick={() => insertAtCursor("\n1. ")}
               title="Lista numerada"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <ListOrdered className="w-3 h-3" />
             </button>
             <button onClick={() => wrapSelection("```")} title="Código (```texto```)"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Code className="w-3 h-3" />
             </button>
             <button
@@ -461,7 +498,7 @@ const ChatArea = ({
                 }
               }}
               title="Expandir composer"
-              className="ml-auto w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
+              className="ml-auto w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition"
             >
               <Maximize2 className="w-3 h-3" />
             </button>
@@ -496,7 +533,7 @@ const ChatArea = ({
               <Popover>
                 <PopoverTrigger asChild>
                   <button title="Emoji"
-                    className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                    className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
                     <Smile className="w-4 h-4" />
                   </button>
                 </PopoverTrigger>
@@ -520,7 +557,7 @@ const ChatArea = ({
                 title="Anexar imagem ou documento"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!onAttach || attaching || composerMode === "note"}
-                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition disabled:opacity-40"
+                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition disabled:opacity-40"
               >
                 {attaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
               </button>
@@ -529,7 +566,7 @@ const ChatArea = ({
                 onClick={() => setShowFormat((v) => !v)}
                 className={cn(
                   "w-8 h-8 rounded-md grid place-items-center text-[13px] font-semibold transition",
-                  showFormat ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                  showFormat ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
                 )}
               >
                 Aa

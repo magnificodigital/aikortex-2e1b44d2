@@ -9,7 +9,9 @@
 import { Search, Inbox, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useEffect, useState } from "react";
+import { getConversationAvatar, subscribeAvatar } from "@/lib/conversation-avatars";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -91,6 +93,10 @@ const ConversationList = ({
   const unassignedCount = conversations.filter((c) => c.unread > 0).length;
   const activeFilters = (filter?.channel ? 1 : 0) + (filter?.tag ? 1 : 0) + (filter?.view === "unattended" ? 1 : 0);
 
+  // Re-render quando um avatar for trocado no header do chat.
+  const [avatarTick, setAvatarTick] = useState(0);
+  useEffect(() => subscribeAvatar(() => setAvatarTick((t) => t + 1)), []);
+
   const filtered = conversations
     .filter((c) => c.contactName.toLowerCase().includes(searchQuery.toLowerCase()))
     .filter((c) => {
@@ -116,7 +122,7 @@ const ConversationList = ({
                 title="Filtrar por canal, etiqueta e mais"
                 className={cn(
                   "ml-auto relative w-7 h-7 rounded-md grid place-items-center transition",
-                  activeFilters > 0 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                  activeFilters > 0 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
                 )}
               >
                 <Filter className="w-3.5 h-3.5" />
@@ -228,13 +234,14 @@ const ConversationList = ({
                     "w-[calc(100%-12px)] mx-1.5 my-0.5 flex items-center gap-3 px-2.5 py-2.5 text-left transition-colors rounded-xl border",
                     selected
                       ? "bg-accent border-primary/40"
-                      : "border-transparent hover:bg-accent/50",
+                      : "border-transparent hover:bg-muted/40/50",
                   )}
                 >
 
                   {/* Avatar com badge do canal */}
                   <div className="relative shrink-0 self-start mt-0.5">
                     <Avatar className="h-10 w-10">
+                      {(() => { const u = getConversationAvatar(conv.id); return u ? <AvatarImage src={u} alt={conv.contactName} /> : null; })()}
                       <AvatarFallback className="text-[11px] font-semibold bg-muted text-foreground/70">
                         {conv.initials.slice(0, 2)}
                       </AvatarFallback>
