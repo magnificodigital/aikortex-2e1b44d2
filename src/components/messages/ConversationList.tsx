@@ -22,8 +22,10 @@ import { cn } from "@/lib/utils";
 
 export interface InboxFilter {
   view: "all" | "unattended";
-  channel: string | null; // null = todos
-  tag: string | null;
+  /** Multi-select: canais marcados; vazio = todos. */
+  channels: string[];
+  /** Multi-select: etiquetas marcadas; vazio = todas. */
+  tags: string[];
 }
 
 export interface Conversation {
@@ -91,7 +93,9 @@ const ConversationList = ({
 }: ConversationListProps) => {
   const mineCount = conversations.filter((c) => (c.status ?? "open") === "open").length;
   const unassignedCount = conversations.filter((c) => c.unread > 0).length;
-  const activeFilters = (filter?.channel ? 1 : 0) + (filter?.tag ? 1 : 0) + (filter?.view === "unattended" ? 1 : 0);
+  const activeFilters = (filter?.channels?.length ?? 0) + (filter?.tags?.length ?? 0) + (filter?.view === "unattended" ? 1 : 0);
+  const toggleIn = (arr: string[], key: string, on: boolean) =>
+    on ? Array.from(new Set([...arr, key])) : arr.filter((x) => x !== key);
 
   // Re-render quando um avatar for trocado no header do chat.
   const [avatarTick, setAvatarTick] = useState(0);
@@ -139,9 +143,10 @@ const ConversationList = ({
                 <DropdownMenuCheckboxItem
                   key={c.key}
                   disabled={c.soon}
-                  checked={filter.channel === c.key}
-                  onCheckedChange={(v) => onFilterChange({ ...filter, channel: v ? c.key : null })}
+                  checked={filter.channels.includes(c.key)}
+                  onCheckedChange={(v) => onFilterChange({ ...filter, channels: toggleIn(filter.channels, c.key, !!v) })}
                   className="text-[13px] gap-2"
+                  onSelect={(e) => e.preventDefault()}
                 >
                   <span className={cn("w-2 h-2 rounded-full", c.dot, c.soon && "opacity-40")} />
                   {c.label}
@@ -153,6 +158,7 @@ const ConversationList = ({
                 checked={filter.view === "unattended"}
                 onCheckedChange={(v) => onFilterChange({ ...filter, view: v ? "unattended" : "all" })}
                 className="text-[13px]"
+                onSelect={(e) => e.preventDefault()}
               >
                 Só não atendidas
               </DropdownMenuCheckboxItem>
@@ -163,13 +169,25 @@ const ConversationList = ({
                   {availableTags.map((t) => (
                     <DropdownMenuCheckboxItem
                       key={t}
-                      checked={filter.tag === t}
-                      onCheckedChange={(v) => onFilterChange({ ...filter, tag: v ? t : null })}
+                      checked={filter.tags.includes(t)}
+                      onCheckedChange={(v) => onFilterChange({ ...filter, tags: toggleIn(filter.tags, t, !!v) })}
                       className="text-[13px]"
+                      onSelect={(e) => e.preventDefault()}
                     >
                       {t}
                     </DropdownMenuCheckboxItem>
                   ))}
+                </>
+              )}
+              {activeFilters > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <button
+                    onClick={() => onFilterChange({ view: "all", channels: [], tags: [] })}
+                    className="w-full text-left text-[12px] px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded-sm transition"
+                  >
+                    Limpar filtros
+                  </button>
                 </>
               )}
             </DropdownMenuContent>

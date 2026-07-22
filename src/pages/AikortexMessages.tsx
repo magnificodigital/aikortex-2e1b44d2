@@ -100,7 +100,7 @@ const AikortexMessages = () => {
   const [activeTab, setActiveTab] = useState("open");
   const [loading, setLoading] = useState(true);
   const [crmLead, setCrmLead] = useState<{ id: string; stage_slug: string | null; temperature: string | null; company: string | null; email: string | null; phone: string | null; custom_fields: Record<string, any> | null } | null>(null);
-  const [inboxFilter, setInboxFilter] = useState<InboxFilter>({ view: "all", channel: null, tag: null });
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>({ view: "all", channels: [], tags: [] });
   const [panelOpen, setPanelOpen] = useState(true);
   const [searchParams] = useSearchParams();
   const selectedRef = useRef<string | null>(null);
@@ -195,8 +195,8 @@ const AikortexMessages = () => {
 
   // Filtros do sub-sidebar (canal / etiqueta / nao atendidas) — REAIS.
   const filteredRows = rows.filter((r) => {
-    if (inboxFilter.channel && r.channel !== inboxFilter.channel) return false;
-    if (inboxFilter.tag && !(r.tags ?? []).includes(inboxFilter.tag)) return false;
+    if (inboxFilter.channels.length && !inboxFilter.channels.includes(r.channel)) return false;
+    if (inboxFilter.tags.length && !inboxFilter.tags.some((t) => (r.tags ?? []).includes(t))) return false;
     if (inboxFilter.view === "unattended" && r.unread_count === 0) return false;
     return true;
   });
