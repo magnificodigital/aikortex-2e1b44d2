@@ -256,28 +256,6 @@ const ChatArea = ({
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {onToggleAi && <AiToggleButton aiEnabled={aiEnabled} onToggle={onToggleAi} />}
-          {onToggleMute && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              onClick={onToggleMute}
-              title={muted ? "Reativar notificações" : "Silenciar conversa"}
-            >
-              {muted ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </Button>
-          )}
-          {onShare && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              onClick={onShare}
-              title="Copiar link da conversa"
-            >
-              <Share2 className="w-4 h-4" />
-            </Button>
-          )}
           {onToggleResolve && (
             <div className="flex ml-1">
               <Button
