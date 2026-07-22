@@ -143,9 +143,10 @@ const ConversationList = ({
                 <DropdownMenuCheckboxItem
                   key={c.key}
                   disabled={c.soon}
-                  checked={filter.channel === c.key}
-                  onCheckedChange={(v) => onFilterChange({ ...filter, channel: v ? c.key : null })}
+                  checked={filter.channels.includes(c.key)}
+                  onCheckedChange={(v) => onFilterChange({ ...filter, channels: toggleIn(filter.channels, c.key, !!v) })}
                   className="text-[13px] gap-2"
+                  onSelect={(e) => e.preventDefault()}
                 >
                   <span className={cn("w-2 h-2 rounded-full", c.dot, c.soon && "opacity-40")} />
                   {c.label}
