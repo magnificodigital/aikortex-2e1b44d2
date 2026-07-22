@@ -93,6 +93,10 @@ const ConversationList = ({
   const unassignedCount = conversations.filter((c) => c.unread > 0).length;
   const activeFilters = (filter?.channel ? 1 : 0) + (filter?.tag ? 1 : 0) + (filter?.view === "unattended" ? 1 : 0);
 
+  // Re-render quando um avatar for trocado no header do chat.
+  const [avatarTick, setAvatarTick] = useState(0);
+  useEffect(() => subscribeAvatar(() => setAvatarTick((t) => t + 1)), []);
+
   const filtered = conversations
     .filter((c) => c.contactName.toLowerCase().includes(searchQuery.toLowerCase()))
     .filter((c) => {
