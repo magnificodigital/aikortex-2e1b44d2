@@ -195,8 +195,8 @@ const AikortexMessages = () => {
 
   // Filtros do sub-sidebar (canal / etiqueta / nao atendidas) — REAIS.
   const filteredRows = rows.filter((r) => {
-    if (inboxFilter.channel && r.channel !== inboxFilter.channel) return false;
-    if (inboxFilter.tag && !(r.tags ?? []).includes(inboxFilter.tag)) return false;
+    if (inboxFilter.channels.length && !inboxFilter.channels.includes(r.channel)) return false;
+    if (inboxFilter.tags.length && !inboxFilter.tags.some((t) => (r.tags ?? []).includes(t))) return false;
     if (inboxFilter.view === "unattended" && r.unread_count === 0) return false;
     return true;
   });
