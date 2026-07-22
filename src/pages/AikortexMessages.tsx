@@ -483,7 +483,7 @@ const AikortexMessages = () => {
       <ModuleGate moduleKey="aikortex.mensagens">
       <div className="h-[calc(100vh-0px)] flex overflow-hidden -m-0">
         {loading ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+          <div className="flex-1 flex items-center justify-center text-[14px] text-muted-foreground">
             Carregando conversas...
           </div>
         ) : (

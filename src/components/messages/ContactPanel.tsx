@@ -85,11 +85,11 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
     return (
       <div className="w-[300px] min-w-[260px] border-l border-border bg-card flex flex-col h-full">
         <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contato</span>
+          <span className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Contato</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6 text-center">
           <MessageSquare className="w-7 h-7 text-muted-foreground/30" />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             Os dados do contato e o lead do CRM aparecem aqui ao selecionar uma conversa.
           </p>
         </div>
@@ -106,7 +106,7 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
       {/* Header — só Contato (Copilot removido; o AI Assist do composer já
           cobre a IA, sem amontoar um segundo surface aqui). */}
       <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
-        <p className="text-sm font-semibold text-foreground">Contato</p>
+        <p className="text-[14px] font-semibold text-foreground">Contato</p>
       </div>
 
         <ScrollArea className="flex-1">
@@ -114,7 +114,7 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
             {/* Header do contato */}
             <div className="flex flex-col items-center text-center space-y-2">
               <Avatar className="h-14 w-14">
-                <AvatarFallback className="text-base font-semibold bg-muted text-muted-foreground">
+                <AvatarFallback className="text-[15px] font-semibold bg-muted text-muted-foreground">
                   {contact.initials.slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
@@ -125,7 +125,7 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
                 campos" (campos já preenchidos aparecem sempre). Menos parede
                 de "+ Adicionar" quando o lead é novo. */}
             <section className="space-y-2.5">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Informações</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Informações</p>
               <EditableRow icon={Mail} label="Email" value={contact.email}
                 onSave={onSaveContact ? (v) => onSaveContact({ email: v }) : undefined} />
               <EditableRow icon={Phone} label="Telefone" value={contact.phone}
@@ -154,9 +154,9 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
 
             {/* CRM — inclui/edita a etapa direto daqui */}
             <section className="space-y-2">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">CRM</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">CRM</p>
               <div className="space-y-1.5">
-                <p className="text-[10px] text-muted-foreground">Etapa no funil</p>
+                <p className="text-[11px] text-muted-foreground">Etapa no funil</p>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full h-8 justify-between text-[11px]">
@@ -178,20 +178,20 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
                       <DropdownMenuItem
                         key={s.slug}
                         onClick={() => onSaveContact?.({ stage_slug: s.slug })}
-                        className="text-xs gap-2"
+                        className="text-[13px] gap-2"
                       >
                         <span className="w-2 h-2 rounded-full" style={{ background: s.color || "hsl(var(--muted-foreground))" }} />
                         {s.name}
                       </DropdownMenuItem>
                     ))}
                     {stages.length === 0 && (
-                      <DropdownMenuItem disabled className="text-xs">Sem etapas configuradas</DropdownMenuItem>
+                      <DropdownMenuItem disabled className="text-[13px]">Sem etapas configuradas</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
               {contact.crm?.temperature && TEMP_LABEL[contact.crm.temperature] && (
-                <Badge variant="outline" className={cn("text-[10px] h-5 gap-1", TEMP_LABEL[contact.crm.temperature].className)}>
+                <Badge variant="outline" className={cn("text-[11px] h-5 gap-1", TEMP_LABEL[contact.crm.temperature].className)}>
                   <Flame className="w-2.5 h-2.5" />
                   {TEMP_LABEL[contact.crm.temperature].label}
                 </Badge>
@@ -208,7 +208,7 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
             {/* Etiquetas — agora vivem aqui, não em cima das mensagens */}
             {onTagsChange && (
               <section className="space-y-2">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Etiquetas</p>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Etiquetas</p>
                 <TagsEditor tags={tags} onChange={onTagsChange} />
               </section>
             )}
@@ -294,7 +294,7 @@ const CopilotTab = ({ context }: { context?: string }) => {
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") ask(); }}
           placeholder="Pergunte ao Stark…"
-          className="h-8 text-xs"
+          className="h-8 text-[13px]"
         />
         <Button size="icon" className="h-8 w-8 shrink-0" onClick={ask} disabled={!question.trim() || asking}>
           <Send className="w-3.5 h-3.5" />
@@ -308,7 +308,7 @@ const NameEditor = ({ name, onSave }: { name: string; onSave?: (v: string) => vo
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
 
-  if (!onSave) return <h3 className="text-sm font-bold text-foreground">{name}</h3>;
+  if (!onSave) return <h3 className="text-[14px] font-bold text-foreground">{name}</h3>;
   if (editing) {
     return (
       <input
@@ -320,13 +320,13 @@ const NameEditor = ({ name, onSave }: { name: string; onSave?: (v: string) => vo
           if (e.key === "Escape") setEditing(false);
         }}
         onBlur={() => { setEditing(false); if (draft.trim() && draft.trim() !== name) onSave(draft.trim()); }}
-        className="text-sm font-bold bg-muted rounded px-2 py-0.5 outline-none border border-border focus:border-primary/50 text-center w-44"
+        className="text-[14px] font-bold bg-muted rounded px-2 py-0.5 outline-none border border-border focus:border-primary/50 text-center w-44"
       />
     );
   }
   return (
     <span className="inline-flex items-center gap-1">
-      <h3 className="text-sm font-bold text-foreground">{name}</h3>
+      <h3 className="text-[14px] font-bold text-foreground">{name}</h3>
       <Button variant="ghost" size="icon" className="h-5 w-5" title="Editar nome"
         onClick={() => { setDraft(name); setEditing(true); }}>
         <Pencil className="w-2.5 h-2.5 text-muted-foreground" />
@@ -352,7 +352,7 @@ const EditableRow = ({ icon: Icon, label, value, onSave }: {
     <div className="flex items-center gap-2.5">
       <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] text-muted-foreground">{label}</p>
+        <p className="text-[11px] text-muted-foreground">{label}</p>
         {editing ? (
           <input
             autoFocus
@@ -420,7 +420,7 @@ const TagsEditor = ({ tags, onChange }: { tags: string[]; onChange: (t: string[]
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {tags.map((t) => (
-            <Badge key={t} variant="secondary" className="text-[10px] h-5 gap-1 pr-1">
+            <Badge key={t} variant="secondary" className="text-[11px] h-5 gap-1 pr-1">
               {t}
               <button
                 onClick={() => onChange(tags.filter((x) => x !== t))}

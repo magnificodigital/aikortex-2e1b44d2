@@ -103,9 +103,9 @@ const ConversationList = ({
     <div className="w-[340px] min-w-[300px] border-r border-border bg-card flex flex-col h-full">
       {/* Header — mesma altura dos outros paineis (h-14) + funil de filtros */}
       <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
-        <h2 className="text-sm font-semibold text-foreground">Conversas</h2>
+        <h2 className="text-[14px] font-semibold text-foreground">Conversas</h2>
         {unassignedCount > 0 && (
-          <Badge className="ml-2 h-5 px-1.5 text-[10px] bg-primary text-primary-foreground rounded-full">
+          <Badge className="ml-2 h-5 px-1.5 text-[11px] bg-primary text-primary-foreground rounded-full">
             {unassignedCount}
           </Badge>
         )}
@@ -121,45 +121,45 @@ const ConversationList = ({
               >
                 <Filter className="w-3.5 h-3.5" />
                 {activeFilters > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold grid place-items-center">
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold grid place-items-center">
                     {activeFilters}
                   </span>
                 )}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider">Canal</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-[11px] uppercase tracking-wider">Canal</DropdownMenuLabel>
               {FILTER_CHANNELS.map((c) => (
                 <DropdownMenuCheckboxItem
                   key={c.key}
                   disabled={c.soon}
                   checked={filter.channel === c.key}
                   onCheckedChange={(v) => onFilterChange({ ...filter, channel: v ? c.key : null })}
-                  className="text-xs gap-2"
+                  className="text-[13px] gap-2"
                 >
                   <span className={cn("w-2 h-2 rounded-full", c.dot, c.soon && "opacity-40")} />
                   {c.label}
                 </DropdownMenuCheckboxItem>
               ))}
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider">Status</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-[11px] uppercase tracking-wider">Status</DropdownMenuLabel>
               <DropdownMenuCheckboxItem
                 checked={filter.view === "unattended"}
                 onCheckedChange={(v) => onFilterChange({ ...filter, view: v ? "unattended" : "all" })}
-                className="text-xs"
+                className="text-[13px]"
               >
                 Só não atendidas
               </DropdownMenuCheckboxItem>
               {availableTags.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider">Etiqueta</DropdownMenuLabel>
+                  <DropdownMenuLabel className="text-[11px] uppercase tracking-wider">Etiqueta</DropdownMenuLabel>
                   {availableTags.map((t) => (
                     <DropdownMenuCheckboxItem
                       key={t}
                       checked={filter.tag === t}
                       onCheckedChange={(v) => onFilterChange({ ...filter, tag: v ? t : null })}
-                      className="text-xs"
+                      className="text-[13px]"
                     >
                       {t}
                     </DropdownMenuCheckboxItem>
@@ -179,19 +179,19 @@ const ConversationList = ({
               value="open"
               className="relative h-8 px-0 text-[11px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
             >
-              Abertas <span className="ml-1 text-[10px] opacity-70">· {mineCount}</span>
+              Abertas <span className="ml-1 text-[11px] opacity-70">· {mineCount}</span>
             </TabsTrigger>
             <TabsTrigger
               value="unread"
               className="relative h-8 px-0 text-[11px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
             >
-              Não lidas <span className="ml-1 text-[10px] opacity-70">· {unassignedCount}</span>
+              Não lidas <span className="ml-1 text-[11px] opacity-70">· {unassignedCount}</span>
             </TabsTrigger>
             <TabsTrigger
               value="all"
               className="relative h-8 px-0 text-[11px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
             >
-              Todas <span className="ml-1 text-[10px] opacity-70">· {conversations.length}</span>
+              Todas <span className="ml-1 text-[11px] opacity-70">· {conversations.length}</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -201,7 +201,7 @@ const ConversationList = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar conversas…"
-            className="pl-8 h-8 text-xs bg-background"
+            className="pl-8 h-8 text-[13px] bg-background"
           />
         </div>
       </div>
@@ -211,7 +211,7 @@ const ConversationList = ({
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-16 text-center px-6">
             <Inbox className="w-8 h-8 text-muted-foreground/40" />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               {searchQuery ? "Nada encontrado nessa busca." : "Nenhuma conversa aqui."}
             </p>
           </div>
@@ -240,7 +240,7 @@ const ConversationList = ({
                       </AvatarFallback>
                     </Avatar>
                     <span className={cn(
-                      "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold",
+                      "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full text-[11px] font-bold",
                       "flex items-center justify-center ring-2 ring-card",
                       ch.className,
                     )}>
@@ -251,26 +251,26 @@ const ConversationList = ({
                   <div className="flex-1 min-w-0">
                     {/* Linha do inbox (canal) + tempo "criada • ultima" */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] text-muted-foreground truncate">{conv.inbox}</span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">
+                      <span className="text-[11px] text-muted-foreground truncate">{conv.inbox}</span>
+                      <span className="text-[11px] text-muted-foreground shrink-0">
                         {conv.createdAgo ? `${conv.createdAgo} • ` : ""}{conv.time}
                       </span>
                     </div>
                     <p className={cn(
-                      "text-sm truncate mt-0.5",
+                      "text-[14px] truncate mt-0.5",
                       conv.unread > 0 ? "font-semibold text-foreground" : "font-medium text-foreground/90",
                     )}>
                       {conv.contactName}
                     </p>
                     <div className="flex items-center justify-between gap-2 mt-0.5">
                       <p className={cn(
-                        "text-xs truncate",
+                        "text-[13px] truncate",
                         conv.unread > 0 ? "text-foreground/80" : "text-muted-foreground",
                       )}>
                         {conv.lastOutgoing ? "↩ " : ""}{conv.lastMessage}
                       </p>
                       {conv.unread > 0 && (
-                        <span className="shrink-0 h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold grid place-items-center">
+                        <span className="shrink-0 h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold grid place-items-center">
                           {conv.unread}
                         </span>
                       )}
@@ -278,12 +278,12 @@ const ConversationList = ({
                     {conv.labels && conv.labels.length > 0 && (
                       <div className="flex items-center gap-1 mt-1 flex-wrap">
                         {conv.labels.slice(0, 3).map((l) => (
-                          <span key={l.name} className="inline-flex items-center h-4 px-1.5 rounded bg-primary/10 text-primary text-[10px] font-medium">
+                          <span key={l.name} className="inline-flex items-center h-4 px-1.5 rounded bg-primary/10 text-primary text-[11px] font-medium">
                             {l.name}
                           </span>
                         ))}
                         {conv.labels.length > 3 && (
-                          <span className="text-[10px] text-muted-foreground">+{conv.labels.length - 3}</span>
+                          <span className="text-[11px] text-muted-foreground">+{conv.labels.length - 3}</span>
                         )}
                       </div>
                     )}

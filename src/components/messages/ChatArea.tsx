@@ -182,7 +182,7 @@ const ChatArea = ({
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
             <Bot className="w-8 h-8 text-muted-foreground/50" />
           </div>
-          <p className="text-sm text-muted-foreground">Selecione uma conversa para começar</p>
+          <p className="text-[14px] text-muted-foreground">Selecione uma conversa para começar</p>
         </div>
       </div>
     );
@@ -199,7 +199,7 @@ const ChatArea = ({
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-foreground truncate leading-tight">{conversation.contactName}</h3>
+            <h3 className="text-[14px] font-semibold text-foreground truncate leading-tight">{conversation.contactName}</h3>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate mt-0.5">
               <Globe className="w-3 h-3 shrink-0" />
               <span className="truncate">{conversation.inbox}</span>
@@ -264,13 +264,13 @@ const ChatArea = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onSetStatus?.("open")} className="text-xs gap-2">
+                  <DropdownMenuItem onClick={() => onSetStatus?.("open")} className="text-[13px] gap-2">
                     <RotateCcw className="w-3 h-3" /> Marcar como aberta
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onSetStatus?.("waiting_client")} className="text-xs gap-2">
+                  <DropdownMenuItem onClick={() => onSetStatus?.("waiting_client")} className="text-[13px] gap-2">
                     <Clock className="w-3 h-3" /> Aguardando cliente
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onSetStatus?.("resolved")} className="text-xs gap-2">
+                  <DropdownMenuItem onClick={() => onSetStatus?.("resolved")} className="text-[13px] gap-2">
                     <CheckCircle2 className="w-3 h-3" /> Resolver
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -288,14 +288,14 @@ const ChatArea = ({
           {messages.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
               <Bot className="w-8 h-8 text-muted-foreground/40" />
-              <p className="text-xs text-muted-foreground">Sem mensagens ainda nesta conversa.</p>
+              <p className="text-[13px] text-muted-foreground">Sem mensagens ainda nesta conversa.</p>
             </div>
           )}
           {messages.map((msg, i) => {
             if (msg.sender === "system") {
               return (
                 <div key={msg.id} className="flex justify-center py-2">
-                  <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                  <span className="text-[11px] text-muted-foreground bg-muted px-3 py-1 rounded-full">
                     {msg.text}
                   </span>
                 </div>
@@ -306,12 +306,12 @@ const ChatArea = ({
             if (msg.isPrivate) {
               return (
                 <div key={msg.id} className="flex justify-center py-1.5">
-                  <div className="max-w-[80%] rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2 text-sm text-foreground">
-                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-600 mb-0.5">
+                  <div className="max-w-[80%] rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2 text-[14px] text-foreground">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 mb-0.5">
                       <Lock className="w-2.5 h-2.5" /> Nota interna
                     </div>
                     <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-                    <p className="text-[10px] text-muted-foreground text-right mt-0.5">{msg.time}</p>
+                    <p className="text-[11px] text-muted-foreground text-right mt-0.5">{msg.time}</p>
                   </div>
                 </div>
               );
@@ -328,7 +328,7 @@ const ChatArea = ({
               <div className="w-7 shrink-0 self-end">
                 {lastOfGroup && (
                   <div className={cn(
-                    "w-7 h-7 rounded-full grid place-items-center text-[10px] font-semibold",
+                    "w-7 h-7 rounded-full grid place-items-center text-[11px] font-semibold",
                     isOutgoing ? "bg-primary/15 text-primary" : "bg-foreground/10 text-muted-foreground",
                   )}>
                     {isOutgoing ? <Bot className="w-3.5 h-3.5" /> : (conversation?.initials ?? "?")}
@@ -351,7 +351,7 @@ const ChatArea = ({
                     "flex items-center justify-end gap-1 mt-0.5 -mb-0.5 select-none",
                     isOutgoing ? "text-primary-foreground/60" : "text-muted-foreground/70",
                   )}>
-                    <span className="text-[10px]">{msg.time}</span>
+                    <span className="text-[11px]">{msg.time}</span>
                     {isOutgoing && msg.status && getStatusIcon(msg.status)}
                   </div>
                 </div>
@@ -485,7 +485,7 @@ const ChatArea = ({
                 : "Shift + Enter para nova linha…"
             }
             className={cn(
-              "w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground resize-none leading-relaxed px-3 py-2.5 max-h-[130px]",
+              "w-full bg-transparent text-[14px] outline-none placeholder:text-muted-foreground resize-none leading-relaxed px-3 py-2.5 max-h-[130px]",
               composerMode === "note" && "bg-amber-500/5",
             )}
           />
@@ -558,7 +558,7 @@ const ChatArea = ({
                 size="sm"
                 onClick={handleSend}
                 disabled={!input.trim()}
-                className={cn("h-8 text-xs gap-1", composerMode === "note" && "bg-amber-600 hover:bg-amber-700 text-white")}
+                className={cn("h-8 text-[13px] gap-1", composerMode === "note" && "bg-amber-600 hover:bg-amber-700 text-white")}
               >
                 {composerMode === "note" ? "Salvar nota" : <>Enviar <span className="opacity-70">(↵)</span></>}
               </Button>
