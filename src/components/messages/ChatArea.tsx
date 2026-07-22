@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Conversation } from "./ConversationList";
+import EmojiPicker from "./EmojiPicker";
 
 export interface ChatMessage {
   id: string;
@@ -245,7 +246,7 @@ const ChatArea = ({
               <Button
                 size="sm"
                 variant={isResolved ? "outline" : "default"}
-                className="h-8 text-[12px] font-medium gap-1.5 rounded-r-none px-3"
+                className="h-8 text-[11px] font-medium gap-1.5 rounded-r-none px-3"
                 onClick={onToggleResolve}
               >
                 {isResolved
@@ -374,7 +375,7 @@ const ChatArea = ({
             <button
               onClick={() => setComposerMode("reply")}
               className={cn(
-                "relative h-9 text-[12px] font-medium transition",
+                "relative h-9 text-[11px] font-medium transition",
                 composerMode === "reply"
                   ? "text-foreground after:absolute after:left-0 after:right-0 after:-bottom-px after:h-[2px] after:bg-primary"
                   : "text-muted-foreground hover:text-foreground",
@@ -386,7 +387,7 @@ const ChatArea = ({
               <button
                 onClick={() => setComposerMode("note")}
                 className={cn(
-                  "relative h-9 text-[12px] font-medium transition",
+                  "relative h-9 text-[11px] font-medium transition",
                   composerMode === "note"
                     ? "text-amber-600 after:absolute after:left-0 after:right-0 after:-bottom-px after:h-[2px] after:bg-amber-500"
                     : "text-muted-foreground hover:text-foreground",
@@ -499,15 +500,8 @@ const ChatArea = ({
                     <Smile className="w-4 h-4" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent side="top" align="start" className="w-56 p-2">
-                  <div className="grid grid-cols-8 gap-0.5">
-                    {EMOJIS.map((e) => (
-                      <button key={e} onClick={() => insertAtCursor(e)}
-                        className="w-6 h-6 rounded grid place-items-center hover:bg-accent text-base">
-                        {e}
-                      </button>
-                    ))}
-                  </div>
+                <PopoverContent side="top" align="start" className="w-auto p-1.5">
+                  <EmojiPicker onPick={insertAtCursor} />
                 </PopoverContent>
               </Popover>
               {/* Anexar imagem/documento — sobe pro storage e envia como mídia */}

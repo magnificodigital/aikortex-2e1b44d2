@@ -121,7 +121,7 @@ const ConversationList = ({
               >
                 <Filter className="w-3.5 h-3.5" />
                 {activeFilters > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-primary-foreground text-[8px] font-bold grid place-items-center">
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold grid place-items-center">
                     {activeFilters}
                   </span>
                 )}
@@ -177,19 +177,19 @@ const ConversationList = ({
           <TabsList className="w-full h-8 bg-transparent p-0 gap-4 rounded-none border-b border-border justify-start">
             <TabsTrigger
               value="open"
-              className="relative h-8 px-0 text-[12px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
+              className="relative h-8 px-0 text-[11px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
             >
               Abertas <span className="ml-1 text-[10px] opacity-70">· {mineCount}</span>
             </TabsTrigger>
             <TabsTrigger
               value="unread"
-              className="relative h-8 px-0 text-[12px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
+              className="relative h-8 px-0 text-[11px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
             >
               Não lidas <span className="ml-1 text-[10px] opacity-70">· {unassignedCount}</span>
             </TabsTrigger>
             <TabsTrigger
               value="all"
-              className="relative h-8 px-0 text-[12px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
+              className="relative h-8 px-0 text-[11px] font-medium rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-muted-foreground data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-[9px] data-[state=active]:after:h-[2px] data-[state=active]:after:bg-primary"
             >
               Todas <span className="ml-1 text-[10px] opacity-70">· {conversations.length}</span>
             </TabsTrigger>
@@ -240,7 +240,7 @@ const ConversationList = ({
                       </AvatarFallback>
                     </Avatar>
                     <span className={cn(
-                      "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full text-[7px] font-bold",
+                      "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold",
                       "flex items-center justify-center ring-2 ring-card",
                       ch.className,
                     )}>
@@ -278,12 +278,12 @@ const ConversationList = ({
                     {conv.labels && conv.labels.length > 0 && (
                       <div className="flex items-center gap-1 mt-1 flex-wrap">
                         {conv.labels.slice(0, 3).map((l) => (
-                          <span key={l.name} className="inline-flex items-center h-4 px-1.5 rounded bg-primary/10 text-primary text-[9px] font-medium">
+                          <span key={l.name} className="inline-flex items-center h-4 px-1.5 rounded bg-primary/10 text-primary text-[10px] font-medium">
                             {l.name}
                           </span>
                         ))}
                         {conv.labels.length > 3 && (
-                          <span className="text-[9px] text-muted-foreground">+{conv.labels.length - 3}</span>
+                          <span className="text-[10px] text-muted-foreground">+{conv.labels.length - 3}</span>
                         )}
                       </div>
                     )}

@@ -103,33 +103,12 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
 
   return (
     <div className="w-[300px] min-w-[260px] border-l border-border bg-card flex flex-col h-full overflow-hidden">
-      {/* Tabs Contato | Copilot */}
-      <div className="h-14 shrink-0 px-3 flex items-center border-b border-border">
-        <div className="flex w-full bg-muted/50 rounded-lg p-0.5">
-          <button
-            onClick={() => setTab("contact")}
-            className={cn(
-              "flex-1 h-8 rounded-md text-xs font-medium transition",
-              tab === "contact" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Contato
-          </button>
-          <button
-            onClick={() => setTab("copilot")}
-            className={cn(
-              "flex-1 h-8 rounded-md text-xs font-medium transition flex items-center justify-center gap-1",
-              tab === "copilot" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Sparkles className="w-3 h-3" /> Copilot
-          </button>
-        </div>
+      {/* Header — só Contato (Copilot removido; o AI Assist do composer já
+          cobre a IA, sem amontoar um segundo surface aqui). */}
+      <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
+        <p className="text-sm font-semibold text-foreground">Contato</p>
       </div>
 
-      {tab === "copilot" ? (
-        <CopilotTab context={copilotContext} />
-      ) : (
         <ScrollArea className="flex-1">
           <div className="p-5 space-y-6">
             {/* Header do contato */}
@@ -235,7 +214,6 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
             )}
           </div>
         </ScrollArea>
-      )}
     </div>
   );
 };
