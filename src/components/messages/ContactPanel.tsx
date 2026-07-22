@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import {
   Mail, Phone, MapPin, Globe, Building, Copy, MessageSquare, Flame,
   ArrowUpRight, X, Plus, Sparkles, Loader2, Send, Pencil, FileText,
-  Instagram, Linkedin, MessageCircle, ChevronDown,
+  Instagram, Linkedin, ChevronDown,
 } from "lucide-react";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,7 +133,7 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
                 onSave={onSaveContact ? (v) => onSaveContact({ phone: v }) : undefined} />
               <EditableRow icon={Building} label="Empresa" value={contact.company || "—"}
                 onSave={onSaveContact ? (v) => onSaveContact({ company: v }) : undefined} />
-              {(showMore || cf.whatsapp) && <EditableRow icon={MessageCircle} label="WhatsApp" value={cf.whatsapp || "—"}
+              {(showMore || cf.whatsapp) && <EditableRow icon={WhatsAppIcon} label="WhatsApp" value={cf.whatsapp || "—"}
                 onSave={onSaveContact ? (v) => saveCustom("whatsapp", v) : undefined} />}
               {(showMore || cf.cnpj) && <EditableRow icon={FileText} label="CNPJ" value={cf.cnpj || "—"}
                 onSave={onSaveContact ? (v) => saveCustom("cnpj", v) : undefined} />}
