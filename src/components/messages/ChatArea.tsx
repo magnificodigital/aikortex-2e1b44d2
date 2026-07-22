@@ -73,7 +73,7 @@ const AiToggleButton = ({ aiEnabled, onToggle }: { aiEnabled: boolean; onToggle:
       "flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium transition-all border",
       aiEnabled
         ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20"
-        : "bg-muted text-muted-foreground border-border hover:bg-accent"
+        : "bg-muted text-muted-foreground border-border hover:bg-muted/40"
     )}
     title={aiEnabled ? "Agente de IA respondendo — clique pra assumir a conversa" : "Você assumiu — clique pra devolver pra IA"}
   >
@@ -403,11 +403,11 @@ const ChatArea = ({
           {showFormat && (
           <div className="px-3 py-1.5 flex items-center gap-0.5 border-b border-border/60">
             <button onClick={() => wrapSelection("*")} title="Negrito (*texto*)"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Bold className="w-3 h-3" />
             </button>
             <button onClick={() => wrapSelection("_")} title="Itálico (_texto_)"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Italic className="w-3 h-3" />
             </button>
             <button
@@ -416,37 +416,37 @@ const ChatArea = ({
                 if (url) insertAtCursor(`[${url}](${url})`);
               }}
               title="Inserir link"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Link2 className="w-3 h-3" />
             </button>
             <div className="w-px h-3.5 bg-border mx-1" />
             <button
               onClick={() => document.execCommand?.("undo")}
               title="Desfazer"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Undo2 className="w-3 h-3" />
             </button>
             <button
               onClick={() => document.execCommand?.("redo")}
               title="Refazer"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Redo2 className="w-3 h-3" />
             </button>
             <div className="w-px h-3.5 bg-border mx-1" />
             <button
               onClick={() => insertAtCursor("\n• ")}
               title="Lista"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <List className="w-3 h-3" />
             </button>
             <button
               onClick={() => insertAtCursor("\n1. ")}
               title="Lista numerada"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <ListOrdered className="w-3 h-3" />
             </button>
             <button onClick={() => wrapSelection("```")} title="Código (```texto```)"
-              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+              className="w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
               <Code className="w-3 h-3" />
             </button>
             <button
@@ -461,7 +461,7 @@ const ChatArea = ({
                 }
               }}
               title="Expandir composer"
-              className="ml-auto w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
+              className="ml-auto w-6 h-6 rounded grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition"
             >
               <Maximize2 className="w-3 h-3" />
             </button>
@@ -496,7 +496,7 @@ const ChatArea = ({
               <Popover>
                 <PopoverTrigger asChild>
                   <button title="Emoji"
-                    className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                    className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition">
                     <Smile className="w-4 h-4" />
                   </button>
                 </PopoverTrigger>
@@ -520,7 +520,7 @@ const ChatArea = ({
                 title="Anexar imagem ou documento"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!onAttach || attaching || composerMode === "note"}
-                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition disabled:opacity-40"
+                className="w-8 h-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition disabled:opacity-40"
               >
                 {attaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
               </button>
@@ -529,7 +529,7 @@ const ChatArea = ({
                 onClick={() => setShowFormat((v) => !v)}
                 className={cn(
                   "w-8 h-8 rounded-md grid place-items-center text-[13px] font-semibold transition",
-                  showFormat ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                  showFormat ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
                 )}
               >
                 Aa
