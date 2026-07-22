@@ -430,7 +430,7 @@ const ChatArea = ({
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                Mensagem Privada
+                Notas
               </button>
             )}
           </div>
