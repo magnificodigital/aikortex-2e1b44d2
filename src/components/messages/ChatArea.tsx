@@ -212,11 +212,29 @@ const ChatArea = ({
       {/* Chat Header — layout clone Chatwoot: avatar + nome / inbox · Fechar detalhes | mute · share · Resolver */}
       <div className="h-14 shrink-0 border-b border-border flex items-center justify-between gap-3 px-4 bg-card">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <Avatar className="h-9 w-9 shrink-0">
-            <AvatarFallback className="text-[11px] font-semibold bg-muted text-foreground/70">
-              {conversation.initials.slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            className="relative group rounded-full shrink-0"
+            title="Trocar foto do contato"
+          >
+            <Avatar className="h-9 w-9">
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={conversation.contactName} />}
+              <AvatarFallback className="text-[11px] font-semibold bg-muted text-foreground/70">
+                {conversation.initials.slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[9px] font-medium text-white">
+              Trocar
+            </span>
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { handleAvatarPick(e.target.files?.[0]); e.currentTarget.value = ""; }}
+          />
           <div className="min-w-0 flex-1">
             <h3 className="text-[14px] font-semibold text-foreground truncate leading-tight">{conversation.contactName}</h3>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate mt-0.5">
