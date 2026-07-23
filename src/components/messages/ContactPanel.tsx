@@ -84,7 +84,7 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
 
   if (!contact) {
     return (
-      <div className="hidden lg:flex w-[300px] min-w-[260px] border-l border-border bg-card flex-col h-full">
+      <div className="flex w-full lg:w-[300px] lg:min-w-[260px] border-l border-border bg-card flex-col h-full">
         <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">
           <span className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Contato</span>
         </div>
@@ -103,7 +103,7 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
   const currentStage = stages.find((s) => s.slug === contact.crm?.stage);
 
   return (
-    <div className="hidden lg:flex w-[300px] min-w-[260px] border-l border-border bg-card flex-col h-full overflow-hidden">
+    <div className="flex w-full lg:w-[300px] lg:min-w-[260px] border-l border-border bg-card flex-col h-full overflow-hidden">
       {/* Header — só Contato (Copilot removido; o AI Assist do composer já
           cobre a IA, sem amontoar um segundo surface aqui). */}
       <div className="h-14 shrink-0 px-4 flex items-center border-b border-border">

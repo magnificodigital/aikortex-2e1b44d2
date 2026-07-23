@@ -101,7 +101,9 @@ const AikortexMessages = () => {
   const [loading, setLoading] = useState(true);
   const [crmLead, setCrmLead] = useState<{ id: string; stage_slug: string | null; temperature: string | null; company: string | null; email: string | null; phone: string | null; custom_fields: Record<string, any> | null } | null>(null);
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>({ view: "all", channels: [], tags: [] });
-  const [panelOpen, setPanelOpen] = useState(true);
+  // Desktop (lg+): painel inline aberto por padrão. Mobile/tablet: o painel
+  // é um drawer — começa fechado pra não cobrir o chat ao abrir a conversa.
+  const [panelOpen, setPanelOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
   const [searchParams] = useSearchParams();
   const selectedRef = useRef<string | null>(null);
   useEffect(() => { selectedRef.current = selectedConv; }, [selectedConv]);
@@ -532,14 +534,24 @@ const AikortexMessages = () => {
               attaching={attaching}
             />
             </div>
+            {/* Coluna 3 — Contato. Desktop (lg+): inline. Mobile/tablet:
+                drawer deslizando da direita, com backdrop. */}
             {panelOpen && (
-              <ContactPanel
-                contact={contact}
-                copilotContext={copilotContext}
-                tags={selectedRow?.tags ?? []}
-                onTagsChange={selectedRow ? updateTags : undefined}
-                onSaveContact={selectedRow ? saveContact : undefined}
-              />
+              <>
+                <div
+                  className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+                  onClick={() => setPanelOpen(false)}
+                />
+                <div className="fixed inset-y-0 right-0 z-40 w-[85vw] max-w-[360px] shadow-2xl lg:static lg:z-auto lg:w-auto lg:max-w-none lg:shadow-none">
+                  <ContactPanel
+                    contact={contact}
+                    copilotContext={copilotContext}
+                    tags={selectedRow?.tags ?? []}
+                    onTagsChange={selectedRow ? updateTags : undefined}
+                    onSaveContact={selectedRow ? saveContact : undefined}
+                  />
+                </div>
+              </>
             )}
           </>
         )}
