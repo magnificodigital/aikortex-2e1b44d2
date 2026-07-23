@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { getConversationAvatar, setConversationAvatar, subscribeAvatar, fileToDataUrl } from "@/lib/conversation-avatars";
 import {
   Mail, Phone, MapPin, Globe, Building, Copy, MessageSquare, Flame,
   ArrowUpRight, X, Plus, Sparkles, Loader2, Send, Pencil, FileText,
@@ -9,7 +10,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fnUrl } from "@/lib/supabase-url";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +76,21 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
   const [stages, setStages] = useState<Stage[]>([]);
   const [showMore, setShowMore] = useState(false);
 
+  // Foto do contato — mesma lib do header do chat (keyed pelo id da conversa).
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => getConversationAvatar(contact?.id));
+  useEffect(() => { setAvatarUrl(getConversationAvatar(contact?.id)); }, [contact?.id]);
+  useEffect(() => subscribeAvatar(() => setAvatarUrl(getConversationAvatar(contact?.id))), [contact?.id]);
+  const handleAvatarPick = async (file: File | null | undefined) => {
+    if (!file || !contact?.id) return;
+    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Imagem maior que 2MB"); return; }
+    try {
+      setConversationAvatar(contact.id, await fileToDataUrl(file));
+      toast.success("Foto atualizada");
+    } catch { toast.error("Não consegui carregar a imagem"); }
+  };
+
   useEffect(() => {
     (supabase.from("crm_pipeline_stages" as any) as any)
       .select("slug, name, color, order_index")
@@ -114,11 +130,29 @@ const ContactPanel = ({ contact, tags = [], onTagsChange, copilotContext, onSave
           <div className="p-5 space-y-6">
             {/* Header do contato */}
             <div className="flex flex-col items-center text-center space-y-2">
-              <Avatar className="h-14 w-14">
-                <AvatarFallback className="text-[15px] font-semibold bg-muted text-muted-foreground">
-                  {contact.initials.slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { handleAvatarPick(e.target.files?.[0]); e.currentTarget.value = ""; }}
+              />
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="relative group rounded-full"
+                title="Trocar foto do contato"
+              >
+                <Avatar className="h-16 w-16">
+                  {avatarUrl && <AvatarImage src={avatarUrl} alt={contact.name} />}
+                  <AvatarFallback className="text-[15px] font-semibold bg-muted text-muted-foreground">
+                    {contact.initials.slice(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition grid place-items-center text-white">
+                  <Pencil className="w-4 h-4" />
+                </span>
+              </button>
               <NameEditor name={contact.name} onSave={onSaveContact ? (v) => onSaveContact({ name: v }) : undefined} />
             </div>
 

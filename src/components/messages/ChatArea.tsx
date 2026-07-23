@@ -3,7 +3,7 @@ import {
   Send, CheckCheck, Check, AlertTriangle, Bot, User,
   CheckCircle2, RotateCcw, Sparkles, Loader2, StickyNote, Lock,
   Tag, X, Plus, Bold, Italic, Code, Smile, VolumeX, Volume2, Share2, ChevronDown, Clock,
-  Link2, Undo2, Redo2, List, ListOrdered, Paperclip, Maximize2, Globe,
+  Link2, Undo2, Redo2, List, ListOrdered, Paperclip, Maximize2, Globe, Instagram, Facebook,
 } from "lucide-react";
 
 import {
@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Conversation } from "./ConversationList";
 import EmojiPicker from "./EmojiPicker";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 
 export interface ChatMessage {
   id: string;
@@ -251,7 +252,15 @@ const ChatArea = ({
           <div className="min-w-0 flex-1">
             <h3 className="text-[14px] font-semibold text-foreground truncate leading-tight">{conversation.contactName}</h3>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate mt-0.5">
-              <Globe className="w-3 h-3 shrink-0" />
+              {conversation.channel === "whatsapp" ? (
+                <WhatsAppIcon className="w-3.5 h-3.5 shrink-0 text-[#25D366]" />
+              ) : conversation.channel === "instagram" ? (
+                <Instagram className="w-3.5 h-3.5 shrink-0 text-pink-500" />
+              ) : conversation.channel === "facebook" ? (
+                <Facebook className="w-3.5 h-3.5 shrink-0 text-blue-600" />
+              ) : (
+                <Globe className="w-3 h-3 shrink-0" />
+              )}
               <span className="truncate">{conversation.inbox}</span>
               {onTogglePanel && (
                 <>
