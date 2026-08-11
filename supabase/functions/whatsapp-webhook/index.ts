@@ -221,8 +221,9 @@ async function elevenKeyFor(supabase: any, ownerUserId: string): Promise<string 
     .eq("user_id", ownerUserId)
     .eq("provider", "elevenlabs")
     .limit(1);
-  // Fallback: chave global da plataforma (env) se a agencia nao tiver a propria.
-  return data?.[0]?.api_key ?? Deno.env.get("ELEVENLABS_API_KEY") ?? null;
+  // BYOK: SEMPRE a chave do proprio dono do canal. Sem fallback pra chave da
+  // plataforma — tudo e consumido da API key que a agencia conectou.
+  return data?.[0]?.api_key ?? null;
 }
 
 /** Transcreve audio (bytes) via ElevenLabs Scribe. Best-effort: null se falhar. */
