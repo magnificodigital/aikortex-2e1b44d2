@@ -173,7 +173,7 @@ function mediaRefOf(message: any): { id: string; mime?: string; filename?: strin
 async function downloadAndStoreMedia(
   supabase: any, mediaId: string, token: string, mimeHint: string | undefined,
   ownerUserId: string, filename?: string,
-): Promise<string | null> {
+): Promise<{ url: string | null; bytes: Uint8Array; mime: string } | null> {
   try {
     const metaRes = await fetch(`${GRAPH_MEDIA_API}/${mediaId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -203,7 +203,7 @@ async function downloadAndStoreMedia(
       return null;
     }
     const { data: pub } = supabase.storage.from("inbox-attachments").getPublicUrl(path);
-    return pub?.publicUrl ?? null;
+    return { url: pub?.publicUrl ?? null, bytes, mime };
   } catch (e) {
     console.error("[wa-media] erro", e);
     return null;
@@ -211,6 +211,44 @@ async function downloadAndStoreMedia(
 }
 
 const MEDIA_TYPES = new Set(["audio", "image", "video", "document", "sticker", "voice"]);
+const AUDIO_TYPES = new Set(["audio", "voice"]);
+
+/** Chave ElevenLabs do dono do canal (pra STT do audio recebido). */
+async function elevenKeyFor(supabase: any, ownerUserId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("user_api_keys")
+    .select("api_key")
+    .eq("user_id", ownerUserId)
+    .eq("provider", "elevenlabs")
+    .limit(1);
+  // Fallback: chave global da plataforma (env) se a agencia nao tiver a propria.
+  return data?.[0]?.api_key ?? Deno.env.get("ELEVENLABS_API_KEY") ?? null;
+}
+
+/** Transcreve audio (bytes) via ElevenLabs Scribe. Best-effort: null se falhar. */
+async function transcribeAudio(bytes: Uint8Array, mime: string, elevenKey: string): Promise<string | null> {
+  try {
+    const ext = EXT_BY_MIME[mime] || "ogg";
+    const form = new FormData();
+    form.append("file", new Blob([bytes], { type: mime }), `audio.${ext}`);
+    form.append("model_id", "scribe_v1");
+    const resp = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+      method: "POST",
+      headers: { "xi-api-key": elevenKey },
+      body: form,
+    });
+    if (!resp.ok) {
+      console.error("[wa-stt] falhou", resp.status, (await resp.text()).slice(0, 200));
+      return null;
+    }
+    const j = await resp.json();
+    const text = (j?.text ?? "").trim();
+    return text || null;
+  } catch (e) {
+    console.error("[wa-stt] erro", e);
+    return null;
+  }
+}
 
 /** Campo "messages": mensagens que o CLIENTE manda + status de entrega. */
 async function handleMessagesValue(supabase: any, value: any) {
@@ -278,19 +316,37 @@ async function handleMessagesValue(supabase: any, value: any) {
 
     // ── Midia (audio/imagem/video/doc/sticker): baixa do Meta e sobe pro bucket ──
     let mediaUrl: string | null = null;
+    let transcript: string | null = null;
     if (ownerUserId && MEDIA_TYPES.has(message.type)) {
       const ref = mediaRefOf(message);
       if (ref) {
         const token = await wabaTokenFor(supabase, ownerUserId);
         if (token) {
-          mediaUrl = await downloadAndStoreMedia(
+          const media = await downloadAndStoreMedia(
             supabase, ref.id, token, ref.mime, ownerUserId, ref.filename,
           );
+          mediaUrl = media?.url ?? null;
+          // Audio recebido: transcreve (STT ElevenLabs) pra IA entender e responder.
+          if (media?.bytes && AUDIO_TYPES.has(message.type)) {
+            const elevenKey = await elevenKeyFor(supabase, ownerUserId);
+            if (elevenKey) {
+              transcript = await transcribeAudio(media.bytes, media.mime, elevenKey);
+              if (transcript) console.log(`[wa-stt] "${transcript.slice(0, 80)}"`);
+            } else {
+              console.warn(`[wa-stt] sem chave ElevenLabs p/ owner=${ownerUserId} — audio nao transcrito`);
+            }
+          }
         } else {
           console.warn(`[wa-media] sem token WABA p/ owner=${ownerUserId}`);
         }
       }
     }
+
+    // Conteudo do inbox: audio transcrito mostra a transcricao (o player continua
+    // via media_url); sem transcricao mantem o placeholder "[Audio]".
+    const inboxContent = transcript ? `🎙️ ${transcript}` : incomingData.content;
+    // Texto que a IA processa: transcricao (audio de voz) ou o texto normal.
+    const agentText = message.type === "text" ? incomingData.content : (transcript || "");
 
     // ── Camada canonica (conversations/messages + lead CRM automatico) ──
     let aiEnabled = true;
@@ -302,7 +358,7 @@ async function handleMessagesValue(supabase: any, value: any) {
         direction: "inbound",
         contactPhone: message.from,
         contactName: contactInfo?.profile?.name || null,
-        content: incomingData.content,
+        content: inboxContent,
         contentType: message.type === "text" ? "text" : message.type,
         mediaUrl,
         externalId: message.id,
@@ -311,8 +367,9 @@ async function handleMessagesValue(supabase: any, value: any) {
     }
 
     // ── Auto-reply via Managed Session Agent (respeita human takeover) ──
-    if (ownerUserId && incomingData.content && message.type === "text" && aiEnabled) {
-      handleAgentReply(supabase, ownerUserId, message.from, phoneNumberId, incomingData.content);
+    // Responde a TEXTO e a AUDIO de voz transcrito. Outras midias nao disparam IA.
+    if (ownerUserId && agentText && aiEnabled) {
+      handleAgentReply(supabase, ownerUserId, message.from, phoneNumberId, agentText);
     } else if (!aiEnabled) {
       console.log(`[auto-reply] pausado (human takeover) contact=${message.from}`);
     }
