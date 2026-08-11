@@ -50,6 +50,8 @@ function mapMessage(m: any): ChatMessage {
     text: m.content,
     time: new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     isPrivate: m.role === "note",
+    mediaUrl: m.media_url ?? null,
+    contentType: m.content_type ?? null,
   };
 }
 
@@ -134,7 +136,7 @@ const AikortexMessages = () => {
 
   const loadMessages = useCallback(async (convId: string) => {
     const { data } = await (supabase.from("messages" as any) as any)
-      .select("id, role, content, created_at")
+      .select("id, role, content, content_type, media_url, created_at")
       .eq("conversation_id", convId)
       .order("created_at", { ascending: true })
       .limit(500);

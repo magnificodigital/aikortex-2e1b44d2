@@ -138,6 +138,80 @@ async function ownerFromPhoneId(supabase: any, phoneNumberId: string | undefined
   return data?.[0]?.user_id ?? null;
 }
 
+/** Token de acesso do WABA do dono (pra baixar midia da Graph API). */
+async function wabaTokenFor(supabase: any, ownerUserId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("user_api_keys")
+    .select("api_key")
+    .eq("user_id", ownerUserId)
+    .eq("provider", "whatsapp_access_token")
+    .limit(1);
+  return data?.[0]?.api_key ?? null;
+}
+
+const GRAPH_MEDIA_API = "https://graph.facebook.com/v21.0";
+const EXT_BY_MIME: Record<string, string> = {
+  "audio/ogg": "ogg", "audio/opus": "ogg", "audio/mpeg": "mp3", "audio/mp3": "mp3",
+  "audio/mp4": "m4a", "audio/aac": "aac", "audio/amr": "amr", "audio/wav": "wav",
+  "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+  "video/mp4": "mp4", "video/3gpp": "3gp",
+  "application/pdf": "pdf",
+};
+
+/** Extrai o media_id (+ mime/filename) de uma mensagem de midia do WhatsApp. */
+function mediaRefOf(message: any): { id: string; mime?: string; filename?: string } | null {
+  const obj = message?.[message?.type];
+  if (!obj || !obj.id) return null;
+  return { id: obj.id, mime: obj.mime_type, filename: obj.filename };
+}
+
+/**
+ * Baixa a midia do WhatsApp (2 passos: resolve URL -> baixa binario, ambos com
+ * o token do WABA) e sobe pro bucket publico inbox-attachments. Retorna a URL
+ * publica tocavel/visualizavel — ou null se falhar (best-effort, nao quebra o inbox).
+ */
+async function downloadAndStoreMedia(
+  supabase: any, mediaId: string, token: string, mimeHint: string | undefined,
+  ownerUserId: string, filename?: string,
+): Promise<string | null> {
+  try {
+    const metaRes = await fetch(`${GRAPH_MEDIA_API}/${mediaId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!metaRes.ok) {
+      console.error("[wa-media] lookup falhou", metaRes.status, await metaRes.text());
+      return null;
+    }
+    const meta = await metaRes.json();
+    const fileUrl = meta.url;
+    const mime = (meta.mime_type || mimeHint || "application/octet-stream").split(";")[0].trim();
+    if (!fileUrl) return null;
+
+    const binRes = await fetch(fileUrl, { headers: { Authorization: `Bearer ${token}` } });
+    if (!binRes.ok) {
+      console.error("[wa-media] download falhou", binRes.status);
+      return null;
+    }
+    const bytes = new Uint8Array(await binRes.arrayBuffer());
+    const ext = EXT_BY_MIME[mime] || (filename?.split(".").pop()) || "bin";
+    const path = `whatsapp/${ownerUserId}/${mediaId}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("inbox-attachments")
+      .upload(path, bytes, { contentType: mime, upsert: true });
+    if (upErr) {
+      console.error("[wa-media] upload falhou", upErr);
+      return null;
+    }
+    const { data: pub } = supabase.storage.from("inbox-attachments").getPublicUrl(path);
+    return pub?.publicUrl ?? null;
+  } catch (e) {
+    console.error("[wa-media] erro", e);
+    return null;
+  }
+}
+
+const MEDIA_TYPES = new Set(["audio", "image", "video", "document", "sticker", "voice"]);
+
 /** Campo "messages": mensagens que o CLIENTE manda + status de entrega. */
 async function handleMessagesValue(supabase: any, value: any) {
   // ── Status de entrega (sent | delivered | read | failed) ──
@@ -202,6 +276,22 @@ async function handleMessagesValue(supabase: any, value: any) {
     if (error) console.error("Error storing message:", error);
     console.log(`Received ${message.type} from ${message.from}: ${incomingData.content}`);
 
+    // ── Midia (audio/imagem/video/doc/sticker): baixa do Meta e sobe pro bucket ──
+    let mediaUrl: string | null = null;
+    if (ownerUserId && MEDIA_TYPES.has(message.type)) {
+      const ref = mediaRefOf(message);
+      if (ref) {
+        const token = await wabaTokenFor(supabase, ownerUserId);
+        if (token) {
+          mediaUrl = await downloadAndStoreMedia(
+            supabase, ref.id, token, ref.mime, ownerUserId, ref.filename,
+          );
+        } else {
+          console.warn(`[wa-media] sem token WABA p/ owner=${ownerUserId}`);
+        }
+      }
+    }
+
     // ── Camada canonica (conversations/messages + lead CRM automatico) ──
     let aiEnabled = true;
     if (ownerUserId) {
@@ -214,6 +304,7 @@ async function handleMessagesValue(supabase: any, value: any) {
         contactName: contactInfo?.profile?.name || null,
         content: incomingData.content,
         contentType: message.type === "text" ? "text" : message.type,
+        mediaUrl,
         externalId: message.id,
       });
       aiEnabled = inboxRes.aiEnabled;

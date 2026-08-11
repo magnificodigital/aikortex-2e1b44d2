@@ -30,6 +30,33 @@ export interface ChatMessage {
   time: string;
   status?: "sent" | "delivered" | "read" | "failed";
   isPrivate?: boolean;
+  /** URL publica da midia (audio/imagem/video/documento) — bucket inbox-attachments. */
+  mediaUrl?: string | null;
+  /** text | audio | image | video | document | sticker ... */
+  contentType?: string | null;
+}
+
+/** Renderiza a midia recebida (audio/imagem/video/documento) dentro da bolha. */
+function MessageMedia({ url, type }: { url: string; type?: string | null }) {
+  const t = (type || "").toLowerCase();
+  if (t === "audio" || t === "voice") {
+    return <audio controls preload="none" src={url} className="max-w-full mt-0.5 h-10" />;
+  }
+  if (t === "image" || t === "sticker") {
+    return (
+      <a href={url} target="_blank" rel="noreferrer">
+        <img src={url} alt="imagem" className="rounded-lg max-w-full max-h-64 object-cover mt-0.5" />
+      </a>
+    );
+  }
+  if (t === "video") {
+    return <video controls preload="none" src={url} className="rounded-lg max-w-full max-h-64 mt-0.5" />;
+  }
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 mt-0.5 underline text-[13px]">
+      <Paperclip className="w-3.5 h-3.5" /> Abrir anexo
+    </a>
+  );
 }
 
 interface ChatAreaProps {
@@ -383,7 +410,10 @@ const ChatArea = ({
                     ? "bg-primary text-primary-foreground"
                     : "bg-foreground/[0.07] text-foreground border border-foreground/[0.08]",
                 )}>
-                  <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                  {msg.mediaUrl && <MessageMedia url={msg.mediaUrl} type={msg.contentType} />}
+                  {msg.text && !(msg.mediaUrl && /^\[.*\]$/.test(msg.text.trim())) && (
+                    <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                  )}
                   <div className={cn(
                     "flex items-center justify-end gap-1 mt-0.5 -mb-0.5 select-none",
                     isOutgoing ? "text-primary-foreground/60" : "text-muted-foreground/70",

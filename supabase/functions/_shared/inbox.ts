@@ -21,6 +21,8 @@ export interface RecordMessageInput {
   contactName?: string | null;
   content: string;
   contentType?: string; // text | image | audio | ...
+  /** URL publica (bucket inbox-attachments) da midia baixada — audio/imagem/doc. */
+  mediaUrl?: string | null;
   externalId?: string | null; // wamid etc
   /** false pula a criacao de lead (ex: outbound pra numero novo). */
   createCrmLead?: boolean;
@@ -69,7 +71,7 @@ export async function recordInboxMessage(input: RecordMessageInput): Promise<Rec
   const {
     supabase, ownerUserId, channel, direction,
     contactPhone, contactName, content, contentType = "text",
-    externalId = null, createCrmLead = true,
+    mediaUrl = null, externalId = null, createCrmLead = true,
   } = input;
 
   const fallback: RecordMessageResult = { conversationId: null, aiEnabled: true, crmContactId: null };
@@ -179,6 +181,7 @@ export async function recordInboxMessage(input: RecordMessageInput): Promise<Rec
       role: direction === "inbound" ? "consumer" : "agent",
       content,
       content_type: contentType,
+      media_url: mediaUrl,
       external_id: externalId,
     });
     if (msgErr) console.error("[inbox] message insert falhou:", msgErr);
