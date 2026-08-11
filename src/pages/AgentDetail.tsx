@@ -229,6 +229,9 @@ const AgentDetail = () => {
   // Voz = bubble ativo (continua conversa). Texto = bubble desativado (so presenca).
   const starkBubbleMode = navState?.starkBubbleMode as "voice" | "text" | undefined;
   const isFreshNew = !isTemplate && (!agentId || agentId === "new" || agentId.startsWith("new-"));
+  // "Do zero": usuário escolheu montar manualmente — pula o assistente/wizard
+  // e vai direto pro painel de config. Preservado no location.state pós-redirect.
+  const isManual = navState?.manual === true;
   const templateAgent = isTemplate ? TEMPLATE_MAP[agentId!] : null;
   const initialType: AgentType = (navState?.agentType as AgentType) || templateAgent?.agentType || "Custom";
 
@@ -285,7 +288,9 @@ const AgentDetail = () => {
               model: DEFAULT_FREE_MODEL,
               provider: "auto",
               status: "configuring",
-              config: { wizard_started_at: new Date().toISOString() },
+              // Manual ("do zero") não marca wizard_started_at — assim o efeito
+              // que força "discover" não dispara e o painel de config aparece.
+              config: isManual ? { manual_setup: true } : { wizard_started_at: new Date().toISOString() },
             })
             .select("id")
             .single();
@@ -347,6 +352,7 @@ const AgentDetail = () => {
 
   // Templates now go through the wizard chat (Q&A) before building
   const [wizardStep, setWizardStep] = useState<"discover" | "structure" | "build" | "done">(() => {
+    if (isManual) return "done";       // "do zero": foco no painel de config
     if (isTemplate) return "discover";
     if (isNewCustomFromHome) return "discover";
     if (isFreshNew) return "discover";
@@ -364,7 +370,7 @@ const AgentDetail = () => {
     if (!cfg) return;
     const wizardStarted = !!cfg.wizard_started_at;
     const wizardCompleted = !!cfg.wizard_completed;
-    if (wizardStarted && !wizardCompleted && wizardStep !== "discover") {
+    if (!isManual && wizardStarted && !wizardCompleted && wizardStep !== "discover") {
       setWizardStep("discover");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

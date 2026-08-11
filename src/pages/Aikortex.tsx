@@ -22,6 +22,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import type { TemplateRow } from "@/types/templates";
 import avatar1 from "@/assets/avatars/avatar-1.png";
@@ -71,11 +74,18 @@ const Aikortex = () => {
   const { data: nichesData } = useNichesWithCounts("agent");
 
   const [useTemplate, setUseTemplate] = useState<TemplateRow | null>(null);
+  const [newAgentOpen, setNewAgentOpen] = useState(false);
 
-  const handleNewCustom = () => {
+  // Abre a bifurcação "como você quer criar?" (assistente vs do zero).
+  const handleNewCustom = () => setNewAgentOpen(true);
+
+  // manual=false → assistente conduz (wizard). manual=true → vai direto pro
+  // painel de config, sem o assistente iniciar sozinho.
+  const startAgent = (manual: boolean) => {
+    setNewAgentOpen(false);
     const newId = `new-${Date.now()}`;
     navigate(`/aikortex/agents/${newId}`, {
-      state: { fromTemplate: false, agentType: "Custom", agentName: "Novo Agente" },
+      state: { fromTemplate: false, agentType: "Custom", agentName: "Novo Agente", manual },
     });
   };
 
@@ -238,6 +248,46 @@ const Aikortex = () => {
             />
           </TabsContent>
         </Tabs>
+
+        {/* Bifurcação: como criar o agente — assistente (IA monta) ou do zero (manual). */}
+        <Dialog open={newAgentOpen} onOpenChange={setNewAgentOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Como você quer criar seu agente?</DialogTitle>
+              <DialogDescription>
+                Escolha o jeito que combina com você. Dá pra mudar depois — o assistente fica sempre disponível.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid sm:grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => startAgent(false)}
+                className="group text-left rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors p-4 flex flex-col gap-2"
+              >
+                <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary grid place-items-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div className="font-semibold text-foreground">Com o assistente</div>
+                <p className="text-[13px] text-muted-foreground leading-snug">
+                  Você conversa e a IA monta o agente pra você. Ideal pra começar rápido, sem saber os detalhes técnicos.
+                </p>
+                <span className="mt-1 text-[11px] font-medium text-primary">Recomendado</span>
+              </button>
+              <button
+                onClick={() => startAgent(true)}
+                className="group text-left rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors p-4 flex flex-col gap-2"
+              >
+                <div className="w-9 h-9 rounded-lg bg-foreground/10 text-foreground grid place-items-center">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div className="font-semibold text-foreground">Do zero</div>
+                <p className="text-[13px] text-muted-foreground leading-snug">
+                  Você mesmo escreve as instruções e ajusta tudo no painel. Pra quem já sabe o que quer.
+                </p>
+                <span className="mt-1 text-[11px] font-medium text-muted-foreground">Controle total</span>
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <UseTemplateDialog
           template={useTemplate}
