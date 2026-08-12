@@ -353,10 +353,10 @@ export default function AgencyChannelsManager() {
       window.removeEventListener("message", messageHandler);
       (async () => {
         try {
-          // Pegamos o TOKEN direto (sem response_type=code) → backend troca
-          // curto→longo via fb_exchange_token, sem redirect_uri (imune ao 36008).
-          const token = response?.authResponse?.accessToken;
-          if (token) {
+          // Embedded Signup EXIGE response_type=code (o fluxo rejeita token).
+          // O backend troca o code (tenta sem redirect_uri, caso do Embedded Signup).
+          const code = response?.authResponse?.code;
+          if (code) {
             const { phone_number_id, waba_id, coexistence } = signupData;
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { toast.error("Sessão expirada"); return; }
@@ -364,10 +364,11 @@ export default function AgencyChannelsManager() {
               method: "POST",
               headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
               body: JSON.stringify({
-                access_token: token,
+                code,
                 phone_number_id,
                 waba_id,
                 coexistence: coexistence ?? true,
+                redirect_uri: `${window.location.origin}/settings`,
               }),
             });
             const j = await resp.json().catch(() => ({}));
@@ -388,8 +389,9 @@ export default function AgencyChannelsManager() {
       })();
     }, {
       config_id: cfgId,
-      // SEM response_type=code / override: assim o FB.login devolve o
-      // accessToken direto e evitamos a troca de code (que dá 36008).
+      // Embedded Signup EXIGE response_type=code (o fluxo rejeita token).
+      response_type: "code",
+      override_default_response_type: true,
       extras: { setup: {}, featureType: "whatsapp_business_app_onboarding", sessionInfoVersion: "3" },
     });
   };

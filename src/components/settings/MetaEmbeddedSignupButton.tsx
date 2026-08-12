@@ -153,13 +153,10 @@ export default function MetaEmbeddedSignupButton({ onConnected }: Props) {
       async (response: any) => {
         window.removeEventListener("message", messageHandler);
 
-        const authResp = response?.authResponse;
-        const accessToken = authResp?.accessToken as string | undefined;
-        const code = authResp?.code as string | undefined;
-        if (accessToken || code) {
+        const code = response?.authResponse?.code as string | undefined;
+        if (code) {
           // NÃO bloqueia por falta de waba_id — backend resolve via debug_token.
           await exchangeAndSave({
-            access_token: accessToken,
             code,
             phone_number_id: signupData.phone_number_id,
             waba_id: signupData.waba_id,
@@ -182,10 +179,10 @@ export default function MetaEmbeddedSignupButton({ onConnected }: Props) {
         }
       },
       {
-        // Plano B: SEM response_type=code. O FB.login retorna accessToken direto;
-        // o backend troca curto→longo via fb_exchange_token (sem redirect_uri),
-        // imune ao erro 36008 que o fluxo de code causava.
+        // Embedded Signup EXIGE response_type=code (o fluxo rejeita token).
         config_id: meta.whatsappConfigId,
+        response_type: "code",
+        override_default_response_type: true,
         extras: { setup: {}, featureType: "whatsapp_business_app_onboarding", sessionInfoVersion: "3" },
       },
     );
