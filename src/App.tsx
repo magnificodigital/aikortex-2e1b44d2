@@ -19,6 +19,7 @@ const StarkFloatingOrb = lazy(() =>
 
 // Lazy-loaded pages
 const LandingPage = lazy(() => import("./pages/LandingPage"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Home = lazy(() => import("./pages/Home"));
 const Index = lazy(() => import("./pages/Index"));
 const Clients = lazy(() => import("./pages/Clients"));
@@ -89,6 +90,7 @@ const App = () => (
           <Suspense fallback={<Loading />}>
             <Routes>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pricing" element={<Pricing />} />
               {/* Paginas legais publicas — exigidas pela analise de app da Meta */}
               <Route path="/privacy" element={<Privacy />} />

@@ -22,6 +22,8 @@ interface AuthContextType {
   isPlatform: boolean;
   isAgencyOwner: boolean;
   isClient: boolean;
+  /** true quando o usuário chegou por link de recuperação de senha. */
+  isRecovery: boolean;
   getRedirectPath: () => string;
   signUp: (email: string, password: string, fullName?: string, agencyName?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -31,6 +33,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [isRecovery, setIsRecovery] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -64,6 +67,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Link de recuperação de senha → sinaliza pra rotear pra /reset-password
+      // em vez do redirect normal (senão cai na home sem poder trocar a senha).
+      if (_event === "PASSWORD_RECOVERY") setIsRecovery(true);
+      if (_event === "SIGNED_OUT") setIsRecovery(false); // evita loop pós-troca
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -117,7 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider value={{
       user, session, profile, loading,
       isPlatformOwner, isPlatformAdmin, isPlatform, isAgencyOwner, isClient,
-      getRedirectPath, signUp, signIn, signOut,
+      isRecovery, getRedirectPath, signUp, signIn, signOut,
     }}>
       {children}
     </AuthContext.Provider>

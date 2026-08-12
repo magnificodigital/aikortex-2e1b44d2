@@ -91,7 +91,7 @@ const LandingPage = () => {
     return (localStorage.getItem("app-lang") as Lang) || "pt";
   });
   const navigate = useNavigate();
-  const { user, loading, getRedirectPath } = useAuth();
+  const { user, loading, getRedirectPath, isRecovery } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
 
   const t = translations[lang];
@@ -121,10 +121,16 @@ const LandingPage = () => {
   };
 
   useEffect(() => {
+    // Recuperação de senha tem prioridade sobre o redirect normal — senão o
+    // usuário cai na home logado pelo token de recovery e sem trocar a senha.
+    if (isRecovery) {
+      navigate("/reset-password");
+      return;
+    }
     if (!loading && user) {
       navigate(getRedirectPath());
     }
-  }, [user, loading, navigate, getRedirectPath]);
+  }, [user, loading, navigate, getRedirectPath, isRecovery]);
 
   const isDark = theme === "dark";
   const bg = isDark ? "bg-[#0a0a0f] text-white" : "bg-white text-foreground";
