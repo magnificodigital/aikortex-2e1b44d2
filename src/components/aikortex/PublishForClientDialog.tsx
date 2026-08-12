@@ -43,6 +43,26 @@ export default function PublishForClientDialog({
   const [submitting, setSubmitting] = useState(false);
   const [priceCents, setPriceCents] = useState<number>(DEFAULT_PRICE_CENTS);
   const [ackWarnings, setAckWarnings] = useState(false);
+  const [channelConnected, setChannelConnected] = useState<boolean | null>(null);
+
+  // Gate Master v7.4: publicar exige um canal CONECTADO (WhatsApp com credenciais).
+  // A montagem/teste não exigem canal; publicar sim (é quando o agente vai ao ar).
+  useEffect(() => {
+    if (!open) { setChannelConnected(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data } = await supabase
+        .from("user_api_keys").select("provider, api_key")
+        .eq("user_id", user.id)
+        .in("provider", ["whatsapp_phone_number_id", "whatsapp_access_token"]);
+      const map = new Map((data ?? []).map((r: any) => [r.provider, (r.api_key ?? "").trim()]));
+      const connected = !!map.get("whatsapp_phone_number_id") && !!map.get("whatsapp_access_token");
+      if (!cancelled) setChannelConnected(connected);
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
 
   // Quando o dialog abre: carrega lista de clientes da agencia + preco do template.
   useEffect(() => {
@@ -115,7 +135,7 @@ export default function PublishForClientDialog({
   const clientOk = !!selectedClient
     && !!selectedClient.client_document
     && !!selectedClient.client_email;
-  const canSubmit = readinessOk && clientOk && !submitting;
+  const canSubmit = readinessOk && clientOk && channelConnected === true && !submitting;
 
   async function handleSubmit() {
     if (!canSubmit || !selectedClient) return;
@@ -233,6 +253,19 @@ export default function PublishForClientDialog({
                   </span>
                 </label>
               )}
+            </div>
+          )}
+
+          {/* Gate de canal conectado — bloqueia publish (ativa a assinatura). */}
+          {channelConnected === false && (
+            <div className="flex items-start gap-2 text-[12px] text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>
+                Conecte um canal antes de publicar — o agente precisa de um canal ativo para atender.{" "}
+                <Link to="/settings?tab=channels" className="underline font-medium" onClick={() => handleClose(false)}>
+                  Conectar WhatsApp em Canais
+                </Link>
+              </span>
             </div>
           )}
 
