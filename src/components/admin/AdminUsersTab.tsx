@@ -175,9 +175,8 @@ const AdminUsersTab = ({ onNavigateToAgency, onNavigateToClient }: AdminUsersPro
           <Button size="sm" variant="outline" onClick={fetchUsers} disabled={loading || authLoading || !user}>
             <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
           </Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <UserPlus className="w-4 h-4 mr-1.5" /> Novo Usuário
-          </Button>
+          {/* Criação mora na Gestão (no contexto: Plataforma/Agência/Cliente).
+              Aqui é só busca global + ações rápidas (e-mail, senha, excluir). */}
         </div>
       </div>
 

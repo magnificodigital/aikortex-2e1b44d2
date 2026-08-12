@@ -25,6 +25,7 @@ import {
 import { ROLE_CONFIG } from "@/types/rbac";
 import EditUserDialog from "@/components/admin/EditUserDialog";
 import CreateUserDialog from "@/components/shared/CreateUserDialog";
+import PlatformTeamSection from "@/components/admin/PlatformTeamSection";
 
 /* ────────────────────── types ────────────────────── */
 
@@ -673,7 +674,10 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
         </CardContent>
       </Card>
 
-      {/* Agencies table */}
+      {/* Nível 1 da hierarquia: equipe da plataforma (admins do SaaS) */}
+      <PlatformTeamSection />
+
+      {/* Nível 2: Agências (cada uma com seus clientes e usuários) */}
       <div className="space-y-3">
         <div className="flex gap-2 items-center flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-xs">
