@@ -43,6 +43,7 @@ const getTenantTypeFromRole = (role: string) => {
 
 const EditUserDialog = ({ open, onClose, onSuccess, user }: EditUserDialogProps) => {
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [tenantType, setTenantType] = useState("");
   const [isActive, setIsActive] = useState(true);
@@ -52,6 +53,7 @@ const EditUserDialog = ({ open, onClose, onSuccess, user }: EditUserDialogProps)
   useEffect(() => {
     if (open && user) {
       setFullName(user.full_name || "");
+      setEmail(user.email || "");
       setRole(user.role);
       setTenantType(getTenantTypeFromRole(user.role));
       setIsActive(user.is_active);
@@ -69,6 +71,7 @@ const EditUserDialog = ({ open, onClose, onSuccess, user }: EditUserDialogProps)
       const resolvedTenantType = getTenantTypeFromRole(role);
 
       if (fullName.trim() !== (user.full_name || "")) body.full_name = fullName.trim();
+      if (email.trim() && email.trim() !== (user.email || "")) body.email = email.trim();
       if (role !== user.role) body.role = role;
       if (resolvedTenantType !== user.tenant_type || role !== user.role) body.tenant_type = resolvedTenantType;
       if (isActive !== user.is_active) body.is_active = isActive;
@@ -78,8 +81,19 @@ const EditUserDialog = ({ open, onClose, onSuccess, user }: EditUserDialogProps)
       });
 
       if (fnError || data?.error) {
-        const errMsg = typeof data?.error === "string" ? data.error : JSON.stringify(data?.error);
-        setError(errMsg || "Erro ao atualizar usuário");
+        // Erro real vem em error.context (Response) quando é non-2xx.
+        let realMsg = typeof data?.error === "string" ? data.error : (data?.error ? JSON.stringify(data.error) : "");
+        try {
+          const ctx = (fnError as any)?.context;
+          if (!realMsg && ctx && typeof ctx.text === "function") {
+            const raw = await ctx.text();
+            try {
+              const j = JSON.parse(raw);
+              realMsg = typeof j?.error === "string" ? j.error : (j?.error ? Object.values(j.error).flat().join(", ") : raw);
+            } catch { realMsg = raw; }
+          }
+        } catch { /* ignora */ }
+        setError(realMsg || (fnError as any)?.message || "Erro ao atualizar usuário");
         setLoading(false);
         return;
       }
@@ -113,9 +127,9 @@ const EditUserDialog = ({ open, onClose, onSuccess, user }: EditUserDialogProps)
           </div>
 
           <div>
-            <Label>E-mail</Label>
-            <Input value={user.email || ""} disabled className="bg-muted" />
-            <p className="text-[10px] text-muted-foreground mt-1">E-mail não pode ser alterado por aqui.</p>
+            <Label>E-mail (login)</Label>
+            <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@dominio.com" />
+            <p className="text-[10px] text-amber-600 mt-1">⚠️ Alterar troca o e-mail de login desta conta. Confirme que é a conta certa.</p>
           </div>
 
           <Separator />

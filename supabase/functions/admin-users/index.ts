@@ -141,8 +141,19 @@ Deno.serve(async (req) => {
 
       /* ─── UPDATE ─── */
       case "update": {
-        const { user_id, full_name, role, tenant_type, is_active } = body;
+        const { user_id, full_name, role, tenant_type, is_active, email } = body;
         if (!user_id) return json({ error: "user_id required" }, 400);
+
+        // Troca de e-mail de login (auth). email_confirm=true evita pedir
+        // verificação. Feito ANTES do profile pra abortar cedo se o e-mail
+        // já estiver em uso por outra conta.
+        if (typeof email === "string" && email.trim()) {
+          const { error: emailErr } = await supabase.auth.admin.updateUserById(user_id, {
+            email: email.trim(),
+            email_confirm: true,
+          });
+          if (emailErr) return json({ error: `Falha ao trocar e-mail: ${emailErr.message}` }, 400);
+        }
 
         const profileUpdate: Record<string, any> = { updated_at: new Date().toISOString() };
         if (full_name !== undefined) profileUpdate.full_name = full_name;
