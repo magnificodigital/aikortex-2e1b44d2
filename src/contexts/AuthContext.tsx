@@ -113,6 +113,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // Login normal encerra qualquer estado de recovery — evita ser mandado de
+    // volta pra /reset-password em vez de entrar no app.
+    if (!error) setIsRecovery(false);
     return { error };
   };
 
