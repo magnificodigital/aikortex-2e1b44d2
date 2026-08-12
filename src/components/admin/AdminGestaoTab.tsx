@@ -102,13 +102,21 @@ const generatePassword = () => {
 const adminInvoke = async (body: Record<string, any>) => {
   const { data, error } = await supabase.functions.invoke("admin-users", { body });
   if (error) {
-    // Try to extract the real error message from the response context
-    const msg = (data as any)?.error || error.message || "Erro desconhecido";
+    // Extract the real error message from the non-2xx response body
+    let msg = (data as any)?.error || error.message || "Erro desconhecido";
+    const res = (error as any)?.context;
+    if (res && typeof res.json === "function") {
+      try {
+        const payload = await res.clone().json();
+        if (payload?.error) msg = typeof payload.error === "string" ? payload.error : JSON.stringify(payload.error);
+      } catch { /* ignore parse errors */ }
+    }
     throw new Error(msg);
   }
   if (data?.error) throw new Error(data.error);
   return data;
 };
+
 
 /* ────────────────────── Nav state ────────────────────── */
 type NavLevel =

@@ -104,8 +104,12 @@ Deno.serve(async (req) => {
         });
         if (createError) {
           console.error("createUser error:", createError.message);
-          return json({ error: createError.message }, 400);
+          const friendly = createError.message.includes("already been registered")
+            ? "Este e-mail já está cadastrado. Use outro e-mail."
+            : createError.message;
+          return json({ error: friendly }, 400);
         }
+
 
         // Profile is created by trigger, but update if role/tenant differs
         const effectiveRole = role || "agency_owner";
