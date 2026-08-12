@@ -5,6 +5,7 @@ import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
 import { callLLM, buildAdminClient } from "../_shared/llm-fallback.ts";
+import { callAgencyLLM, isAgencyProvider } from "../_shared/llm-providers.ts";
 import { runWizardWithTools } from "../_shared/wizard-tools.ts";
 import { detectIntegrationsInText, getIntegrationStatuses, buildIntegrationStatusBlock } from "../_shared/integration-detector.ts";
 import {
@@ -78,6 +79,38 @@ async function bufferFromPlatform(
     return "";
   }
   return result.content || "";
+}
+
+/**
+ * BYOK de teste/produção (Master v7.4 / decisão 2026-08-11): se o agente usa um
+ * provider da AGÊNCIA (openai/anthropic/…) com chave conectada, roda na chave DELA
+ * via tradutor multi-provider. Retorna:
+ *   - null  → agente é legado/plataforma → chamar runtime da plataforma;
+ *   - string → resposta BYOK (ou aviso amigável se faltar modelo/chave/deu erro).
+ */
+async function tryAgencyLLM(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  agentId: string,
+  system: string,
+  rest: Array<{ role: string; content: string }>,
+): Promise<string | null> {
+  const { data: row } = await supabase
+    .from("user_agents").select("config, provider, model").eq("id", agentId).maybeSingle();
+  const cfg = ((row as any)?.config as any) ?? {};
+  const provider = cfg.provider || (row as any)?.provider;
+  const model = cfg.model || (row as any)?.model;
+  if (!isAgencyProvider(provider)) return null; // legado/plataforma → runtime atual
+  if (!model) return "⚠️ Escolha um modelo de IA para testar este agente (botão Testar).";
+  const { data: keys } = await supabase
+    .from("user_api_keys").select("api_key")
+    .eq("user_id", userId).eq("provider", provider).limit(1);
+  const apiKey = (keys as any)?.[0]?.api_key;
+  if (!apiKey) return `⚠️ Conecte sua chave de ${provider} em Configurações → Provedores para testar.`;
+  const messages = [{ role: "system", content: system }, ...rest];
+  const res = await callAgencyLLM({ provider, apiKey, model, messages, maxTokens: 2048 });
+  if (res.success) return res.content ?? "";
+  return `⚠️ A IA (${provider}) retornou um erro: ${res.error ?? "desconhecido"}`;
 }
 
 /** Data atual em pt-BR pra injetar no system prompt — modelos com knowledge
@@ -2445,15 +2478,21 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
         // models omitted → helper loads from available_llms (single source of truth).
         const sysMsg = chatMessages.find((m) => m.role === "system");
         const rest = chatMessages.filter((m) => m.role !== "system");
-        content = (await runAgentLLM({
-          supabase: adminClient,
-          agentId,
-          agencyId: authResult.agencyId,
-          system: sysMsg?.content || "",
-          messages: rest,
-          maxTokens: 2048,
-          userJwt,
-        })) || "";
+        // BYOK: se o agente usa provider da agência com chave, roda na chave dela.
+        const byok = await tryAgencyLLM(adminClient, authResult.user.id, agentId, sysMsg?.content || "", rest);
+        if (byok !== null) {
+          content = byok;
+        } else {
+          content = (await runAgentLLM({
+            supabase: adminClient,
+            agentId,
+            agencyId: authResult.agencyId,
+            system: sysMsg?.content || "",
+            messages: rest,
+            maxTokens: 2048,
+            userJwt,
+          })) || "";
+        }
       } else {
         content = await bufferFromPlatform(chatMessages, preferred, adminClient);
       }
