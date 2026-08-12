@@ -20,9 +20,10 @@ export interface MetaIntegration {
 }
 
 const ENV_APP_ID = import.meta.env.VITE_META_APP_ID || "2356582444746370";
-// Fallback de env pro Config ID do WhatsApp — rede de segurança pro 1-clique
-// funcionar mesmo se o platform_config ainda não estiver preenchido pelo admin.
-const ENV_WA_CONFIG_ID = import.meta.env.VITE_META_WHATSAPP_CONFIG_ID || "";
+// Config ID do Embedded Signup do WhatsApp (config "AIKORTEX" no Meta). Igual ao
+// App ID, vem embutido por padrão pro 1-clique funcionar out-of-the-box; env ou
+// platform_config (Admin → Meta Login Oficial) sobrescrevem quando presentes.
+const ENV_WA_CONFIG_ID = import.meta.env.VITE_META_WHATSAPP_CONFIG_ID || "1031274639494248";
 
 export function useMetaIntegration(): MetaIntegration {
   const [state, setState] = useState<MetaIntegration>({
