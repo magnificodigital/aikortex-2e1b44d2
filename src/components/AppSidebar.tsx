@@ -84,10 +84,9 @@ const partnersItems: NavItem[] = [
 
 const aikortexItems: NavItem[] = [
   { label: "Agentes", icon: Bot, path: "/aikortex/agents" },
-  
+  { label: "Mensagens", icon: MessageSquare, path: "/aikortex/messages" },
   { label: "Ligações", icon: PhoneIcon, path: "/calls" },
   { label: "Apps", icon: AppWindow, path: "/apps" },
-  { label: "Mensagens", icon: MessageSquare, path: "/aikortex/messages" },
 ];
 
 // Mapeia cada item de sidebar pra um slug de módulo (mesmo schema que aparece
