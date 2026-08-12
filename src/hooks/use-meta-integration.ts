@@ -20,11 +20,14 @@ export interface MetaIntegration {
 }
 
 const ENV_APP_ID = import.meta.env.VITE_META_APP_ID || "2356582444746370";
+// Fallback de env pro Config ID do WhatsApp — rede de segurança pro 1-clique
+// funcionar mesmo se o platform_config ainda não estiver preenchido pelo admin.
+const ENV_WA_CONFIG_ID = import.meta.env.VITE_META_WHATSAPP_CONFIG_ID || "";
 
 export function useMetaIntegration(): MetaIntegration {
   const [state, setState] = useState<MetaIntegration>({
     appId: ENV_APP_ID,
-    whatsappConfigId: "",
+    whatsappConfigId: ENV_WA_CONFIG_ID,
     instagramAppId: "",
     facebookConfigId: "",
     loading: true,
@@ -40,7 +43,7 @@ export function useMetaIntegration(): MetaIntegration {
         (data ?? []).forEach((r: any) => { map[r.key] = (r.value ?? "").trim(); });
         setState({
           appId: map.meta_app_id || ENV_APP_ID,
-          whatsappConfigId: map.meta_whatsapp_config_id || "",
+          whatsappConfigId: map.meta_whatsapp_config_id || ENV_WA_CONFIG_ID,
           instagramAppId: map.meta_instagram_app_id || "",
           facebookConfigId: map.meta_facebook_config_id || "",
           loading: false,
