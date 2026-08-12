@@ -124,7 +124,19 @@ const CreateUserDialog = ({ open, onClose, onSuccess, context, workspaceOwnerUse
           });
 
       if (fnError) {
-        setError((data as any)?.error || fnError.message || "Erro ao criar usuário. Tente novamente.");
+        // supabase-js põe o corpo do erro em error.context (não em data) quando
+        // a Edge Function retorna non-2xx. Sem ler isso, só aparece o genérico
+        // "Edge Function returned a non-2xx status code".
+        let realMsg = "";
+        try {
+          const ctxBody = await (fnError as any)?.context?.json?.();
+          if (ctxBody?.error) {
+            realMsg = typeof ctxBody.error === "string"
+              ? ctxBody.error
+              : Object.values(ctxBody.error).flat().join(", ");
+          }
+        } catch { /* corpo não-JSON, ignora */ }
+        setError(realMsg || (data as any)?.error || fnError.message || "Erro ao criar usuário. Tente novamente.");
         setLoading(false);
         return;
       }
