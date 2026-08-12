@@ -11,6 +11,7 @@ import { StarkBubble } from "@/components/stark/StarkBubble";
 import WizardShowcasePanel from "@/components/aikortex/WizardShowcasePanel";
 import { computeWizardProgress } from "@/lib/wizard-progress";
 import VoiceCallPanel from "@/components/aikortex/VoiceCallPanel";
+import TestAiGate from "@/components/aikortex/TestAiGate";
 import OutboundCallDialog from "@/components/aikortex/OutboundCallDialog";
 import BrowserCallWidget from "@/components/aikortex/BrowserCallWidget";
 import { useAgentChat } from "@/hooks/use-agent-chat";
@@ -1293,10 +1294,45 @@ Se user falar de algum desses, diga claramente o que falta.
 
   const handleOpenVoiceCall = useCallback(() => setShowVoiceCall(true), []);
   const handleCloseVoiceCall = useCallback(() => setShowVoiceCall(false), []);
-  const handleSwitchToTestChat = useCallback(() => {
+
+  // ── Trava BYOK de teste: exige provider + modelo + chave conectada ──
+  const [testGateOpen, setTestGateOpen] = useState(false);
+  const [testGateProvider, setTestGateProvider] = useState<string>("");
+  const [testGateModel, setTestGateModel] = useState<string>("");
+  const AGENCY_PROVIDERS = ["openai", "anthropic", "gemini", "deepseek", "qwen", "kimi", "glm"];
+
+  const enterTestMode = useCallback(() => {
     setChatMode("test");
     setMobileTab("chat");
   }, []);
+
+  const handleSwitchToTestChat = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: row } = await supabase
+        .from("user_agents").select("config, provider, model").eq("id", agentId).maybeSingle();
+      const cfg = (row?.config as any) ?? {};
+      const prov: string = cfg.provider || (row as any)?.provider || "";
+      const mdl: string = cfg.model || (row as any)?.model || "";
+      let ready = false;
+      if (user && AGENCY_PROVIDERS.includes(prov) && mdl) {
+        const { data: keys } = await supabase
+          .from("user_api_keys").select("api_key")
+          .eq("user_id", user.id).eq("provider", prov).limit(1);
+        ready = !!keys?.[0]?.api_key;
+      }
+      if (ready) {
+        enterTestMode();
+      } else {
+        setTestGateProvider(AGENCY_PROVIDERS.includes(prov) ? prov : "");
+        setTestGateModel(mdl || "");
+        setTestGateOpen(true);
+      }
+    } catch {
+      setTestGateOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId, enterTestMode]);
 
   /* ── Loading screen ── */
 
@@ -1493,6 +1529,18 @@ Se user falar de algum desses, diga claramente o que falta.
       </div>
 
       {/* ── Voice Call Overlay (on-demand) ── */}
+      <TestAiGate
+        open={testGateOpen}
+        onOpenChange={setTestGateOpen}
+        agentId={agentId!}
+        initialProvider={testGateProvider}
+        initialModel={testGateModel}
+        onConfirm={(provider, model) => {
+          setAgentModel(model);
+          enterTestMode();
+        }}
+      />
+
       <Sheet open={showVoiceCall} onOpenChange={setShowVoiceCall}>
         <SheetContent side="right" className="w-full sm:w-[480px] sm:max-w-[480px] p-0 border-l border-border flex flex-col">
           <SheetHeader className="px-4 py-3 border-b border-border">
