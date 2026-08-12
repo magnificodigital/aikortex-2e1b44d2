@@ -7,7 +7,17 @@
 // pra o formato nativo do provider (Anthropic input_schema, Gemini
 // functionDeclarations).
 
-export type LlmProvider = "openrouter" | "openai" | "anthropic" | "gemini";
+export type LlmProvider =
+  | "openrouter" | "openai" | "anthropic" | "gemini"
+  | "deepseek" | "qwen" | "kimi" | "glm";
+
+// Providers OpenAI-compatíveis (mesmo formato do /chat/completions da OpenAI).
+const OPENAI_COMPAT_URL: Partial<Record<LlmProvider, string>> = {
+  deepseek: "https://api.deepseek.com/v1/chat/completions",
+  qwen:     "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
+  kimi:     "https://api.moonshot.ai/v1/chat/completions",
+  glm:      "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+};
 
 export interface ToolDef {
   name: string;
@@ -36,6 +46,12 @@ export async function callProviderLlm(
     case "openrouter": return callOpenRouter(apiKey, model, messages, tools, maxTokens);
     case "openai": return callOpenAI(apiKey, model, messages, tools, maxTokens);
     case "gemini": return callGemini(apiKey, model, messages, tools, maxTokens);
+    // DeepSeek/Qwen/Kimi/GLM — endpoint OpenAI-compatível (tools inclusas).
+    case "deepseek":
+    case "qwen":
+    case "kimi":
+    case "glm":
+      return callOpenAICompatible(OPENAI_COMPAT_URL[provider]!, apiKey, model, messages, tools, maxTokens);
   }
 }
 

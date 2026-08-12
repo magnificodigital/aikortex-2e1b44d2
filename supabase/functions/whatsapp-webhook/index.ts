@@ -3,7 +3,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
 import { callLLM } from "../_shared/llm-fallback.ts";
-import { callAgencyLLM, isAgencyProvider } from "../_shared/llm-providers.ts";
 import { recordInboxMessage, setConversationAi } from "../_shared/inbox.ts";
 
 const corsHeaders = {
@@ -498,50 +497,6 @@ async function callOpenRouterDirect(
   return result.success ? (result.content ?? null) : null;
 }
 
-/**
- * Gera a resposta do agente. BYOK de produção (Master v7.4 / decisão 2026-08-11):
- * - Agente usa provider da AGÊNCIA (openai/anthropic/deepseek/gemini/qwen/kimi/glm):
- *     • chave conectada → responde com a chave DELA (tradutor multi-provider);
- *     • sem chave → NÃO responde (humano assume pela caixa). Produção nunca
- *       consome a chave da plataforma.
- * - Provider legado/plataforma ("auto"/"aikortex"/estilo OpenRouter) → runtime
- *   atual (transitório, até a UX de teste forçar a escolha de provider).
- */
-async function generateAgentReply(
-  supabase: any, ownerUserId: string, agentId: string,
-  cfg: any, system: string, userText: string,
-): Promise<string | null> {
-  const provider = cfg?.provider;
-  const model = cfg?.model || cfg?.production_model;
-  if (isAgencyProvider(provider)) {
-    if (!model) {
-      console.warn(`[auto-reply] agente usa ${provider} sem modelo definido — não responde`);
-      return null;
-    }
-    const { data } = await supabase
-      .from("user_api_keys").select("api_key")
-      .eq("user_id", ownerUserId).eq("provider", provider).limit(1);
-    const apiKey = data?.[0]?.api_key;
-    if (!apiKey) {
-      console.warn(`[auto-reply] agente usa ${provider} mas a agência não conectou a chave — humano assume`);
-      return null; // BYOK estrito: sem chave, sem resposta automática da IA
-    }
-    const res = await callAgencyLLM({
-      provider, apiKey, model,
-      messages: [{ role: "system", content: system }, { role: "user", content: userText }],
-      maxTokens: 1024,
-    });
-    if (res.success) return res.content ?? "";
-    console.error(`[auto-reply] BYOK ${provider} falhou: ${res.error}`);
-    return null;
-  }
-  // Legado/plataforma (fase de montagem) — runtime atual via OpenRouter da plataforma.
-  return await runAgentLLM({
-    supabase, agentId, agencyId: null, system,
-    messages: [{ role: "user", content: userText }], maxTokens: 1024,
-  });
-}
-
 /** Fire-and-forget: find agent config and call OpenRouter directly */
 function handleAgentReply(
   supabase: any,
@@ -619,9 +574,16 @@ ${instructions ? `Instruções: ${instructions}\n` : ""}Responda sempre em portu
       console.log(`[auto-reply] system prompt length=${system.length}`);
 
       console.log(`[auto-reply] calling LLM for agent=${agent.name}`);
-      const replyText = await generateAgentReply(
-        supabase, ownerUserId, agentConfig.api_key, cfg, system, messageContent,
-      );
+      // runAgentLLM já resolve BYOK (provider+chave da agência pela config.model,
+      // cascade user>plataforma) e roda o loop de ferramentas. Ver agent-llm-cascade.
+      const replyText = await runAgentLLM({
+        supabase,
+        agentId: agentConfig.api_key,
+        agencyId: null,
+        system,
+        messages: [{ role: "user", content: messageContent }],
+        maxTokens: 1024,
+      });
 
       if (!replyText) {
         console.error(`[auto-reply] LLM returned empty reply`);

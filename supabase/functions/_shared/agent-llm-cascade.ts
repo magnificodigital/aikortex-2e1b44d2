@@ -34,6 +34,10 @@ export function detectProviderFromModel(model: string): LlmProvider | null {
   if (m.startsWith("gpt-") || m.startsWith("o1") || m.startsWith("o3") || m.startsWith("o4")) return "openai";
   if (m.startsWith("claude")) return "anthropic";
   if (m.startsWith("gemini") || m.startsWith("gemma")) return "gemini";
+  if (m.startsWith("deepseek")) return "deepseek";
+  if (m.startsWith("qwen")) return "qwen";
+  if (m.startsWith("kimi") || m.startsWith("moonshot")) return "kimi";
+  if (m.startsWith("glm")) return "glm";
   return null;
 }
 
@@ -45,6 +49,10 @@ export function defaultModelForProvider(provider: LlmProvider): string {
     case "anthropic": return "claude-haiku-4-5";
     case "openai": return "gpt-4o-mini";
     case "gemini": return "gemini-2.5-flash";
+    case "deepseek": return "deepseek-chat";
+    case "qwen": return "qwen-plus";
+    case "kimi": return "kimi-k2-0711-preview";
+    case "glm": return "glm-4-flash";
   }
 }
 
@@ -73,11 +81,11 @@ export async function resolveAgentLlm(
     .from("user_api_keys")
     .select("provider, api_key")
     .eq("user_id", ownerId)
-    .in("provider", ["openrouter", "openai", "anthropic", "gemini"]);
+    .in("provider", ["openrouter", "openai", "anthropic", "gemini", "deepseek", "qwen", "kimi", "glm"]);
   const keys = new Map<LlmProvider, string>();
   (rows ?? []).forEach((r: any) => {
     const k = (r?.api_key ?? "").trim();
-    if (k && ["openrouter", "openai", "anthropic", "gemini"].includes(r.provider)) {
+    if (k && ["openrouter", "openai", "anthropic", "gemini", "deepseek", "qwen", "kimi", "glm"].includes(r.provider)) {
       keys.set(r.provider as LlmProvider, k);
     }
   });

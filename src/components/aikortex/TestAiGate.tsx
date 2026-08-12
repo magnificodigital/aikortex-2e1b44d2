@@ -30,12 +30,6 @@ const GATE_PROVIDERS: { id: string; label: string; models: string[] }[] = [
   { id: "glm",       label: "GLM",            models: ["glm-4-plus", "glm-4-flash"] },
 ];
 
-// Espelha PROVIDER_META.supportsTools do tradutor backend (llm-providers.ts).
-const SUPPORTS_TOOLS: Record<string, boolean> = {
-  openai: true, deepseek: true, qwen: true, kimi: true, glm: true,
-  anthropic: false, gemini: false,
-};
-
 interface TestAiGateProps {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -52,10 +46,9 @@ export default function TestAiGate({
   const [connected, setConnected] = useState<Set<string>>(new Set());
   const [provider, setProvider] = useState<string>(initialProvider || "");
   const [model, setModel] = useState<string>(initialModel || "");
-  const [agentUsesTools, setAgentUsesTools] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Carrega providers conectados + se o agente usa ferramentas (compatibilidade).
+  // Carrega quais providers a agência já conectou chave (user_api_keys).
   useEffect(() => {
     if (!open) return;
     (async () => {
@@ -68,13 +61,8 @@ export default function TestAiGate({
       const set = new Set<string>();
       (data ?? []).forEach((r: any) => { if (r.api_key) set.add(r.provider); });
       setConnected(set);
-
-      const { count } = await supabase
-        .from("agent_tools").select("id", { count: "exact", head: true })
-        .eq("agent_id", agentId).eq("enabled", true);
-      setAgentUsesTools((count ?? 0) > 0);
     })();
-  }, [open, agentId]);
+  }, [open]);
 
   const suggestions = useMemo(
     () => GATE_PROVIDERS.find((p) => p.id === provider)?.models ?? [],
@@ -185,18 +173,6 @@ export default function TestAiGate({
                 </span>
               </div>
             )
-          )}
-
-          {/* Compatibilidade: agente com ferramentas em provider que só faz texto. */}
-          {provider && !SUPPORTS_TOOLS[provider] && agentUsesTools && (
-            <div className="flex items-start gap-2 text-[13px] text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5">
-              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>
-                Seu agente usa <strong>ferramentas</strong>, mas a{" "}
-                {GATE_PROVIDERS.find((p) => p.id === provider)?.label} ainda responde só em texto neste modo.
-                Para as ferramentas funcionarem, escolha <strong>OpenAI, DeepSeek, Qwen, Kimi ou GLM</strong>.
-              </span>
-            </div>
           )}
         </div>
 
