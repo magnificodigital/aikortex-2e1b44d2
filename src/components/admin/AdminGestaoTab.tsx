@@ -768,11 +768,12 @@ const Level2 = ({ agency, onSelectClient, onAgencyUpdated }: { agency: AgencyRow
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [clientsRes, subsRes, templatesRes, usersData] = await Promise.all([
+      const [clientsRes, subsRes, templatesRes, usersData, membersRes] = await Promise.all([
         supabase.from("agency_clients").select("id, client_name, client_email, client_phone, client_document, status, created_at, client_user_id, agency_id").eq("agency_id", agency.id),
         supabase.from("client_template_subscriptions").select("id, client_id, template_id, agency_price_monthly, platform_price_monthly, status, activated_channel, activated_at").eq("agency_id", agency.id),
         supabase.from("platform_templates").select("id, name"),
         supabase.functions.invoke("admin-users", { body: { action: "list" } }),
+        (supabase.from("agency_members" as any) as any).select("user_id, role").eq("agency_id", agency.id),
       ]);
 
       const templateMap = new Map((templatesRes.data || []).map(t => [t.id, t.name]));
@@ -798,7 +799,9 @@ const Level2 = ({ agency, onSelectClient, onAgencyUpdated }: { agency: AgencyRow
       })));
 
       const allUsers: any[] = usersData?.data?.users || [];
-      setUsers(allUsers.filter((u: any) => u.agency?.id === agency.id || (u.tenant_type === "agency" && u.user_id === agency.user_id)).map((u: any) => ({
+      // Membros da agência (agency_members) + o dono + quem tem agency_profiles desta agência.
+      const memberIds = new Set(((membersRes as any)?.data || []).map((m: any) => m.user_id));
+      setUsers(allUsers.filter((u: any) => u.agency?.id === agency.id || memberIds.has(u.user_id) || (u.tenant_type === "agency" && u.user_id === agency.user_id)).map((u: any) => ({
         id: u.id, user_id: u.user_id, email: u.email, full_name: u.full_name,
         role: u.role, tenant_type: u.tenant_type, is_active: u.is_active, last_sign_in_at: u.last_sign_in_at,
       })));

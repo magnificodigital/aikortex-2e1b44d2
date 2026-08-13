@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
 
       /* ─── CREATE ─── */
       case "create": {
-        const { email, password, full_name, role, tenant_type, agency_id, agency_name, tier } = body;
+        const { email, password, full_name, role, tenant_type, agency_id, agency_name, tier, workspace_owner_user_id } = body;
         if (!email || !password) return json({ error: "email and password required" }, 400);
 
         const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
@@ -116,8 +116,22 @@ Deno.serve(async (req) => {
         const effectiveTenant = tenant_type || "agency";
         await supabase.from("profiles").update({ full_name, role: effectiveRole, tenant_type: effectiveTenant }).eq("user_id", newUser.user.id);
 
-        // Create agency_profiles if agency role
-        if (["agency_owner", "agency_admin", "agency_manager", "agency_member"].includes(effectiveRole) || effectiveTenant === "agency") {
+        if (workspace_owner_user_id) {
+          // Adicionar como MEMBRO da agência EXISTENTE do dono — NÃO cria agência nova.
+          const { data: ownerAgency } = await supabase
+            .from("agency_profiles").select("id").eq("user_id", workspace_owner_user_id).maybeSingle();
+          if (ownerAgency) {
+            const { error: memErr } = await supabase.from("agency_members").insert({
+              agency_id: ownerAgency.id,
+              user_id: newUser.user.id,
+              role: effectiveRole,
+            });
+            if (memErr) console.error("agency_members insert error:", memErr.message);
+          } else {
+            console.warn("[admin-users] workspace_owner sem agency_profiles:", workspace_owner_user_id);
+          }
+        } else if (["agency_owner", "agency_admin", "agency_manager", "agency_member"].includes(effectiveRole) || effectiveTenant === "agency") {
+          // Criação de AGÊNCIA de fato (sem dono existente) → cria a agency_profiles.
           await supabase.from("agency_profiles").insert({
             user_id: newUser.user.id,
             agency_name: agency_name || full_name || email,
