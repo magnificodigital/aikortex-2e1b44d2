@@ -146,33 +146,33 @@ const Home = () => {
     }
   };
 
-  // 1º login sem setup → wizard de negócio (tela cheia, fora do layout).
-  if (setupChecked && setupNeeds && user) {
-    return (
-      <AgencyOnboarding
-        initialName={agencyName}
-        onComplete={() => setSetupNeeds(false)}
-        onSkip={() => {
-          try { localStorage.setItem(`aikortex_setup_skipped_${user.id}`, "1"); } catch { /* noop */ }
-          setSetupNeeds(false);
-        }}
-      />
-    );
-  }
-
   return (
-    <DashboardLayout>
-      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 pt-5">
-        <OnboardingChecklist />
-      </div>
-      <StarkInterface
-        greeting={getGreeting()}
-        userName={userName}
-        honorific={detectHonorific(userName)}
-        onTextSubmit={handleTextSubmit}
-        onVoiceTranscript={handleVoiceTranscript}
-      />
-    </DashboardLayout>
+    <>
+      <DashboardLayout>
+        <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 pt-5">
+          <OnboardingChecklist />
+        </div>
+        <StarkInterface
+          greeting={getGreeting()}
+          userName={userName}
+          honorific={detectHonorific(userName)}
+          onTextSubmit={handleTextSubmit}
+          onVoiceTranscript={handleVoiceTranscript}
+        />
+      </DashboardLayout>
+
+      {/* Onboarding do negócio em LIGHTBOX sobre o app (estilo UserGuiding). */}
+      {setupChecked && setupNeeds && user && (
+        <AgencyOnboarding
+          initialName={agencyName}
+          onComplete={() => setSetupNeeds(false)}
+          onSkip={() => {
+            try { localStorage.setItem(`aikortex_setup_skipped_${user.id}`, "1"); } catch { /* noop */ }
+            setSetupNeeds(false);
+          }}
+        />
+      )}
+    </>
   );
 };
 

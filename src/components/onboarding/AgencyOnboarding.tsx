@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  Sparkles, ArrowRight, CheckCircle2, Upload, Loader2, Eye, EyeOff, ExternalLink,
+  Sparkles, ArrowRight, CheckCircle2, Upload, Loader2, Eye, EyeOff, ExternalLink, X,
 } from "lucide-react";
 
 interface Props {
@@ -95,8 +95,13 @@ const AgencyOnboarding = ({ onComplete, onSkip, initialName }: Props) => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+      {onSkip && (
+        <button onClick={onSkip} className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors" aria-label="Fechar">
+          <X className="w-5 h-5" />
+        </button>
+      )}
+      <div className="w-full max-w-md space-y-6 my-auto">
         <div className="text-center space-y-2">
           <Sparkles className="w-10 h-10 text-primary mx-auto" />
           {step === 1 && (
