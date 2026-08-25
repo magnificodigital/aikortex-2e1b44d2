@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { X, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AuthModalProps {
@@ -68,11 +67,14 @@ const AuthModal = ({ open, mode = "signup", onClose }: AuthModalProps) => {
   };
 
   const handleGoogleLogin = async () => {
-    const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+    // OAuth nativo do Supabase (decoplado do Lovable). Requer o provider Google
+    // habilitado em Supabase → Authentication → Providers.
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
     });
     if (error) {
-      toast({ title: "Erro ao entrar com Google", description: String(error), variant: "destructive" });
+      toast({ title: "Erro ao entrar com Google", description: error.message, variant: "destructive" });
     }
   };
 
