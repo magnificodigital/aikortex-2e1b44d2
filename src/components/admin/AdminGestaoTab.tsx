@@ -26,6 +26,7 @@ import { ROLE_CONFIG } from "@/types/rbac";
 import EditUserDialog from "@/components/admin/EditUserDialog";
 import CreateUserDialog from "@/components/shared/CreateUserDialog";
 import PlatformTeamSection from "@/components/admin/PlatformTeamSection";
+import CadastrarChooser from "@/components/admin/CadastrarChooser";
 
 /* ────────────────────── types ────────────────────── */
 
@@ -551,6 +552,11 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState(initialTier || "all");
   const [showCreate, setShowCreate] = useState(false);
+  // Cadastro unificado (chooser: agência / cliente / usuário).
+  const [cadastrarOpen, setCadastrarOpen] = useState(false);
+  const [createClientFor, setCreateClientFor] = useState<string | null>(null);
+  const [createPlatformUser, setCreatePlatformUser] = useState(false);
+  const [createUserForAgency, setCreateUserForAgency] = useState<AgencyRow | null>(null);
   const [stats, setStats] = useState({ totalAgencies: 0, totalClients: 0, platformMRR: 0, templatesSold: 0, tierBreakdown: { start: { agencies: 0, clients: 0, mrr: 0 }, hack: { agencies: 0, clients: 0, mrr: 0 }, growth: { agencies: 0, clients: 0, mrr: 0 } } });
 
   useEffect(() => { fetchData(); }, []);
@@ -689,7 +695,7 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
             <SelectContent><SelectItem value="all">Todos os tiers</SelectItem><SelectItem value="start">Start</SelectItem><SelectItem value="hack">Hack</SelectItem><SelectItem value="growth">Growth</SelectItem></SelectContent>
           </Select>
           <Button size="sm" variant="outline" onClick={fetchData}><RefreshCw className="w-4 h-4 mr-1.5" /> Atualizar</Button>
-          <Button size="sm" onClick={() => setShowCreate(true)}><Plus className="w-4 h-4 mr-1.5" /> Criar agência</Button>
+          <Button size="sm" onClick={() => setCadastrarOpen(true)}><Plus className="w-4 h-4 mr-1.5" /> Cadastrar</Button>
         </div>
 
         <div className="text-xs text-muted-foreground">{filtered.length} agência(s)</div>
@@ -741,6 +747,36 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
       </div>
 
       <CreateAgencyModal open={showCreate} onClose={() => setShowCreate(false)} onSuccess={fetchData} />
+
+      {/* Cadastro unificado — 1 botão "Cadastrar" guia o que criar e de qual agência. */}
+      <CadastrarChooser
+        open={cadastrarOpen}
+        onOpenChange={setCadastrarOpen}
+        agencies={agencies as any}
+        onCreateAgency={() => setShowCreate(true)}
+        onCreateClient={(agencyId) => setCreateClientFor(agencyId)}
+        onCreatePlatformUser={() => setCreatePlatformUser(true)}
+        onCreateAgencyUser={(a) => setCreateUserForAgency(a as AgencyRow)}
+      />
+      <CreateClientModal
+        open={!!createClientFor}
+        onClose={() => setCreateClientFor(null)}
+        agencyId={createClientFor || ""}
+        onSuccess={fetchData}
+      />
+      <CreateUserDialog
+        open={createPlatformUser}
+        onClose={() => setCreatePlatformUser(false)}
+        onSuccess={fetchData}
+        context="platform"
+      />
+      <CreateUserDialog
+        open={!!createUserForAgency}
+        onClose={() => setCreateUserForAgency(null)}
+        onSuccess={fetchData}
+        context="agency"
+        workspaceOwnerUserId={createUserForAgency?.user_id}
+      />
     </div>
   );
 };

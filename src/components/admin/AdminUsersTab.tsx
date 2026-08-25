@@ -142,6 +142,10 @@ const AdminUsersTab = ({ onNavigateToAgency, onNavigateToClient }: AdminUsersPro
 
   return (
     <div className="space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold">Todas as contas</h2>
+        <p className="text-xs text-muted-foreground">Busque e gerencie qualquer conta (e-mail, senha, papel, excluir). Para <strong>criar</strong>, use a aba <strong>Gestão → Cadastrar</strong>.</p>
+      </div>
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex gap-2 items-center flex-1 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-xs">
