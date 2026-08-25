@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { StarkInterface } from "@/components/stark/StarkInterface";
 import OnboardingChecklist from "@/components/onboarding/OnboardingChecklist";
+import AgencyOnboarding from "@/components/onboarding/AgencyOnboarding";
 
 const WHATSAPP_KEYWORDS = ["whatsapp", "wpp", "zap", "zapzap", "mensagem", "conversa", "chat", "atendimento", "sac", "suporte ao cliente", "cliente pelo whatsapp", "whats"];
 const WEB_KEYWORDS = ["web", "site", "website", "dashboard", "portal", "painel", "landing", "página", "pagina", "sistema web", "plataforma", "saas", "aplicativo web", "app web"];
@@ -34,6 +35,12 @@ const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Setup do negócio (1º login): mostra o wizard se a agência ainda não
+  // configurou os preços (custom_pricing). "Fazer depois" grava skip local.
+  const [setupChecked, setSetupChecked] = useState(false);
+  const [setupNeeds, setSetupNeeds] = useState(false);
+  const [agencyName, setAgencyName] = useState("");
+
   useEffect(() => {
     if (!user) return;
     supabase
@@ -43,6 +50,25 @@ const Home = () => {
       .single()
       .then(({ data }) => {
         if (data?.full_name) setUserName(data.full_name);
+      });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let skipped = false;
+    try { skipped = localStorage.getItem(`aikortex_setup_skipped_${user.id}`) === "1"; } catch { /* noop */ }
+    supabase
+      .from("agency_profiles")
+      .select("agency_name, custom_pricing")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const isAgency = !!data;
+        const pricing = (data as any)?.custom_pricing;
+        const hasPricing = !!pricing && Object.keys(pricing).length > 0;
+        setAgencyName((data as any)?.agency_name || "");
+        setSetupNeeds(isAgency && !hasPricing && !skipped);
+        setSetupChecked(true);
       });
   }, [user]);
 
@@ -119,6 +145,20 @@ const Home = () => {
       navigate("/app-builder", { state: { initialPrompt: text, channel } });
     }
   };
+
+  // 1º login sem setup → wizard de negócio (tela cheia, fora do layout).
+  if (setupChecked && setupNeeds && user) {
+    return (
+      <AgencyOnboarding
+        initialName={agencyName}
+        onComplete={() => setSetupNeeds(false)}
+        onSkip={() => {
+          try { localStorage.setItem(`aikortex_setup_skipped_${user.id}`, "1"); } catch { /* noop */ }
+          setSetupNeeds(false);
+        }}
+      />
+    );
+  }
 
   return (
     <DashboardLayout>

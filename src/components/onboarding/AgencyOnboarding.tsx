@@ -13,6 +13,10 @@ import {
 
 interface Props {
   onComplete: () => void;
+  /** "Fazer depois" — pula o setup sem travar a agência. */
+  onSkip?: () => void;
+  /** Pré-preenche o nome da agência (quando já existe). */
+  initialName?: string;
 }
 
 type Template = {
@@ -23,13 +27,13 @@ type Template = {
   min_tier: string;
 };
 
-const AgencyOnboarding = ({ onComplete }: Props) => {
+const AgencyOnboarding = ({ onComplete, onSkip, initialName }: Props) => {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
   // Step 1
-  const [agencyName, setAgencyName] = useState("");
+  const [agencyName, setAgencyName] = useState(initialName || "");
 
   // Step 2
   const [asaasKey, setAsaasKey] = useState("");
@@ -191,6 +195,12 @@ const AgencyOnboarding = ({ onComplete }: Props) => {
               </Button>
             </CardContent>
           </Card>
+        )}
+
+        {onSkip && (
+          <button onClick={onSkip} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
+            Fazer isso depois
+          </button>
         )}
       </div>
     </div>
