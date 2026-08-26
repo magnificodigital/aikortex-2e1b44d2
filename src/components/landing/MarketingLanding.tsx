@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/contexts/AuthContext";
 import AuthModal from "@/components/auth/AuthModal";
+import { DOMAINS, getAppMode } from "@/lib/app-domain";
 import { translations, type Lang } from "./copy";
 import Hero from "./Hero";
 
@@ -28,6 +29,12 @@ const MarketingLanding = () => {
   };
 
   const openAuth = (mode: "signin" | "signup") => {
+    // Site institucional (aikortex.com) não loga localmente — manda pro app.
+    // Em dev/preview (?view=marketing) mantém o modal pra testar.
+    if (getAppMode() === "site") {
+      window.location.href = DOMAINS.app;
+      return;
+    }
     setAuthMode(mode);
     setShowAuth(true);
   };

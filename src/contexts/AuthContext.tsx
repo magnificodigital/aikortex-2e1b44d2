@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { getAppMode } from "@/lib/app-domain";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -92,6 +93,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const getRedirectPath = () => {
     if (!profile) return "/";
+    // dash.aikortex.com é o painel do admin do SaaS — sempre cai no /admin.
+    if (getAppMode() === "dash") return "/admin";
     if (isPlatformOwner || isPlatformAdmin) return "/admin";
     if (isClient) return "/workspace";
     return "/home";
