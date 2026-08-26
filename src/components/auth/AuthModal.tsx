@@ -10,8 +10,9 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-const AuthModal = ({ open, mode = "signup", onClose }: AuthModalProps) => {
-  const [isSignUp, setIsSignUp] = useState(mode !== "signin");
+const AuthModal = ({ open, mode = "signin", onClose }: AuthModalProps) => {
+  // Cadastro público FECHADO — acesso só por convite/demo. Login-only.
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -21,10 +22,8 @@ const AuthModal = ({ open, mode = "signup", onClose }: AuthModalProps) => {
   const { signUp, signIn } = useAuth();
 
   useEffect(() => {
-    if (open) {
-      setIsSignUp(mode !== "signin");
-    }
-  }, [mode, open]);
+    if (open) setIsSignUp(false); // sempre login (cadastro fechado)
+  }, [open]);
 
   if (!open) return null;
 
@@ -187,15 +186,9 @@ const AuthModal = ({ open, mode = "signup", onClose }: AuthModalProps) => {
           </button>
         </form>
 
-        {/* Toggle */}
-        <p className="text-center text-sm text-white/40 mt-6">
-          {isSignUp ? "Já tem uma conta? " : "Não tem conta? "}
-          <button
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-white font-semibold hover:underline"
-          >
-            {isSignUp ? "Entrar" : "Criar Conta"}
-          </button>
+        {/* Cadastro fechado — acesso por convite. Sem opção de "Criar Conta". */}
+        <p className="text-center text-xs text-white/30 mt-6">
+          Acesso apenas por convite. Fale com nossos especialistas.
         </p>
 
         {/* Terms */}
