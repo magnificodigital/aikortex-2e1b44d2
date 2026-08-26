@@ -93,9 +93,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const getRedirectPath = () => {
     if (!profile) return "/";
-    // dash.aikortex.com é o painel do admin do SaaS — sempre cai no /admin.
+    // Painéis SEPARADOS, sem redirect entre eles:
+    //   dash.aikortex.com → admin do SaaS
+    //   app.aikortex.com  → produto (mesmo o platform admin cai no produto aqui)
     if (getAppMode() === "dash") return "/admin";
-    if (isPlatformOwner || isPlatformAdmin) return "/admin";
     if (isClient) return "/workspace";
     return "/home";
   };

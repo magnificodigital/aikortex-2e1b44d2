@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -40,14 +40,6 @@ const AdminPanel = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isPlatformOwner } = useAuth();
   const activeTab = searchParams.get("tab") || "overview";
-
-  // O painel do admin do SaaS mora em dash.aikortex.com — no app.aikortex.com,
-  // manda pra lá (acesso separado). Não redireciona em localhost/preview.
-  useEffect(() => {
-    if (window.location.hostname === "app.aikortex.com") {
-      window.location.href = "https://dash.aikortex.com/admin";
-    }
-  }, []);
 
   const [gestaoTier, setGestaoTier] = useState<string | undefined>();
   const [gestaoAgencyId, setGestaoAgencyId] = useState<string | undefined>();
