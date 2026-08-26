@@ -36,10 +36,11 @@ const MarketingLanding = () => {
   };
 
   const openAuth = (mode: "signin" | "signup") => {
-    // Site institucional (aikortex.com) não loga localmente — manda pro app.
+    // Site institucional (aikortex.com) não loga localmente — leva pro app com
+    // o lightbox de login já aberto (sessão pertence ao domínio do app).
     // Em dev/preview (?view=marketing) mantém o modal pra testar.
     if (getAppMode() === "site") {
-      window.location.href = DOMAINS.app;
+      window.location.href = `${DOMAINS.app}/?auth=${mode === "signup" ? "signup" : "login"}`;
       return;
     }
     setAuthMode(mode);

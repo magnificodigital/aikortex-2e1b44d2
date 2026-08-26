@@ -132,6 +132,14 @@ const AppLanding = () => {
     }
   }, [user, loading, navigate, getRedirectPath, isRecovery]);
 
+  // Chegou de aikortex.com clicando "Entrar" (?auth=login/signup) → abre o lightbox.
+  useEffect(() => {
+    const auth = new URLSearchParams(window.location.search).get("auth");
+    if (auth === "login") openAuthModal("signin");
+    else if (auth === "signup") openAuthModal("signup");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const isDark = theme === "dark";
   const bg = isDark ? "bg-[#0a0a0f] text-white" : "bg-white text-foreground";
   const borderColor = isDark ? "border-white/5" : "border-border";
