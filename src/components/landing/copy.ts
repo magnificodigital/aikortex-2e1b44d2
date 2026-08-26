@@ -12,12 +12,11 @@ export const translations = {
       startNow: "Comece agora",
     },
     hero: {
-      eyebrow: "A Nova Era das Agências",
-      titleLead: "Sua agência de IA,",
+      eyebrow: "Infinitas possibilidades",
+      titleLead: "Sua infra de IA,",
       titleAccent: "pronta para faturar.",
-      subtitle: "Tudo pronto para você vender sem ter que perder tempo implementando.",
-      subtitle2:
-        "Comece a vender soluções de IA para empresas em poucos dias, sem precisar programar nada.",
+      subtitle: "Comece a vender soluções de IA em poucos dias e não fique perdendo tempo desenvolvendo ou implementando.",
+      subtitle2: "",
       ctaPrimary: "Agende uma demonstração",
       ctaSecondary: "Ver como funciona",
       noCard: "Sem cartão de crédito · Cancele quando quiser",

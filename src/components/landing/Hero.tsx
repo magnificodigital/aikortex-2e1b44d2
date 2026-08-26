@@ -22,7 +22,9 @@ const Hero = ({ t }: SectionProps) => (
     {/* Subtitle (duas linhas) */}
     <div className="mt-7 max-w-xl space-y-2">
       <p className="text-base lg:text-lg text-foreground/80 leading-relaxed">{t.hero.subtitle}</p>
-      <p className="text-sm lg:text-base text-muted-foreground leading-relaxed">{t.hero.subtitle2}</p>
+      {t.hero.subtitle2 && (
+        <p className="text-sm lg:text-base text-muted-foreground leading-relaxed">{t.hero.subtitle2}</p>
+      )}
     </div>
 
     {/* CTAs */}
@@ -40,12 +42,6 @@ const Hero = ({ t }: SectionProps) => (
       >
         {t.hero.ctaPrimary}
         <ArrowRight className="w-4 h-4 arrow-icon" />
-      </a>
-      <a
-        href="#como-funciona"
-        className="inline-flex items-center gap-2 px-6 py-4 rounded-full text-sm font-medium border border-border text-foreground hover:bg-accent transition-colors"
-      >
-        {t.hero.ctaSecondary}
       </a>
     </div>
   </section>

@@ -71,6 +71,7 @@ const MarketingLanding = () => {
 
       <main className="relative">
         <Hero {...sectionProps} />
+        {/* Demais seções ocultas por ora — só o hero principal.
         <Opportunity {...sectionProps} />
         <Deliverables {...sectionProps} />
         <HowItWorks {...sectionProps} />
@@ -78,6 +79,7 @@ const MarketingLanding = () => {
         <Features {...sectionProps} />
         <SocialProof {...sectionProps} />
         <LaunchCTA {...sectionProps} />
+        */}
         <Footer {...sectionProps} />
       </main>
 
