@@ -1,6 +1,6 @@
 import { getAppMode } from "@/lib/app-domain";
 import MarketingLanding from "@/components/landing/MarketingLanding";
-import AppLanding from "./AppLanding";
+import LoginScreen from "./LoginScreen";
 
 // Rota `/`: o site institucional (aikortex.com) mostra a home «Agência Inteligente»;
 // qualquer outro host (app.aikortex.com, aikortex.vercel.app, previews, localhost)
@@ -14,6 +14,8 @@ const resolveIsMarketing = (): boolean => {
   return getAppMode() === "site";
 };
 
-const LandingPage = () => (resolveIsMarketing() ? <MarketingLanding /> : <AppLanding />);
+// aikortex.com/www → site institucional. Qualquer outro host (app./dash./preview)
+// → tela de login do produto (a antiga AppLanding de marketing foi removida do fluxo).
+const LandingPage = () => (resolveIsMarketing() ? <MarketingLanding /> : <LoginScreen />);
 
 export default LandingPage;
