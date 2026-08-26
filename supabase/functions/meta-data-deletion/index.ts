@@ -6,7 +6,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const STATUS_URL = "https://agents.aikortex.com/data-deletion";
+const STATUS_URL = "https://app.aikortex.com/data-deletion";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok");

@@ -93,7 +93,7 @@ async function callAnthropic(apiKey: string, model: string, messages: any[], too
 
 async function callOpenRouter(apiKey: string, model: string, messages: any[], tools: ToolDef[], maxTokens: number): Promise<LlmResponse> {
   return callOpenAICompatible("https://openrouter.ai/api/v1/chat/completions", apiKey, model, messages, tools, maxTokens, {
-    "HTTP-Referer": "https://agents.aikortex.com",
+    "HTTP-Referer": "https://app.aikortex.com",
     "X-Title": "Aikortex Agent",
   });
 }
