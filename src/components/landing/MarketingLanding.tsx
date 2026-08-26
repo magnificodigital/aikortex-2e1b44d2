@@ -1,15 +1,22 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sun, Moon } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/contexts/AuthContext";
 import AuthModal from "@/components/auth/AuthModal";
 import { DOMAINS, getAppMode } from "@/lib/app-domain";
 import { translations, type Lang } from "./copy";
+import Navbar from "./Navbar";
 import Hero from "./Hero";
+import Opportunity from "./Opportunity";
+import Deliverables from "./Deliverables";
+import HowItWorks from "./HowItWorks";
+import Differentials from "./Differentials";
+import Features from "./Features";
+import SocialProof from "./SocialProof";
+import LaunchCTA from "./LaunchCTA";
+import Footer from "./Footer";
 
-/** Landing pública de marketing (aikortex.com). Hero único + CTA WhatsApp. */
+/** Landing pública de marketing (aikortex.com). Home completa «Agência Inteligente». */
 const MarketingLanding = () => {
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
@@ -45,39 +52,32 @@ const MarketingLanding = () => {
     if (isRecovery) navigate("/reset-password");
   }, [isRecovery, navigate]);
 
+  const sectionProps = { t, isDark, openAuth };
+
   return (
     <div className={`min-h-screen landing-bg ${isDark ? "bg-[#0a0a0f] text-white" : "bg-white text-foreground"}`}>
       <div className="landing-bg-orb" />
       <div className="landing-stars" aria-hidden="true" />
 
-      {/* Header minimalista */}
-      <header className="absolute top-0 inset-x-0 z-30 flex items-center justify-end gap-2 px-4 sm:px-6 h-16 text-sm">
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Theme"
-        >
-          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
-        <Select value={lang} onValueChange={handleLangChange}>
-          <SelectTrigger className="h-8 w-12 justify-center border-none bg-transparent p-0 focus:ring-0" aria-label="Language">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="pt">BR</SelectItem>
-            <SelectItem value="en">EN</SelectItem>
-          </SelectContent>
-        </Select>
-        <button
-          onClick={() => openAuth("signin")}
-          className="px-4 py-2 rounded-full text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {t.nav.signIn}
-        </button>
-      </header>
+      <Navbar
+        t={t}
+        isDark={isDark}
+        lang={lang}
+        onLangChange={handleLangChange}
+        toggleTheme={toggleTheme}
+        openAuth={openAuth}
+      />
 
       <main className="relative">
-        <Hero t={t} isDark={isDark} openAuth={openAuth} />
+        <Hero {...sectionProps} />
+        <Opportunity {...sectionProps} />
+        <Deliverables {...sectionProps} />
+        <HowItWorks {...sectionProps} />
+        <Differentials {...sectionProps} />
+        <Features {...sectionProps} />
+        <SocialProof {...sectionProps} />
+        <LaunchCTA {...sectionProps} />
+        <Footer {...sectionProps} />
       </main>
 
       <AuthModal open={showAuth} mode={authMode} onClose={() => setShowAuth(false)} />
