@@ -3,8 +3,7 @@ import aikortexLogoWhite from "@/assets/aikortex-logo-white.png";
 import aikortexLogoBlack from "@/assets/aikortex-logo-black.png";
 import type { SectionProps } from "./types";
 
-// TODO: trocar pelo número real de WhatsApp (formato internacional, só dígitos).
-const WHATSAPP_NUMBER = "5500000000000";
+const WHATSAPP_NUMBER = "5511952673915";
 const WHATSAPP_MESSAGE = "Olá! Quero agendar uma demonstração da Aikortex.";
 const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
 

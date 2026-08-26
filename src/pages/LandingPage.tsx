@@ -1,86 +1,20 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Sun, Moon } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useTheme } from "@/hooks/use-theme";
-import { useAuth } from "@/contexts/AuthContext";
-import AuthModal from "@/components/auth/AuthModal";
-import { translations, type Lang } from "@/components/landing/copy";
-import Hero from "@/components/landing/Hero";
+import MarketingLanding from "@/components/landing/MarketingLanding";
+import AppLanding from "./AppLanding";
 
-const LandingPage = () => {
-  const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
-  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("app-lang") as Lang) || "pt");
+// Domínios que servem o site institucional (hero «Agência Inteligente»).
+// Qualquer outro host (app.aikortex.com, aikortex.vercel.app, previews, localhost)
+// mantém a landing do app inalterada.
+const MARKETING_HOSTS = new Set(["aikortex.com", "www.aikortex.com"]);
 
-  const navigate = useNavigate();
-  const { user, loading, getRedirectPath, isRecovery } = useAuth();
-  const { theme, toggle: toggleTheme } = useTheme();
-
-  const isDark = theme === "dark";
-  const t = translations[lang];
-
-  const handleLangChange = (value: string) => {
-    const next = value as Lang;
-    setLang(next);
-    localStorage.setItem("app-lang", next);
-  };
-
-  const openAuth = (mode: "signin" | "signup") => {
-    setAuthMode(mode);
-    setShowAuth(true);
-  };
-
-  useEffect(() => {
-    // Recuperação de senha tem prioridade sobre o redirect normal — senão o
-    // usuário cai na home logado pelo token de recovery e sem trocar a senha.
-    if (isRecovery) {
-      navigate("/reset-password");
-      return;
-    }
-    if (!loading && user) {
-      navigate(getRedirectPath());
-    }
-  }, [user, loading, navigate, getRedirectPath, isRecovery]);
-
-  return (
-    <div className={`min-h-screen landing-bg ${isDark ? "bg-[#0a0a0f] text-white" : "bg-white text-foreground"}`}>
-      <div className="landing-bg-orb" />
-      <div className="landing-stars" aria-hidden="true" />
-
-      {/* Header minimalista */}
-      <header className="absolute top-0 inset-x-0 z-30 flex items-center justify-end gap-2 px-4 sm:px-6 h-16 text-sm">
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Theme"
-        >
-          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
-        <Select value={lang} onValueChange={handleLangChange}>
-          <SelectTrigger className="h-8 w-12 justify-center border-none bg-transparent p-0 focus:ring-0" aria-label="Language">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="pt">BR</SelectItem>
-            <SelectItem value="en">EN</SelectItem>
-          </SelectContent>
-        </Select>
-        <button
-          onClick={() => openAuth("signin")}
-          className="px-4 py-2 rounded-full text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {t.nav.signIn}
-        </button>
-      </header>
-
-      <main className="relative">
-        <Hero t={t} isDark={isDark} openAuth={openAuth} />
-      </main>
-
-      <AuthModal open={showAuth} mode={authMode} onClose={() => setShowAuth(false)} />
-    </div>
-  );
+const resolveIsMarketing = (): boolean => {
+  if (typeof window === "undefined") return false;
+  // Override para preview/testes: ?view=marketing força o hero; ?view=app força o app.
+  const override = new URLSearchParams(window.location.search).get("view");
+  if (override === "marketing") return true;
+  if (override === "app") return false;
+  return MARKETING_HOSTS.has(window.location.hostname);
 };
+
+const LandingPage = () => (resolveIsMarketing() ? <MarketingLanding /> : <AppLanding />);
 
 export default LandingPage;
