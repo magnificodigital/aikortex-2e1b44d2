@@ -2,7 +2,7 @@
 // Estrutura espelhada entre pt/en — os componentes leem por chave/índice.
 // Ícones e flags de destaque ficam nos componentes (não aqui).
 
-export const translations = {
+const base = {
   pt: {
     nav: {
       howItWorks: "Como funciona",
@@ -188,12 +188,11 @@ export const translations = {
       startNow: "Get started",
     },
     hero: {
-      eyebrow: "The New Era of Agencies",
-      titleLead: "Your AI agency,",
+      eyebrow: "Infinite possibilities",
+      titleLead: "Your AI infrastructure,",
       titleAccent: "ready to profit.",
-      subtitle: "Everything ready for you to sell — no time wasted on implementation.",
-      subtitle2:
-        "Start selling AI solutions to companies in days, with no coding at all.",
+      subtitle: "Start selling AI solutions in days — no time wasted building or deploying.",
+      subtitle2: "",
       ctaPrimary: "Book a demo",
       ctaSecondary: "See how it works",
       noCard: "No credit card · Cancel anytime",
@@ -333,7 +332,7 @@ export const translations = {
       note: "Limited spots in the first batch.",
     },
     footer: {
-      tagline: "Your AI agency, ready to profit.",
+      tagline: "Your AI infrastructure, ready to profit.",
       colProduct: "Product",
       colResources: "Resources",
       colHelp: "Help",
@@ -357,5 +356,58 @@ export const translations = {
   },
 };
 
-export type Lang = "pt" | "en";
-export type LandingCopy = typeof translations.pt;
+// es/it reaproveitam o inglês nas seções ocultas; só o visível hoje
+// (nav / hero / footer.tagline) é traduzido. Ao reativar as demais seções,
+// traduzir os blocos correspondentes aqui.
+export const translations = {
+  ...base,
+  es: {
+    ...base.en,
+    nav: {
+      ...base.en.nav,
+      howItWorks: "Cómo funciona",
+      features: "Recursos",
+      differentials: "Por qué nosotros",
+      signIn: "Entrar",
+      startNow: "Empezar",
+    },
+    hero: {
+      ...base.en.hero,
+      eyebrow: "Infinitas posibilidades",
+      titleLead: "Tu infraestructura de IA,",
+      titleAccent: "lista para facturar.",
+      subtitle: "Empieza a vender soluciones de IA en pocos días, sin perder tiempo desarrollando o implementando.",
+      subtitle2: "",
+      ctaPrimary: "Agenda una demostración",
+      ctaSecondary: "Ver cómo funciona",
+      noCard: "Sin tarjeta de crédito · Cancela cuando quieras",
+    },
+    footer: { ...base.en.footer, tagline: "Tu infraestructura de IA, lista para facturar." },
+  },
+  it: {
+    ...base.en,
+    nav: {
+      ...base.en.nav,
+      howItWorks: "Come funziona",
+      features: "Funzionalità",
+      differentials: "Perché noi",
+      signIn: "Accedi",
+      startNow: "Inizia",
+    },
+    hero: {
+      ...base.en.hero,
+      eyebrow: "Infinite possibilità",
+      titleLead: "La tua infrastruttura di IA,",
+      titleAccent: "pronta a fatturare.",
+      subtitle: "Inizia a vendere soluzioni di IA in pochi giorni, senza perdere tempo a sviluppare o implementare.",
+      subtitle2: "",
+      ctaPrimary: "Prenota una demo",
+      ctaSecondary: "Scopri come funziona",
+      noCard: "Nessuna carta di credito · Disdici quando vuoi",
+    },
+    footer: { ...base.en.footer, tagline: "La tua infrastruttura di IA, pronta a fatturare." },
+  },
+};
+
+export type Lang = "pt" | "en" | "es" | "it";
+export type LandingCopy = typeof base.pt;

@@ -14,11 +14,8 @@ interface NavbarProps {
   openAuth: (mode: "signin" | "signup") => void;
 }
 
-const navLinks = (t: LandingCopy) => [
-  { href: "#como-funciona", label: t.nav.howItWorks },
-  { href: "#recursos", label: t.nav.features },
-  { href: "#diferenciais", label: t.nav.differentials },
-];
+// Seções da landing ocultas por ora → menu sem links de seção (só logo + ações).
+const navLinks = (_t: LandingCopy): { href: string; label: string }[] => [];
 
 const Navbar = ({ t, isDark, lang, onLangChange, toggleTheme, openAuth }: NavbarProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -61,6 +58,8 @@ const Navbar = ({ t, isDark, lang, onLangChange, toggleTheme, openAuth }: Navbar
             <SelectContent>
               <SelectItem value="pt">BR</SelectItem>
               <SelectItem value="en">EN</SelectItem>
+              <SelectItem value="es">ES</SelectItem>
+              <SelectItem value="it">IT</SelectItem>
             </SelectContent>
           </Select>
           <button
@@ -114,6 +113,8 @@ const Navbar = ({ t, isDark, lang, onLangChange, toggleTheme, openAuth }: Navbar
               <SelectContent>
                 <SelectItem value="pt">BR</SelectItem>
                 <SelectItem value="en">EN</SelectItem>
+                <SelectItem value="es">ES</SelectItem>
+                <SelectItem value="it">IT</SelectItem>
               </SelectContent>
             </Select>
             <button
