@@ -1,89 +1,51 @@
-import { useState } from "react";
 import { ArrowRight } from "lucide-react";
+import aikortexLogoWhite from "@/assets/aikortex-logo-white.png";
+import aikortexLogoBlack from "@/assets/aikortex-logo-black.png";
 import type { SectionProps } from "./types";
 
-const Hero = ({ t, isDark, openAuth }: SectionProps) => {
-  const [isPlaying, setIsPlaying] = useState(false);
+// TODO: trocar pelo número real de WhatsApp (formato internacional, só dígitos).
+const WHATSAPP_NUMBER = "5500000000000";
+const WHATSAPP_MESSAGE = "Olá! Quero agendar uma demonstração da Aikortex.";
+const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
 
-  return (
-    <section id="top" className="relative z-10 px-4 pt-16 pb-10 sm:pt-20">
-      <div className="max-w-3xl mx-auto flex flex-col items-center text-center">
-        {/* Eyebrow */}
-        <span className="font-mono-tight text-xs uppercase tracking-[0.22em] text-muted-foreground border border-border/60 rounded-full px-4 py-1.5 mb-8">
-          {t.hero.eyebrow}
-        </span>
+const Hero = ({ t, isDark }: SectionProps) => (
+  <section id="top" className="relative z-10 min-h-[100svh] flex flex-col items-center justify-center px-4 py-16 text-center">
+    {/* Logo */}
+    <img
+      src={isDark ? aikortexLogoWhite : aikortexLogoBlack}
+      alt="Aikortex"
+      className="h-11 sm:h-12 w-auto object-contain mb-10"
+    />
 
-        {/* Headline */}
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold leading-[1.08] tracking-tight text-foreground">
-          {t.hero.titleLead}
-          <br />
-          <span className="serif-italic font-normal text-foreground/90">{t.hero.titleAccent}</span>
-        </h1>
+    {/* Headline */}
+    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold leading-[1.08] tracking-tight text-foreground">
+      {t.hero.titleLead}
+      <br />
+      <span className="serif-italic font-normal text-foreground/90">{t.hero.titleAccent}</span>
+    </h1>
 
-        {/* Subtitle */}
-        <p className="mt-6 text-base lg:text-lg text-muted-foreground max-w-xl leading-relaxed">
-          {t.hero.subtitle}
-        </p>
+    {/* Subtitle (duas linhas) */}
+    <div className="mt-7 max-w-xl space-y-2">
+      <p className="text-base lg:text-lg text-foreground/80 leading-relaxed">{t.hero.subtitle}</p>
+      <p className="text-sm lg:text-base text-muted-foreground leading-relaxed">{t.hero.subtitle2}</p>
+    </div>
 
-        {/* CTAs */}
-        <div className="mt-9 flex flex-col sm:flex-row items-center gap-3">
-          <button
-            onClick={() => openAuth("signup")}
-            onMouseMove={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              e.currentTarget.style.setProperty("--mouse-x", `${((e.clientX - rect.left) / rect.width) * 100}%`);
-              e.currentTarget.style.setProperty("--mouse-y", `${((e.clientY - rect.top) / rect.height) * 100}%`);
-            }}
-            className="cta-glow-btn inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-sm font-medium"
-          >
-            {t.hero.ctaPrimary}
-            <ArrowRight className="w-4 h-4 arrow-icon" />
-          </button>
-          <a
-            href="#como-funciona"
-            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-sm font-medium border border-border text-foreground hover:bg-accent transition-colors"
-          >
-            {t.hero.ctaSecondary}
-          </a>
-        </div>
-
-        <p className="mt-4 text-xs text-muted-foreground/70">{t.hero.noCard}</p>
-
-        {/* Demo video */}
-        <div className="w-full max-w-3xl mt-12 group">
-          <div className={`relative aspect-video rounded-2xl overflow-hidden border shadow-2xl ${isDark ? "border-white/10 bg-white/[0.03] backdrop-blur-sm" : "border-border bg-card"}`}>
-            {!isPlaying ? (
-              <>
-                <img
-                  src="https://img.youtube.com/vi/QyDYR1bwznw/maxresdefault.jpg"
-                  alt={t.hero.videoLabel}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/25 transition-opacity duration-300 flex items-center justify-center">
-                  <button
-                    onClick={() => setIsPlaying(true)}
-                    className="w-16 h-16 rounded-full bg-white/95 text-black flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200"
-                    aria-label="Play"
-                  >
-                    <svg className="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                  </button>
-                </div>
-              </>
-            ) : (
-              <iframe
-                className="absolute inset-0 w-full h-full"
-                src="https://www.youtube.com/embed/QyDYR1bwznw?rel=0&modestbranding=1&start=56&autoplay=1"
-                title={t.hero.videoLabel}
-                frameBorder={0}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            )}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
+    {/* CTA WhatsApp */}
+    <a
+      href={whatsappUrl}
+      target="_blank"
+      rel="noreferrer"
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.style.setProperty("--mouse-x", `${((e.clientX - rect.left) / rect.width) * 100}%`);
+        e.currentTarget.style.setProperty("--mouse-y", `${((e.clientY - rect.top) / rect.height) * 100}%`);
+      }}
+      className="cta-glow-btn inline-flex items-center gap-2 mt-10 px-8 py-4 rounded-full text-sm font-medium"
+    >
+      {t.hero.ctaPrimary}
+      <ArrowRight className="w-4 h-4 arrow-icon" />
+    </a>
+  </section>
+);
 
 export default Hero;

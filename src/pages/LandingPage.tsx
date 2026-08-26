@@ -1,19 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Sun, Moon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/contexts/AuthContext";
 import AuthModal from "@/components/auth/AuthModal";
 import { translations, type Lang } from "@/components/landing/copy";
-import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
-import Opportunity from "@/components/landing/Opportunity";
-import Deliverables from "@/components/landing/Deliverables";
-import HowItWorks from "@/components/landing/HowItWorks";
-import Differentials from "@/components/landing/Differentials";
-import Features from "@/components/landing/Features";
-import SocialProof from "@/components/landing/SocialProof";
-import LaunchCTA from "@/components/landing/LaunchCTA";
-import Footer from "@/components/landing/Footer";
 
 const LandingPage = () => {
   const [showAuth, setShowAuth] = useState(false);
@@ -50,32 +43,39 @@ const LandingPage = () => {
     }
   }, [user, loading, navigate, getRedirectPath, isRecovery]);
 
-  const sectionProps = { t, isDark, openAuth };
-
   return (
     <div className={`min-h-screen landing-bg ${isDark ? "bg-[#0a0a0f] text-white" : "bg-white text-foreground"}`}>
       <div className="landing-bg-orb" />
       <div className="landing-stars" aria-hidden="true" />
 
-      <Navbar
-        t={t}
-        isDark={isDark}
-        lang={lang}
-        onLangChange={handleLangChange}
-        toggleTheme={toggleTheme}
-        openAuth={openAuth}
-      />
+      {/* Header minimalista */}
+      <header className="absolute top-0 inset-x-0 z-30 flex items-center justify-end gap-2 px-4 sm:px-6 h-16 text-sm">
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Theme"
+        >
+          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
+        <Select value={lang} onValueChange={handleLangChange}>
+          <SelectTrigger className="h-8 w-12 justify-center border-none bg-transparent p-0 focus:ring-0" aria-label="Language">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pt">BR</SelectItem>
+            <SelectItem value="en">EN</SelectItem>
+          </SelectContent>
+        </Select>
+        <button
+          onClick={() => openAuth("signin")}
+          className="px-4 py-2 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {t.nav.signIn}
+        </button>
+      </header>
 
       <main className="relative">
-        <Hero {...sectionProps} />
-        <Opportunity {...sectionProps} />
-        <Deliverables {...sectionProps} />
-        <HowItWorks {...sectionProps} />
-        <Differentials {...sectionProps} />
-        <Features {...sectionProps} />
-        <SocialProof {...sectionProps} />
-        <LaunchCTA {...sectionProps} />
-        <Footer {...sectionProps} />
+        <Hero t={t} isDark={isDark} openAuth={openAuth} />
       </main>
 
       <AuthModal open={showAuth} mode={authMode} onClose={() => setShowAuth(false)} />

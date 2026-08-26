@@ -15,9 +15,10 @@ export const translations = {
       eyebrow: "A Nova Era das Agências",
       titleLead: "Sua agência de IA,",
       titleAccent: "pronta para faturar.",
-      subtitle:
-        "Receba tudo pronto — plataforma, automações, treinamentos, scripts, identidade visual e suporte. Comece a vender soluções de IA para empresas em poucos dias, sem precisar programar nada.",
-      ctaPrimary: "Comece agora",
+      subtitle: "Tudo pronto para você vender sem ter que perder tempo implementando.",
+      subtitle2:
+        "Comece a vender soluções de IA para empresas em poucos dias, sem precisar programar nada.",
+      ctaPrimary: "Agende uma demonstração",
       ctaSecondary: "Ver como funciona",
       noCard: "Sem cartão de crédito · Cancele quando quiser",
       videoLabel: "Aikortex — Demo",
@@ -191,9 +192,10 @@ export const translations = {
       eyebrow: "The New Era of Agencies",
       titleLead: "Your AI agency,",
       titleAccent: "ready to profit.",
-      subtitle:
-        "Get everything ready — platform, automations, training, scripts, brand identity and support. Start selling AI solutions to companies in days, with no coding at all.",
-      ctaPrimary: "Get started",
+      subtitle: "Everything ready for you to sell — no time wasted on implementation.",
+      subtitle2:
+        "Start selling AI solutions to companies in days, with no coding at all.",
+      ctaPrimary: "Book a demo",
       ctaSecondary: "See how it works",
       noCard: "No credit card · Cancel anytime",
       videoLabel: "Aikortex — Demo",
