@@ -79,8 +79,8 @@ const MarketingLanding = () => {
         <Features {...sectionProps} />
         <SocialProof {...sectionProps} />
         <LaunchCTA {...sectionProps} />
-        */}
         <Footer {...sectionProps} />
+        */}
       </main>
 
       <AuthModal open={showAuth} mode={authMode} onClose={() => setShowAuth(false)} />
