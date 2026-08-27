@@ -34,7 +34,7 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 const WS_ACTIVE_KEY = "aikortex_active_workspace";
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
+  const { user, isPlatform } = useAuth();
   const [agencyName, setAgencyName] = useState("Meu Workspace");
   const [agencyProfileId, setAgencyProfileId] = useState<string | null>(null);
   const [clients, setClients] = useState<AgencyClient[]>([]);
@@ -49,6 +49,36 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
     const load = async () => {
       try {
+        // Admin do SaaS: vê TODOS os workspaces (clientes de todas as agências).
+        if (isPlatform) {
+          const [{ data: allClients }, { data: allAgencies }] = await Promise.all([
+            supabase.from("agency_clients").select("id, client_name, client_email, status, agency_id").in("status", ["active", "pending", "trial", "suspended"]).order("client_name"),
+            supabase.from("agency_profiles").select("id, agency_name"),
+          ]);
+          const nameById = new Map((allAgencies || []).map((a: any) => [a.id, a.agency_name]));
+          const loaded: AgencyClient[] = (allClients || []).map((c: any) => ({
+            id: c.id,
+            client_name: nameById.get(c.agency_id) ? `${c.client_name} · ${nameById.get(c.agency_id)}` : c.client_name,
+            client_email: c.client_email,
+            status: c.status,
+          }));
+          setClients(loaded);
+          setAgencyName("Admin — todos");
+          setAgencyProfileId(null);
+          try {
+            const saved = localStorage.getItem(WS_ACTIVE_KEY);
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (parsed.userId === user.id && parsed.type === "client" && loaded.find((c) => c.id === parsed.id)) {
+                setActiveWorkspace({ type: "client", id: parsed.id, name: parsed.name });
+                return;
+              }
+            }
+          } catch { /* ignore */ }
+          setActiveWorkspace({ type: "agency", id: "", name: "Admin — todos" });
+          return;
+        }
+
         const { data: agency } = await supabase
           .from("agency_profiles")
           .select("id, agency_name")
@@ -107,7 +137,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     };
 
     load();
-  }, [user]);
+  }, [user, isPlatform]);
 
   const switchToAgency = useCallback(() => {
     const ws: ActiveWorkspace & { userId: string } = { type: "agency", id: agencyProfileId ?? "", name: agencyName, userId: user?.id ?? "" };
