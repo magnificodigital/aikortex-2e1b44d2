@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Pencil, Loader2 } from "lucide-react";
+import { Pencil, Loader2, KeyRound, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface EditUserDialogProps {
@@ -49,6 +49,9 @@ const EditUserDialog = ({ open, onClose, onSuccess, user }: EditUserDialogProps)
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [pwdLoading, setPwdLoading] = useState(false);
 
   useEffect(() => {
     if (open && user) {
@@ -58,8 +61,41 @@ const EditUserDialog = ({ open, onClose, onSuccess, user }: EditUserDialogProps)
       setTenantType(getTenantTypeFromRole(user.role));
       setIsActive(user.is_active);
       setError("");
+      setNewPassword("");
+      setShowPwd(false);
     }
   }, [open, user]);
+
+  const handlePassword = async () => {
+    if (!user) return;
+    if (newPassword.length < 8) { setError("Senha deve ter no mínimo 8 caracteres"); return; }
+    setPwdLoading(true);
+    setError("");
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("update-user-password", {
+        body: { user_id: user.user_id, new_password: newPassword },
+      });
+      if (fnError || data?.error) {
+        let realMsg = typeof data?.error === "string" ? data.error : "";
+        try {
+          const ctx = (fnError as any)?.context;
+          if (!realMsg && ctx && typeof ctx.text === "function") {
+            const raw = await ctx.text();
+            try { realMsg = JSON.parse(raw)?.error || raw; } catch { realMsg = raw; }
+          }
+        } catch { /* ignora */ }
+        setError(realMsg || (fnError as any)?.message || "Erro ao redefinir senha");
+        setPwdLoading(false);
+        return;
+      }
+      toast.success("Senha redefinida com sucesso");
+      setNewPassword("");
+    } catch {
+      setError("Erro ao redefinir senha");
+    } finally {
+      setPwdLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!user) return;
@@ -166,6 +202,35 @@ const EditUserDialog = ({ open, onClose, onSuccess, user }: EditUserDialogProps)
               <p className="text-xs text-muted-foreground">Desativar impede o login</p>
             </div>
             <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+
+          <Separator />
+
+          {/* Redefinir senha — ação separada do "Salvar" (operação sensível). */}
+          <div>
+            <Label className="flex items-center gap-1.5"><KeyRound className="w-3.5 h-3.5" /> Redefinir senha</Label>
+            <div className="flex gap-2 mt-1.5">
+              <div className="relative flex-1">
+                <Input
+                  type={showPwd ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Nova senha (mín. 8 caracteres)"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(!showPwd)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Button variant="outline" onClick={handlePassword} disabled={pwdLoading || newPassword.length < 8}>
+                {pwdLoading && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                Redefinir
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">A nova senha vale imediatamente. Avise o usuário.</p>
           </div>
         </div>
 
