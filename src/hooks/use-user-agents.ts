@@ -35,7 +35,20 @@ export function useUserAgents(opts?: { clientId?: string | null; isAgencyMode?: 
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
 
-    if (!isAgencyMode && clientId) q = q.eq("client_id", clientId);
+    if (!isAgencyMode && clientId) {
+      // Agentes do cliente: vinculados DIRETO (client_id) OU via assinatura de
+      // template (client_subscription_id — é assim que o client-agent-subscribe grava).
+      const { data: subsData } = await supabase
+        .from("client_template_subscriptions")
+        .select("id")
+        .eq("client_id", clientId);
+      const subIds = (subsData || []).map((s: any) => s.id);
+      if (subIds.length) {
+        q = q.or(`client_id.eq.${clientId},client_subscription_id.in.(${subIds.join(",")})`);
+      } else {
+        q = q.eq("client_id", clientId);
+      }
+    }
 
     const { data, error } = await q;
     if (error) {
