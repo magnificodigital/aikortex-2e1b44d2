@@ -18,6 +18,8 @@ interface CreateUserDialogProps {
   workspaceOwnerUserId?: string;
   /** Ao criar usuário DE UM CLIENTE existente — vincula em client_members. */
   clientId?: string;
+  /** Se true, o novo usuário vira o DONO do cliente (1º acesso). */
+  asOwner?: boolean;
 }
 
 const platformRoles = [
@@ -52,7 +54,7 @@ const getTenantTypeFromRole = (role: string) => {
   return "agency";
 };
 
-const CreateUserDialog = ({ open, onClose, onSuccess, context, workspaceOwnerUserId, clientId }: CreateUserDialogProps) => {
+const CreateUserDialog = ({ open, onClose, onSuccess, context, workspaceOwnerUserId, clientId, asOwner }: CreateUserDialogProps) => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -126,7 +128,7 @@ const CreateUserDialog = ({ open, onClose, onSuccess, context, workspaceOwnerUse
       let data: any, fnError: any;
       if (clientId) {
         ({ data, error: fnError } = await supabase.functions.invoke("create-user", {
-          body: { ...payload, client_id: clientId },
+          body: { ...payload, client_id: clientId, set_as_owner: asOwner },
         }));
       } else if (context === "platform" || workspaceOwnerUserId) {
         ({ data, error: fnError } = await supabase.functions.invoke("admin-users", {

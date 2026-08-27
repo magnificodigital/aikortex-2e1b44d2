@@ -20,6 +20,9 @@ const BodySchema = z.object({
   job_title: z.string().optional(),
   // Vincular o novo usuário a um CLIENTE existente (client_members).
   client_id: z.string().uuid().optional(),
+  // Se true, o novo usuário vira o DONO do cliente (agency_clients.client_user_id)
+  // em vez de um membro. Usado no "Criar acesso" do primeiro usuário.
+  set_as_owner: z.boolean().optional(),
 });
 
 const mapAuthError = (message: string) => {
@@ -80,7 +83,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, full_name, role, tenant_type, department, job_title, client_id } = parsed.data;
+    const { email, password, full_name, role, tenant_type, department, job_title, client_id, set_as_owner } = parsed.data;
 
     // Authorization: platform users can create agencies, agency owners can create members
     const isPlatform = ["platform_owner", "platform_admin"].includes(callerProfile.role);
@@ -146,14 +149,23 @@ Deno.serve(async (req) => {
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
 
-    // Vincular como usuário de um CLIENTE existente (client_members) — não cria cliente novo.
+    // Vincular a um CLIENTE existente — não cria cliente novo.
     if (client_id) {
-      const { error: cmErr } = await supabaseAdmin.from("client_members").insert({
-        client_id,
-        user_id: newUser.user!.id,
-        role,
-      });
-      if (cmErr) console.error("client_members insert error:", cmErr.message);
+      if (set_as_owner) {
+        // Primeiro acesso → vira o DONO do cliente (agency_clients.client_user_id).
+        const { error: ownErr } = await supabaseAdmin.from("agency_clients")
+          .update({ client_user_id: newUser.user!.id, status: "active" })
+          .eq("id", client_id);
+        if (ownErr) console.error("client owner set error:", ownErr.message);
+      } else {
+        // Usuário adicional → membro (client_members).
+        const { error: cmErr } = await supabaseAdmin.from("client_members").insert({
+          client_id,
+          user_id: newUser.user!.id,
+          role,
+        });
+        if (cmErr) console.error("client_members insert error:", cmErr.message);
+      }
     }
 
     if (role === "agency_owner" && tenant_type === "agency") {
