@@ -94,18 +94,32 @@ const ClientDetail = () => {
   };
 
   useEffect(() => {
+    const AGENT_COLS = "id, name, agent_type, published_at, persona_emoji, model, provider, client_id, client_subscription_id";
     const load = async () => {
       if (!clientId) return;
-      const [cRes, sRes, eRes, aRes] = await Promise.all([
+      const [cRes, sRes, eRes] = await Promise.all([
         supabase.from("agency_clients").select("*").eq("id", clientId).single(),
         supabase.from("client_template_subscriptions").select("*, platform_templates(name, category)").eq("client_id", clientId),
         supabase.from("billing_events").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
-        supabase.from("user_agents").select("id, name, agent_type, published_at, persona_emoji, model, provider").eq("client_id", clientId),
       ]);
       if (cRes.data) applyClient(cRes.data);
       if (sRes.data) setSubs(sRes.data);
       if (eRes.data) setEvents(eRes.data);
-      if (aRes.data) setAgents(aRes.data);
+
+      // Agentes do cliente: vinculados DIRETO (client_id) OU via assinatura de
+      // template (client_subscription_id — é assim que o client-agent-subscribe grava).
+      const subIds = (sRes.data || []).map((s: any) => s.id);
+      const [aByClient, aBySub] = await Promise.all([
+        supabase.from("user_agents").select(AGENT_COLS).eq("client_id", clientId),
+        subIds.length
+          ? supabase.from("user_agents").select(AGENT_COLS).in("client_subscription_id", subIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      const seen = new Set<string>();
+      const merged = [...(((aByClient as any).data) || []), ...(((aBySub as any).data) || [])]
+        .filter((a: any) => { if (seen.has(a.id)) return false; seen.add(a.id); return true; });
+      setAgents(merged);
+
       setLoading(false);
     };
     load();
