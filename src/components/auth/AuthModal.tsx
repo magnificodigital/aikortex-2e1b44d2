@@ -8,9 +8,12 @@ interface AuthModalProps {
   open: boolean;
   mode?: "signin" | "signup";
   onClose: () => void;
+  /** Mostra o "X" de fechar. Falso na tela de login dedicada (app/dash),
+   * onde não há nada por trás pra fechar. Padrão: true (uso como popup). */
+  dismissible?: boolean;
 }
 
-const AuthModal = ({ open, mode = "signin", onClose }: AuthModalProps) => {
+const AuthModal = ({ open, mode = "signin", onClose, dismissible = true }: AuthModalProps) => {
   // Cadastro público FECHADO — acesso só por convite/demo. Login-only.
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
@@ -80,13 +83,15 @@ const AuthModal = ({ open, mode = "signin", onClose }: AuthModalProps) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="relative w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-[#0f1119] p-8 shadow-2xl">
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Close (só quando é popup; escondido na tela de login dedicada) */}
+        {dismissible && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
 
         {/* Header */}
         <h2 className="text-2xl font-semibold text-white text-center mb-2">

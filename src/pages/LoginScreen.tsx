@@ -45,7 +45,7 @@ const LoginScreen = () => {
         )}
       </div>
 
-      <AuthModal open={showAuth} mode={initialMode} onClose={() => setShowAuth(false)} />
+      <AuthModal open={showAuth} mode={initialMode} dismissible={false} onClose={() => setShowAuth(false)} />
     </div>
   );
 };
