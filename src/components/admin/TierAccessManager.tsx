@@ -79,6 +79,14 @@ const MODULE_GROUPS: { group: string; modules: ModuleDef[] }[] = [
           { key: "email", label: "Disparos E-mail" },
         ],
       },
+      {
+        key: "aikortex.ligacoes", label: "Ligações",
+        subFeatures: [
+          { key: "outbound", label: "Ligações ativas" },
+          { key: "inbound", label: "Ligações receptivas" },
+        ],
+      },
+      { key: "stark.copilot", label: "Stark (copiloto)" },
     ],
   },
   {
@@ -123,6 +131,7 @@ const DEFAULT_ACCESS: Record<string, Record<string, boolean>> = {
   start: {
     "aikortex.agentes": true, "aikortex.flows": false, "aikortex.apps": false,
     "aikortex.templates": true, "aikortex.mensagens": true, "aikortex.disparos": false,
+    "aikortex.ligacoes": false, "stark.copilot": true,
     "gestao.clientes": true, "gestao.contratos": false, "gestao.vendas": true,
     "gestao.crm": false, "gestao.reunioes": false, "gestao.financeiro": false,
     "gestao.equipe": true, "gestao.tarefas": true,
@@ -130,6 +139,7 @@ const DEFAULT_ACCESS: Record<string, Record<string, boolean>> = {
   hack: {
     "aikortex.agentes": true, "aikortex.flows": true, "aikortex.apps": false,
     "aikortex.templates": true, "aikortex.mensagens": true, "aikortex.disparos": true,
+    "aikortex.ligacoes": true, "stark.copilot": true,
     "gestao.clientes": true, "gestao.contratos": true, "gestao.vendas": true,
     "gestao.crm": true, "gestao.reunioes": false, "gestao.financeiro": true,
     "gestao.equipe": true, "gestao.tarefas": true,
@@ -142,13 +152,19 @@ interface AccessRow {
   tier: string;
   module_key: string;
   has_access: boolean;
+  can_offer_client: boolean;
   sub_features: Record<string, boolean>;
 }
+
+// Duas dimensões: o que a AGÊNCIA usa (has_access) e o que ela pode LIBERAR
+// pro cliente (can_offer_client).
+type AccessMode = "agency" | "client";
 
 const TierAccessManager = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
+  const [mode, setMode] = useState<AccessMode>("agency");
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["tier-module-access-admin"],
@@ -163,27 +179,35 @@ const TierAccessManager = () => {
 
   // Build maps
   const accessMap: Record<string, Record<string, boolean>> = {};
+  const offerMap: Record<string, Record<string, boolean>> = {};
   const subFeaturesMap: Record<string, Record<string, Record<string, boolean>>> = {};
   for (const tier of TIERS) {
     accessMap[tier] = {};
+    offerMap[tier] = {};
     subFeaturesMap[tier] = {};
   }
   if (rows) {
     for (const row of rows) {
       if (!accessMap[row.tier]) accessMap[row.tier] = {};
+      if (!offerMap[row.tier]) offerMap[row.tier] = {};
       if (!subFeaturesMap[row.tier]) subFeaturesMap[row.tier] = {};
       accessMap[row.tier][row.module_key] = row.has_access;
+      offerMap[row.tier][row.module_key] = (row as any).can_offer_client ?? false;
       subFeaturesMap[row.tier][row.module_key] = (row.sub_features && typeof row.sub_features === "object")
         ? row.sub_features as Record<string, boolean>
         : {};
     }
   }
 
+  // Mapa/coluna ativos conforme o modo selecionado.
+  const currentMap = mode === "agency" ? accessMap : offerMap;
+  const currentColumn = mode === "agency" ? "has_access" : "can_offer_client";
+
   const toggleMutation = useMutation({
-    mutationFn: async ({ tier, moduleKey, value }: { tier: string; moduleKey: string; value: boolean }) => {
+    mutationFn: async ({ tier, moduleKey, value, column }: { tier: string; moduleKey: string; value: boolean; column: string }) => {
       const { error } = await supabase
         .from("tier_module_access")
-        .update({ has_access: value, updated_by: user?.id })
+        .update({ [column]: value, updated_by: user?.id })
         .eq("tier", tier)
         .eq("module_key", moduleKey);
       if (error) throw error;
@@ -217,16 +241,16 @@ const TierAccessManager = () => {
 
   const handleToggle = (tier: string, moduleKey: string, newValue: boolean) => {
     if (newValue) {
-      // Enable for this tier and all higher tiers
+      // Ligar neste tier e nos superiores (tiers maiores herdam ao menos isso).
       const tierIdx = TIERS.indexOf(tier as Tier);
       for (let i = tierIdx; i < TIERS.length; i++) {
         const t = TIERS[i];
-        if (!accessMap[t]?.[moduleKey]) {
-          toggleMutation.mutate({ tier: t, moduleKey, value: true });
+        if (!currentMap[t]?.[moduleKey]) {
+          toggleMutation.mutate({ tier: t, moduleKey, value: true, column: currentColumn });
         }
       }
     } else {
-      toggleMutation.mutate({ tier, moduleKey, value: false });
+      toggleMutation.mutate({ tier, moduleKey, value: false, column: currentColumn });
     }
   };
 
@@ -243,7 +267,7 @@ const TierAccessManager = () => {
         const defaultVal = DEFAULT_ACCESS[tier]?.[key] ?? false;
         await supabase
           .from("tier_module_access")
-          .update({ has_access: defaultVal, updated_by: user?.id, sub_features: {} as any })
+          .update({ has_access: defaultVal, can_offer_client: defaultVal, updated_by: user?.id, sub_features: {} as any })
           .eq("tier", tier)
           .eq("module_key", key);
       }
@@ -255,7 +279,7 @@ const TierAccessManager = () => {
   };
 
   const countEnabled = (tier: string) =>
-    ALL_MODULE_KEYS.filter((k) => accessMap[tier]?.[k]).length;
+    ALL_MODULE_KEYS.filter((k) => currentMap[tier]?.[k]).length;
 
   if (isLoading) {
     return (
@@ -281,6 +305,22 @@ const TierAccessManager = () => {
         <Button variant="outline" size="sm" onClick={handleResetDefaults} className="gap-1.5">
           <RotateCcw className="w-3.5 h-3.5" /> Restaurar padrões
         </Button>
+      </div>
+
+      {/* Seletor de dimensão: uso da agência x liberável ao cliente */}
+      <div className="inline-flex rounded-lg border border-border p-0.5 bg-muted/30">
+        <button
+          onClick={() => setMode("agency")}
+          className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-colors ${mode === "agency" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          O que a agência usa
+        </button>
+        <button
+          onClick={() => setMode("client")}
+          className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-colors ${mode === "client" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          O que pode liberar ao cliente
+        </button>
       </div>
 
       {/* Tier summary cards */}
@@ -353,7 +393,7 @@ const TierAccessManager = () => {
                         {TIERS.map((tier) => (
                           <td key={tier} className="px-4 py-2.5 text-center">
                             <Switch
-                              checked={accessMap[tier]?.[mod.key] ?? false}
+                              checked={currentMap[tier]?.[mod.key] ?? false}
                               onCheckedChange={(val) => handleToggle(tier, mod.key, val)}
                               disabled={toggleMutation.isPending}
                             />
