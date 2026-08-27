@@ -14,11 +14,12 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { toast } from "sonner";
 import {
   ArrowLeft, Mail, Phone, FileText, Bot, LayoutTemplate,
   AlertTriangle, Ban, Trash2, Loader2, Zap as ZapIcon,
-  UserPlus, User, Send, Activity, Gauge, Save, DollarSign, Pencil, KeyRound,
+  UserPlus, User, Send, Activity, Gauge, Save, DollarSign, Pencil, KeyRound, LogIn,
 } from "lucide-react";
 import { SellStarkDialog } from "@/components/clients/SellStarkDialog";
 import CreateUserDialog from "@/components/shared/CreateUserDialog";
@@ -52,6 +53,7 @@ const EVENT_LABELS: Record<string, string> = {
 const ClientDetail = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
+  const { switchToClient, refreshClients } = useWorkspace();
   const [client, setClient] = useState<any>(null);
   const [subs, setSubs] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -255,6 +257,13 @@ const ClientDetail = () => {
   const margin = totalTemplates - platformCost;
   const starkActive = (client.enabled_modules as string[] | null)?.includes("stark.copilot");
 
+  const enterClientWorkspace = async () => {
+    await refreshClients();
+    switchToClient({ id: client.id, client_name: client.client_name, client_email: client.client_email, status: client.status });
+    navigate("/home");
+    toast.success(`Você está no workspace de ${client.client_name}. Use o seletor abaixo do logo para voltar.`);
+  };
+
   const handleSuspend = async () => {
     await supabase.from("agency_clients").update({ status: "suspended" }).eq("id", clientId!);
     toast.success("Cliente suspenso");
@@ -292,6 +301,9 @@ const ClientDetail = () => {
             </div>
             <p className="text-sm text-muted-foreground">{client.client_email}</p>
           </div>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={enterClientWorkspace}>
+            <LogIn className="w-3.5 h-3.5" /> Acessar conta
+          </Button>
         </div>
 
         <SellStarkDialog open={sellStarkOpen} onOpenChange={setSellStarkOpen} clientId={clientId!} clientName={client.client_name} onSold={reloadClient} />

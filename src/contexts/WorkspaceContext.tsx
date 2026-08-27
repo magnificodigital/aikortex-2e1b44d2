@@ -65,7 +65,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
             .from("agency_clients")
             .select("id, client_name, client_email, status")
             .eq("agency_id", agency.id)
-            .eq("status", "active")
+            .in("status", ["active", "pending", "trial", "suspended"])
             .order("client_name");
           loadedClients = data ?? [];
           setClients(loadedClients);
@@ -127,7 +127,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       .from("agency_clients")
       .select("id, client_name, client_email, status")
       .eq("agency_id", agencyProfileId)
-      .eq("status", "active")
+      .in("status", ["active", "pending", "trial", "suspended"])
       .order("client_name");
     setClients(data ?? []);
   }, [agencyProfileId]);
