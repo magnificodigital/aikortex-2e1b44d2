@@ -118,18 +118,23 @@ const CreateUserDialog = ({ open, onClose, onSuccess, context, workspaceOwnerUse
         job_title: jobTitle.trim() || undefined,
       };
 
-      const { data, error: fnError } = (context === "platform" || workspaceOwnerUserId || clientId)
-        ? await supabase.functions.invoke("admin-users", {
-            body: {
-              action: "create",
-              ...payload,
-              workspace_owner_user_id: workspaceOwnerUserId,
-              client_id: clientId,
-            },
-          })
-        : await supabase.functions.invoke("create-user", {
-            body: payload,
-          });
+      // Roteamento:
+      //  - usuário DE CLIENTE (clientId) → create-user (autoriza plataforma E
+      //    dono de agência do próprio cliente) + vincula em client_members.
+      //  - membro de agência / plataforma (workspaceOwnerUserId/platform) → admin-users.
+      //  - demais → create-user.
+      let data: any, fnError: any;
+      if (clientId) {
+        ({ data, error: fnError } = await supabase.functions.invoke("create-user", {
+          body: { ...payload, client_id: clientId },
+        }));
+      } else if (context === "platform" || workspaceOwnerUserId) {
+        ({ data, error: fnError } = await supabase.functions.invoke("admin-users", {
+          body: { action: "create", ...payload, workspace_owner_user_id: workspaceOwnerUserId },
+        }));
+      } else {
+        ({ data, error: fnError } = await supabase.functions.invoke("create-user", { body: payload }));
+      }
 
       if (fnError) {
         // supabase-js põe o corpo do erro em error.context (Response), não em data.

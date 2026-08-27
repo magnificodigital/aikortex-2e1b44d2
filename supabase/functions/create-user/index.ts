@@ -18,6 +18,8 @@ const BodySchema = z.object({
   tenant_type: z.enum(["platform", "agency", "client"]).default("agency"),
   department: z.string().optional(),
   job_title: z.string().optional(),
+  // Vincular o novo usuário a um CLIENTE existente (client_members).
+  client_id: z.string().uuid().optional(),
 });
 
 const mapAuthError = (message: string) => {
@@ -78,7 +80,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, full_name, role, tenant_type, department, job_title } = parsed.data;
+    const { email, password, full_name, role, tenant_type, department, job_title, client_id } = parsed.data;
 
     // Authorization: platform users can create agencies, agency owners can create members
     const isPlatform = ["platform_owner", "platform_admin"].includes(callerProfile.role);
@@ -91,14 +93,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Agency owners can only create agency members
+    // Dono de agência: cria MEMBROS da agência OU usuários de um CLIENTE DELE.
     if (isAgencyOwner && !isPlatform) {
-      const allowedRoles = ["agency_admin", "agency_manager", "agency_member"];
-      if (!allowedRoles.includes(role)) {
-        return new Response(JSON.stringify({ error: "Você só pode criar membros da agência" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      const isClientUser = ["client_owner", "client_viewer"].includes(role) && !!client_id;
+      if (isClientUser) {
+        // O cliente precisa pertencer à agência do chamador.
+        const { data: callerAgency } = await supabaseAdmin
+          .from("agency_profiles").select("id").eq("user_id", caller.id).maybeSingle();
+        const { data: cli } = await supabaseAdmin
+          .from("agency_clients").select("agency_id").eq("id", client_id).maybeSingle();
+        if (!callerAgency || !cli || cli.agency_id !== callerAgency.id) {
+          return new Response(JSON.stringify({ error: "Este cliente não pertence à sua agência" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else {
+        const allowedRoles = ["agency_admin", "agency_manager", "agency_member"];
+        if (!allowedRoles.includes(role)) {
+          return new Response(JSON.stringify({ error: "Você só pode criar membros da agência ou usuários dos seus clientes" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       }
     }
 
@@ -128,6 +145,16 @@ Deno.serve(async (req) => {
         is_active: true,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
+
+    // Vincular como usuário de um CLIENTE existente (client_members) — não cria cliente novo.
+    if (client_id) {
+      const { error: cmErr } = await supabaseAdmin.from("client_members").insert({
+        client_id,
+        user_id: newUser.user!.id,
+        role,
+      });
+      if (cmErr) console.error("client_members insert error:", cmErr.message);
+    }
 
     if (role === "agency_owner" && tenant_type === "agency") {
       const { data: existingAgency } = await supabaseAdmin

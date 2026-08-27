@@ -18,8 +18,10 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Mail, Phone, FileText, DollarSign, LayoutTemplate,
   Settings, AlertTriangle, Ban, Trash2, Loader2, Zap as ZapIcon,
+  UserPlus, User,
 } from "lucide-react";
 import { SellStarkDialog } from "@/components/clients/SellStarkDialog";
+import CreateUserDialog from "@/components/shared/CreateUserDialog";
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
   active: { label: "Ativo", class: "bg-green-500/10 text-green-600 border-green-500/20" },
@@ -38,11 +40,43 @@ const ClientDetail = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sellStarkOpen, setSellStarkOpen] = useState(false);
+  const [clientUsers, setClientUsers] = useState<{ user_id: string; name: string; role: string; isOwner: boolean }[]>([]);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [usersRefresh, setUsersRefresh] = useState(0);
 
   const reloadClient = async () => {
     if (!clientId) return;
     const { data } = await supabase.from("agency_clients").select("*").eq("id", clientId).single();
     if (data) setClient(data);
+  };
+
+  // Usuários do cliente = dono (client_user_id) + membros (client_members).
+  useEffect(() => {
+    if (!clientId || !client) return;
+    let active = true;
+    (async () => {
+      const { data: members } = await supabase.from("client_members" as any).select("user_id, role").eq("client_id", clientId);
+      const memberRows = (members as any[]) || [];
+      const ids = [client.client_user_id, ...memberRows.map((m) => m.user_id)].filter(Boolean) as string[];
+      let profs: any[] = [];
+      if (ids.length) {
+        const { data } = await supabase.from("profiles").select("user_id, full_name").in("user_id", ids);
+        profs = data || [];
+      }
+      const nameOf = (uid: string) => profs.find((p) => p.user_id === uid)?.full_name || `${uid.slice(0, 8)}…`;
+      const list: { user_id: string; name: string; role: string; isOwner: boolean }[] = [];
+      if (client.client_user_id) list.push({ user_id: client.client_user_id, name: nameOf(client.client_user_id), role: "Dono", isOwner: true });
+      for (const m of memberRows) list.push({ user_id: m.user_id, name: nameOf(m.user_id), role: m.role, isOwner: false });
+      if (active) setClientUsers(list);
+    })();
+    return () => { active = false; };
+  }, [clientId, client, usersRefresh]);
+
+  const removeMember = async (userId: string) => {
+    const { error } = await supabase.from("client_members" as any).delete().eq("client_id", clientId!).eq("user_id", userId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Usuário removido do cliente.");
+    setUsersRefresh((v) => v + 1);
   };
 
   useEffect(() => {
@@ -134,11 +168,19 @@ const ClientDetail = () => {
           clientName={client.client_name}
           onSold={reloadClient}
         />
+        <CreateUserDialog
+          open={showCreateUser}
+          onClose={() => setShowCreateUser(false)}
+          onSuccess={() => setUsersRefresh((v) => v + 1)}
+          context="client"
+          clientId={clientId!}
+        />
 
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
+            <TabsTrigger value="users">Usuários</TabsTrigger>
             <TabsTrigger value="billing">Financeiro</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
           </TabsList>
@@ -200,6 +242,48 @@ const ClientDetail = () => {
                 })}
               </div>
             )}
+          </TabsContent>
+
+          {/* Usuários do cliente */}
+          <TabsContent value="users" className="space-y-4">
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold">Usuários do cliente ({clientUsers.length})</h3>
+                  {client.client_user_id && (
+                    <Button size="sm" variant="outline" onClick={() => setShowCreateUser(true)}>
+                      <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Novo usuário
+                    </Button>
+                  )}
+                </div>
+                {clientUsers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {client.client_user_id ? "Nenhum usuário ainda." : "Este cliente ainda não tem conta de acesso."}
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {clientUsers.map((u) => (
+                      <div key={u.user_id} className="flex items-center justify-between py-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center"><User className="w-3.5 h-3.5 text-muted-foreground" /></div>
+                          <span className="text-sm font-medium">{u.name}</span>
+                        </div>
+                        {u.isOwner ? (
+                          <Badge className="bg-primary/10 text-primary border-0 text-xs">Dono</Badge>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">{u.role}</Badge>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Remover do cliente" onClick={() => removeMember(u.user_id)}>
+                              <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Billing */}
