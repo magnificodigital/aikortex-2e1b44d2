@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/hooks/use-theme";
 import AuthModal from "@/components/auth/AuthModal";
 import { Button } from "@/components/ui/button";
 
@@ -13,8 +12,6 @@ import { Button } from "@/components/ui/button";
 const LoginScreen = () => {
   const navigate = useNavigate();
   const { user, loading, getRedirectPath, isRecovery } = useAuth();
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
 
   const initialMode = new URLSearchParams(window.location.search).get("auth") === "signup"
     ? "signup" : "signin";
@@ -26,7 +23,7 @@ const LoginScreen = () => {
   }, [user, loading, isRecovery, navigate, getRedirectPath]);
 
   return (
-    <div className={`min-h-screen landing-bg flex flex-col items-center justify-center gap-6 px-4 ${isDark ? "bg-[#0a0a0f] text-white" : "bg-white text-foreground"}`}>
+    <div className="min-h-screen landing-bg flex flex-col items-center justify-center gap-6 px-4 bg-[#0a0a0f] text-white">
       <div className="landing-bg-orb" />
       <div className="landing-stars" aria-hidden="true" />
 
