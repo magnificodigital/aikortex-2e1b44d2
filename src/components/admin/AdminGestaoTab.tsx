@@ -626,65 +626,26 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
     return true;
   });
 
-  const tierRows = [
-    { key: "start" as const, label: "Start", cls: "bg-muted", textCls: "text-muted-foreground" },
-    { key: "hack" as const, label: "Hack", cls: "bg-blue-500/10", textCls: "text-blue-600" },
-    { key: "growth" as const, label: "Growth", cls: "bg-purple-500/10", textCls: "text-purple-600" },
-  ];
-
   if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { icon: Building2, iconCls: "bg-blue-500/10 text-blue-600", value: stats.totalAgencies, label: "Agências ativas" },
-          { icon: Users, iconCls: "bg-emerald-500/10 text-emerald-600", value: stats.totalClients, label: "Clientes ativos" },
-          { icon: DollarSign, iconCls: "bg-primary/10 text-primary", value: `R$ ${stats.platformMRR.toFixed(0)}`, label: "MRR Plataforma" },
-          { icon: LayoutTemplate, iconCls: "bg-purple-500/10 text-purple-600", value: stats.templatesSold, label: "Templates vendidos" },
-        ].map((s, i) => (
-          <Card key={i}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${s.iconCls.split(" ")[0]}`}>
-                <s.icon className={`h-5 w-5 ${s.iconCls.split(" ")[1]}`} />
-              </div>
-              <div><p className="text-2xl font-bold">{s.value}</p><p className="text-xs text-muted-foreground">{s.label}</p></div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Cabeçalho — Gestão foca em GERENCIAR. Os números (MRR, tiers, templates)
+          ficam na Visão Geral pra não poluir esta tela. */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-lg font-semibold">Gestão</h2>
+          <p className="text-sm text-muted-foreground">Sua equipe do SaaS e suas agências. Entre numa agência para ver seus clientes e usuários.</p>
+        </div>
+        <Button size="sm" onClick={() => setCadastrarOpen(true)}><Plus className="w-4 h-4 mr-1.5" /> Cadastrar</Button>
       </div>
 
-      {/* Tier breakdown */}
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm">Distribuição por tier</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y divide-border">
-            {tierRows.map(t => {
-              const data = stats.tierBreakdown[t.key];
-              return (
-                <div key={t.key} className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setTierFilter(tierFilter === t.key ? "all" : t.key)}>
-                  <div className="flex items-center gap-3">
-                    <Badge className={`${t.cls} ${t.textCls} border-0 text-xs min-w-[70px] justify-center`}>{t.label}</Badge>
-                    <span className="text-sm font-medium">{data.agencies} agência(s)</span>
-                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{data.clients} clientes</span>
-                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-sm font-medium text-primary">R$ {data.mrr.toFixed(0)} MRR</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Nível 1 da hierarquia: equipe da plataforma (admins do SaaS) */}
+      {/* Equipe da plataforma (admins do SaaS) */}
       <PlatformTeamSection />
 
-      {/* Nível 2: Agências (cada uma com seus clientes e usuários) */}
+      {/* Agências (cada uma com seus clientes e usuários) */}
       <div className="space-y-3">
+        <h3 className="text-sm font-semibold">Agências</h3>
         <div className="flex gap-2 items-center flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -695,7 +656,6 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
             <SelectContent><SelectItem value="all">Todos os tiers</SelectItem><SelectItem value="start">Start</SelectItem><SelectItem value="hack">Hack</SelectItem><SelectItem value="growth">Growth</SelectItem></SelectContent>
           </Select>
           <Button size="sm" variant="outline" onClick={fetchData}><RefreshCw className="w-4 h-4 mr-1.5" /> Atualizar</Button>
-          <Button size="sm" onClick={() => setCadastrarOpen(true)}><Plus className="w-4 h-4 mr-1.5" /> Cadastrar</Button>
         </div>
 
         <div className="text-xs text-muted-foreground">{filtered.length} agência(s)</div>
@@ -705,13 +665,12 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Agência</TableHead><TableHead>E-mail</TableHead><TableHead>Tier</TableHead>
-                  <TableHead>Clientes</TableHead><TableHead>MRR</TableHead><TableHead>Asaas</TableHead><TableHead>Cadastro</TableHead>
+                  <TableHead>Agência</TableHead><TableHead>Tier</TableHead><TableHead>Clientes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma agência encontrada</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">Nenhuma agência encontrada</TableCell></TableRow>
                 ) : filtered.map(a => {
                   const tier = TIER_BADGES[a.tier] || TIER_BADGES.start;
                   return (
@@ -723,7 +682,6 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
                           <span className="font-medium">{a.agency_name || "Sem nome"}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{a.email || "—"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Badge className={`${tier.className} border-0 text-xs`}>{tier.label}</Badge>
@@ -731,12 +689,6 @@ const Level1 = ({ onSelectAgency, initialTier, initialAgencyId }: { onSelectAgen
                         </div>
                       </TableCell>
                       <TableCell>{a.active_clients_count || 0}</TableCell>
-                      <TableCell className="font-medium">R$ {((a.mrr || 0) + (a.platformRevenue || 0)).toFixed(2)}</TableCell>
-                      <TableCell>
-                        {a.asaas_api_key ? <Badge className="bg-green-500/10 text-green-600 border-0 text-xs"><CheckCircle className="w-3 h-3 mr-1" />Conectado</Badge> :
-                          <Badge className="bg-red-500/10 text-red-500 border-0 text-xs"><XCircle className="w-3 h-3 mr-1" />Não config.</Badge>}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{relativeDate(a.created_at)}</TableCell>
                     </TableRow>
                   );
                 })}

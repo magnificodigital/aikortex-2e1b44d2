@@ -5,7 +5,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, CreditCard, LayoutTemplate, DollarSign, Key, BookOpen, MessageSquare,
-  LogOut, Sun, Moon, BarChart3, Search, X, Tags, Cpu, Zap, Users,
+  LogOut, Sun, Moon, BarChart3, Search, X, Tags, Cpu, Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,6 @@ import aikortexIconBlack from "@/assets/aikortex-icon-black.png";
 const adminNavItems: { label: string; icon: any; path: string; ownerOnly?: boolean }[] = [
   { label: "Visão Geral", icon: BarChart3, path: "/admin?tab=overview" },
   { label: "Gestão", icon: Building2, path: "/admin?tab=gestao" },
-  { label: "Usuários", icon: Users, path: "/admin?tab=users" },
   { label: "Planos", icon: CreditCard, path: "/admin?tab=plans" },
   { label: "Templates", icon: LayoutTemplate, path: "/admin?tab=templates" },
   { label: "Categorização por Nicho", icon: Tags, path: "/admin?tab=niches" },

@@ -8,7 +8,6 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import AdminOverviewTab from "@/components/admin/AdminOverviewTab";
 import AdminGestaoTab from "@/components/admin/AdminGestaoTab";
-import AdminUsersTab from "@/components/admin/AdminUsersTab";
 import AdminPlansTab from "@/components/admin/AdminPlansTab";
 import AdminTemplatesTab from "@/components/admin/AdminTemplatesTab";
 import AdminTemplateNichesTab from "@/components/admin/AdminTemplateNichesTab";
@@ -23,7 +22,6 @@ import AdminKbTestTab from "@/components/admin/AdminKbTestTab";
 const TAB_LABELS: Record<string, string> = {
   overview: "Visão Geral",
   gestao: "Gestão",
-  users: "Usuários",
   plans: "Planos",
   templates: "Templates",
   niches: "Categorização por Nicho",
@@ -96,7 +94,6 @@ const AdminPanel = () => {
           <TabsContent value="gestao">
             <AdminGestaoTab initialTier={gestaoTier} initialAgencyId={gestaoAgencyId} initialClientId={gestaoClientId} />
           </TabsContent>
-          <TabsContent value="users"><AdminUsersTab /></TabsContent>
           <TabsContent value="plans"><AdminPlansTab /></TabsContent>
           <TabsContent value="templates"><AdminTemplatesTab /></TabsContent>
           <TabsContent value="niches"><AdminTemplateNichesTab /></TabsContent>
