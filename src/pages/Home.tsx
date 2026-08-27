@@ -4,7 +4,6 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { StarkInterface } from "@/components/stark/StarkInterface";
-import OnboardingChecklist from "@/components/onboarding/OnboardingChecklist";
 import AgencyOnboarding from "@/components/onboarding/AgencyOnboarding";
 
 const WHATSAPP_KEYWORDS = ["whatsapp", "wpp", "zap", "zapzap", "mensagem", "conversa", "chat", "atendimento", "sac", "suporte ao cliente", "cliente pelo whatsapp", "whats"];
@@ -149,9 +148,6 @@ const Home = () => {
   return (
     <>
       <DashboardLayout>
-        <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 pt-5">
-          <OnboardingChecklist />
-        </div>
         <StarkInterface
           greeting={getGreeting()}
           userName={userName}

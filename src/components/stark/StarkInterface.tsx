@@ -566,7 +566,7 @@ export function StarkInterface({ greeting, userName, honorific, onTextSubmit, on
   const currentSuggestions = TEXT_SUGGESTIONS[suggestionIndex % TEXT_SUGGESTIONS.length];
 
   return (
-    <div className="dark bg-background text-foreground w-full flex flex-col items-center justify-center min-h-[calc(100vh-3.5rem)] px-4 py-8 relative">
+    <div className="dark bg-background text-foreground w-full flex flex-col items-center justify-center min-h-screen px-4 py-8 relative">
       {/* Top toggles: input mode (voz/texto) + purpose (construtor/gestao) */}
       <div className="absolute top-4 right-4 flex items-center gap-2">
         {/* Input mode toggle */}
