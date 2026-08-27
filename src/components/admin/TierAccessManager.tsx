@@ -38,6 +38,7 @@ const MODULE_GROUPS: { group: string; modules: ModuleDef[] }[] = [
   {
     group: "Aikortex",
     modules: [
+      { key: "stark.copilot", label: "Stark" },
       {
         key: "aikortex.agentes", label: "Agentes",
         subFeatures: [
@@ -49,34 +50,11 @@ const MODULE_GROUPS: { group: string; modules: ModuleDef[] }[] = [
         ],
       },
       {
-        key: "aikortex.flows", label: "Flows",
-        subFeatures: [
-          { key: "comercial", label: "Templates Comerciais" },
-          { key: "atendimento", label: "Templates Atendimento" },
-          { key: "custom", label: "Fluxo em branco" },
-        ],
-      },
-      {
-        key: "aikortex.apps", label: "Apps",
-        subFeatures: [
-          { key: "web", label: "Apps Web" },
-          { key: "whatsapp", label: "Apps WhatsApp" },
-        ],
-      },
-      { key: "aikortex.templates", label: "Templates" },
-      {
         key: "aikortex.mensagens", label: "Mensagens",
         subFeatures: [
           { key: "whatsapp", label: "WhatsApp" },
           { key: "email", label: "E-mail" },
           { key: "webchat", label: "Web Chat" },
-        ],
-      },
-      {
-        key: "aikortex.disparos", label: "Disparos",
-        subFeatures: [
-          { key: "whatsapp", label: "Disparos WhatsApp" },
-          { key: "email", label: "Disparos E-mail" },
         ],
       },
       {
@@ -86,17 +64,21 @@ const MODULE_GROUPS: { group: string; modules: ModuleDef[] }[] = [
           { key: "inbound", label: "Ligações receptivas" },
         ],
       },
-      { key: "stark.copilot", label: "Stark (copiloto)" },
+      {
+        key: "aikortex.apps", label: "Apps",
+        subFeatures: [
+          { key: "web", label: "Apps Web" },
+          { key: "whatsapp", label: "Apps WhatsApp" },
+        ],
+      },
     ],
   },
   {
     group: "Gestão",
     modules: [
       { key: "gestao.clientes", label: "Clientes" },
-      { key: "gestao.contratos", label: "Contratos" },
-      { key: "gestao.vendas", label: "Vendas" },
       {
-        key: "gestao.crm", label: "CRM",
+        key: "gestao.vendas", label: "Vendas (CRM)",
         subFeatures: [
           { key: "kanban", label: "Kanban" },
           { key: "lead_scoring", label: "Lead Scoring" },
@@ -129,20 +111,16 @@ const TOTAL_MODULES = ALL_MODULE_KEYS.length;
 
 const DEFAULT_ACCESS: Record<string, Record<string, boolean>> = {
   start: {
-    "aikortex.agentes": true, "aikortex.flows": false, "aikortex.apps": false,
-    "aikortex.templates": true, "aikortex.mensagens": true, "aikortex.disparos": false,
-    "aikortex.ligacoes": false, "stark.copilot": true,
-    "gestao.clientes": true, "gestao.contratos": false, "gestao.vendas": true,
-    "gestao.crm": false, "gestao.reunioes": false, "gestao.financeiro": false,
-    "gestao.equipe": true, "gestao.tarefas": true,
+    "stark.copilot": true, "aikortex.agentes": true, "aikortex.mensagens": true,
+    "aikortex.ligacoes": false, "aikortex.apps": false,
+    "gestao.clientes": true, "gestao.vendas": true, "gestao.reunioes": false,
+    "gestao.financeiro": false, "gestao.equipe": true, "gestao.tarefas": true,
   },
   hack: {
-    "aikortex.agentes": true, "aikortex.flows": true, "aikortex.apps": false,
-    "aikortex.templates": true, "aikortex.mensagens": true, "aikortex.disparos": true,
-    "aikortex.ligacoes": true, "stark.copilot": true,
-    "gestao.clientes": true, "gestao.contratos": true, "gestao.vendas": true,
-    "gestao.crm": true, "gestao.reunioes": false, "gestao.financeiro": true,
-    "gestao.equipe": true, "gestao.tarefas": true,
+    "stark.copilot": true, "aikortex.agentes": true, "aikortex.mensagens": true,
+    "aikortex.ligacoes": true, "aikortex.apps": true,
+    "gestao.clientes": true, "gestao.vendas": true, "gestao.reunioes": true,
+    "gestao.financeiro": true, "gestao.equipe": true, "gestao.tarefas": true,
   },
   growth: Object.fromEntries(ALL_MODULE_KEYS.map((k) => [k, true])),
 };
