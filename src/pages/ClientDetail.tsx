@@ -32,14 +32,14 @@ const STATUS_MAP: Record<string, { label: string; class: string }> = {
   cancelled: { label: "Cancelado", class: "bg-muted text-muted-foreground border-border" },
 };
 
+// Cada chave corresponde a um item do menu do cliente (mesma chave que a
+// AppSidebar usa pra filtrar). Desligar → o item some do menu do cliente.
 const CLIENT_MODULES = [
+  { key: "stark.copilot", label: "Stark (assistente)" },
   { key: "aikortex.agentes", label: "Agentes" },
   { key: "aikortex.mensagens", label: "Mensagens" },
   { key: "aikortex.ligacoes", label: "Ligações" },
-  { key: "aikortex.disparos", label: "Disparos" },
   { key: "aikortex.apps", label: "Apps" },
-  { key: "aikortex.flows", label: "Flows" },
-  { key: "stark.copilot", label: "Stark (copiloto)" },
 ];
 
 const EVENT_LABELS: Record<string, string> = {

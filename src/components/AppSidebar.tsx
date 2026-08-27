@@ -186,6 +186,8 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
   };
   const visibleAikortexItems = filterByEnabled(aikortexItems);
   const visibleGestaoItems = filterByEnabled(gestaoItems);
+  // No modo cliente, o Stark também respeita o que a agência liberou (stark.copilot).
+  const showStark = isAgencyMode || (clientEnabledModules ?? []).includes("stark.copilot");
   const { messageCount, monthlyLimit, hasByok, isNearLimit, isUnlimited } = useMonthlyUsage();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -355,10 +357,12 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
           <div className="mt-2 space-y-0.5">
             {/* starkAutoStart: clicar no menu Stark ja' conecta a voz — o
                 clique e' o gesto de consentimento (mic/audio liberados). */}
-            <Link to="/home" state={{ starkAutoStart: true }} onClick={handleNavigate} className={linkClasses(isItemActive("/home"))} title={collapsed && !isMobile ? "Stark" : undefined}>
-              <Zap className={`w-4 h-4 shrink-0 ${isItemActive("/home") ? "text-primary" : ""}`} />
-              {(!collapsed || isMobile) && <span>Stark</span>}
-            </Link>
+            {showStark && (
+              <Link to="/home" state={{ starkAutoStart: true }} onClick={handleNavigate} className={linkClasses(isItemActive("/home"))} title={collapsed && !isMobile ? "Stark" : undefined}>
+                <Zap className={`w-4 h-4 shrink-0 ${isItemActive("/home") ? "text-primary" : ""}`} />
+                {(!collapsed || isMobile) && <span>Stark</span>}
+              </Link>
+            )}
             <Link to="/dashboard" onClick={handleNavigate} className={linkClasses(isItemActive("/dashboard"))} title={collapsed && !isMobile ? "Dashboard" : undefined}>
               <LayoutDashboard className={`w-4 h-4 shrink-0 ${isItemActive("/dashboard") ? "text-primary" : ""}`} />
               {(!collapsed || isMobile) && <span>Dashboard</span>}
