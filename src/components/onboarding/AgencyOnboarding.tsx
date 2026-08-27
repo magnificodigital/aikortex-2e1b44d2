@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
-  Sparkles, ArrowRight, CheckCircle2, Upload, Loader2, Eye, EyeOff, ExternalLink, X,
+  ArrowRight, CheckCircle2, Upload, Loader2, Eye, EyeOff, ExternalLink, X,
 } from "lucide-react";
 
 interface Props {
@@ -103,7 +103,7 @@ const AgencyOnboarding = ({ onComplete, onSkip, initialName }: Props) => {
       )}
       <div className="w-full max-w-md space-y-6 my-auto">
         <div className="text-center space-y-2">
-          <Sparkles className="w-10 h-10 text-primary mx-auto" />
+          <img src="/aikortex-icon.png" alt="Aikortex" className="w-12 h-12 mx-auto object-contain" />
           {step === 1 && (
             <>
               <h1 className="text-2xl font-bold text-foreground">Bem-vindo ao Aikortex!</h1>
