@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import AuthModal from "@/components/auth/AuthModal";
-import { Button } from "@/components/ui/button";
 
 /**
  * Tela de login do PRODUTO (app.aikortex.com e dash.aikortex.com).
  * NÃO é landing de marketing (essa fica só em aikortex.com). Não logado → login;
  * logado → redireciona pro destino certo (getRedirectPath: /home ou /admin).
+ * Fundo escuro + animado (orb/estrelas), igual à landing principal.
  */
 const LoginScreen = () => {
   const navigate = useNavigate();
@@ -22,25 +22,20 @@ const LoginScreen = () => {
     if (!loading && user) navigate(getRedirectPath());
   }, [user, loading, isRecovery, navigate, getRedirectPath]);
 
+  // Força tema escuro enquanto a tela de login está montada — o fundo animado
+  // (orb/feixes/estrelas) é gated por `.dark` no CSS. A tela ocupa a viewport
+  // inteira (sem app atrás), então isso não afeta o resto. Restaura ao sair.
+  useEffect(() => {
+    const root = document.documentElement;
+    const had = root.classList.contains("dark");
+    root.classList.add("dark");
+    return () => { if (!had) root.classList.remove("dark"); };
+  }, []);
+
   return (
-    <div className="min-h-screen landing-bg flex flex-col items-center justify-center gap-6 px-4 bg-[#0a0a0f] text-white">
+    <div className="min-h-screen landing-bg flex items-center justify-center px-4 bg-[#0a0a0f] text-white">
       <div className="landing-bg-orb" />
       <div className="landing-stars" aria-hidden="true" />
-
-      <div className="relative z-10 flex flex-col items-center gap-5 text-center">
-        <div className="flex items-center gap-2">
-          <img src="/aikortex-icon.png" alt="Aikortex" className="w-9 h-9" />
-          <span className="text-2xl font-bold tracking-tight">Aikortex</span>
-        </div>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          Entre para criar seus agentes e gerenciar seu negócio.
-        </p>
-        {!showAuth && (
-          <Button size="lg" className="rounded-full px-8" onClick={() => setShowAuth(true)}>
-            Entrar
-          </Button>
-        )}
-      </div>
 
       <AuthModal open={showAuth} mode={initialMode} dismissible={false} onClose={() => setShowAuth(false)} />
     </div>
