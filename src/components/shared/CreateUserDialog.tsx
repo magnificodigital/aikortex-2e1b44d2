@@ -14,8 +14,10 @@ interface CreateUserDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  context: "platform" | "agency";
+  context: "platform" | "agency" | "client";
   workspaceOwnerUserId?: string;
+  /** Ao criar usuário DE UM CLIENTE existente — vincula em client_members. */
+  clientId?: string;
 }
 
 const platformRoles = [
@@ -27,6 +29,11 @@ const agencyRoles = [
   { value: "agency_admin", label: "Administrador" },
   { value: "agency_manager", label: "Gerente" },
   { value: "agency_member", label: "Membro" },
+];
+
+const clientRoles = [
+  { value: "client_owner", label: "Dono da conta" },
+  { value: "client_viewer", label: "Visualizador" },
 ];
 
 const departments = [
@@ -45,7 +52,7 @@ const getTenantTypeFromRole = (role: string) => {
   return "agency";
 };
 
-const CreateUserDialog = ({ open, onClose, onSuccess, context, workspaceOwnerUserId }: CreateUserDialogProps) => {
+const CreateUserDialog = ({ open, onClose, onSuccess, context, workspaceOwnerUserId, clientId }: CreateUserDialogProps) => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,7 +66,7 @@ const CreateUserDialog = ({ open, onClose, onSuccess, context, workspaceOwnerUse
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const roles = context === "platform" ? platformRoles : agencyRoles;
+  const roles = context === "platform" ? platformRoles : context === "client" ? clientRoles : agencyRoles;
 
   const resetForm = () => {
     setFullName("");
@@ -111,12 +118,13 @@ const CreateUserDialog = ({ open, onClose, onSuccess, context, workspaceOwnerUse
         job_title: jobTitle.trim() || undefined,
       };
 
-      const { data, error: fnError } = (context === "platform" || workspaceOwnerUserId)
+      const { data, error: fnError } = (context === "platform" || workspaceOwnerUserId || clientId)
         ? await supabase.functions.invoke("admin-users", {
             body: {
               action: "create",
               ...payload,
               workspace_owner_user_id: workspaceOwnerUserId,
+              client_id: clientId,
             },
           })
         : await supabase.functions.invoke("create-user", {

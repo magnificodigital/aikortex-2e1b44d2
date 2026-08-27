@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import {
   Search, Loader2, RefreshCw, Building2, CheckCircle, XCircle,
   ArrowLeft, Users, DollarSign, LayoutTemplate, ChevronRight, Plus, Pencil, Trash2, Ban, ShieldOff, Copy, KeyRound,
-  MoreHorizontal, ShieldCheck, UserX, RotateCcw,
+  MoreHorizontal, ShieldCheck, UserX, RotateCcw, User, UserPlus,
 } from "lucide-react";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
@@ -1131,11 +1131,42 @@ const Level3 = ({ agency, client, onSelectSubscription, onGoToAgency, onClientUp
   const [actionLoading, setActionLoading] = useState(false);
   const [magicLink, setMagicLink] = useState<{ url: string; label: string } | null>(null);
   const [magicLoading, setMagicLoading] = useState(false);
+  const [clientUsers, setClientUsers] = useState<{ user_id: string; name: string; role: string; isOwner: boolean }[]>([]);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [usersRefresh, setUsersRefresh] = useState(0);
 
   useEffect(() => {
     supabase.from("billing_events").select("id, event_type, amount, platform_amount, description, created_at, asaas_payment_id, subscription_id").eq("client_id", client.id).order("created_at", { ascending: false }).limit(20)
       .then(res => { setPayments(res.data || []); setLoading(false); });
   }, [client.id]);
+
+  // Usuários do cliente = dono (client_user_id) + membros (client_members).
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data: members } = await supabase.from("client_members" as any).select("user_id, role").eq("client_id", client.id);
+      const memberRows = (members as any[]) || [];
+      const ids = [client.client_user_id, ...memberRows.map((m) => m.user_id)].filter(Boolean) as string[];
+      let profs: any[] = [];
+      if (ids.length) {
+        const { data } = await supabase.from("profiles").select("user_id, full_name").in("user_id", ids);
+        profs = data || [];
+      }
+      const nameOf = (uid: string) => profs.find((p) => p.user_id === uid)?.full_name || `${uid.slice(0, 8)}…`;
+      const list: { user_id: string; name: string; role: string; isOwner: boolean }[] = [];
+      if (client.client_user_id) list.push({ user_id: client.client_user_id, name: nameOf(client.client_user_id), role: "Dono", isOwner: true });
+      for (const m of memberRows) list.push({ user_id: m.user_id, name: nameOf(m.user_id), role: m.role, isOwner: false });
+      if (active) setClientUsers(list);
+    })();
+    return () => { active = false; };
+  }, [client.id, client.client_user_id, usersRefresh]);
+
+  const removeMember = async (userId: string) => {
+    const { error } = await supabase.from("client_members" as any).delete().eq("client_id", client.id).eq("user_id", userId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Usuário removido do cliente.");
+    setUsersRefresh((v) => v + 1);
+  };
 
   const st = STATUS_MAP[client.status || ""] || STATUS_MAP.inactive;
 
@@ -1254,19 +1285,39 @@ const Level3 = ({ agency, client, onSelectSubscription, onGoToAgency, onClientUp
         </Card>
       </div>
 
-      {/* Workspace access */}
+      {/* Usuários do cliente (dono + membros) */}
       <Card>
         <CardContent className="p-5">
-          <h3 className="text-sm font-semibold mb-2">Acesso ao workspace</h3>
-          {client.client_user_id ? (
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              <p className="text-sm">Usuário vinculado: <span className="font-medium">{client.client_user_id.slice(0, 8)}...</span></p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Sem acesso ao workspace</p>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Usuários do cliente ({clientUsers.length})</h3>
+            {client.client_user_id ? (
+              <Button size="sm" variant="outline" onClick={() => setShowCreateUser(true)}><UserPlus className="w-3.5 h-3.5 mr-1.5" />Novo usuário</Button>
+            ) : (
               <Button size="sm" variant="outline" onClick={() => setShowWorkspace(true)}><KeyRound className="w-3.5 h-3.5 mr-1.5" />Criar acesso</Button>
+            )}
+          </div>
+          {clientUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sem acesso ainda. Crie o acesso do dono para começar.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {clientUsers.map((u) => (
+                <div key={u.user_id} className="flex items-center justify-between py-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center"><User className="w-3.5 h-3.5 text-muted-foreground" /></div>
+                    <span className="text-sm font-medium">{u.name}</span>
+                  </div>
+                  {u.isOwner ? (
+                    <Badge className="bg-primary/10 text-primary border-0 text-xs">Dono</Badge>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">{u.role}</Badge>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Remover do cliente" onClick={() => removeMember(u.user_id)}>
+                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
@@ -1301,6 +1352,7 @@ const Level3 = ({ agency, client, onSelectSubscription, onGoToAgency, onClientUp
 
       <EditClientModal open={showEdit} onClose={() => setShowEdit(false)} client={client} onSuccess={(c) => { setShowEdit(false); onClientUpdated(c); }} />
       <CreateWorkspaceModal open={showWorkspace} onClose={() => setShowWorkspace(false)} client={client} onSuccess={() => { setShowWorkspace(false); onClientUpdated({ ...client, client_user_id: "created" }); }} />
+      <CreateUserDialog open={showCreateUser} onClose={() => setShowCreateUser(false)} onSuccess={() => setUsersRefresh((v) => v + 1)} context="client" clientId={client.id} />
 
       <AlertDialog open={confirmSuspend} onOpenChange={setConfirmSuspend}>
         <AlertDialogContent>

@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
 
       /* ─── CREATE ─── */
       case "create": {
-        const { email, password, full_name, role, tenant_type, agency_id, agency_name, tier, workspace_owner_user_id } = body;
+        const { email, password, full_name, role, tenant_type, agency_id, agency_name, tier, workspace_owner_user_id, client_id } = body;
         if (!email || !password) return json({ error: "email and password required" }, 400);
 
         const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
@@ -148,6 +148,17 @@ Deno.serve(async (req) => {
             client_user_id: newUser.user.id,
             status: "active",
           });
+        }
+
+        // Adicionar como MEMBRO de um CLIENTE existente (vários usuários por cliente).
+        // Não cria cliente novo — só vincula à conta do cliente já existente.
+        if (client_id) {
+          const { error: cmErr } = await supabase.from("client_members").insert({
+            client_id,
+            user_id: newUser.user.id,
+            role: effectiveRole || "client_viewer",
+          });
+          if (cmErr) console.error("client_members insert error:", cmErr.message);
         }
 
         return json({ success: true, user_id: newUser.user.id });
