@@ -38,25 +38,26 @@ const MODULE_GROUPS: { group: string; modules: ModuleDef[] }[] = [
   {
     group: "Aikortex",
     modules: [
-      { key: "stark.copilot", label: "Stark" },
+      {
+        key: "stark.copilot", label: "Stark",
+        subFeatures: [
+          { key: "planning", label: "Planejamento" },
+          { key: "reasoning", label: "Raciocínio avançado" },
+          { key: "code_runtime", label: "Execução de código" },
+          { key: "memory", label: "Memória" },
+          { key: "auto_integration", label: "Integração automática" },
+        ],
+      },
       {
         key: "aikortex.agentes", label: "Agentes",
         subFeatures: [
-          { key: "template_sdr", label: "Template SDR" },
-          { key: "template_sac", label: "Template SAC" },
-          { key: "custom", label: "Agente Personalizado" },
-          { key: "voice", label: "Agente de Voz" },
+          { key: "templates", label: "Templates prontos (SDR/SAC)" },
+          { key: "custom", label: "Agente personalizado" },
+          { key: "voice", label: "Agente de voz" },
           { key: "llm_swap", label: "Troca de LLM" },
         ],
       },
-      {
-        key: "aikortex.mensagens", label: "Mensagens",
-        subFeatures: [
-          { key: "whatsapp", label: "WhatsApp" },
-          { key: "email", label: "E-mail" },
-          { key: "webchat", label: "Web Chat" },
-        ],
-      },
+      { key: "aikortex.mensagens", label: "Mensagens" },
       {
         key: "aikortex.ligacoes", label: "Ligações",
         subFeatures: [
@@ -69,6 +70,32 @@ const MODULE_GROUPS: { group: string; modules: ModuleDef[] }[] = [
         subFeatures: [
           { key: "web", label: "Apps Web" },
           { key: "whatsapp", label: "Apps WhatsApp" },
+        ],
+      },
+    ],
+  },
+  {
+    group: "Canais & Conectores",
+    modules: [
+      {
+        key: "canais", label: "Canais",
+        subFeatures: [
+          { key: "whatsapp", label: "WhatsApp" },
+          { key: "instagram", label: "Instagram" },
+          { key: "email", label: "E-mail" },
+          { key: "website", label: "Website / Web Chat" },
+          { key: "voice", label: "Voz (ligações)" },
+        ],
+      },
+      {
+        key: "conectores", label: "Conectores",
+        subFeatures: [
+          { key: "gmail", label: "Gmail" },
+          { key: "google_calendar", label: "Google Agenda" },
+          { key: "outlook", label: "Outlook" },
+          { key: "hubspot", label: "HubSpot" },
+          { key: "slack", label: "Slack" },
+          { key: "notion", label: "Notion" },
         ],
       },
     ],
@@ -113,12 +140,14 @@ const DEFAULT_ACCESS: Record<string, Record<string, boolean>> = {
   start: {
     "stark.copilot": true, "aikortex.agentes": true, "aikortex.mensagens": true,
     "aikortex.ligacoes": false, "aikortex.apps": false,
+    "canais": true, "conectores": false,
     "gestao.clientes": true, "gestao.vendas": true, "gestao.reunioes": false,
     "gestao.financeiro": false, "gestao.equipe": true, "gestao.tarefas": true,
   },
   hack: {
     "stark.copilot": true, "aikortex.agentes": true, "aikortex.mensagens": true,
     "aikortex.ligacoes": true, "aikortex.apps": true,
+    "canais": true, "conectores": true,
     "gestao.clientes": true, "gestao.vendas": true, "gestao.reunioes": true,
     "gestao.financeiro": true, "gestao.equipe": true, "gestao.tarefas": true,
   },
