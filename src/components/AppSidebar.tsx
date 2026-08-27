@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { useModuleAccess } from "@/hooks/use-module-access";
@@ -188,6 +189,21 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
   const visibleGestaoItems = filterByEnabled(gestaoItems);
   // No modo cliente, o Stark também respeita o que a agência liberou (stark.copilot).
   const showStark = isAgencyMode || (clientEnabledModules ?? []).includes("stark.copilot");
+
+  // Admin do SaaS: "entrar" de fato num workspace = abrir a sessão real do dono
+  // (link mágico). Mostra os dados reais daquele workspace.
+  const [entering, setEntering] = useState(false);
+  const enterWorkspace = async () => {
+    const c = clients.find((x) => x.id === activeWorkspace.id);
+    if (!c) return;
+    if (!c.client_user_id) { toast.error("Este cliente ainda não tem conta de acesso."); return; }
+    if (!c.client_email) { toast.error("Cliente sem e-mail de acesso."); return; }
+    setEntering(true);
+    const { data, error } = await supabase.functions.invoke("admin-users", { body: { action: "magic-link", email: c.client_email } });
+    setEntering(false);
+    if (error || !(data as any)?.link) { toast.error("Não foi possível gerar o acesso."); return; }
+    window.open((data as any).link as string, "_blank");
+  };
   const { messageCount, monthlyLimit, hasByok, isNearLimit, isUnlimited } = useMonthlyUsage();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -330,7 +346,7 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
         </div>
 
         {(!collapsed || isMobile) && (
-          <div className="px-2 pt-3">
+          <div className="px-2 pt-3 space-y-1.5">
             <Select
               value={activeWorkspace.type === "agency" ? "__agency__" : activeWorkspace.id}
               onValueChange={(val) => {
@@ -350,6 +366,15 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
                 ))}
               </SelectContent>
             </Select>
+            {isPlatform && activeWorkspace.type === "client" && (
+              <button
+                onClick={enterWorkspace}
+                disabled={entering}
+                className="w-full h-7 rounded-md border border-sidebar-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
+              >
+                {entering ? "Abrindo sessão..." : "Entrar neste workspace (admin)"}
+              </button>
+            )}
           </div>
         )}
 

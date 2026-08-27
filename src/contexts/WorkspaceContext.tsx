@@ -7,6 +7,7 @@ interface AgencyClient {
   client_name: string;
   client_email: string | null;
   status: string | null;
+  client_user_id?: string | null;
 }
 
 export interface ActiveWorkspace {
@@ -52,7 +53,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         // Admin do SaaS: vê TODOS os workspaces (clientes de todas as agências).
         if (isPlatform) {
           const [{ data: allClients }, { data: allAgencies }] = await Promise.all([
-            supabase.from("agency_clients").select("id, client_name, client_email, status, agency_id").in("status", ["active", "pending", "trial", "suspended"]).order("client_name"),
+            supabase.from("agency_clients").select("id, client_name, client_email, status, agency_id, client_user_id").in("status", ["active", "pending", "trial", "suspended"]).order("client_name"),
             supabase.from("agency_profiles").select("id, agency_name"),
           ]);
           const nameById = new Map((allAgencies || []).map((a: any) => [a.id, a.agency_name]));
@@ -61,6 +62,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
             client_name: nameById.get(c.agency_id) ? `${c.client_name} · ${nameById.get(c.agency_id)}` : c.client_name,
             client_email: c.client_email,
             status: c.status,
+            client_user_id: c.client_user_id,
           }));
           setClients(loaded);
           setAgencyName("Admin — todos");
