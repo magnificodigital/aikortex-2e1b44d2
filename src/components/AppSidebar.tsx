@@ -43,7 +43,6 @@ import {
   LayoutTemplate,
   Video,
   X,
-  ShieldCheck,
   Users2,
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
@@ -424,12 +423,7 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
                 <Settings className={`w-4 h-4 shrink-0 ${isItemActive("/settings") ? "text-primary" : ""}`} />
                 {(!collapsed || isMobile) && <span className="truncate">Configurações</span>}
               </Link>
-              {isPlatform && (
-                <Link to="/admin" onClick={handleNavigate} className={linkClasses(isItemActive("/admin"))} title={collapsed && !isMobile ? "Painel Admin" : undefined}>
-                  <ShieldCheck className={`w-4 h-4 shrink-0 ${isItemActive("/admin") ? "text-primary" : ""}`} />
-                  {(!collapsed || isMobile) && <span className="truncate">Painel Admin</span>}
-                </Link>
-              )}
+              {/* Painel Admin fica só no dash.aikortex.com (acesso por link) — não aparece no app. */}
             </div>
           </div>
         </nav>

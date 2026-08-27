@@ -1,16 +1,22 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { getAppMode } from "@/lib/app-domain";
 
 type Theme = "light" | "dark";
 
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
-  theme: "dark",
+  theme: "light",
   toggle: () => {},
 });
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<Theme>(() => {
+    // Respeita a escolha salva do usuário.
     const stored = localStorage.getItem("theme") as Theme;
-    return stored === "light" ? "light" : "dark";
+    if (stored === "dark" || stored === "light") return stored;
+    // Sem preferência: app/dash abrem CLARO (conteúdo claro + menu escuro, pois
+    // a sidebar é sempre `dark` por conta própria). O site de marketing
+    // (aikortex.com) foi desenhado escuro → abre escuro.
+    return getAppMode() === "site" ? "dark" : "light";
   });
 
   useEffect(() => {
