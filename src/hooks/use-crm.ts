@@ -121,7 +121,10 @@ export function useCrmContacts(opts?: { stageSlug?: string; agentId?: string }) 
       let query = (supabase.from("crm_contacts" as any).select("*") as any).order("updated_at", { ascending: false }).limit(500);
       if (opts?.stageSlug) query = query.eq("stage_slug", opts.stageSlug);
       if (opts?.agentId) query = query.eq("primary_agent_id", opts.agentId);
+      // Separação de contexto: agência vê só os leads DELA (client_id nulo);
+      // no workspace de um cliente, só os leads DAQUELE cliente.
       if (!isAgencyMode && activeClientId) query = query.eq("client_id", activeClientId);
+      else if (isAgencyMode) query = query.is("client_id", null);
       const { data, error } = await query;
       if (error) throw error;
       return (data as CrmContact[]) || [];
