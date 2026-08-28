@@ -60,7 +60,11 @@ const Tutorials = lazy(() => import("./pages/Tutorials"));
 const CallLogs = lazy(() => import("./pages/CallLogs"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
 
-const queryClient = new QueryClient();
+// retry: 1 — evita que uma query bloqueada por RLS fique ~7s re-tentando
+// (3x com backoff) e trave a tela em branco.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1 } },
+});
 
 // Agency-only route guard
 const AgencyRoute = ({ children }: { children: React.ReactNode }) => (

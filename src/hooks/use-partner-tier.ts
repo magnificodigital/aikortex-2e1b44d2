@@ -48,12 +48,14 @@ export interface TierProgress {
 }
 
 export function usePartnerTier() {
-  const { user } = useAuth();
+  const { user, isClient } = useAuth();
   const queryClient = useQueryClient();
 
   const { data, isLoading: tierLoading } = useQuery({
     queryKey: ["partner-tier", user?.id],
-    enabled: !!user?.id,
+    // Cliente NÃO é parceiro/agência — não tem tier. Rodar isso pra ele tenta
+    // inserir em partner_tiers (bloqueado por RLS) → retry ~7s → tela branca.
+    enabled: !!user?.id && !isClient,
     queryFn: async () => {
       // Try to fetch existing tier
       const { data: existing, error } = await supabase
