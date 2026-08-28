@@ -242,6 +242,9 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
     const basePath = item.path.split("?")[0];
     const moduleKey = MODULE_KEY_MAP[basePath];
     const isLocked = moduleKey ? !canAccess(moduleKey) : false;
+    // Funcionalidade não liberada no plano → NÃO aparece no menu (em vez de
+    // aparecer bloqueada).
+    if (isLocked) return null;
 
     return (
       <div key={item.path}>
