@@ -5,7 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TierAccessManager from "@/components/admin/TierAccessManager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Crown, Rocket, Zap, Check, X, Users, RefreshCw, ShieldCheck, LayoutGrid } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { Crown, Rocket, Zap, Check, X, Users, RefreshCw, ShieldCheck, LayoutGrid, Loader2 } from "lucide-react";
 
 interface Plan {
   id: string;
@@ -57,14 +59,34 @@ const FEATURE_LABELS: Record<string, string> = {
 const AdminPlansTab = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usersDraft, setUsersDraft] = useState<Record<string, string>>({});
+  const [savingUsers, setSavingUsers] = useState<string | null>(null);
 
   useEffect(() => { fetchPlans(); }, []);
 
   const fetchPlans = async () => {
     setLoading(true);
     const { data } = await supabase.from("plans").select("*").eq("is_active", true).order("price_monthly");
-    setPlans((data as Plan[]) || []);
+    const list = (data as Plan[]) || [];
+    setPlans(list);
+    setUsersDraft(Object.fromEntries(list.map((p) => {
+      const mu = p.features?.max_users;
+      return [p.id, mu === undefined || mu === "ilimitado" || mu === null ? "" : String(mu)];
+    })));
     setLoading(false);
+  };
+
+  const saveUsers = async (plan: Plan) => {
+    const raw = usersDraft[plan.id] ?? "";
+    const val = raw.trim() === "" ? "ilimitado" : Number(raw);
+    if (val !== "ilimitado" && (isNaN(val as number) || (val as number) < 1)) { toast.error("Informe um número válido (ou vazio p/ ilimitado)."); return; }
+    setSavingUsers(plan.id);
+    const nextFeatures = { ...(plan.features || {}), max_users: val };
+    const { error } = await supabase.from("plans").update({ features: nextFeatures }).eq("id", plan.id);
+    setSavingUsers(null);
+    if (error) { toast.error("Falha ao salvar."); return; }
+    setPlans((prev) => prev.map((p) => (p.id === plan.id ? { ...p, features: nextFeatures } : p)));
+    toast.success("Limite de usuários salvo.");
   };
 
   const renderFeatureValue = (key: string, value: any) => {
@@ -152,7 +174,7 @@ const AdminPlansTab = () => {
                         <div className="space-y-2">
                           <p className="text-xs font-medium uppercase text-muted-foreground tracking-wider">Funcionalidades</p>
                           {Object.entries(features).map(([key, value]) => {
-                            if (key === "templates" || key === "max_tier") return null;
+                            if (key === "templates" || key === "max_tier" || key === "max_users") return null;
                             const label = FEATURE_LABELS[key] || key;
                             return (
                               <div key={key} className="flex items-center justify-between text-sm">
@@ -177,6 +199,27 @@ const AdminPlansTab = () => {
                             ) : null}
                           </div>
                         )}
+
+                        {/* Limite de usuários (equipe da agência) — editável */}
+                        <div className="space-y-1.5 pt-2 border-t">
+                          <p className="text-xs font-medium uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5" /> Limite de usuários (equipe)
+                          </p>
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              min={1}
+                              value={usersDraft[plan.id] ?? ""}
+                              onChange={(e) => setUsersDraft({ ...usersDraft, [plan.id]: e.target.value })}
+                              placeholder="Ilimitado"
+                              className="h-8"
+                            />
+                            <Button size="sm" variant="outline" onClick={() => saveUsers(plan)} disabled={savingUsers === plan.id}>
+                              {savingUsers === plan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">Vazio = ilimitado. Quantos usuários a agência pode ter neste plano.</p>
+                        </div>
                       </CardContent>
                     </Card>
                   );
