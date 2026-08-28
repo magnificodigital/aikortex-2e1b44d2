@@ -2303,11 +2303,11 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
           // HTML comment não renderiza no ReactMarkdown; o frontend extrai via regex.
           content = `${content}\n\n<!--tools:${JSON.stringify(toolsExecuted)}-->`;
         }
-      } else if (mode === "wizard-setup" && wizardPhase === "DESCOBERTA" && detectedSpec
-                 && ((body as any).voiceMode === true || req.headers.get("x-wizard-voice-mode") === "1")) {
-        // ⚡ FAST-PATH só em VOZ (Jarvis/TTS precisa de sequência curta e instantânea).
-        // Em TEXTO, a Descoberta passa pela IA (else abaixo) pra ENTENDER o pedido e
-        // fazer perguntas direcionadas ao caso — nada de bloco genérico hardcoded.
+      } else if (mode === "wizard-setup" && wizardPhase === "DESCOBERTA" && detectedSpec && false) {
+        // ⛔ FAST-PATH DESATIVADO — TUDO passa pela IA (texto e voz). A Descoberta
+        // agora é sempre conduzida pelo LLM (else abaixo), que ENTENDE o pedido e
+        // faz perguntas direcionadas ao caso. Na voz, o VOICE_MODE_OVERRIDE do
+        // prompt garante resposta curta pro TTS. (Bloco mantido só como referência.)
         const firstMsgContent = incomingMessages.find((m) => m.role === "user")?.content ?? "";
 
         // VOZ: Stark esta lendo a resposta em voz alta. Fast-path padrao gera
