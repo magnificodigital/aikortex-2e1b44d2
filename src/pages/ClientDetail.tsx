@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { SellStarkDialog } from "@/components/clients/SellStarkDialog";
 import CreateUserDialog from "@/components/shared/CreateUserDialog";
-import { CLIENT_MODULES } from "@/lib/client-modules";
+import { AVAILABLE_CLIENT_MODULES as CLIENT_MODULES } from "@/lib/client-modules";
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
   active: { label: "Ativo", class: "bg-green-500/10 text-green-600 border-green-500/20" },

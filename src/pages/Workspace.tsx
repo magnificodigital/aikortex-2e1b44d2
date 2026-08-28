@@ -13,7 +13,7 @@ import {
   LogOut, Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Loader2, Zap,
 } from "lucide-react";
 import { RightPanelProvider } from "@/components/RightPanel";
-import { CLIENT_MODULES } from "@/lib/client-modules";
+import { AVAILABLE_CLIENT_MODULES as CLIENT_MODULES } from "@/lib/client-modules";
 import WorkspaceMessages from "@/pages/workspace/WorkspaceMessages";
 import WorkspaceCRM from "@/pages/workspace/WorkspaceCRM";
 import WorkspaceSettings from "@/pages/workspace/WorkspaceSettings";

@@ -13,18 +13,23 @@ export interface ClientModule {
   agencyPath: string;
   /** Rota dentro do /workspace do cliente logado. */
   workspacePath: string;
+  /** Tem tela de verdade pro cliente hoje? (senão é placeholder "em construção"
+   *  e não deve ser oferecido pro cliente ainda). */
+  available: boolean;
 }
 
 export const CLIENT_MODULES: ClientModule[] = [
-  { key: "stark.copilot",      group: "Aikortex", label: "Stark",      agencyPath: "/home",             workspacePath: "/workspace/stark" },
-  { key: "aikortex.agentes",   group: "Aikortex", label: "Agentes",    agencyPath: "/aikortex/agents",  workspacePath: "/workspace/agents" },
-  { key: "aikortex.mensagens", group: "Aikortex", label: "Mensagens",  agencyPath: "/aikortex/messages", workspacePath: "/workspace/messages" },
-  { key: "aikortex.crm",       group: "Aikortex", label: "CRM",        agencyPath: "/aikortex/crm",     workspacePath: "/workspace/crm" },
-  { key: "aikortex.ligacoes",  group: "Aikortex", label: "Ligações",   agencyPath: "/calls",            workspacePath: "/workspace/calls" },
-  { key: "aikortex.apps",      group: "Aikortex", label: "Apps",       agencyPath: "/apps",             workspacePath: "/workspace/apps" },
-  { key: "gestao.financeiro",  group: "Gestão",   label: "Financeiro", agencyPath: "/financial",        workspacePath: "/workspace/financial" },
-  { key: "gestao.tarefas",     group: "Gestão",   label: "Tarefas",    agencyPath: "/tasks",            workspacePath: "/workspace/tasks" },
-  { key: "gestao.equipe",      group: "Gestão",   label: "Equipe",     agencyPath: "/team",             workspacePath: "/workspace/team" },
+  { key: "stark.copilot",      group: "Aikortex", label: "Stark",      agencyPath: "/home",             workspacePath: "/workspace/stark",    available: false },
+  { key: "aikortex.agentes",   group: "Aikortex", label: "Agentes",    agencyPath: "/aikortex/agents",  workspacePath: "/workspace/agents",   available: false },
+  { key: "aikortex.mensagens", group: "Aikortex", label: "Mensagens",  agencyPath: "/aikortex/messages", workspacePath: "/workspace/messages", available: true },
+  { key: "aikortex.crm",       group: "Aikortex", label: "CRM",        agencyPath: "/aikortex/crm",     workspacePath: "/workspace/crm",      available: true },
+  { key: "aikortex.ligacoes",  group: "Aikortex", label: "Ligações",   agencyPath: "/calls",            workspacePath: "/workspace/calls",    available: false },
+  { key: "aikortex.apps",      group: "Aikortex", label: "Apps",       agencyPath: "/apps",             workspacePath: "/workspace/apps",     available: false },
+  { key: "gestao.financeiro",  group: "Gestão",   label: "Financeiro", agencyPath: "/financial",        workspacePath: "/workspace/financial", available: false },
+  { key: "gestao.tarefas",     group: "Gestão",   label: "Tarefas",    agencyPath: "/tasks",            workspacePath: "/workspace/tasks",    available: false },
+  { key: "gestao.equipe",      group: "Gestão",   label: "Equipe",     agencyPath: "/team",             workspacePath: "/workspace/team",     available: false },
 ];
 
+// Só os módulos que têm tela de verdade — os que o cliente pode usar hoje.
+export const AVAILABLE_CLIENT_MODULES = CLIENT_MODULES.filter((m) => m.available);
 export const CLIENT_MODULE_KEYS = CLIENT_MODULES.map((m) => m.key);

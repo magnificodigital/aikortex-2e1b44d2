@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CLIENT_MODULES } from "@/lib/client-modules";
+import { AVAILABLE_CLIENT_MODULES as CLIENT_MODULES } from "@/lib/client-modules";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { useModuleAccess } from "@/hooks/use-module-access";
