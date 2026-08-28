@@ -1,70 +1,46 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useModuleAccess } from "@/hooks/use-module-access";
-import { Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import DashboardLayout from "@/components/DashboardLayout";
-
-const MODULE_LABELS: Record<string, string> = {
-  "aikortex.agentes": "Agentes",
-  "aikortex.flows": "Flows",
-  "aikortex.apps": "Apps",
-  "aikortex.templates": "Templates",
-  "aikortex.mensagens": "Mensagens",
-  "aikortex.disparos": "Disparos",
-  "aikortex.ligacoes": "Ligações",
-  "aikortex.creditos": "Créditos",
-  "gestao.clientes": "Clientes",
-  "gestao.contratos": "Contratos",
-  "gestao.vendas": "Vendas",
-  "gestao.crm": "CRM",
-  "gestao.reunioes": "Reuniões",
-  "gestao.financeiro": "Financeiro",
-  "gestao.equipe": "Equipe",
-  "gestao.tarefas": "Tarefas",
-  "gestao.projetos": "Projetos",
-  "gestao.relatorios": "Relatórios",
-};
 
 interface ModuleGateProps {
   moduleKey: string;
   children: ReactNode;
 }
 
+// Ordem do menu — pra escolher pra onde ir quando a página não está liberada.
+const LANDING_ORDER: { path: string; key: string }[] = [
+  { path: "/home", key: "stark.copilot" },
+  { path: "/dashboard", key: "dashboard" },
+  { path: "/aikortex/agents", key: "aikortex.agentes" },
+  { path: "/aikortex/messages", key: "aikortex.mensagens" },
+  { path: "/calls", key: "aikortex.ligacoes" },
+  { path: "/apps", key: "aikortex.apps" },
+  { path: "/clients", key: "gestao.clientes" },
+  { path: "/aikortex/crm", key: "gestao.vendas" },
+  { path: "/meetings", key: "gestao.reunioes" },
+  { path: "/financial", key: "gestao.financeiro" },
+  { path: "/team", key: "gestao.equipe" },
+  { path: "/tasks", key: "gestao.tarefas" },
+];
+
+/**
+ * Gateia uma página por módulo (respeita o painel admin: master global +
+ * has_access do tier). Quando não liberado, NÃO mostra tela de "bloqueado" —
+ * redireciona pro primeiro item acessível (a função simplesmente não aparece).
+ */
 const ModuleGate = ({ moduleKey, children }: ModuleGateProps) => {
-  const { canAccess, isLoading, tier } = useModuleAccess();
+  const { canAccess, isLoading } = useModuleAccess();
   const navigate = useNavigate();
+  const denied = !isLoading && !canAccess(moduleKey);
 
-  if (isLoading) return null;
+  useEffect(() => {
+    if (!denied) return;
+    const first = LANDING_ORDER.find((x) => x.key !== moduleKey && canAccess(x.key));
+    navigate(first ? first.path : "/settings", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [denied]);
 
-  if (!canAccess(moduleKey)) {
-    const label = MODULE_LABELS[moduleKey] ?? moduleKey;
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="rounded-xl border border-border bg-card p-10 flex flex-col items-center text-center space-y-4 max-w-md">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-              <Lock className="w-7 h-7 text-muted-foreground" />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground">
-              Módulo {label} indisponível
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Este módulo não está disponível no seu plano atual.
-            </p>
-            <Badge variant="outline" className="text-xs capitalize">
-              Seu tier: {tier}
-            </Badge>
-            <Button onClick={() => navigate("/partners?tab=tiers")}>
-              Ver como evoluir
-            </Button>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
+  if (isLoading || denied) return null;
   return <>{children}</>;
 };
 

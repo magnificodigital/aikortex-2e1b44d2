@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import FeatureGate from "@/components/shared/FeatureGate";
 import ModuleGate from "@/components/shared/ModuleGate";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -115,7 +114,6 @@ const Apps = () => {
   return (
     <ModuleGate moduleKey="aikortex.apps">
       <DashboardLayout>
-        <FeatureGate feature="feature.saas_builder">
           <div className="max-w-6xl mx-auto px-6 py-10">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -246,7 +244,6 @@ const Apps = () => {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-        </FeatureGate>
       </DashboardLayout>
     </ModuleGate>
   );
