@@ -10,14 +10,7 @@ const monthlyData = [
   { month: "Mar", receita: 124000, despesas: 26500 },
 ];
 
-const clientRevenue = [
-  { client: "Fintech Plus", value: 15000 },
-  { client: "Startup Hub", value: 12000 },
-  { client: "EduTech", value: 9500 },
-  { client: "TechFlow", value: 8500 },
-  { client: "MegaStore", value: 6800 },
-  { client: "Nova Digital", value: 4200 },
-];
+const clientRevenue: { client: string; value: number }[] = [];
 
 const RevenueChart = () => (
   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

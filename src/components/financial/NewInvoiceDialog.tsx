@@ -11,7 +11,7 @@ interface NewInvoiceDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const clients = ["TechFlow Corp", "Nova Digital", "Startup Hub", "MegaStore", "Fintech Plus", "EduTech"];
+const clients: string[] = [];
 
 const NewInvoiceDialog = ({ open, onOpenChange }: NewInvoiceDialogProps) => {
   const [client, setClient] = useState("");

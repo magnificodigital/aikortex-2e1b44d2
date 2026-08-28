@@ -27,16 +27,7 @@ interface CostCenter {
   active: boolean;
 }
 
-const initialCostCenters: CostCenter[] = [
-  { id: "cc1", name: "Tecnologia & Infraestrutura", type: "technology", budget: 25000, spent: 18500, description: "Servidores, licenças e ferramentas de desenvolvimento", responsible: "CTO", active: true },
-  { id: "cc2", name: "Marketing Digital", type: "marketing", budget: 15000, spent: 12300, description: "Campanhas, mídia paga e produção de conteúdo", responsible: "CMO", active: true },
-  { id: "cc3", name: "Pessoal & RH", type: "personnel", budget: 85000, spent: 82000, description: "Salários, benefícios e treinamentos", responsible: "RH", active: true },
-  { id: "cc4", name: "Operações", type: "operational", budget: 10000, spent: 6800, description: "Despesas operacionais gerais do dia-a-dia", responsible: "COO", active: true },
-  { id: "cc5", name: "Infraestrutura Física", type: "infrastructure", budget: 8000, spent: 7200, description: "Aluguel, energia, internet e manutenção", responsible: "Admin", active: true },
-  { id: "cc6", name: "Ferramentas SaaS", type: "tools", budget: 5000, spent: 4100, description: "Assinaturas de ferramentas e plataformas", responsible: "CTO", active: true },
-  { id: "cc7", name: "Impostos & Tributos", type: "taxes", budget: 20000, spent: 18900, description: "ISS, IRPJ, CSLL e outros tributos", responsible: "Contabilidade", active: true },
-  { id: "cc8", name: "Projetos Especiais", type: "other", budget: 12000, spent: 3500, description: "Investimentos em novos projetos e inovação", responsible: "CEO", active: true },
-];
+const initialCostCenters: CostCenter[] = [];
 
 const chartColors = [
   "hsl(217, 91%, 60%)", "hsl(38, 92%, 50%)", "hsl(280, 67%, 55%)",

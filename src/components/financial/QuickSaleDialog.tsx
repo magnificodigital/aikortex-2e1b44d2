@@ -11,7 +11,7 @@ interface QuickSaleDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const clients = ["TechFlow Corp", "Nova Digital", "Startup Hub", "MegaStore", "Fintech Plus", "EduTech"];
+const clients: string[] = [];
 const sources = [
   { value: "project", label: "Projeto" },
   { value: "retainer", label: "Retainer" },
