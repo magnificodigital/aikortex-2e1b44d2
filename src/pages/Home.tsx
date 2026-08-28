@@ -5,6 +5,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { StarkInterface } from "@/components/stark/StarkInterface";
 import AgencyOnboarding from "@/components/onboarding/AgencyOnboarding";
+import { useModuleAccess } from "@/hooks/use-module-access";
+
+// Ordem do menu — usada pra escolher pra onde ir quando o Stark não está
+// liberado no plano/tier (não deve cair no /home, que é o Stark).
+const LANDING_ORDER: { path: string; key: string }[] = [
+  { path: "/dashboard", key: "dashboard" },
+  { path: "/aikortex/agents", key: "aikortex.agentes" },
+  { path: "/aikortex/messages", key: "aikortex.mensagens" },
+  { path: "/calls", key: "aikortex.ligacoes" },
+  { path: "/apps", key: "aikortex.apps" },
+  { path: "/clients", key: "gestao.clientes" },
+  { path: "/aikortex/crm", key: "gestao.vendas" },
+  { path: "/meetings", key: "gestao.reunioes" },
+  { path: "/financial", key: "gestao.financeiro" },
+  { path: "/team", key: "gestao.equipe" },
+  { path: "/tasks", key: "gestao.tarefas" },
+];
 
 const WHATSAPP_KEYWORDS = ["whatsapp", "wpp", "zap", "zapzap", "mensagem", "conversa", "chat", "atendimento", "sac", "suporte ao cliente", "cliente pelo whatsapp", "whats"];
 const WEB_KEYWORDS = ["web", "site", "website", "dashboard", "portal", "painel", "landing", "página", "pagina", "sistema web", "plataforma", "saas", "aplicativo web", "app web"];
@@ -33,6 +50,17 @@ const Home = () => {
   const [userName, setUserName] = useState("Usuário");
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { canAccess, isLoading: accessLoading } = useModuleAccess();
+
+  // Se o Stark não está liberado (plano/tier ou master global), o /home não
+  // deve abrir o Stark — manda pro primeiro item acessível do menu.
+  useEffect(() => {
+    if (accessLoading) return;
+    if (canAccess("stark.copilot")) return;
+    const first = LANDING_ORDER.find((x) => canAccess(x.key));
+    navigate(first ? first.path : "/settings", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessLoading]);
 
   // Setup do negócio (1º login): mostra o wizard se a agência ainda não
   // configurou os preços (custom_pricing). "Fazer depois" grava skip local.
