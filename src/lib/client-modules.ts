@@ -23,11 +23,11 @@ export const CLIENT_MODULES: ClientModule[] = [
   { key: "aikortex.agentes",   group: "Aikortex", label: "Agentes",    agencyPath: "/aikortex/agents",  workspacePath: "/workspace/agents",   available: true },
   { key: "aikortex.mensagens", group: "Aikortex", label: "Mensagens",  agencyPath: "/aikortex/messages", workspacePath: "/workspace/messages", available: true },
   { key: "aikortex.crm",       group: "Aikortex", label: "CRM",        agencyPath: "/aikortex/crm",     workspacePath: "/workspace/crm",      available: true },
-  { key: "aikortex.ligacoes",  group: "Aikortex", label: "Ligações",   agencyPath: "/calls",            workspacePath: "/workspace/calls",    available: false },
-  { key: "aikortex.apps",      group: "Aikortex", label: "Apps",       agencyPath: "/apps",             workspacePath: "/workspace/apps",     available: false },
-  { key: "gestao.financeiro",  group: "Gestão",   label: "Financeiro", agencyPath: "/financial",        workspacePath: "/workspace/financial", available: false },
-  { key: "gestao.tarefas",     group: "Gestão",   label: "Tarefas",    agencyPath: "/tasks",            workspacePath: "/workspace/tasks",    available: false },
-  { key: "gestao.equipe",      group: "Gestão",   label: "Equipe",     agencyPath: "/team",             workspacePath: "/workspace/team",     available: false },
+  { key: "aikortex.ligacoes",  group: "Aikortex", label: "Ligações",   agencyPath: "/calls",            workspacePath: "/workspace/calls",    available: true },
+  { key: "aikortex.apps",      group: "Aikortex", label: "Apps",       agencyPath: "/apps",             workspacePath: "/workspace/apps",     available: true },
+  { key: "gestao.financeiro",  group: "Gestão",   label: "Financeiro", agencyPath: "/financial",        workspacePath: "/workspace/financial", available: true },
+  { key: "gestao.tarefas",     group: "Gestão",   label: "Tarefas",    agencyPath: "/tasks",            workspacePath: "/workspace/tasks",    available: true },
+  { key: "gestao.equipe",      group: "Gestão",   label: "Equipe",     agencyPath: "/team",             workspacePath: "/workspace/team",     available: true },
 ];
 
 // Só os módulos que têm tela de verdade — os que o cliente pode usar hoje.

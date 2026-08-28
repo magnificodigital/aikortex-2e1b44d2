@@ -109,7 +109,7 @@ const App = () => (
 
               {/* Agency routes */}
               <Route path="/home" element={<AgencyRoute><Home /></AgencyRoute>} />
-              <Route path="/apps" element={<AgencyRoute><Apps /></AgencyRoute>} />
+              <Route path="/apps" element={<SharedRoute><Apps /></SharedRoute>} />
               <Route path="/app-builder" element={<AgencyRoute><AppBuilder /></AgencyRoute>} />
               <Route path="/templates" element={<AgencyRoute><Templates /></AgencyRoute>} />
               
@@ -118,9 +118,9 @@ const App = () => (
               <Route path="/clients" element={<AgencyRoute><Clients /></AgencyRoute>} />
               <Route path="/clients/:clientId" element={<AgencyRoute><ClientDetailPage /></AgencyRoute>} />
               <Route path="/projects" element={<AgencyRoute><Projects /></AgencyRoute>} />
-              <Route path="/tasks" element={<AgencyRoute><Tasks /></AgencyRoute>} />
-              <Route path="/team" element={<AgencyRoute><Team /></AgencyRoute>} />
-              <Route path="/financial" element={<AgencyRoute><Financial /></AgencyRoute>} />
+              <Route path="/tasks" element={<SharedRoute><Tasks /></SharedRoute>} />
+              <Route path="/team" element={<SharedRoute><Team /></SharedRoute>} />
+              <Route path="/financial" element={<SharedRoute><Financial /></SharedRoute>} />
               <Route path="/financeiro" element={<AgencyRoute><Financeiro /></AgencyRoute>} />
               <Route path="/proposals" element={<AgencyRoute><Proposals /></AgencyRoute>} />
               <Route path="/contracts" element={<AgencyRoute><Contracts /></AgencyRoute>} />
@@ -131,7 +131,7 @@ const App = () => (
               <Route path="/aikortex/crm" element={<SharedRoute><AikortexCRM /></SharedRoute>} />
               <Route path="/aikortex/agents" element={<SharedRoute><Aikortex /></SharedRoute>} />
               <Route path="/aikortex/agents/:agentId" element={<AgencyRoute><AgentDetail /></AgencyRoute>} />
-              <Route path="/calls" element={<AgencyRoute><CallLogs /></AgencyRoute>} />
+              <Route path="/calls" element={<SharedRoute><CallLogs /></SharedRoute>} />
               <Route path="/aikortex/automations" element={<AgencyRoute><AikortexAutomations /></AgencyRoute>} />
               <Route path="/aikortex/messages" element={<SharedRoute><AikortexMessages /></SharedRoute>} />
               <Route path="/aikortex/broadcasts" element={<AgencyRoute><AikortexBroadcasts /></AgencyRoute>} />
