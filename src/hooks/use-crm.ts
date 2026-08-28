@@ -167,6 +167,7 @@ export function useUpdateContact() {
 
 export function useCreateContact() {
   const qc = useQueryClient();
+  const { activeClientId, isAgencyMode } = useActiveClient();
   return useMutation({
     mutationFn: async (vars: Partial<CrmContact>) => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -180,6 +181,9 @@ export function useCreateContact() {
       const payload = {
         ...vars,
         agency_id: (agency as { id: string }).id,
+        // No contexto de um cliente, vincula o lead a ele — senão não aparece
+        // no CRM do cliente (que filtra por client_id).
+        client_id: vars.client_id ?? (!isAgencyMode ? activeClientId : null),
         stage_slug: vars.stage_slug ?? "new",
         last_interaction_at: new Date().toISOString(),
       };
@@ -193,6 +197,7 @@ export function useCreateContact() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["crm-contacts"] });
+      qc.invalidateQueries({ queryKey: ["workspace-crm-contacts"] });
       toast.success("Contato criado");
     },
     onError: (err) => toast.error(`Falha: ${(err as Error).message}`),
