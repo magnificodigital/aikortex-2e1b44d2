@@ -2303,10 +2303,11 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
           // HTML comment não renderiza no ReactMarkdown; o frontend extrai via regex.
           content = `${content}\n\n<!--tools:${JSON.stringify(toolsExecuted)}-->`;
         }
-      } else if (mode === "wizard-setup" && wizardPhase === "DESCOBERTA" && detectedSpec) {
-        // ⚡ FAST-PATH: Descoberta NÃO chama LLM. Geramos a resposta a partir do
-        // spec do arquétipo direto — perguntas já estão estruturadas, sem motivo
-        // pra esperar 25s do Qwen 3. Instant.
+      } else if (mode === "wizard-setup" && wizardPhase === "DESCOBERTA" && detectedSpec
+                 && ((body as any).voiceMode === true || req.headers.get("x-wizard-voice-mode") === "1")) {
+        // ⚡ FAST-PATH só em VOZ (Jarvis/TTS precisa de sequência curta e instantânea).
+        // Em TEXTO, a Descoberta passa pela IA (else abaixo) pra ENTENDER o pedido e
+        // fazer perguntas direcionadas ao caso — nada de bloco genérico hardcoded.
         const firstMsgContent = incomingMessages.find((m) => m.role === "user")?.content ?? "";
 
         // VOZ: Stark esta lendo a resposta em voz alta. Fast-path padrao gera
