@@ -125,7 +125,7 @@ const App = () => (
               <Route path="/sales" element={<AgencyRoute><Sales /></AgencyRoute>} />
               <Route path="/aikortex" element={<AgencyRoute><AikortexCRM /></AgencyRoute>} />
               <Route path="/aikortex/crm" element={<SharedRoute><AikortexCRM /></SharedRoute>} />
-              <Route path="/aikortex/agents" element={<AgencyRoute><Aikortex /></AgencyRoute>} />
+              <Route path="/aikortex/agents" element={<SharedRoute><Aikortex /></SharedRoute>} />
               <Route path="/aikortex/agents/:agentId" element={<AgencyRoute><AgentDetail /></AgencyRoute>} />
               <Route path="/calls" element={<AgencyRoute><CallLogs /></AgencyRoute>} />
               <Route path="/aikortex/automations" element={<AgencyRoute><AikortexAutomations /></AgencyRoute>} />

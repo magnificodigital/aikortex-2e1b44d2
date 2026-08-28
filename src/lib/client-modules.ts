@@ -20,7 +20,7 @@ export interface ClientModule {
 
 export const CLIENT_MODULES: ClientModule[] = [
   { key: "stark.copilot",      group: "Aikortex", label: "Stark",      agencyPath: "/home",             workspacePath: "/workspace/stark",    available: false },
-  { key: "aikortex.agentes",   group: "Aikortex", label: "Agentes",    agencyPath: "/aikortex/agents",  workspacePath: "/workspace/agents",   available: false },
+  { key: "aikortex.agentes",   group: "Aikortex", label: "Agentes",    agencyPath: "/aikortex/agents",  workspacePath: "/workspace/agents",   available: true },
   { key: "aikortex.mensagens", group: "Aikortex", label: "Mensagens",  agencyPath: "/aikortex/messages", workspacePath: "/workspace/messages", available: true },
   { key: "aikortex.crm",       group: "Aikortex", label: "CRM",        agencyPath: "/aikortex/crm",     workspacePath: "/workspace/crm",      available: true },
   { key: "aikortex.ligacoes",  group: "Aikortex", label: "Ligações",   agencyPath: "/calls",            workspacePath: "/workspace/calls",    available: false },

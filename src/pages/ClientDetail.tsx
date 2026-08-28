@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { SellStarkDialog } from "@/components/clients/SellStarkDialog";
 import CreateUserDialog from "@/components/shared/CreateUserDialog";
-import { AVAILABLE_CLIENT_MODULES as CLIENT_MODULES } from "@/lib/client-modules";
+import { CLIENT_MODULES } from "@/lib/client-modules";
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
   active: { label: "Ativo", class: "bg-green-500/10 text-green-600 border-green-500/20" },
@@ -504,13 +504,16 @@ const ClientDetail = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Funcionalidades liberadas</CardTitle>
-                <p className="text-sm text-muted-foreground">Controle o que este cliente vê e usa no workspace dele.</p>
+                <p className="text-sm text-muted-foreground">Você decide o que este cliente vê e usa. "Em breve" = tela do cliente ainda em construção.</p>
               </CardHeader>
               <CardContent className="divide-y divide-border">
                 {CLIENT_MODULES.map((m) => (
                   <div key={m.key} className="flex items-center justify-between py-3">
-                    <span className="text-sm font-medium">{m.label}</span>
-                    <Switch checked={modules.includes(m.key)} onCheckedChange={() => toggleModule(m.key)} />
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      {m.label}
+                      {!m.available && <Badge variant="outline" className="text-[10px] text-muted-foreground">em breve</Badge>}
+                    </span>
+                    <Switch checked={modules.includes(m.key)} onCheckedChange={() => toggleModule(m.key)} disabled={!m.available} />
                   </div>
                 ))}
               </CardContent>
