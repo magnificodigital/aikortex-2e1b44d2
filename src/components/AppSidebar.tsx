@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { CLIENT_MODULES } from "@/lib/client-modules";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { useModuleAccess } from "@/hooks/use-module-access";
@@ -88,6 +89,19 @@ const aikortexItems: NavItem[] = [
   { label: "Ligações", icon: PhoneIcon, path: "/calls" },
   { label: "Apps", icon: AppWindow, path: "/apps" },
 ];
+
+// Ícones por módulo-do-cliente (usados quando a sidebar renderiza no modo cliente).
+const CLIENT_MODE_ICONS: Record<string, typeof Bot> = {
+  "stark.copilot": Zap,
+  "aikortex.agentes": Bot,
+  "aikortex.mensagens": MessageSquare,
+  "aikortex.crm": ShoppingCart,
+  "aikortex.ligacoes": PhoneIcon,
+  "aikortex.apps": AppWindow,
+  "gestao.financeiro": DollarSign,
+  "gestao.tarefas": CheckSquare,
+  "gestao.equipe": UserCheck,
+};
 
 // Mapeia cada item de sidebar pra um slug de módulo (mesmo schema que aparece
 // em agency_clients.enabled_modules). No modo cliente, só os items cujo slug
@@ -185,13 +199,21 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
       return key ? enabled.includes(key) : false;
     });
   };
-  const visibleAikortexItems = filterByEnabled(aikortexItems);
-  const visibleGestaoItems = filterByEnabled(gestaoItems);
-  // Stark e Dashboard também respeitam o plano/flag global (some se não liberado).
+  // Modo cliente: a sidebar espelha a FONTE ÚNICA de módulos-do-cliente
+  // (client-modules.ts) — mesma lista do /workspace — filtrada pelo que a
+  // agência liberou. Assim "ver como cliente" bate com o login do cliente.
+  const clientItemsFor = (group: "Aikortex" | "Gestão"): NavItem[] =>
+    CLIENT_MODULES
+      .filter((m) => m.group === group && (clientEnabledModules ?? []).includes(m.key))
+      .map((m) => ({ label: m.label, path: m.agencyPath, moduleKey: m.key, icon: CLIENT_MODE_ICONS[m.key] ?? Bot }));
+
+  const visibleAikortexItems = isAgencyMode ? filterByEnabled(aikortexItems) : clientItemsFor("Aikortex");
+  const visibleGestaoItems = isAgencyMode ? filterByEnabled(gestaoItems) : clientItemsFor("Gestão");
+  // Stark respeita a lista do cliente; Dashboard não é módulo do cliente → some.
   const showStark = isAgencyMode
     ? canAccess("stark.copilot")
     : ((clientEnabledModules ?? []).includes("stark.copilot") && isModuleActive("stark.copilot"));
-  const showDashboard = isAgencyMode ? canAccess("dashboard") : isModuleActive("dashboard");
+  const showDashboard = isAgencyMode ? canAccess("dashboard") : false;
 
   // Admin do SaaS: "entrar" de fato num workspace = abrir a sessão real do dono
   // (link mágico). Mostra os dados reais daquele workspace.
@@ -244,9 +266,10 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
     const isExpanded = expandedItems[item.path];
     const basePath = item.path.split("?")[0];
     const moduleKey = MODULE_KEY_MAP[basePath];
-    const isLocked = moduleKey ? !canAccess(moduleKey) : false;
-    // Funcionalidade não liberada no plano → NÃO aparece no menu (em vez de
-    // aparecer bloqueada).
+    // Gate por PLANO só no modo agência. No modo cliente a lista já vem
+    // filtrada por enabled_modules (não gatear pelo tier da agência).
+    const isLocked = isAgencyMode && moduleKey ? !canAccess(moduleKey) : false;
+    // Funcionalidade não liberada → NÃO aparece no menu (em vez de bloqueada).
     if (isLocked) return null;
 
     return (

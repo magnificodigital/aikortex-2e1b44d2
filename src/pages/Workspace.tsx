@@ -13,32 +13,35 @@ import {
   LogOut, Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Loader2, Zap,
 } from "lucide-react";
 import { RightPanelProvider } from "@/components/RightPanel";
+import { CLIENT_MODULES } from "@/lib/client-modules";
 import WorkspaceMessages from "@/pages/workspace/WorkspaceMessages";
 import WorkspaceCRM from "@/pages/workspace/WorkspaceCRM";
 import WorkspaceSettings from "@/pages/workspace/WorkspaceSettings";
 import WorkspacePlaceholder from "@/pages/workspace/WorkspacePlaceholder";
 
-// Sidebar do cliente espelha exatamente os 10 módulos liberáveis pela agência.
-// Mesma estrutura (Aikortex + Gestão) que ela vê no switcher modo cliente.
+// Sidebar do cliente = FONTE ÚNICA de módulos-do-cliente (client-modules.ts),
+// pra bater exatamente com a aba Funcionalidades e o modo cliente do switcher.
 type NavItem = { key: string; label: string; icon: typeof Bot; path: string; group: "Aikortex" | "Gestão" };
 
-const ALL_NAV_ITEMS: NavItem[] = [
-  // Aikortex
-  // stark.copilot: habilitado quando a agencia VENDE o Stark pro cliente
-  // (edge stark-subscribe-client adiciona a key em enabled_modules).
-  { key: "stark.copilot",      group: "Aikortex", label: "Stark",      icon: Zap,            path: "/workspace/stark" },
-  { key: "aikortex.agentes",   group: "Aikortex", label: "Agentes",    icon: Bot,            path: "/workspace/agents" },
-  { key: "aikortex.crm",       group: "Aikortex", label: "CRM",        icon: Contact,        path: "/workspace/crm" },
-  { key: "aikortex.ligacoes",  group: "Aikortex", label: "Ligações",   icon: PhoneIcon,      path: "/workspace/calls" },
-  { key: "aikortex.apps",      group: "Aikortex", label: "Apps",       icon: AppWindow,      path: "/workspace/apps" },
-  { key: "aikortex.mensagens", group: "Aikortex", label: "Mensagens",  icon: MessageSquare,  path: "/workspace/messages" },
-  // Gestão
-  { key: "gestao.clientes",    group: "Gestão",   label: "Clientes",   icon: Users,          path: "/workspace/clients" },
-  { key: "gestao.vendas",      group: "Gestão",   label: "Vendas",     icon: ShoppingCart,   path: "/workspace/sales" },
-  { key: "gestao.financeiro",  group: "Gestão",   label: "Financeiro", icon: DollarSign,     path: "/workspace/financial" },
-  { key: "gestao.equipe",      group: "Gestão",   label: "Equipe",     icon: UserCheck,      path: "/workspace/team" },
-  { key: "gestao.tarefas",     group: "Gestão",   label: "Tarefas",    icon: CheckSquare,    path: "/workspace/tasks" },
-];
+const CLIENT_ICONS: Record<string, typeof Bot> = {
+  "stark.copilot": Zap,
+  "aikortex.agentes": Bot,
+  "aikortex.mensagens": MessageSquare,
+  "aikortex.crm": Contact,
+  "aikortex.ligacoes": PhoneIcon,
+  "aikortex.apps": AppWindow,
+  "gestao.financeiro": DollarSign,
+  "gestao.tarefas": CheckSquare,
+  "gestao.equipe": UserCheck,
+};
+
+const ALL_NAV_ITEMS: NavItem[] = CLIENT_MODULES.map((m) => ({
+  key: m.key,
+  label: m.label,
+  icon: CLIENT_ICONS[m.key] ?? Bot,
+  path: m.workspacePath,
+  group: m.group,
+}));
 
 const Workspace = () => {
   const location = useLocation();

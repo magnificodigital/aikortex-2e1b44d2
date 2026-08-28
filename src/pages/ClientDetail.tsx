@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { SellStarkDialog } from "@/components/clients/SellStarkDialog";
 import CreateUserDialog from "@/components/shared/CreateUserDialog";
+import { CLIENT_MODULES } from "@/lib/client-modules";
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
   active: { label: "Ativo", class: "bg-green-500/10 text-green-600 border-green-500/20" },
@@ -32,15 +33,6 @@ const STATUS_MAP: Record<string, { label: string; class: string }> = {
   cancelled: { label: "Cancelado", class: "bg-muted text-muted-foreground border-border" },
 };
 
-// Cada chave corresponde a um item do menu do cliente (mesma chave que a
-// AppSidebar usa pra filtrar). Desligar → o item some do menu do cliente.
-const CLIENT_MODULES = [
-  { key: "stark.copilot", label: "Stark (assistente)" },
-  { key: "aikortex.agentes", label: "Agentes" },
-  { key: "aikortex.mensagens", label: "Mensagens" },
-  { key: "aikortex.ligacoes", label: "Ligações" },
-  { key: "aikortex.apps", label: "Apps" },
-];
 
 const EVENT_LABELS: Record<string, string> = {
   payment_received: "Pagamento recebido",
