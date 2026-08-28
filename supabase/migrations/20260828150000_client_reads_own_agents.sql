@@ -11,12 +11,12 @@ begin
       using (
         exists (
           select 1 from public.agency_clients ac
-          where ac.id = user_agents.client_id and ac.client_user_id = auth.uid()
+          where ac.id::text = user_agents.client_id::text and ac.client_user_id = auth.uid()
         )
         or exists (
           select 1 from public.client_template_subscriptions cts
-          join public.agency_clients ac on ac.id = cts.client_id
-          where cts.id = user_agents.client_subscription_id and ac.client_user_id = auth.uid()
+          join public.agency_clients ac on ac.id::text = cts.client_id::text
+          where cts.id::text = user_agents.client_subscription_id::text and ac.client_user_id = auth.uid()
         )
       );
   end if;
