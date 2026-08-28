@@ -157,7 +157,7 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
   const { signOut, isPlatform } = useAuth();
   const { agencyName, clients, activeWorkspace, switchToAgency, switchToClient } = useWorkspace();
   const { isAgencyMode } = useActiveClient();
-  const { canAccess } = useModuleAccess();
+  const { canAccess, isModuleActive } = useModuleAccess();
 
   // Modo "Cliente X" no switcher: busca os módulos liberados pra esse cliente
   // (enabled_modules de agency_clients) pra espelhar o que ele vê no workspace.
@@ -187,8 +187,11 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
   };
   const visibleAikortexItems = filterByEnabled(aikortexItems);
   const visibleGestaoItems = filterByEnabled(gestaoItems);
-  // No modo cliente, o Stark também respeita o que a agência liberou (stark.copilot).
-  const showStark = isAgencyMode || (clientEnabledModules ?? []).includes("stark.copilot");
+  // Stark e Dashboard também respeitam o plano/flag global (some se não liberado).
+  const showStark = isAgencyMode
+    ? canAccess("stark.copilot")
+    : ((clientEnabledModules ?? []).includes("stark.copilot") && isModuleActive("stark.copilot"));
+  const showDashboard = isAgencyMode ? canAccess("dashboard") : isModuleActive("dashboard");
 
   // Admin do SaaS: "entrar" de fato num workspace = abrir a sessão real do dono
   // (link mágico). Mostra os dados reais daquele workspace.
@@ -391,10 +394,12 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
                 {(!collapsed || isMobile) && <span>Stark</span>}
               </Link>
             )}
-            <Link to="/dashboard" onClick={handleNavigate} className={linkClasses(isItemActive("/dashboard"))} title={collapsed && !isMobile ? "Dashboard" : undefined}>
-              <LayoutDashboard className={`w-4 h-4 shrink-0 ${isItemActive("/dashboard") ? "text-primary" : ""}`} />
-              {(!collapsed || isMobile) && <span>Dashboard</span>}
-            </Link>
+            {showDashboard && (
+              <Link to="/dashboard" onClick={handleNavigate} className={linkClasses(isItemActive("/dashboard"))} title={collapsed && !isMobile ? "Dashboard" : undefined}>
+                <LayoutDashboard className={`w-4 h-4 shrink-0 ${isItemActive("/dashboard") ? "text-primary" : ""}`} />
+                {(!collapsed || isMobile) && <span>Dashboard</span>}
+              </Link>
+            )}
           </div>
 
           {/* Mantém os mesmos grupos. Modo cliente filtra items por enabled_modules. */}

@@ -36,7 +36,7 @@ interface ModuleDef {
 
 const MODULE_GROUPS: { group: string; modules: ModuleDef[] }[] = [
   {
-    group: "Aikortex",
+    group: "Geral",
     modules: [
       {
         key: "stark.copilot", label: "Stark",
@@ -48,6 +48,12 @@ const MODULE_GROUPS: { group: string; modules: ModuleDef[] }[] = [
           { key: "auto_integration", label: "Integração automática" },
         ],
       },
+      { key: "dashboard", label: "Dashboard" },
+    ],
+  },
+  {
+    group: "Aikortex",
+    modules: [
       {
         key: "aikortex.agentes", label: "Agentes",
         subFeatures: [
@@ -138,14 +144,14 @@ const TOTAL_MODULES = ALL_MODULE_KEYS.length;
 
 const DEFAULT_ACCESS: Record<string, Record<string, boolean>> = {
   start: {
-    "stark.copilot": true, "aikortex.agentes": true, "aikortex.mensagens": true,
+    "stark.copilot": true, "dashboard": true, "aikortex.agentes": true, "aikortex.mensagens": true,
     "aikortex.ligacoes": false, "aikortex.apps": false,
     "canais": true, "conectores": false,
     "gestao.clientes": true, "gestao.vendas": true, "gestao.reunioes": false,
     "gestao.financeiro": false, "gestao.equipe": true, "gestao.tarefas": true,
   },
   hack: {
-    "stark.copilot": true, "aikortex.agentes": true, "aikortex.mensagens": true,
+    "stark.copilot": true, "dashboard": true, "aikortex.agentes": true, "aikortex.mensagens": true,
     "aikortex.ligacoes": true, "aikortex.apps": true,
     "canais": true, "conectores": true,
     "gestao.clientes": true, "gestao.vendas": true, "gestao.reunioes": true,
@@ -182,6 +188,34 @@ const TierAccessManager = () => {
       if (error) throw error;
       return (data ?? []) as unknown as AccessRow[];
     },
+  });
+
+  // Flags GLOBAIS (a função existe/ativa na plataforma, independente do tier).
+  const { data: flagRows } = useQuery({
+    queryKey: ["platform-module-flags-admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("platform_module_flags").select("module_key, active");
+      if (error) throw error;
+      return (data ?? []) as { module_key: string; active: boolean }[];
+    },
+  });
+  const flagsMap: Record<string, boolean> = {};
+  if (flagRows) for (const r of flagRows) flagsMap[r.module_key] = r.active;
+  const isActive = (key: string) => flagsMap[key] ?? true;
+
+  const flagMutation = useMutation({
+    mutationFn: async ({ moduleKey, value }: { moduleKey: string; value: boolean }) => {
+      const { error } = await supabase
+        .from("platform_module_flags")
+        .upsert({ module_key: moduleKey, active: value, updated_by: user?.id, updated_at: new Date().toISOString() }, { onConflict: "module_key" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform-module-flags-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["platform-module-flags"] });
+      toast.success("Funcionalidade atualizada");
+    },
+    onError: () => toast.error("Erro ao atualizar"),
   });
 
   // Build maps
@@ -355,6 +389,7 @@ const TierAccessManager = () => {
           <thead>
             <tr className="border-b border-border bg-muted/30">
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Módulo</th>
+              <th className="px-4 py-3 text-center font-medium text-muted-foreground text-xs">Ativo</th>
               {TIERS.map((tier) => (
                 <th key={tier} className="px-4 py-3 text-center">
                   <Badge className={`capitalize text-[10px] ${TIER_COLORS[tier]}`}>{tier}</Badge>
@@ -366,7 +401,7 @@ const TierAccessManager = () => {
             {MODULE_GROUPS.map((group) => (
               <React.Fragment key={group.group}>
                 <tr className="bg-muted/10">
-                  <td colSpan={4} className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <td colSpan={5} className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     {group.group}
                   </td>
                 </tr>
@@ -397,12 +432,19 @@ const TierAccessManager = () => {
                             )}
                           </div>
                         </td>
+                        <td className="px-4 py-2.5 text-center border-r border-border/50">
+                          <Switch
+                            checked={isActive(mod.key)}
+                            onCheckedChange={(val) => flagMutation.mutate({ moduleKey: mod.key, value: val })}
+                            disabled={flagMutation.isPending}
+                          />
+                        </td>
                         {TIERS.map((tier) => (
                           <td key={tier} className="px-4 py-2.5 text-center">
                             <Switch
-                              checked={currentMap[tier]?.[mod.key] ?? false}
+                              checked={isActive(mod.key) && (currentMap[tier]?.[mod.key] ?? false)}
                               onCheckedChange={(val) => handleToggle(tier, mod.key, val)}
-                              disabled={toggleMutation.isPending}
+                              disabled={toggleMutation.isPending || !isActive(mod.key)}
                             />
                           </td>
                         ))}
@@ -411,7 +453,7 @@ const TierAccessManager = () => {
                       {/* Sub-features expanded row */}
                       {isExpanded && hasSubFeatures && (
                         <tr className="bg-primary/5 border-b border-border/50">
-                          <td colSpan={4} className="px-4 py-3">
+                          <td colSpan={5} className="px-4 py-3">
                             <div className="ml-6 space-y-3">
                               <p className="text-xs font-medium text-muted-foreground mb-2">
                                 Sub-funcionalidades de {mod.label}
