@@ -35,7 +35,7 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 const WS_ACTIVE_KEY = "aikortex_active_workspace";
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
-  const { user, isPlatform } = useAuth();
+  const { user, isPlatform, isClient } = useAuth();
   const [agencyName, setAgencyName] = useState("Meu Workspace");
   const [agencyProfileId, setAgencyProfileId] = useState<string | null>(null);
   const [clients, setClients] = useState<AgencyClient[]>([]);
@@ -50,6 +50,23 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
     const load = async () => {
       try {
+        // CLIENTE logado: entra direto no modo-cliente da PRÓPRIA conta, usando
+        // o mesmo app da agência (mesmas telas), escopado a ele.
+        if (isClient) {
+          const { data: myClient } = await supabase
+            .from("agency_clients")
+            .select("id, client_name, client_email, status")
+            .eq("client_user_id", user.id)
+            .maybeSingle();
+          if (myClient) {
+            setClients([myClient as AgencyClient]);
+            setAgencyName(myClient.client_name || "Workspace");
+            setActiveWorkspace({ type: "client", id: myClient.id, name: myClient.client_name || "Workspace" });
+          }
+          setLoading(false);
+          return;
+        }
+
         // Admin do SaaS: vê TODOS os workspaces (clientes de todas as agências).
         if (isPlatform) {
           const [{ data: allClients }, { data: allAgencies }] = await Promise.all([
@@ -139,7 +156,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     };
 
     load();
-  }, [user, isPlatform]);
+  }, [user, isPlatform, isClient]);
 
   const switchToAgency = useCallback(() => {
     const ws: ActiveWorkspace & { userId: string } = { type: "agency", id: agencyProfileId ?? "", name: agencyName, userId: user?.id ?? "" };

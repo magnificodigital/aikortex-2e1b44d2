@@ -97,7 +97,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     //   dash.aikortex.com → admin do SaaS
     //   app.aikortex.com  → produto (mesmo o platform admin cai no produto aqui)
     if (getAppMode() === "dash") return "/admin";
-    if (isClient) return "/workspace";
+    // Cliente usa o MESMO app (modo cliente escopado), não o /workspace separado.
+    if (isClient) return "/aikortex/crm";
     return "/home";
   };
 

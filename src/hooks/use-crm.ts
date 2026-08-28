@@ -180,13 +180,24 @@ export function useCreateContact() {
         .select("id")
         .eq("user_id", user.id)
         .maybeSingle() as any);
-      if (!(agency as { id?: string } | null)?.id) throw new Error("Agência não encontrada");
+      let agencyId = (agency as { id?: string } | null)?.id;
+      let clientId = vars.client_id ?? (!isAgencyMode ? activeClientId : null);
+      if (!agencyId) {
+        // Usuário é CLIENTE (não tem agency_profiles): pega a agência dona + o
+        // próprio client_id a partir do registro dele em agency_clients.
+        const { data: myClient } = await (supabase
+          .from("agency_clients" as any)
+          .select("id, agency_id")
+          .eq("client_user_id", user.id)
+          .maybeSingle() as any);
+        if (!(myClient as any)?.agency_id) throw new Error("Conta não encontrada");
+        agencyId = (myClient as any).agency_id;
+        clientId = clientId ?? (myClient as any).id;
+      }
       const payload = {
         ...vars,
-        agency_id: (agency as { id: string }).id,
-        // No contexto de um cliente, vincula o lead a ele — senão não aparece
-        // no CRM do cliente (que filtra por client_id).
-        client_id: vars.client_id ?? (!isAgencyMode ? activeClientId : null),
+        agency_id: agencyId,
+        client_id: clientId,
         stage_slug: vars.stage_slug ?? "new",
         last_interaction_at: new Date().toISOString(),
       };

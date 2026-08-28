@@ -72,6 +72,12 @@ const ClientRoute = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute tenantTypes={['client']}>{children}</ProtectedRoute>
 );
 
+// Rotas compartilhadas: a agência opera E o cliente acessa a PRÓPRIA conta
+// (o app escopa por activeClientId; a sidebar filtra pelos módulos do cliente).
+const SharedRoute = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute tenantTypes={['agency', 'platform', 'client']}>{children}</ProtectedRoute>
+);
+
 const Loading = () => (
   <div className="flex h-screen items-center justify-center bg-background">
     <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -118,19 +124,19 @@ const App = () => (
               <Route path="/partners" element={<AgencyRoute><Partners /></AgencyRoute>} />
               <Route path="/sales" element={<AgencyRoute><Sales /></AgencyRoute>} />
               <Route path="/aikortex" element={<AgencyRoute><AikortexCRM /></AgencyRoute>} />
-              <Route path="/aikortex/crm" element={<AgencyRoute><AikortexCRM /></AgencyRoute>} />
+              <Route path="/aikortex/crm" element={<SharedRoute><AikortexCRM /></SharedRoute>} />
               <Route path="/aikortex/agents" element={<AgencyRoute><Aikortex /></AgencyRoute>} />
               <Route path="/aikortex/agents/:agentId" element={<AgencyRoute><AgentDetail /></AgencyRoute>} />
               <Route path="/calls" element={<AgencyRoute><CallLogs /></AgencyRoute>} />
               <Route path="/aikortex/automations" element={<AgencyRoute><AikortexAutomations /></AgencyRoute>} />
-              <Route path="/aikortex/messages" element={<AgencyRoute><AikortexMessages /></AgencyRoute>} />
+              <Route path="/aikortex/messages" element={<SharedRoute><AikortexMessages /></SharedRoute>} />
               <Route path="/aikortex/broadcasts" element={<AgencyRoute><AikortexBroadcasts /></AgencyRoute>} />
               {/* Deprecated: caminho legado do wizard. Redireciona pra rota canônica
                   do Master v7.4 §13.3 (split-screen Modo Vibe em /aikortex/agents/:agentId). */}
               <Route path="/agent-builder" element={<Navigate to="/aikortex/agents" replace />} />
               <Route path="/ai-setup" element={<AgencyRoute><Credits /></AgencyRoute>} />
               <Route path="/credits" element={<Navigate to="/ai-setup" replace />} />
-              <Route path="/settings" element={<AgencyRoute><SettingsPage /></AgencyRoute>} />
+              <Route path="/settings" element={<SharedRoute><SettingsPage /></SharedRoute>} />
               <Route path="/meetings" element={<AgencyRoute><Meetings /></AgencyRoute>} />
               <Route path="/meetings/:roomId" element={<ProtectedRoute><MeetingRoom /></ProtectedRoute>} />
 

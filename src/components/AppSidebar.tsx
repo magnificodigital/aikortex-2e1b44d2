@@ -168,7 +168,7 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
 
   const location = useLocation();
   const { theme, toggle } = useTheme();
-  const { signOut, isPlatform } = useAuth();
+  const { signOut, isPlatform, isClient } = useAuth();
   const { agencyName, clients, activeWorkspace, switchToAgency, switchToClient } = useWorkspace();
   const { isAgencyMode } = useActiveClient();
   const { canAccess, isModuleActive } = useModuleAccess();
@@ -374,7 +374,7 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
           )}
         </div>
 
-        {(!collapsed || isMobile) && (
+        {(!collapsed || isMobile) && !isClient && (
           <div className="px-2 pt-3 space-y-1.5">
             <Select
               value={activeWorkspace.type === "agency" ? "__agency__" : activeWorkspace.id}
