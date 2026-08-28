@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveClient } from "@/hooks/use-active-client";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -165,6 +166,9 @@ const fileToBase64 = (file: File): Promise<string> =>
 // ─── SETTINGS PAGE ─────────────────────────────────
 const SettingsPage = () => {
   const saved = loadBrand();
+  // No contexto de um cliente, só faz sentido o que é do cliente — esconde as
+  // abas de agência (Provedores/BYOK, Assinatura & Planos, Receita).
+  const { isAgencyMode } = useActiveClient();
 
   const [colors, setColors] = useState<BrandColors>(saved?.colors ?? defaultColors);
   const [logoUrl, setLogoUrl] = useState<string | null>(saved?.logoUrl ?? null);
@@ -307,16 +311,25 @@ const SettingsPage = () => {
           // Retorno do OAuth (Instagram/Facebook) volta em /settings SEM
           // ?tab (o redirect_uri e' limpo) — força a aba Canais.
           if (p.get("state") === "ig_login" || p.get("state") === "fb_connect") return "channels";
-          return p.get("tab") || "stark";
+          const tab = p.get("tab") || "stark";
+          // No modo cliente, se a aba pedida for de agência, cai numa visível.
+          if (!isAgencyMode && ["providers", "subscription", "receita"].includes(tab)) return "stark";
+          return tab;
         })()} className="space-y-4">
           <TabsList className="flex h-auto w-full max-w-full gap-1 overflow-x-auto bg-muted/50 p-1 justify-start [scrollbar-width:none]">
             <TabsTrigger value="stark" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Zap className="h-3.5 w-3.5" /> Stark</TabsTrigger>
-            <TabsTrigger value="providers" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Sparkles className="h-3.5 w-3.5" /> Provedores</TabsTrigger>
+            {isAgencyMode && (
+              <TabsTrigger value="providers" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Sparkles className="h-3.5 w-3.5" /> Provedores</TabsTrigger>
+            )}
             <TabsTrigger value="integrations" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Plug className="h-3.5 w-3.5" /> Conectores</TabsTrigger>
             <TabsTrigger value="channels" className="shrink-0 gap-1 whitespace-nowrap text-xs"><Radio className="h-3.5 w-3.5" /> Canais</TabsTrigger>
-            
-            <TabsTrigger value="subscription" className="shrink-0 gap-1 whitespace-nowrap text-xs"><CreditCard className="h-3.5 w-3.5" /> Assinatura & Planos</TabsTrigger>
-            <TabsTrigger value="receita" className="shrink-0 gap-1 whitespace-nowrap text-xs"><DollarSign className="h-3.5 w-3.5" /> Receita</TabsTrigger>
+
+            {isAgencyMode && (
+              <TabsTrigger value="subscription" className="shrink-0 gap-1 whitespace-nowrap text-xs"><CreditCard className="h-3.5 w-3.5" /> Assinatura & Planos</TabsTrigger>
+            )}
+            {isAgencyMode && (
+              <TabsTrigger value="receita" className="shrink-0 gap-1 whitespace-nowrap text-xs"><DollarSign className="h-3.5 w-3.5" /> Receita</TabsTrigger>
+            )}
           </TabsList>
 
           {/* ── PROVEDORES (LLMs) ───────────────────── */}
