@@ -333,175 +333,89 @@ const Aikortex = () => {
                     Escolha a base do seu agente. Dá pra mudar tudo depois.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-3 pt-1">
-                  {/* Modelos prontos */}
-                  <div className="rounded-xl border border-border p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
-                        <Users className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-foreground">Modelos prontos</span>
-                          <Badge className="text-[10px] px-1.5 py-0 h-4 bg-primary/15 text-primary border-0">Recomendado</Badge>
-                          {templates.length > 0 && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{templates.length} {templates.length === 1 ? "disponível" : "disponíveis"}</Badge>
-                          )}
-                        </div>
-                        <p className="text-[13px] text-muted-foreground leading-snug mt-0.5">
-                          Comece de um agente já configurado e ajuste ao seu negócio.
-                        </p>
-                      </div>
-                    </div>
-                    {templates.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
-                        {templates.slice(0, 4).map((t) => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => { setNewAgentOpen(false); setUseTemplate(t); }}
-                            className="flex items-center gap-2.5 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors p-2.5 text-left"
-                          >
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/25 to-primary/5 grid place-items-center shrink-0">
-                              <Bot className="w-4 h-4 text-primary" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">{t.name}</p>
-                              <p className="text-[11px] text-muted-foreground truncate">{t.niche_categories?.name_pt || "Modelo pronto"}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[12px] text-muted-foreground/70 mt-3">Nenhum modelo disponível ainda.</p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => { setNewAgentOpen(false); setTab("templates"); }}
-                      className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline underline-offset-2"
-                    >
-                      Ver todos os modelos <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Descrever com a IA */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {/* Pedir para IA (recomendado) → vai DIRETO pra tela de criação */}
                   <button
                     type="button"
-                    onClick={() => setNewAgentView("describe")}
-                    className="w-full text-left rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors p-4 flex items-center gap-3"
+                    onClick={() => startAgent(false)}
+                    className="group text-left rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors p-5 min-h-[150px] flex flex-col gap-3"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
-                      <Sparkles className="w-5 h-5" />
+                    <div className="w-11 h-11 rounded-lg bg-primary/15 text-primary grid place-items-center">
+                      <Sparkles className="w-6 h-6" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-foreground">Descrever com a IA</div>
-                      <p className="text-[13px] text-muted-foreground leading-snug">
-                        Você descreve o que o agente faz e a IA monta a configuração com você.
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground">Pedir para IA</span>
+                        <Badge className="text-[10px] px-1.5 py-0 h-4 bg-primary/15 text-primary border-0">Recomendado</Badge>
+                      </div>
+                      <p className="text-[13px] text-muted-foreground leading-snug mt-1">
+                        Você descreve e a IA monta o agente com você.
                       </p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
                   </button>
 
-                  {/* Duplicar */}
-                  {agents.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setNewAgentView("duplicate")}
-                      className="w-full text-left rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors p-4 flex items-center gap-3"
-                    >
-                      <div className="w-9 h-9 rounded-lg bg-foreground/10 text-foreground grid place-items-center shrink-0">
-                        <Copy className="w-5 h-5" />
+                  {/* Modelos prontos → aba de templates */}
+                  <button
+                    type="button"
+                    onClick={() => { setNewAgentOpen(false); setTab("templates"); }}
+                    className="group text-left rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors p-5 min-h-[150px] flex flex-col gap-3"
+                  >
+                    <div className="w-11 h-11 rounded-lg bg-primary/10 text-primary grid place-items-center">
+                      <Users className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground">Modelos prontos</span>
+                        {templates.length > 0 && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{templates.length}</Badge>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-foreground">Duplicar um agente existente</span>
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{agents.length} {agents.length === 1 ? "agente" : "agentes"}</Badge>
-                        </div>
-                        <p className="text-[13px] text-muted-foreground leading-snug">
-                          Comece com a configuração de um agente que já roda.
-                        </p>
+                      <p className="text-[13px] text-muted-foreground leading-snug mt-1">
+                        Comece de um agente já configurado e ajuste.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Duplicar um agente existente → sub-view */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (agents.length === 0) { toast.error("Você ainda não tem agentes pra duplicar."); return; }
+                      setNewAgentView("duplicate");
+                    }}
+                    className="group text-left rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors p-5 min-h-[150px] flex flex-col gap-3"
+                  >
+                    <div className="w-11 h-11 rounded-lg bg-foreground/10 text-foreground grid place-items-center">
+                      <Copy className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground">Duplicar existente</span>
+                        {agents.length > 0 && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{agents.length}</Badge>
+                        )}
                       </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
-                    </button>
-                  )}
+                      <p className="text-[13px] text-muted-foreground leading-snug mt-1">
+                        Clone um agente que já roda em produção.
+                      </p>
+                    </div>
+                  </button>
 
                   {/* Do zero */}
                   <button
                     type="button"
                     onClick={() => startAgent(true)}
-                    className="w-full text-left rounded-xl border border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors p-4 flex items-center gap-3"
+                    className="group text-left rounded-xl border border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors p-5 min-h-[150px] flex flex-col gap-3"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-muted text-muted-foreground grid place-items-center shrink-0">
-                      <Pencil className="w-5 h-5" />
+                    <div className="w-11 h-11 rounded-lg bg-muted text-muted-foreground grid place-items-center">
+                      <Pencil className="w-6 h-6" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-foreground">Do zero</div>
-                      <p className="text-[13px] text-muted-foreground leading-snug">
-                        Você mesmo escreve as instruções e ajusta tudo no painel.
+                    <div className="flex-1">
+                      <span className="font-semibold text-foreground">Do zero</span>
+                      <p className="text-[13px] text-muted-foreground leading-snug mt-1">
+                        Você mesmo escreve e ajusta tudo no painel.
                       </p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* ── View: Descrever ── */}
-            {newAgentView === "describe" && (
-              <>
-                <DialogHeader>
-                  <button
-                    type="button"
-                    onClick={() => setNewAgentView("root")}
-                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground w-fit mb-1"
-                  >
-                    <ArrowLeft className="w-4 h-4" /> Voltar
-                  </button>
-                  <DialogTitle>Descreva seu agente</DialogTitle>
-                  <DialogDescription>
-                    Conte em uma frase o que ele faz. A IA já monta um rascunho e você refina com um clique.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="pt-1 space-y-3">
-                  <Textarea
-                    autoFocus
-                    value={desc}
-                    onChange={(e) => setDesc(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && desc.trim()) startAgent(false, desc);
-                    }}
-                    placeholder="Ex.: Qualifica leads de imóveis no WhatsApp, tira dúvidas e agenda visitas."
-                    className="min-h-[96px] resize-none text-sm"
-                  />
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      "Qualifica leads no WhatsApp e agenda reuniões",
-                      "Atende clientes de e-commerce: rastreio, troca e dúvidas",
-                      "Faz cobrança amigável de mensalidades atrasadas",
-                    ].map((ex) => (
-                      <button
-                        key={ex}
-                        type="button"
-                        onClick={() => setDesc(ex)}
-                        className="text-[11px] px-2.5 py-1 rounded-full bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary border border-border/60 hover:border-primary/40 transition-colors"
-                      >
-                        {ex}
-                      </button>
-                    ))}
-                  </div>
-                  <Button
-                    onClick={() => startAgent(false, desc)}
-                    disabled={!desc.trim()}
-                    className="w-full gap-2 rounded-full"
-                  >
-                    <Sparkles className="w-4 h-4" /> Criar com a IA <ArrowRight className="w-4 h-4" />
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={() => startAgent(false)}
-                    className="w-full text-center text-[12px] text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
-                  >
-                    Prefiro só conversar com o assistente
                   </button>
                 </div>
               </>
