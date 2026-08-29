@@ -913,7 +913,10 @@ Se user falar de algum desses, diga claramente o que falta.
     for (let i = wizMsgs.length - 1; i >= 0; i--) {
       const m = wizMsgs[i] as any;
       if (m.role === "agent" && m.text) {
-        lastWizardText = String(m.text).replace(/\n*<!--tools:\[[\s\S]*?\]-->/g, "").trim();
+        lastWizardText = String(m.text)
+          .replace(/\n*<!--tools:\[[\s\S]*?\]-->/g, "")
+          .replace(/\n*\[\[opts:[^\]]*?\]\]/gi, "")
+          .trim();
         break;
       }
     }

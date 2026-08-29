@@ -160,6 +160,21 @@ const extractOAuthMarkers = (text: string): { clean: string; oauths: string[] } 
   return { clean, oauths };
 };
 
+// Click-to-answer (Fase 1): o wizard pode oferecer opções clicáveis no fim da
+// mensagem no formato [[opts: Opção A | Opção B | Opção C]]. Extraímos, limpamos
+// do texto exibido e renderizamos como chips. Também removemos um marker
+// INCOMPLETO durante o streaming (ex: "[[opts: Sim |") pra não piscar cru.
+const extractOptionsMarker = (text: string): { clean: string; opts: string[] } => {
+  const match = text.match(/\[\[opts:\s*([^\]]*?)\s*\]\]/i);
+  if (match) {
+    const opts = match[1].split("|").map((o) => o.trim()).filter(Boolean).slice(0, 6);
+    return { clean: text.replace(/\n*\[\[opts:[^\]]*?\]\]/i, "").trim(), opts };
+  }
+  // marker ainda abrindo durante streaming — esconde o rabo cru
+  const partial = text.replace(/\n*\[\[opts:[\s\S]*$/i, "").trim();
+  return { clean: partial, opts: [] };
+};
+
 const AgentChatPanel = ({
   onBack,
   agentId,
@@ -711,7 +726,11 @@ const AgentChatPanel = ({
           // Extrai 2 tipos de markers: tools (já existia) + oauths (novo) pro
           // bot pedir conexão Google inline no chat (Solutions Architect).
           const { clean: textWithOauths, tools } = role === "agent" ? extractToolsMarker(rawText || "") : { clean: rawText, tools: [] };
-          const { clean: text, oauths } = role === "agent" ? extractOAuthMarkers(textWithOauths) : { clean: textWithOauths, oauths: [] };
+          const { clean: textWithOpts, oauths } = role === "agent" ? extractOAuthMarkers(textWithOauths) : { clean: textWithOauths, oauths: [] };
+          const { clean: text, opts } = role === "agent" ? extractOptionsMarker(textWithOpts) : { clean: textWithOpts, opts: [] };
+          // chips clicáveis só na ÚLTIMA mensagem do agente e fora do streaming
+          const isLastMsg = i === displayMessages.length - 1;
+          const showOpts = role === "agent" && isLastMsg && !wizardIsStreaming && wizardStep === "discover" && opts.length > 0;
           return (
             <div key={i}>
               {role === "user" ? (
@@ -765,6 +784,22 @@ const AgentChatPanel = ({
                               }
                             }}
                           />
+                        ))}
+                      </div>
+                    )}
+                    {/* Click-to-answer (Fase 1): opções clicáveis que a IA sugeriu.
+                        Clicar envia como resposta; digitar continua opcional. */}
+                    {showOpts && (
+                      <div className="flex flex-wrap gap-1.5 ml-1 mt-1">
+                        {opts.map((opt, idx) => (
+                          <button
+                            key={`${i}-opt-${idx}`}
+                            type="button"
+                            onClick={() => wizardSendMessage && wizardSendMessage(opt)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 text-primary text-xs font-medium transition-colors"
+                          >
+                            {opt}
+                          </button>
                         ))}
                       </div>
                     )}
