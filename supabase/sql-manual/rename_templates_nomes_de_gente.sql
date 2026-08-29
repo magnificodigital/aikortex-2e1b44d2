@@ -13,5 +13,9 @@ update public.platform_templates
 set name = 'Suporte ao Cliente'
 where name ilike '%SAC%';
 
+update public.platform_templates
+set name = 'Gestor de Conteúdos'
+where name ilike '%social media%' or name ilike '%social%';
+
 -- 2) Conferir depois:
 -- select id, name, category, is_active from public.platform_templates order by sort_order;
