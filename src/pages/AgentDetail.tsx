@@ -1366,7 +1366,7 @@ Se user falar de algum desses, diga claramente o que falta.
 
   if (agentLoading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout sidebarCollapsed>
         <div className="flex h-screen items-center justify-center bg-background">
           <div className="flex flex-col items-center gap-3 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -1378,7 +1378,7 @@ Se user falar de algum desses, diga claramente o que falta.
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout sidebarCollapsed>
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
 
       {/* ── Mobile-only tabs (Chat ↔ Configuração) ── */}

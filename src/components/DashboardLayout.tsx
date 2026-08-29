@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMonthlyUsage } from "@/hooks/use-monthly-usage";
 
-const DashboardLayout = ({ children }: { children: ReactNode }) => {
+const DashboardLayout = ({ children, sidebarCollapsed = false }: { children: ReactNode; sidebarCollapsed?: boolean }) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -35,6 +35,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
         <AppSidebar
           mobileOpen={mobileSidebarOpen}
           onMobileClose={handleMobileClose}
+          forceCollapsed={sidebarCollapsed}
         />
         <main className="relative flex-1 min-w-0 overflow-y-auto overflow-x-hidden bg-background">
           {showBanner && (

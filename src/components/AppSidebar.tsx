@@ -63,6 +63,9 @@ type NavItem = {
 type AppSidebarProps = {
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  // Força a sidebar recolhida nesta tela (ex: criação de agente), sem alterar
+  // a preferência global salva do usuário.
+  forceCollapsed?: boolean;
 };
 
 const gestaoItems: NavItem[] = [
@@ -152,9 +155,11 @@ const saveSidebarState = (state: Record<string, unknown>) => {
   } catch {}
 };
 
-const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
+const AppSidebar = ({ mobileOpen = false, onMobileClose, forceCollapsed = false }: AppSidebarProps) => {
   const saved = loadSidebarState();
-  const [collapsed, setCollapsed] = useState(saved?.collapsed ?? false);
+  const [collapsedPref, setCollapsed] = useState(saved?.collapsed ?? false);
+  // Recolhido efetivo = forçado pela tela OU preferência do usuário.
+  const collapsed = forceCollapsed || collapsedPref;
   const [gestaoOpen, setGestaoOpen] = useState(saved?.gestaoOpen ?? true);
   const [partnersOpen, setPartnersOpen] = useState(saved?.partnersOpen ?? true);
   const [aikortexOpen, setAikortexOpen] = useState(saved?.aikortexOpen ?? true);
@@ -163,8 +168,8 @@ const AppSidebar = ({ mobileOpen = false, onMobileClose }: AppSidebarProps) => {
   );
 
   useEffect(() => {
-    saveSidebarState({ collapsed, gestaoOpen, partnersOpen, aikortexOpen, expandedItems });
-  }, [collapsed, gestaoOpen, partnersOpen, aikortexOpen, expandedItems]);
+    saveSidebarState({ collapsed: collapsedPref, gestaoOpen, partnersOpen, aikortexOpen, expandedItems });
+  }, [collapsedPref, gestaoOpen, partnersOpen, aikortexOpen, expandedItems]);
 
   const location = useLocation();
   const { theme, toggle } = useTheme();
