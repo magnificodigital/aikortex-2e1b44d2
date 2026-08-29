@@ -113,7 +113,8 @@ const onboardingLabels: Record<string, string> = {
 };
 
 const typeLabel: Record<string, string> = {
-  SDR: "SDR", BDR: "BDR", SAC: "SAC", CS: "Customer Success", Custom: "personalizado",
+  SDR: "Qualificador de Leads", BDR: "Prospecção Ativa", SAC: "Suporte ao Cliente",
+  CS: "Sucesso do Cliente", Custom: "personalizado", marketing: "Gestor de Conteúdos",
 };
 
 // Master v7.4 §13.16 — mapping de tool name → label visível em cards inline

@@ -29,7 +29,7 @@ export const AGENT_TEMPLATES: AgentRecommendation[] = [
   {
     id: "sdr-1",
     type: "SDR",
-    name: "Agente SDR",
+    name: "Qualificador de Leads",
     objective: "Qualificar leads inbound e agendar reuniões com o time comercial.",
     targetAudience: "Leads inbound interessados",
     benefits: ["Qualificação 24/7", "60% menos tempo de resposta", "+35% conversão"],
@@ -55,7 +55,7 @@ export const AGENT_TEMPLATES: AgentRecommendation[] = [
   {
     id: "sac-1",
     type: "SAC",
-    name: "Agente SAC",
+    name: "Suporte ao Cliente",
     objective: "Atender clientes, resolver problemas e fornecer suporte automatizado.",
     targetAudience: "Clientes ativos",
     benefits: ["Atendimento 24/7", "70% menos tickets", "CSAT elevado"],

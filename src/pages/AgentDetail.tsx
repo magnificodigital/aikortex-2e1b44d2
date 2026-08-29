@@ -52,7 +52,7 @@ const pendingDraftCreation = new Map<string, Promise<string | null>>();
 
 const TEMPLATE_MAP: Record<string, { name: string; avatar: string; model: string; agentType: AgentType; autoPrompt: string }> = {
   "sdr-1": {
-    name: "Agente SDR",
+    name: "Qualificador de Leads",
     avatar: avatar1,
     model: "google/gemini-2.5-flash",
     agentType: "SDR",
@@ -79,7 +79,7 @@ Regras:
   },
 
   "sac-1": {
-    name: "Agente SAC",
+    name: "Suporte ao Cliente",
     avatar: avatar3,
     model: "google/gemini-2.5-flash",
     agentType: "SAC",

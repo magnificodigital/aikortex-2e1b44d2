@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import type { TemplateRow } from "@/types/templates";
+import { agentTypeLabel } from "@/lib/agent-type-labels";
 import avatar1 from "@/assets/avatars/avatar-1.png";
 
 
@@ -188,8 +189,8 @@ const Aikortex = () => {
                         <div>
                           <p className="text-sm font-bold text-foreground">{agent.name}</p>
                           <div className="flex items-center gap-1.5">
-                            <p className="text-[10px] text-muted-foreground capitalize">
-                              {agent.agent_type} • {agent.status === "online" ? "Online" : "Configurando"}
+                            <p className="text-[10px] text-muted-foreground">
+                              {agentTypeLabel(agent.agent_type)} • {agent.status === "online" ? "Online" : "Configurando"}
                             </p>
                             {(() => {
                               const badge = PROVIDER_BADGE[agent.provider || "auto"] || PROVIDER_BADGE.auto;

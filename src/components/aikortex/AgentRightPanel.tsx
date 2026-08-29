@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { agentTypeLabel } from "@/lib/agent-type-labels";
 import { IntegrationsGrid, LLM_PROVIDERS, SERVICE_PROVIDERS, type ProviderConfig } from "@/components/shared/IntegrationsGrid";
 import EmptyIntegrationSection from "@/components/settings/EmptyIntegrationSection";
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
@@ -1338,7 +1339,7 @@ const AgentRightPanel = ({
                   return (
                     <div>
                       <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">
-                        Específicos pra {agentType}
+                        Específicos pra {agentTypeLabel(agentType)}
                       </p>
                       <div className="space-y-2">
                         {list.map((g) => {

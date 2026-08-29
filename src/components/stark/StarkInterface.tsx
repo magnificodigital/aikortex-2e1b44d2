@@ -40,7 +40,7 @@ interface TranscriptEntry {
 }
 
 const TEXT_SUGGESTIONS = [
-  ["Agente SDR para WhatsApp", "Agente de Suporte 24/7", "Dashboard de Vendas"],
+  ["Qualificador de Leads para WhatsApp", "Suporte ao Cliente 24/7", "Dashboard de Vendas"],
   ["Agente de Qualificação", "CRM Completo", "Landing Page"],
   ["Agente BDR LinkedIn", "Portal de Clientes", "Sistema de Tarefas"],
 ];
