@@ -58,6 +58,14 @@ function streamText(text: string): ReadableStream {
 // Buffered LLM call — replaces both bufferFromOpenRouterPlatform and the
 // stream variant. Streaming has been replaced by buffer+restream pattern
 // (already standardized) to eliminate empty stream bugs.
+// Último motivo de falha da LLM — surfaceado no erro pro diagnóstico
+// (evita ficar adivinhando: rate-limit? sem modelo? sem crédito? desativado?).
+let lastLlmError = "";
+
+// Modelos fixos de ÚLTIMO RECURSO (ignoram a lista do banco). Se a tabela
+// available_llms estiver vazia ou tudo marcado "dead", ainda assim tentamos.
+const EMERGENCY_MODELS = ["google/gemini-2.5-flash", "openai/gpt-4o-mini"];
+
 async function bufferFromPlatform(
   messages: Array<{ role: string; content: string }>,
   preferredModel?: string,
@@ -67,28 +75,30 @@ async function bufferFromPlatform(
   const sysLen = messages.find((m) => m.role === "system")?.content?.length ?? 0;
   const totalLen = messages.reduce((acc, m) => acc + (m.content?.length ?? 0), 0);
   console.log(`[app-chat] bufferFromPlatform tag=${opts?.tag ?? "default"} sysLen=${sysLen} totalLen=${totalLen} messages=${messages.length}`);
-  const result = await callLLM(messages, {
-    tier: "free",
-    preferredModel,
-    maxTokens: opts?.maxTokens ?? 2048,
-    timeoutMs: opts?.timeoutMs ?? 12000,
-  }, supabase);
-  if (result.success) return result.content || "";
+  const maxTokens = opts?.maxTokens ?? 2048;
+  const timeoutMs = opts?.timeoutMs ?? 12000;
 
+  const result = await callLLM(messages, { tier: "free", preferredModel, maxTokens, timeoutMs }, supabase);
+  if (result.success) return result.content || "";
+  lastLlmError = result.error || "free tier falhou";
   console.error(`[app-chat] free models failed (tag=${opts?.tag ?? "default"}):`, result.error);
 
-  // Fallback controlado: se o tier free caiu (rate-limit/timeout/dead), tenta
-  // um modelo PAGO da plataforma. Só quando explicitamente pedido (ex: wizard),
-  // pra não deixar a montagem morrer numa queda do free. Caso normal segue free.
+  // Fallback controlado (só quando pedido, ex: wizard): não deixar a montagem
+  // morrer numa queda do free. Caso normal segue free.
   if (opts?.fallbackToPaid) {
     console.warn(`[app-chat] retrying on PAID tier (tag=${opts?.tag ?? "default"})`);
-    const paid = await callLLM(messages, {
-      tier: "paid",
-      maxTokens: opts?.maxTokens ?? 2048,
-      timeoutMs: opts?.timeoutMs ?? 12000,
-    }, supabase);
+    const paid = await callLLM(messages, { tier: "paid", maxTokens, timeoutMs }, supabase);
     if (paid.success) return paid.content || "";
+    lastLlmError = paid.error || lastLlmError;
     console.error(`[app-chat] paid fallback also failed (tag=${opts?.tag ?? "default"}):`, paid.error);
+
+    // Último recurso: modelos fixos, ignorando a lista do banco (caso tudo
+    // esteja "dead" ou a tabela esteja vazia).
+    console.warn(`[app-chat] retrying on EMERGENCY models (tag=${opts?.tag ?? "default"})`);
+    const emergency = await callLLM(messages, { fallbackModels: EMERGENCY_MODELS, maxTokens, timeoutMs }, supabase);
+    if (emergency.success) return emergency.content || "";
+    lastLlmError = emergency.error || lastLlmError;
+    console.error(`[app-chat] emergency models also failed (tag=${opts?.tag ?? "default"}):`, emergency.error);
   }
   return "";
 }
@@ -2508,7 +2518,7 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
         );
       }
       return new Response(
-        streamText(content || "⚠️ Serviço de IA temporariamente indisponível. Tente novamente."),
+        streamText(content || `⚠️ Serviço de IA temporariamente indisponível. Tente novamente.${lastLlmError ? `\n\n_(motivo: ${lastLlmError})_` : ""}`),
         { headers: sseHeaders }
       );
     }
