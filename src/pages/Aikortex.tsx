@@ -48,6 +48,18 @@ const Aikortex = () => {
   const { agents, loading, deleteAgent } = useUserAgents({ clientId: activeClientId, isAgencyMode });
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  // Fase 3 — cap de rascunhos por agência (5) + validade (7 dias).
+  // Rascunho = agente ainda não publicado (status != online/active).
+  const DRAFT_CAP = 5;
+  const DRAFT_TTL_DAYS = 7;
+  const isPublishedStatus = (s: string) => s === "online" || s === "active";
+  const draftAgeDays = (a: UserAgent) => (Date.now() - new Date(a.created_at).getTime()) / 86_400_000;
+  const isDraftExpired = (a: UserAgent) => !isPublishedStatus(a.status) && draftAgeDays(a) > DRAFT_TTL_DAYS;
+  const activeDraftCount = useMemo(
+    () => agents.filter((a) => !isPublishedStatus(a.status) && !isDraftExpired(a)).length,
+    [agents]
+  );
+
   const tab = (searchParams.get("tab") === "templates" && isAgencyMode) ? "templates" : "mine";
   const nicheSlug = searchParams.get("nicho");
   const search = searchParams.get("busca") ?? "";
@@ -80,7 +92,14 @@ const Aikortex = () => {
   const [desc, setDesc] = useState("");
 
   // Abre a bifurcação "como você quer criar?" (descrever vs do zero).
-  const handleNewCustom = () => { setDesc(""); setNewAgentOpen(true); };
+  const handleNewCustom = () => {
+    if (activeDraftCount >= DRAFT_CAP) {
+      toast.error(`Você tem ${DRAFT_CAP} rascunhos abertos. Publique ou exclua um agente para criar outro.`);
+      return;
+    }
+    setDesc("");
+    setNewAgentOpen(true);
+  };
 
   // manual=false → assistente conduz (wizard). manual=true → vai direto pro
   // painel de config, sem o assistente iniciar sozinho.
@@ -232,8 +251,21 @@ const Aikortex = () => {
                     <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
                       {agent.description || "Sem descrição"}
                     </p>
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Clock className="w-3 h-3" /> Atualizado em {formatDate(agent.updated_at)}
+                    <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> Atualizado em {formatDate(agent.updated_at)}
+                      </span>
+                      {!isPublishedStatus(agent.status) && (
+                        isDraftExpired(agent) ? (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-destructive/40 text-destructive">
+                            Rascunho expirado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-amber-500/40 text-amber-600 dark:text-amber-400">
+                            Expira em {Math.max(1, Math.ceil(DRAFT_TTL_DAYS - draftAgeDays(agent)))}d
+                          </Badge>
+                        )
+                      )}
                     </div>
                   </div>
                 ))}

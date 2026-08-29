@@ -17,6 +17,7 @@ import BrowserCallWidget from "@/components/aikortex/BrowserCallWidget";
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import { useApiKeys } from "@/hooks/use-api-keys";
 import { useUserAgents } from "@/hooks/use-user-agents";
+import { useTestQuota } from "@/hooks/use-test-quota";
 import { toast } from "sonner";
 import type { AgentType } from "@/types/agent-builder";
 import { supabase } from "@/integrations/supabase/client";
@@ -465,6 +466,10 @@ const AgentDetail = () => {
   })), [keys]);
   const hasApiKey    = !!keys[currentProvider]?.configured;
   const hasAnyLLMKey = useMemo(() => ["openai", "anthropic", "gemini", "google", "deepseek", "mistral"].some(p => keys[p]?.configured), [keys]);
+
+  // Fase 3 — quota de teste (sandbox). Só trava pré-publicação e sem BYOK
+  // (com chave própria o custo é da agência → sem teto).
+  const testQuota = useTestQuota(agentId, { enabled: !hasApiKey });
 
   /* ── Agent config (from right panel) ── */
 
@@ -1295,6 +1300,23 @@ Se user falar de algum desses, diga claramente o que falta.
     return computeAgentDiff(publishState.publishedSnapshot, publishState.currentConfig).length > 0;
   }, [publishState]);
 
+  // Fase 3 — envio de teste com trava de quota (sandbox). Só conta/trava
+  // pré-publicação e sem BYOK; publicado ou com chave própria = sem teto.
+  const isPublished = !!publishState?.publishedVersionId;
+  const guardedActiveSend = useCallback(async (text: string) => {
+    const gated = chatMode === "test" && !isPublished && !hasApiKey;
+    if (gated && testQuota.atLimit) {
+      toast.error(`Você usou as ${testQuota.limit} mensagens de teste grátis deste agente. Publique para liberar produção, ou conecte sua própria chave (BYOK) para testar à vontade.`);
+      return;
+    }
+    activeChat.sendMessage(text);
+    if (gated) {
+      const total = await testQuota.bump();
+      const left = testQuota.limit - total;
+      if (left === 10 || left === 3) toast.warning(`Restam ${left} mensagens de teste grátis neste agente.`);
+    }
+  }, [chatMode, isPublished, hasApiKey, testQuota, activeChat]);
+
   const handleOpenVoiceCall = useCallback(() => setShowVoiceCall(true), []);
   const handleCloseVoiceCall = useCallback(() => setShowVoiceCall(false), []);
 
@@ -1412,7 +1434,7 @@ Se user falar de algum desses, diga claramente o que falta.
             onConfigStructured={handleConfigStructured}
             onAgentCreated={handleBuildAgent}
             messages={activeChat.messages}
-            sendMessage={activeChat.sendMessage}
+            sendMessage={guardedActiveSend}
             isStreaming={activeChat.isStreaming}
             onStructureRequest={handleStructureRequest}
             onBuildAgent={handleBuildAgent}
