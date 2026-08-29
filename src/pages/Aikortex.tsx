@@ -5,8 +5,9 @@ import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Plus, Trash2, Pencil, Clock, MoreVertical, Sparkles, LayoutGrid,
+  Plus, Trash2, Pencil, Clock, MoreVertical, Sparkles, LayoutGrid, ArrowRight,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useUserAgents, type UserAgent } from "@/hooks/use-user-agents";
 import { useActiveClient } from "@/hooks/use-active-client";
@@ -76,17 +77,26 @@ const Aikortex = () => {
 
   const [useTemplate, setUseTemplate] = useState<TemplateRow | null>(null);
   const [newAgentOpen, setNewAgentOpen] = useState(false);
+  const [desc, setDesc] = useState("");
 
-  // Abre a bifurcação "como você quer criar?" (assistente vs do zero).
-  const handleNewCustom = () => setNewAgentOpen(true);
+  // Abre a bifurcação "como você quer criar?" (descrever vs do zero).
+  const handleNewCustom = () => { setDesc(""); setNewAgentOpen(true); };
 
   // manual=false → assistente conduz (wizard). manual=true → vai direto pro
   // painel de config, sem o assistente iniciar sozinho.
-  const startAgent = (manual: boolean) => {
+  // description → Fase 2: descrever → rascunho na hora (initialPrompt alimenta o
+  // wizard igual ao caminho da Home; a IA já parte pra montar em vez de só perguntar).
+  const startAgent = (manual: boolean, description?: string) => {
     setNewAgentOpen(false);
     const newId = `new-${Date.now()}`;
     navigate(`/aikortex/agents/${newId}`, {
-      state: { fromTemplate: false, agentType: "Custom", agentName: "Novo Agente", manual },
+      state: {
+        fromTemplate: false,
+        agentType: "Custom",
+        agentName: "Novo Agente",
+        manual,
+        ...(description?.trim() ? { initialPrompt: description.trim() } : {}),
+      },
     });
   };
 
@@ -254,38 +264,62 @@ const Aikortex = () => {
         <Dialog open={newAgentOpen} onOpenChange={setNewAgentOpen}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Como você quer criar seu agente?</DialogTitle>
+              <DialogTitle>Descreva seu agente</DialogTitle>
               <DialogDescription>
-                Escolha o jeito que combina com você. Dá pra mudar depois — o assistente fica sempre disponível.
+                Conte em uma frase o que ele faz. A IA já monta um rascunho e você refina com um clique.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid sm:grid-cols-2 gap-3 pt-2">
-              <button
-                onClick={() => startAgent(false)}
-                className="group text-left rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors p-4 flex flex-col gap-2"
+            <div className="pt-1 space-y-3">
+              <Textarea
+                autoFocus
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && desc.trim()) startAgent(false, desc);
+                }}
+                placeholder="Ex.: Qualifica leads de imóveis no WhatsApp, tira dúvidas e agenda visitas."
+                className="min-h-[96px] resize-none text-sm"
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "Qualifica leads no WhatsApp e agenda reuniões",
+                  "Atende clientes de e-commerce: rastreio, troca e dúvidas",
+                  "Faz cobrança amigável de mensalidades atrasadas",
+                ].map((ex) => (
+                  <button
+                    key={ex}
+                    type="button"
+                    onClick={() => setDesc(ex)}
+                    className="text-[11px] px-2.5 py-1 rounded-full bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary border border-border/60 hover:border-primary/40 transition-colors"
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+              <Button
+                onClick={() => startAgent(false, desc)}
+                disabled={!desc.trim()}
+                className="w-full gap-2 rounded-full"
               >
-                <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary grid place-items-center">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div className="font-semibold text-foreground">Com o assistente</div>
-                <p className="text-[13px] text-muted-foreground leading-snug">
-                  Você conversa e a IA monta o agente pra você. Ideal pra começar rápido, sem saber os detalhes técnicos.
-                </p>
-                <span className="mt-1 text-[11px] font-medium text-primary">Recomendado</span>
-              </button>
-              <button
-                onClick={() => startAgent(true)}
-                className="group text-left rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors p-4 flex flex-col gap-2"
-              >
-                <div className="w-9 h-9 rounded-lg bg-foreground/10 text-foreground grid place-items-center">
-                  <Pencil className="w-5 h-5" />
-                </div>
-                <div className="font-semibold text-foreground">Do zero</div>
-                <p className="text-[13px] text-muted-foreground leading-snug">
-                  Você mesmo escreve as instruções e ajusta tudo no painel. Pra quem já sabe o que quer.
-                </p>
-                <span className="mt-1 text-[11px] font-medium text-muted-foreground">Controle total</span>
-              </button>
+                <Sparkles className="w-4 h-4" /> Criar com a IA <ArrowRight className="w-4 h-4" />
+              </Button>
+              <div className="flex items-center justify-center gap-3 pt-1 text-[12px] text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => startAgent(false)}
+                  className="hover:text-foreground transition-colors underline-offset-2 hover:underline"
+                >
+                  Só conversar com o assistente
+                </button>
+                <span className="text-border">·</span>
+                <button
+                  type="button"
+                  onClick={() => startAgent(true)}
+                  className="inline-flex items-center gap-1 hover:text-foreground transition-colors underline-offset-2 hover:underline"
+                >
+                  <Pencil className="w-3 h-3" /> Do zero
+                </button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
