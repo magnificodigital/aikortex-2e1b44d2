@@ -1259,6 +1259,8 @@ Se user falar de algum desses, diga claramente o que falta.
       systemPrompt: testSystemPrompt,
       persistKey:   shouldPersistTemplateDraft ? `${storagePrefix}-test-messages` : undefined,
       agentContext: testAgentContext,
+      // #2 — teste é SIMULAÇÃO: não extrai lead pro CRM (não afeta produção).
+      disableCrmExtraction: true,
     }
   );
 
@@ -1420,6 +1422,12 @@ Se user falar de algum desses, diga claramente o que falta.
             setStructuredConfig={setStructuredConfig}
             chatMode={chatMode}
             setChatMode={setChatMode as any}
+            testQuotaInfo={{
+              used: testQuota.used,
+              limit: testQuota.limit,
+              remaining: testQuota.remaining,
+              gated: !isPublished && !hasApiKey,
+            }}
             hasApiKey={hasApiKey}
             hasAnyLLMKey={hasAnyLLMKey}
             keysLoading={keysLoading}

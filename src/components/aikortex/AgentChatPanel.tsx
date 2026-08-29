@@ -47,6 +47,8 @@ interface AgentChatPanelProps {
   setStructuredConfig: (config: StructuredAgentConfig | null) => void;
   chatMode: "setup" | "test" | "voice";
   setChatMode: (mode: "setup" | "test" | "voice") => void;
+  // Fase 3/#2 — info da quota de teste (sandbox) pra faixa de simulação.
+  testQuotaInfo?: { used: number; limit: number; remaining: number; gated: boolean };
   hasApiKey: boolean;
   hasAnyLLMKey: boolean;
   keysLoading: boolean;
@@ -186,6 +188,7 @@ const AgentChatPanel = ({
   structuredConfig,
   setStructuredConfig,
   chatMode,
+  testQuotaInfo,
   setChatMode,
   hasApiKey,
   hasAnyLLMKey,
@@ -692,19 +695,45 @@ const AgentChatPanel = ({
           Avatar+nome do agente removidos (ja aparecem no header do painel
           direito). Tabs Configurar/Testar movidos pro header principal. */}
       {wizardStep === "done" && (chatMode === "test" || hasMemoryActive) && (
-        <div className={`h-9 border-b flex items-center px-3 gap-2 shrink-0 transition-colors duration-300 ${
+        <div className={`min-h-9 border-b flex items-center px-3 py-1.5 gap-2 shrink-0 transition-colors duration-300 ${
           chatMode === "test"
-            ? "border-amber-500/30 bg-amber-500/5"
+            ? "border-emerald-500/30 bg-emerald-500/[0.06]"
             : "border-border"
         }`}>
           {chatMode === "test" && (
-            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-400" title="Ambiente de simulação — mensagens não são enviadas a clientes reais">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-[9px] font-bold tracking-widest">TESTANDO</span>
-            </span>
+            <>
+              <span className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 dark:text-emerald-400 shrink-0" title="Ambiente de simulação — mensagens não são enviadas a clientes reais">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[9px] font-bold tracking-widest">SIMULAÇÃO</span>
+              </span>
+              <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">
+                não dispara mensagens reais · não afeta produção
+              </span>
+              {/* Contador de testes (turnos X/limite), estilo "Detalhes da sessão" da Clint */}
+              {testQuotaInfo && (
+                <span className="ml-auto flex items-center gap-2 shrink-0">
+                  {testQuotaInfo.gated ? (
+                    <span
+                      className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md border ${
+                        testQuotaInfo.remaining <= 3
+                          ? "border-destructive/40 text-destructive bg-destructive/5"
+                          : "border-border text-muted-foreground bg-card/40"
+                      }`}
+                      title={`Mensagens de teste grátis usadas neste agente (${testQuotaInfo.used} de ${testQuotaInfo.limit})`}
+                    >
+                      Testes: {testQuotaInfo.used}/{testQuotaInfo.limit}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5" title="Sem teto de teste (agente publicado ou chave própria conectada)">
+                      Testes ilimitados
+                    </span>
+                  )}
+                </span>
+              )}
+            </>
           )}
           {hasMemoryActive && (
-            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-primary/10 text-primary" title="Este agente lembra conversas anteriores">
+            <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-primary/10 text-primary shrink-0 ${chatMode === "test" ? "" : "ml-0"}`} title="Este agente lembra conversas anteriores">
               <Brain className="w-3 h-3" />
               <span className="text-[9px] font-medium hidden sm:inline">Memória</span>
             </span>
