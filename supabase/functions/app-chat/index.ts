@@ -62,7 +62,7 @@ async function bufferFromPlatform(
   messages: Array<{ role: string; content: string }>,
   preferredModel?: string,
   supabase?: ReturnType<typeof createClient>,
-  opts?: { maxTokens?: number; timeoutMs?: number; tag?: string },
+  opts?: { maxTokens?: number; timeoutMs?: number; tag?: string; fallbackToPaid?: boolean },
 ): Promise<string> {
   const sysLen = messages.find((m) => m.role === "system")?.content?.length ?? 0;
   const totalLen = messages.reduce((acc, m) => acc + (m.content?.length ?? 0), 0);
@@ -73,11 +73,24 @@ async function bufferFromPlatform(
     maxTokens: opts?.maxTokens ?? 2048,
     timeoutMs: opts?.timeoutMs ?? 12000,
   }, supabase);
-  if (!result.success) {
-    console.error(`[app-chat] all models failed (tag=${opts?.tag ?? "default"}):`, result.error);
-    return "";
+  if (result.success) return result.content || "";
+
+  console.error(`[app-chat] free models failed (tag=${opts?.tag ?? "default"}):`, result.error);
+
+  // Fallback controlado: se o tier free caiu (rate-limit/timeout/dead), tenta
+  // um modelo PAGO da plataforma. Só quando explicitamente pedido (ex: wizard),
+  // pra não deixar a montagem morrer numa queda do free. Caso normal segue free.
+  if (opts?.fallbackToPaid) {
+    console.warn(`[app-chat] retrying on PAID tier (tag=${opts?.tag ?? "default"})`);
+    const paid = await callLLM(messages, {
+      tier: "paid",
+      maxTokens: opts?.maxTokens ?? 2048,
+      timeoutMs: opts?.timeoutMs ?? 12000,
+    }, supabase);
+    if (paid.success) return paid.content || "";
+    console.error(`[app-chat] paid fallback also failed (tag=${opts?.tag ?? "default"}):`, paid.error);
   }
-  return result.content || "";
+  return "";
 }
 
 /** Data atual em pt-BR pra injetar no system prompt — modelos com knowledge
@@ -2463,6 +2476,7 @@ _Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
           maxTokens: 3000,
           timeoutMs: 45000,
           tag: `wizard-${wizardPhase}`,
+          fallbackToPaid: true, // montagem não pode morrer numa queda do free
         });
       } else if (agentId) {
         // Split system + rest so runAgentLLM can prepend system itself.

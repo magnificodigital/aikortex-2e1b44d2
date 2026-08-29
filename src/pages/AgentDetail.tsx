@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ConversationProvider } from "@elevenlabs/react";
 import AgentRightPanel, { type AgentConfig } from "@/components/aikortex/AgentRightPanel";
 import AgentChatPanel, { type StructuredAgentConfig } from "@/components/aikortex/AgentChatPanel";
+import DashboardLayout from "@/components/DashboardLayout";
 import { StarkBubble } from "@/components/stark/StarkBubble";
 import WizardShowcasePanel from "@/components/aikortex/WizardShowcasePanel";
 import { computeWizardProgress } from "@/lib/wizard-progress";
@@ -1365,16 +1366,19 @@ Se user falar de algum desses, diga claramente o que falta.
 
   if (agentLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          <span className="text-sm">Carregando agente...</span>
+      <DashboardLayout>
+        <div className="flex h-screen items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-3 text-muted-foreground">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <span className="text-sm">Carregando agente...</span>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
+    <DashboardLayout>
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
 
       {/* ── Mobile-only tabs (Chat ↔ Configuração) ── */}
@@ -1629,6 +1633,7 @@ Se user falar de algum desses, diga claramente o que falta.
         />
       )}
     </div>
+    </DashboardLayout>
   );
 };
 
