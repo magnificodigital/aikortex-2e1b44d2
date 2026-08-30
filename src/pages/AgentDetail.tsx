@@ -29,6 +29,7 @@ import { LLM_MODELS as ALL_LLM_MODELS, getGroupedModels, getProviderForModel, DE
 
 import { useAgentMemory } from "@/hooks/use-agent-memory";
 import { useAgentPublishState } from "@/hooks/use-agent-versions";
+import { useQueryClient } from "@tanstack/react-query";
 import { computeAgentDiff } from "@/lib/agent-diff";
 import PublishAgentDialog from "@/components/aikortex/PublishAgentDialog";
 import PublishForClientDialog from "@/components/aikortex/PublishForClientDialog";
@@ -174,6 +175,14 @@ function PublishButton({
   publishedNumber: number | null; publishedSnapshot: Record<string, any> | null; currentConfig: Record<string, any> | null;
 }) {
   const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+  // Ao abrir o publish, refetcha o config fresco do banco — o wizard preenche
+  // o config direto (vibe-mutate) e a query de publish-state pode estar stale,
+  // fazendo o checklist marcar itens já configurados como pendentes.
+  const openPublish = useCallback(() => {
+    if (agentId) qc.invalidateQueries({ queryKey: ["agent-publish-state", agentId] });
+    setOpen(true);
+  }, [qc, agentId]);
   const nothingToPublish = publishedNumber !== null && !hasDraftChanges;
   const nextNumber = (publishedNumber ?? 0) + 1;
   // Primeira publicacao = vincula agente ao cliente final + ativa cobranca
@@ -189,7 +198,7 @@ function PublishButton({
         variant={nothingToPublish ? "outline" : "default"}
         className="h-7 text-xs gap-1 px-2"
         disabled={disabled || nothingToPublish || !agentId}
-        onClick={() => setOpen(true)}
+        onClick={openPublish}
         title={nothingToPublish ? "Sem alterações para publicar" : undefined}
       >
         <Rocket className="w-3.5 h-3.5" />
