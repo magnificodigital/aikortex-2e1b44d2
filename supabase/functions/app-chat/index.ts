@@ -70,13 +70,22 @@ async function bufferFromPlatform(
   messages: Array<{ role: string; content: string }>,
   preferredModel?: string,
   supabase?: ReturnType<typeof createClient>,
-  opts?: { maxTokens?: number; timeoutMs?: number; tag?: string; fallbackToPaid?: boolean },
+  opts?: { maxTokens?: number; timeoutMs?: number; tag?: string; fallbackToPaid?: boolean; primaryModel?: string },
 ): Promise<string> {
   const sysLen = messages.find((m) => m.role === "system")?.content?.length ?? 0;
   const totalLen = messages.reduce((acc, m) => acc + (m.content?.length ?? 0), 0);
   console.log(`[app-chat] bufferFromPlatform tag=${opts?.tag ?? "default"} sysLen=${sysLen} totalLen=${totalLen} messages=${messages.length}`);
   const maxTokens = opts?.maxTokens ?? 2048;
   const timeoutMs = opts?.timeoutMs ?? 12000;
+
+  // Modelo PRIMÁRIO confiável (ex: wizard usa gemini-2.5-flash) — ignora a
+  // lista/tier e vai direto no modelo bom. Só cai pro free/paid se ele falhar.
+  if (opts?.primaryModel) {
+    const primary = await callLLM(messages, { fallbackModels: [opts.primaryModel], maxTokens, timeoutMs }, supabase);
+    if (primary.success) return primary.content || "";
+    lastLlmError = primary.error || `primary ${opts.primaryModel} falhou`;
+    console.warn(`[app-chat] primary model ${opts.primaryModel} falhou (tag=${opts?.tag ?? "default"}), cascateando:`, primary.error);
+  }
 
   const result = await callLLM(messages, { tier: "free", preferredModel, maxTokens, timeoutMs }, supabase);
   if (result.success) return result.content || "";
@@ -623,6 +632,13 @@ Você acabou de receber a descrição inicial. NÃO chame nenhuma tool. NÃO cri
 - Cada pergunta vem com [[opts:]] sempre que a resposta for uma escolha (regra abaixo). O user clica e você faz a PRÓXIMA pergunta.
 - Vá do mais importante pro menos: propósito → público → qualificação → canal → handoff. Uma de cada vez.
 - Só quando a pergunta for genuinamente aberta (ex.: "qual o ICP?") é que ela vai sem botões — e ainda assim, UMA por vez.
+
+### ⛔⛔ NUNCA RE-PERGUNTE O QUE A DESCRIÇÃO JÁ RESPONDEU (erro grave)
+
+O user JÁ te deu uma descrição. LEIA ela. Se ela já diz o propósito (ex.: "recepcionista de restaurante que reserva mesas via WhatsApp e tira dúvidas do cardápio"), você JÁ SABE: propósito=reservar mesas+tirar dúvidas, público=clientes do restaurante, canal=WhatsApp.
+- **PROIBIDO** perguntar "qual a principal função?" ou "me descreve o agente" quando a descrição já responde isso. Isso faz o user achar que você não leu — erro grave.
+- Comece SEMPRE com 1 linha confirmando o que entendeu ("Boa — recepcionista de restaurante pra reservar mesas e tirar dúvidas do cardápio no WhatsApp."), e então pergunte o PRIMEIRO GAP real (não o propósito já dado). Ex. de gap: "Quer que ele registre as reservas em algum lugar?" [[opts: Google Sheets | Meu sistema | Só me avisar]].
+- NÃO cite o nome da agência ("para a Magnifico Digital?") — o agente é do NEGÓCIO do cliente (o restaurante), não da agência.
 
 ### 🖱️ RESPOSTAS CLICÁVEIS — OBRIGATÓRIO (substitui listas numeradas)
 
@@ -2557,7 +2573,11 @@ _Pode ajustar tudo agora: me diga aqui ("muda o nome", "adiciona Instagram") ou 
           maxTokens: 3000,
           timeoutMs: 45000,
           tag: `wizard-${wizardPhase}`,
-          fallbackToPaid: true, // montagem não pode morrer numa queda do free
+          // Montagem usa modelo FORTE e confiável (Fase 3: qualidade garantida).
+          // Custo por montagem é centavos e está capado pelas quotas. Free/paid
+          // ficam só como rede de segurança se o gemini cair.
+          primaryModel: "google/gemini-2.5-flash",
+          fallbackToPaid: true,
         });
       } else if (agentId) {
         // Split system + rest so runAgentLLM can prepend system itself.
