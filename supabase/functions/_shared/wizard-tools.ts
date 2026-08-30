@@ -618,6 +618,10 @@ export async function runWizardWithTools(opts: RunWizardWithToolsOptions): Promi
       messages,
       {
         tier: "free",
+        // Modelo FORTE e confiável na CRIAÇÃO (tool-calling). Free é péssimo em
+        // tools → oscila, alucina nicho e cai no determinístico. gemini-2.5-flash
+        // faz tool-calling nativo e cria assets RELEVANTES. Free fica de reserva.
+        preferredModel: "google/gemini-2.5-flash",
         toolsRequired: iter < maxIterations,
         tools: iter < maxIterations ? (WIZARD_TOOL_DEFS as unknown as any[]) : undefined,
         toolChoice: iter < maxIterations ? "auto" : undefined,

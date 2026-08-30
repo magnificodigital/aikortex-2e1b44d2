@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   ArrowLeft, ArrowUp, Send, AlertTriangle, Square,
   Sparkles, Bot, Mic, MicOff, Check, Loader2, Pencil, RotateCw, Brain, Lock, ChevronDown,
@@ -179,13 +179,60 @@ const extractOptionsMarker = (text: string): { clean: string; opts: string[] } =
 
 // Sugestões de agente pro estado inicial do wizard — tira o "branco da página".
 // label curto pro botão; prompt = descrição que vai pro wizard ao clicar.
+// 50+ exemplos; a tela mostra um subconjunto RANDÔMICO por sessão.
 const AGENT_SUGGESTIONS: { emoji: string; label: string; prompt: string }[] = [
   { emoji: "🎯", label: "Qualificar leads", prompt: "Qualificador de leads no WhatsApp que faz perguntas, qualifica e agenda reuniões com o time comercial" },
   { emoji: "🎧", label: "Suporte ao cliente", prompt: "Suporte ao cliente 24/7 no WhatsApp que responde dúvidas frequentes e abre chamado quando não resolve" },
   { emoji: "📅", label: "Agendar consultas", prompt: "Recepcionista que agenda consultas e serviços via WhatsApp e confirma os horários com o cliente" },
-  { emoji: "🛒", label: "Recuperar vendas", prompt: "Agente que recupera carrinho abandonado e reativa clientes inativos por WhatsApp" },
+  { emoji: "🛒", label: "Recuperar carrinho", prompt: "Agente de e-commerce que recupera carrinho abandonado e reativa clientes inativos por WhatsApp" },
   { emoji: "✍️", label: "Gestor de conteúdo", prompt: "Gestor de conteúdo que cria posts e responde comentários e mensagens nas redes sociais" },
   { emoji: "🍽️", label: "Reservas de restaurante", prompt: "Recepcionista de restaurante que reserva mesas via WhatsApp e tira dúvidas do cardápio" },
+  { emoji: "💰", label: "Cobrança amigável", prompt: "Agente de cobrança que lembra clientes de faturas em atraso de forma amigável e oferece formas de pagamento" },
+  { emoji: "🏠", label: "Corretor de imóveis", prompt: "Corretor virtual que qualifica interessados em imóveis, agenda visitas e tira dúvidas sobre financiamento" },
+  { emoji: "🦷", label: "Recepção de clínica", prompt: "Recepcionista de clínica odontológica que agenda consultas, confirma horários e informa planos aceitos" },
+  { emoji: "💇", label: "Agenda de salão", prompt: "Atendente de salão de beleza que agenda horários, informa serviços e preços pelo WhatsApp" },
+  { emoji: "🏋️", label: "Consultor de academia", prompt: "Consultor de academia que tira dúvidas sobre planos, agenda aula experimental e converte matrículas" },
+  { emoji: "📚", label: "Atendimento de curso", prompt: "Atendente de escola/curso online que responde dúvidas sobre matrículas, turmas e valores" },
+  { emoji: "⚖️", label: "Triagem jurídica", prompt: "Assistente de escritório de advocacia que faz triagem inicial de casos e agenda consulta com advogado" },
+  { emoji: "🧾", label: "Suporte contábil", prompt: "Assistente de escritório contábil que responde dúvidas de clientes sobre documentos, prazos e impostos" },
+  { emoji: "🚗", label: "Vendas de veículos", prompt: "Vendedor de concessionária que qualifica interessados, agenda test drive e tira dúvidas sobre modelos" },
+  { emoji: "✈️", label: "Agência de viagens", prompt: "Consultor de viagens que monta roteiros, cota pacotes e tira dúvidas sobre destinos pelo WhatsApp" },
+  { emoji: "🐾", label: "Pet shop", prompt: "Atendente de pet shop que agenda banho e tosa, tira dúvidas sobre produtos e serviços veterinários" },
+  { emoji: "🏨", label: "Reservas de hotel", prompt: "Recepcionista de hotel/pousada que faz reservas, informa disponibilidade e responde dúvidas dos hóspedes" },
+  { emoji: "📦", label: "Rastreio de pedidos", prompt: "Agente de e-commerce que informa status de pedido, rastreio, troca e devolução" },
+  { emoji: "🎓", label: "Captação de alunos", prompt: "SDR educacional que qualifica interessados em cursos e agenda conversa com consultor de matrículas" },
+  { emoji: "💳", label: "Renegociação de dívida", prompt: "Agente que negocia dívidas com clientes, propõe parcelamento e envia boleto de acordo" },
+  { emoji: "🩺", label: "Pré-atendimento saúde", prompt: "Assistente de saúde que faz triagem de sintomas, orienta e encaminha para o profissional certo" },
+  { emoji: "🛠️", label: "Suporte técnico", prompt: "Suporte técnico que ajuda o cliente a resolver problemas comuns e abre chamado quando precisa de técnico" },
+  { emoji: "📣", label: "Prospecção ativa", prompt: "Agente de prospecção outbound que aborda leads frios, apresenta a solução e marca reunião" },
+  { emoji: "🧑‍💼", label: "Recrutador", prompt: "Recrutador que faz triagem de candidatos, aplica perguntas de screening e agenda entrevistas" },
+  { emoji: "🍰", label: "Pedidos de confeitaria", prompt: "Atendente de confeitaria que recebe pedidos de bolos e doces, informa preços e prazos de entrega" },
+  { emoji: "🏦", label: "Consultor financeiro", prompt: "Consultor financeiro que qualifica interessados em investimentos e agenda reunião com assessor" },
+  { emoji: "🔧", label: "Ordem de serviço", prompt: "Atendente de assistência técnica que abre ordem de serviço, agenda visita e informa orçamento" },
+  { emoji: "🎉", label: "Buffet e eventos", prompt: "Atendente de buffet que qualifica orçamentos de festas, agenda visita e tira dúvidas de cardápio" },
+  { emoji: "🚚", label: "Cotação de frete", prompt: "Agente de logística que cota fretes, informa prazos e status de entrega pelo WhatsApp" },
+  { emoji: "🧘", label: "Estúdio de yoga/pilates", prompt: "Atendente de estúdio que agenda aulas experimentais, informa planos e horários" },
+  { emoji: "🖥️", label: "Onboarding SaaS", prompt: "Agente de onboarding que guia novos usuários de um software nos primeiros passos e tira dúvidas" },
+  { emoji: "🌱", label: "Pós-venda e NPS", prompt: "Agente de pós-venda que acompanha o cliente, coleta NPS e reduz churn com follow-ups" },
+  { emoji: "🏥", label: "Convênios e exames", prompt: "Assistente de laboratório que agenda exames, informa preparo e convênios aceitos" },
+  { emoji: "📸", label: "Fotografia e ensaios", prompt: "Atendente de estúdio de fotografia que cota ensaios, agenda sessões e tira dúvidas de pacotes" },
+  { emoji: "🛍️", label: "Loja de roupas", prompt: "Vendedor de loja de roupas que apresenta novidades, tira dúvidas de tamanho e fecha vendas no WhatsApp" },
+  { emoji: "🧑‍🍳", label: "Delivery de comida", prompt: "Atendente de delivery que recebe pedidos, sugere combos e informa tempo de entrega" },
+  { emoji: "💊", label: "Farmácia", prompt: "Atendente de farmácia que tira dúvidas sobre produtos, verifica disponibilidade e organiza entregas" },
+  { emoji: "🏗️", label: "Construção e reformas", prompt: "Atendente de empresa de reformas que qualifica orçamentos, agenda visita técnica e tira dúvidas" },
+  { emoji: "📈", label: "Consultoria de marketing", prompt: "SDR de agência de marketing que qualifica empresas interessadas e agenda diagnóstico gratuito" },
+  { emoji: "🚨", label: "Segurança e monitoramento", prompt: "Atendente de empresa de segurança que qualifica interessados em alarmes/câmeras e agenda instalação" },
+  { emoji: "🧴", label: "Cosméticos e beleza", prompt: "Consultora de cosméticos que recomenda produtos, tira dúvidas de pele e fecha vendas" },
+  { emoji: "🎸", label: "Escola de música", prompt: "Atendente de escola de música que agenda aula experimental, informa instrumentos e planos" },
+  { emoji: "🐶", label: "Adestramento e creche pet", prompt: "Atendente de creche/adestramento pet que agenda diárias, tira dúvidas e informa valores" },
+  { emoji: "🏦", label: "Correspondente bancário", prompt: "Agente que qualifica interessados em crédito/consignado, coleta dados e encaminha para análise" },
+  { emoji: "🧑‍⚕️", label: "Fisioterapia", prompt: "Recepcionista de clínica de fisioterapia que agenda sessões, confirma horários e informa convênios" },
+  { emoji: "📱", label: "Assistência de celular", prompt: "Atendente de assistência de celulares que informa orçamento de reparo, prazo e agenda o conserto" },
+  { emoji: "🌐", label: "Provedor de internet", prompt: "Atendente de provedor de internet que qualifica interessados em planos, verifica cobertura e agenda instalação" },
+  { emoji: "🎂", label: "Aniversários e festas infantis", prompt: "Atendente de buffet infantil que cota festas, verifica datas disponíveis e agenda visita" },
+  { emoji: "🧑‍🏫", label: "Aulas particulares", prompt: "Atendente de professor particular que agenda aulas, informa valores e monta plano de estudos" },
+  { emoji: "🏢", label: "Coworking", prompt: "Atendente de coworking que informa planos de sala/mesa, agenda visita e faz reservas" },
+  { emoji: "♻️", label: "Energia solar", prompt: "SDR de energia solar que qualifica interessados, coleta conta de luz e agenda visita técnica" },
 ];
 
 const AgentChatPanel = ({
@@ -437,12 +484,18 @@ const AgentChatPanel = ({
   // Quick-replies só fariam sentido em fluxo de entrevista — desativadas.
   const quickReplies: string[] = [];
 
-  // Slider: exemplo rotativo mostrado no estado inicial do wizard.
+  // Sugestões embaralhadas por sessão (randômico). Slider roda a lista toda;
+  // os botões mostram um subconjunto de 8.
+  const shuffledSuggestions = useMemo(
+    () => [...AGENT_SUGGESTIONS].sort(() => Math.random() - 0.5),
+    []
+  );
+  const suggestionButtons = shuffledSuggestions.slice(0, 8);
   const [exampleIdx, setExampleIdx] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setExampleIdx((i) => (i + 1) % AGENT_SUGGESTIONS.length), 2800);
+    const t = setInterval(() => setExampleIdx((i) => (i + 1) % shuffledSuggestions.length), 2800);
     return () => clearInterval(t);
-  }, []);
+  }, [shuffledSuggestions.length]);
 
   /* ── Discover → Structure ── */
   const handleDiscover = useCallback(async (text: string) => {
@@ -1086,13 +1139,13 @@ const AgentChatPanel = ({
             <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground min-h-[20px]">
               <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
               <span key={exampleIdx} className="animate-in fade-in slide-in-from-bottom-1 duration-500 italic truncate">
-                "{AGENT_SUGGESTIONS[exampleIdx].prompt}"
+                "{shuffledSuggestions[exampleIdx]?.prompt}"
               </span>
             </div>
             {/* Botões de sugestão (entrada escalonada) */}
             <p className="text-[10px] font-medium text-muted-foreground/60 mb-2 uppercase tracking-widest">Ou comece por um exemplo</p>
             <div className="flex flex-wrap gap-2">
-              {AGENT_SUGGESTIONS.map((s, i) => (
+              {suggestionButtons.map((s, i) => (
                 <button
                   key={s.label}
                   type="button"

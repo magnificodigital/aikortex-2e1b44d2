@@ -2092,15 +2092,24 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           // normaliza aliases (financas/financeiro/contábil → Contabilidade).
           // Bug 3: LLM oscila → não chama set_niche → currentNiche fica null →
           // catálogo nunca dispara. Fallback: infere da primeira mensagem do user.
+          const firstUserMsg = incomingMessages.find((m) => m.role === "user")?.content ?? "";
+          const descNiche = inferNicheFromMessage(firstUserMsg);
           let resolvedNiche = resolveNicheKey(currentNiche);
           if (!resolvedNiche) {
-            const firstUserMsg = incomingMessages.find((m) => m.role === "user")?.content ?? "";
-            resolvedNiche = inferNicheFromMessage(firstUserMsg);
+            resolvedNiche = descNiche;
             if (resolvedNiche) {
               console.log(`[wizard-setup] niche inferido da 1ª msg ("${firstUserMsg.slice(0, 60)}…"): ${resolvedNiche}`);
             }
           }
-          if (resolvedNiche && NICHE_ASSETS[resolvedNiche]) {
+          // ⛔ SAFETY anti-tabela-errada: só cria o catálogo do nicho se a
+          // DESCRIÇÃO confirmar o nicho. Se o LLM setou um nicho que a descrição
+          // não sustenta (ex.: set_niche="Saúde" num agente de carrinho
+          // abandonado = alucinação), NÃO cria tabelas erradas. Melhor nada.
+          const nicheConfirmed = !!resolvedNiche && descNiche === resolvedNiche;
+          if (resolvedNiche && !nicheConfirmed) {
+            console.warn(`[wizard-setup] nicho "${resolvedNiche}" NÃO confirmado pela descrição (descNiche=${descNiche ?? "null"}) — pulando catálogo pra não criar tabelas irrelevantes`);
+          }
+          if (nicheConfirmed && NICHE_ASSETS[resolvedNiche!]) {
             const spec = NICHE_ASSETS[resolvedNiche];
             // Se o nicho foi resolvido a partir de alias diferente, persiste
             // a key correta no draft pra próxima leitura ser consistente.
