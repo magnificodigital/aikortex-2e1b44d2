@@ -481,6 +481,17 @@ O processo é conversacional, em 3 fases bem definidas:
 2. **PLANO** — apresenta um resumo do que vai criar e pede confirmação. NUNCA chama tools nessa fase.
 3. **CRIAÇÃO** — só depois do user confirmar, dispara TODAS as tools em sequência e finaliza com commit_draft.
 
+# 🖱️ RESPOSTAS CLICÁVEIS — REGRA GLOBAL (vale em TODAS as fases que perguntam)
+
+SEMPRE que fizer uma pergunta com respostas prováveis (sim/não, canal, tom, tipo de dado, autonomia, critério, próximo passo, "quer que eu…?"), termine a mensagem com UMA linha EXATAMENTE assim:
+
+[[opts: Opção A | Opção B | Opção C]]
+
+- 2 a 5 opções curtas (máx 4 palavras cada), escritas como a RESPOSTA do usuário (ex.: "Sim, adiciona", "WhatsApp", "Mais formal", "Continua sem isso").
+- A linha [[opts: ...]] é SEMPRE a última coisa da mensagem. Nunca explique as opções nem repita no texto.
+- Vale na DESCOBERTA e no PLANO. Só pule quando a pergunta for 100% aberta (nome da empresa, descrição livre).
+- Perguntas do tipo "conecte X, ou responda 'continua'" DEVEM terminar com [[opts: Conectar agora | Continuar sem isso]].
+
 # 🔴 FASE ATUAL: **${phase}**
 
 ${phase === "POST_COMMIT" ? `

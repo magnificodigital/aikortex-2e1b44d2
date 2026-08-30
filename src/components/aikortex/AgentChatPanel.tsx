@@ -236,6 +236,9 @@ const AgentChatPanel = ({
   // ── File upload pra Knowledge Base inline no chat ──
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFile, setUploadingFile] = useState<string | null>(null);
+  // Lista persistente dos arquivos anexados nesta sessão — feedback visível
+  // de que o upload deu certo (mostrada como chips acima do composer).
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; chunks: number }[]>([]);
 
   const handleAttachClick = useCallback(() => {
     if (!agentId) {
@@ -269,6 +272,8 @@ const AgentChatPanel = ({
         throw new Error(err.error || `HTTP ${resp.status}`);
       }
       const result = await resp.json() as { chunks_count: number };
+      // Registra na lista visível de anexos (chips acima do composer)
+      setUploadedFiles((prev) => [...prev, { name: file.name, chunks: result.chunks_count }]);
       // 4. Mensagem de confirmação no chat (não chama o LLM — só append visual)
       const confirmMsg = `📎 Adicionei **${file.name}** à base de conhecimento (${result.chunks_count} trechos indexados). Posso usar esse conteúdo nas respostas.`;
       if (wizardStep === "discover") {
@@ -1071,6 +1076,28 @@ const AgentChatPanel = ({
       {/* Input area */}
       <div className="p-3 border-t border-border shrink-0">
         <div className="max-w-3xl mx-auto w-full">
+        {/* Anexos enviados — feedback visível de que o upload deu certo */}
+        {(uploadedFiles.length > 0 || uploadingFile) && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {uploadedFiles.map((f, i) => (
+              <span
+                key={`${f.name}-${i}`}
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium max-w-[240px]"
+                title={`${f.name} — ${f.chunks} trechos indexados na base de conhecimento`}
+              >
+                <Check className="w-3 h-3 shrink-0" />
+                <span className="truncate">{f.name}</span>
+                <span className="text-emerald-600/60 dark:text-emerald-400/60 shrink-0">· {f.chunks} trechos</span>
+              </span>
+            ))}
+            {uploadingFile && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/30 text-primary text-[11px] font-medium max-w-[240px]">
+                <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                <span className="truncate">Enviando {uploadingFile}…</span>
+              </span>
+            )}
+          </div>
+        )}
         {/* Modelo selector removido — agente roda com o modelo configurado
             em Visao geral; chave LLM e' resolvida pelo runtime cascade
             (Provedores -> Aikortex fallback). */}
