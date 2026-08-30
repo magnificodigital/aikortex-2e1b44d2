@@ -337,7 +337,7 @@ interface RunWizardWithToolsOptions {
 /** Template fallback pras instruções — usado quando o LLM produz texto raso
  *  (< 1200 chars ou < 5 seções). Garante estrutura §13.2 completa adaptada
  *  ao contexto do agente (nicho, nome, tom, objetivo). */
-function buildEnhancedInstructions(params: {
+export function buildEnhancedInstructions(params: {
   agentName?: string;
   niche?: string;
   company?: string;

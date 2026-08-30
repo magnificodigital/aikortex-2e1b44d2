@@ -5,7 +5,7 @@ import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { applyCapabilityAddons } from "../_shared/agent-runtime.ts";
 import { runAgentLLM } from "../_shared/agent-tools.ts";
 import { callLLM, buildAdminClient } from "../_shared/llm-fallback.ts";
-import { runWizardWithTools } from "../_shared/wizard-tools.ts";
+import { runWizardWithTools, buildEnhancedInstructions } from "../_shared/wizard-tools.ts";
 import { detectIntegrationsInText, getIntegrationStatuses, buildIntegrationStatusBlock } from "../_shared/integration-detector.ts";
 import {
   detectArchetype,
@@ -2121,25 +2121,60 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           console.warn("[wizard-setup] universal limits/catálogo/voz fetch failed:", e);
         }
 
-        // SEMPRE re-aplica greeting — LLM frequentemente seta com "Assistente"
-        // (placeholder do template) antes do set_agent_name persistir. Aqui
-        // buscamos o nome ATUAL e sobrescrevemos.
+        // Enriquecimento determinístico da IDENTIDADE — garante que o agente
+        // NUNCA nasça "magro" (só tools+canais). Preenche Identidade,
+        // Especialidade, Personalidade e Instruções com defaults sólidos do
+        // arquétipo, SEM sobrescrever o que o LLM já setou (guarda executedNames).
+        // Também re-aplica greeting com o nome final (consistente).
         try {
           const { data: ag } = await adminClient
             .from("user_agents")
             .select("name, config")
             .eq("id", agentId)
             .maybeSingle();
-          const rawName = (ag as { name?: string; config?: { name?: string } } | null)?.name ?? "";
-          const agentName = (rawName && !["Novo Agente", "Assistente", "Carregando...", ""].includes(rawName))
+          const cfg = ((ag as any)?.config ?? {}) as Record<string, any>;
+          const ctx = (cfg.businessContext ?? {}) as Record<string, any>;
+          const rawName = (ag as { name?: string } | null)?.name ?? "";
+          const company = String(ctx.companyName || cfg.companyName || "");
+          const niche = String(ctx.niche || cfg.niche || "");
+          const specLabel = detectedSpec?.label || "Assistente de IA";
+          const specObjective = detectedSpec?.focusBR || "atender e ajudar o cliente conforme a necessidade";
+          const TONE_BY_ARCHETYPE: Record<string, string> = {
+            SDR: "profissional e consultivo, sem pressão",
+            SAC: "empático, paciente e resolutivo",
+            CS: "próximo, proativo e orientado a resultado",
+            Content: "criativo, envolvente e alinhado à marca",
+            Custom: "profissional e cordial",
+          };
+          const detTone = TONE_BY_ARCHETYPE[detectedSpec?.archetype ?? "Custom"] ?? "profissional e cordial";
+          const detName = (rawName && !["Novo Agente", "Assistente", "Carregando...", ""].includes(rawName))
             ? rawName
-            : ((ag as { config?: { name?: string } } | null)?.config?.name ?? "Assistente");
+            : (company ? `Assistente ${company}` : specLabel);
+
+          const did = (a: string) => executedNames.has(a);
+          if (!did("set_agent_name"))
+            deterministicCalls.push({ action: "set_agent_name", params: { name: detName } });
+          if (!did("set_agent_description"))
+            deterministicCalls.push({ action: "set_agent_description", params: { description: `Agente ${specLabel}${company ? ` da ${company}` : ""} — ${specObjective}.` } });
+          if (!did("set_objective"))
+            deterministicCalls.push({ action: "set_objective", params: { objective: specObjective } });
+          if (!did("set_tone_of_voice"))
+            deterministicCalls.push({ action: "set_tone_of_voice", params: { tone: detTone } });
+          // Instruções: preenche se o LLM não setou OU setou algo muito curto.
+          const curInstr = String(cfg?.profile?.instructions ?? cfg?.instructions ?? "");
+          if (!did("set_instructions") || curInstr.length < 400) {
+            deterministicCalls.push({
+              action: "set_instructions",
+              params: { instructions: buildEnhancedInstructions({ agentName: detName, niche, company, tone: detTone, objective: specObjective }) },
+            });
+          }
+          // Greeting SEMPRE re-aplicado com o nome final (consistente).
           deterministicCalls.push({
             action: "set_greeting_message",
-            params: { message: `Olá! Sou ${agentName}, posso te ajudar?` },
+            params: { message: `Olá! Sou ${detName}, posso te ajudar?` },
           });
         } catch (e) {
-          console.warn("[wizard-setup] greeting name fetch failed:", e);
+          console.warn("[wizard-setup] enriquecimento determinístico de identidade falhou:", e);
         }
         console.log(`[wizard-setup] dispatch ${deterministicCalls.length} chamadas determinísticas:`, deterministicCalls.map((c) => `${c.action}(${JSON.stringify(c.params).slice(0, 60)})`).join(" | "));
         for (const call of deterministicCalls) {
@@ -2293,16 +2328,21 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           const nextSteps = detectedSpec
             ? buildNextStepsBlock(detectedSpec)
             : "📚 Adicione FAQ e documentos em **Conhecimento** pra respostas mais precisas.";
-          // Mensagem curta e escaneável — evita parede de texto que ninguém lê
+          // Próximo passo CLARO e escaneável — o user precisa saber o que fazer
+          // agora (testar), depois (conhecimento) e por último (publicar).
           const appendix = `
 
 ---
 
-⚠️ **Pra publicar:** conecte sua chave LLM em **Integrações → LLMs**
+**✅ Agente montado! Seu próximo passo:**
+
+1. 🧪 **Teste agora** — abra a aba **Testar** aqui em cima e converse como se fosse um cliente.
+2. 📚 **Reforce o Conhecimento** (opcional, deixa as respostas melhores) — anexe FAQ/documentos pelo 📎 no chat.
+3. 🚀 **Publicar** quando estiver satisfeito — conecte sua chave LLM em **Integrações → LLMs**.
 
 ${nextSteps}
 
-_Quer ajustar algo? Me diga aqui ou edita direto no painel._`;
+_Pode ajustar tudo agora: me diga aqui ("muda o nome", "adiciona Instagram") ou edite direto no painel à direita._`;
           content = `${content}${appendix}`;
           console.log(`[wizard-setup] appendado seções faltantes: llmWarning=${hasLlmWarning} nextSteps=${hasNextSteps} archetype=${detectedSpec?.archetype ?? "(none)"}`);
         }
