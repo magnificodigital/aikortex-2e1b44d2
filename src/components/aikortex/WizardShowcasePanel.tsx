@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check, Sun, Moon, Sparkles, MessageSquare, Wrench, Volume2, BookOpen,
-  Target, ScrollText, IdCard,
+  Target, ScrollText, IdCard, ChevronRight,
 } from "lucide-react";
 import { computeWizardSections, computeWizardProgress, type WizardSectionId } from "@/lib/wizard-progress";
 import { agentTypeLabel } from "@/lib/agent-type-labels";
@@ -13,6 +13,8 @@ interface WizardShowcasePanelProps {
   savedConfig?: Record<string, any> | null;
   agentName?: string;
   agentType?: string;
+  /** Clicar numa seção abre o editor daquela seção (config real). */
+  onSectionClick?: (id: WizardSectionId) => void;
 }
 
 const SECTION_ICONS: Record<WizardSectionId, typeof Sparkles> = {
@@ -34,6 +36,7 @@ export default function WizardShowcasePanel({
   savedConfig,
   agentName,
   agentType,
+  onSectionClick,
 }: WizardShowcasePanelProps) {
   const { theme, toggle } = useTheme();
   const isDark = theme === "dark";
@@ -121,14 +124,21 @@ export default function WizardShowcasePanel({
             const Icon = SECTION_ICONS[s.id];
             const ready = s.status === "ready";
             const pulsing = pulseId === s.id;
+            const clickable = !!onSectionClick;
             return (
-              <div
+              <button
                 key={s.id}
-                className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-500 ${
+                type="button"
+                onClick={() => onSectionClick?.(s.id)}
+                disabled={!clickable}
+                title={clickable ? `Editar ${s.label}` : undefined}
+                className={`group w-full text-left flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-500 ${
                   ready
                     ? "bg-emerald-500/[0.07] border-emerald-500/25"
                     : "bg-card/30 border-border/50"
-                } ${pulsing ? "ring-2 ring-emerald-500/40 scale-[1.02]" : ""}`}
+                } ${pulsing ? "ring-2 ring-emerald-500/40 scale-[1.02]" : ""} ${
+                  clickable ? "hover:border-primary/50 hover:bg-primary/[0.04] cursor-pointer" : ""
+                }`}
               >
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                   ready ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-muted/60 text-muted-foreground"
@@ -152,7 +162,12 @@ export default function WizardShowcasePanel({
                     {s.optional ? "opcional" : "vazio"}
                   </span>
                 )}
-              </div>
+                {clickable && (
+                  <span className="shrink-0 text-muted-foreground/40 group-hover:text-primary transition-colors">
+                    <ChevronRight className="w-4 h-4" />
+                  </span>
+                )}
+              </button>
             );
           })}
         </div>

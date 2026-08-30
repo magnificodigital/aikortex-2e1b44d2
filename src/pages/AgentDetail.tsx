@@ -415,6 +415,22 @@ const AgentDetail = () => {
   const setRightSection = useCallback((s: string) => {
     setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("section", s); return next; }, { replace: true });
   }, [setSearchParams]);
+
+  // Clicar num bloco do painel de montagem → abre o editor real daquela seção.
+  const WIZARD_SECTION_TO_CONFIG: Record<string, string> = {
+    identity: "config.agent",
+    expertise: "config.agent",
+    personality: "config.agent",
+    instructions: "config.agent",
+    tools: "resources.tools",
+    channels: "config.channels",
+    knowledge: "resources.kb",
+  };
+  const handleWizardSectionClick = useCallback((sectionId: string) => {
+    setRightSection(WIZARD_SECTION_TO_CONFIG[sectionId] || "config.agent");
+    setShowConfigDuringDiscover(true);
+    setMobileTab("config");
+  }, [setRightSection]);
   const [showVoiceCall, setShowVoiceCall] = useState(false);
   const [mobileTab, setMobileTab] = useState<"chat" | "config">("chat");
 
@@ -1487,6 +1503,7 @@ Se user falar de algum desses, diga claramente o que falta.
                 savedConfig={loadedAgent.savedConfig}
                 agentName={loadedAgent.name}
                 agentType={loadedAgent.agentType}
+                onSectionClick={handleWizardSectionClick}
               />
             </div>
           )}
