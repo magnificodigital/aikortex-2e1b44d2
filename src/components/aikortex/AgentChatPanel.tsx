@@ -236,9 +236,9 @@ const AgentChatPanel = ({
   // ── File upload pra Knowledge Base inline no chat ──
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFile, setUploadingFile] = useState<string | null>(null);
-  // Lista persistente dos arquivos anexados nesta sessão — feedback visível
-  // de que o upload deu certo (mostrada como chips acima do composer).
-  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; chunks: number }[]>([]);
+  // Anexos desta sessão com status (enviando/pronto/erro) — feedback visível
+  // logo na seleção, mostrado como chips acima do composer.
+  const [attachments, setAttachments] = useState<{ id: string; name: string; status: "uploading" | "done" | "error"; chunks?: number }[]>([]);
 
   const handleAttachClick = useCallback(() => {
     if (!agentId) {
@@ -252,6 +252,9 @@ const AgentChatPanel = ({
     const file = e.target.files?.[0];
     e.target.value = ""; // permite re-selecionar o mesmo arquivo depois
     if (!file || !agentId) return;
+    // Mostra o anexo IMEDIATAMENTE (estado enviando) — feedback na hora.
+    const attId = (globalThis.crypto?.randomUUID?.() ?? String(Date.now()));
+    setAttachments((prev) => [...prev, { id: attId, name: file.name, status: "uploading" }]);
     setUploadingFile(file.name);
     try {
       // 1. Garante uma KB padrão pro agente
@@ -272,8 +275,8 @@ const AgentChatPanel = ({
         throw new Error(err.error || `HTTP ${resp.status}`);
       }
       const result = await resp.json() as { chunks_count: number };
-      // Registra na lista visível de anexos (chips acima do composer)
-      setUploadedFiles((prev) => [...prev, { name: file.name, chunks: result.chunks_count }]);
+      // Marca o anexo como concluído (chip verde com contagem de trechos)
+      setAttachments((prev) => prev.map((a) => a.id === attId ? { ...a, status: "done", chunks: result.chunks_count } : a));
       // 4. Mensagem de confirmação no chat (não chama o LLM — só append visual)
       const confirmMsg = `📎 Adicionei **${file.name}** à base de conhecimento (${result.chunks_count} trechos indexados). Posso usar esse conteúdo nas respostas.`;
       if (wizardStep === "discover") {
@@ -286,6 +289,7 @@ const AgentChatPanel = ({
       toast.success(`${file.name} indexado (${result.chunks_count} trechos)`);
     } catch (err) {
       console.error("[upload]", err);
+      setAttachments((prev) => prev.map((a) => a.id === attId ? { ...a, status: "error" } : a));
       toast.error(`Falha no upload: ${(err as Error).message}`);
     } finally {
       setUploadingFile(null);
@@ -1076,26 +1080,36 @@ const AgentChatPanel = ({
       {/* Input area */}
       <div className="p-3 border-t border-border shrink-0">
         <div className="max-w-3xl mx-auto w-full">
-        {/* Anexos enviados — feedback visível de que o upload deu certo */}
-        {(uploadedFiles.length > 0 || uploadingFile) && (
+        {/* Anexos — feedback visível (enviando / pronto / erro) */}
+        {attachments.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2">
-            {uploadedFiles.map((f, i) => (
+            {attachments.map((a) => (
               <span
-                key={`${f.name}-${i}`}
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium max-w-[240px]"
-                title={`${f.name} — ${f.chunks} trechos indexados na base de conhecimento`}
+                key={a.id}
+                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[11px] font-medium max-w-[240px] ${
+                  a.status === "done"
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                    : a.status === "error"
+                    ? "bg-destructive/10 border-destructive/30 text-destructive"
+                    : "bg-primary/10 border-primary/30 text-primary"
+                }`}
+                title={a.name}
               >
-                <Check className="w-3 h-3 shrink-0" />
-                <span className="truncate">{f.name}</span>
-                <span className="text-emerald-600/60 dark:text-emerald-400/60 shrink-0">· {f.chunks} trechos</span>
+                {a.status === "uploading" ? (
+                  <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                ) : a.status === "error" ? (
+                  <span className="shrink-0">⚠️</span>
+                ) : (
+                  <Check className="w-3 h-3 shrink-0" />
+                )}
+                <FileIcon className="w-3 h-3 shrink-0 opacity-70" />
+                <span className="truncate">{a.name}</span>
+                {a.status === "done" && a.chunks != null && (
+                  <span className="text-emerald-600/60 dark:text-emerald-400/60 shrink-0">· {a.chunks} trechos</span>
+                )}
+                {a.status === "error" && <span className="shrink-0">· falhou</span>}
               </span>
             ))}
-            {uploadingFile && (
-              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/30 text-primary text-[11px] font-medium max-w-[240px]">
-                <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                <span className="truncate">Enviando {uploadingFile}…</span>
-              </span>
-            )}
           </div>
         )}
         {/* Modelo selector removido — agente roda com o modelo configurado
