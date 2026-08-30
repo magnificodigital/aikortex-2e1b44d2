@@ -2136,7 +2136,7 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           // Quando descrição inicial menciona ligação/telefone explicitamente,
           // ativa voice config deterministicamente. Nichos onde voz é típica
           // (sinal "niche" só) NÃO ativam — agência ativa manualmente depois.
-          const firstUserMsg = incomingMessages.find((m) => m.role === "user")?.content ?? "";
+          // (firstUserMsg já declarado acima no bloco de nicho — reusa)
           const voiceIntent = detectVoiceIntent(firstUserMsg, resolvedNiche ?? null);
           if (voiceIntent.signal === "strong" || voiceIntent.signal === "medium") {
             deterministicCalls.push({
