@@ -177,6 +177,17 @@ const extractOptionsMarker = (text: string): { clean: string; opts: string[] } =
   return { clean: partial, opts: [] };
 };
 
+// Sugestões de agente pro estado inicial do wizard — tira o "branco da página".
+// label curto pro botão; prompt = descrição que vai pro wizard ao clicar.
+const AGENT_SUGGESTIONS: { emoji: string; label: string; prompt: string }[] = [
+  { emoji: "🎯", label: "Qualificar leads", prompt: "Qualificador de leads no WhatsApp que faz perguntas, qualifica e agenda reuniões com o time comercial" },
+  { emoji: "🎧", label: "Suporte ao cliente", prompt: "Suporte ao cliente 24/7 no WhatsApp que responde dúvidas frequentes e abre chamado quando não resolve" },
+  { emoji: "📅", label: "Agendar consultas", prompt: "Recepcionista que agenda consultas e serviços via WhatsApp e confirma os horários com o cliente" },
+  { emoji: "🛒", label: "Recuperar vendas", prompt: "Agente que recupera carrinho abandonado e reativa clientes inativos por WhatsApp" },
+  { emoji: "✍️", label: "Gestor de conteúdo", prompt: "Gestor de conteúdo que cria posts e responde comentários e mensagens nas redes sociais" },
+  { emoji: "🍽️", label: "Reservas de restaurante", prompt: "Recepcionista de restaurante que reserva mesas via WhatsApp e tira dúvidas do cardápio" },
+];
+
 const AgentChatPanel = ({
   onBack,
   agentId,
@@ -425,6 +436,13 @@ const AgentChatPanel = ({
   // Modo Vibe ONE-SHOT: user dá UMA descrição livre, não há Q&A.
   // Quick-replies só fariam sentido em fluxo de entrevista — desativadas.
   const quickReplies: string[] = [];
+
+  // Slider: exemplo rotativo mostrado no estado inicial do wizard.
+  const [exampleIdx, setExampleIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setExampleIdx((i) => (i + 1) % AGENT_SUGGESTIONS.length), 2800);
+    return () => clearInterval(t);
+  }, []);
 
   /* ── Discover → Structure ── */
   const handleDiscover = useCallback(async (text: string) => {
@@ -1057,6 +1075,39 @@ const AgentChatPanel = ({
         )}
         </div>
       </div>
+
+      {/* Estado inicial do wizard: slider de exemplos + botões de sugestão.
+          Tira o "branco da página" — o user clica em vez de pensar do zero. */}
+      {wizardStep === "discover" && wizardSendMessage && !wizardIsStreaming &&
+        !displayMessages.some((m: any) => m.role === "user") && (
+        <div className="px-4 pb-3 shrink-0">
+          <div className="max-w-3xl mx-auto w-full">
+            {/* Slider — exemplo rotativo */}
+            <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground min-h-[20px]">
+              <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span key={exampleIdx} className="animate-in fade-in slide-in-from-bottom-1 duration-500 italic truncate">
+                "{AGENT_SUGGESTIONS[exampleIdx].prompt}"
+              </span>
+            </div>
+            {/* Botões de sugestão (entrada escalonada) */}
+            <p className="text-[10px] font-medium text-muted-foreground/60 mb-2 uppercase tracking-widest">Ou comece por um exemplo</p>
+            <div className="flex flex-wrap gap-2">
+              {AGENT_SUGGESTIONS.map((s, i) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  onClick={() => wizardSendMessage(s.prompt)}
+                  style={{ animationDelay: `${i * 60}ms` }}
+                  className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-card/60 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground hover:text-primary transition-colors"
+                >
+                  <span className="text-sm leading-none">{s.emoji}</span>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick-reply chips (Master v7.4 §13.2: campos com domínio fechado) */}
       {quickReplies.length > 0 && wizardSendMessage && (
