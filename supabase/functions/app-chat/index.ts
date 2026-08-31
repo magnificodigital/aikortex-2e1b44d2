@@ -1982,17 +1982,25 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           "airtable", "asana", "trello", "clickup",
           "discord", "dropbox", "github", "linkedin", "zoom",
         ]);
-        const oauthBlockers = wizardDetectedStatuses
-          .filter((s: any) => INLINE_OAUTH_PROVIDERS.has(s.provider))
-          .filter((s: any) => !s.connected);
-        if (oauthBlockers.length > 0) {
-          const markers = oauthBlockers
-            .filter((s: any) => !content.includes(`<!--oauth:${s.provider}-->`))
-            .map((s: any) => `<!--oauth:${s.provider}-->`);
-          if (markers.length > 0) {
-            content = `${content}\n\n${markers.join("\n")}`;
-            console.log(`[wizard-setup] injetado(s) marker(s) OAuth determinístico(s):`, markers.join(", "));
-          }
+        // Providers a oferecer conexão = detectados na última msg (não conectados)
+        // + INFERIDOS DA DESCRIÇÃO INICIAL (onde o user citou "Google Calendar",
+        // "HubSpot" etc.). Sem o segundo, a detecção rodava só no "Sim, cria" e
+        // nunca oferecia o botão. WhatsApp NÃO entra (é canal, conecta em Canais).
+        const firstUserDesc = incomingMessages.find((m) => m.role === "user")?.content ?? "";
+        const inferredProviders = detectedSpec
+          ? inferConnectors(detectedSpec, firstUserDesc).map((c: any) => c.provider)
+          : [];
+        const detectedUnconnected = wizardDetectedStatuses
+          .filter((s: any) => !s.connected)
+          .map((s: any) => s.provider);
+        const providersToOffer = [...new Set([...inferredProviders, ...detectedUnconnected])]
+          .filter((p: string) => INLINE_OAUTH_PROVIDERS.has(p));
+        const markers = providersToOffer
+          .filter((p: string) => !content.includes(`<!--oauth:${p}-->`))
+          .map((p: string) => `<!--oauth:${p}-->`);
+        if (markers.length > 0) {
+          content = `${content}\n\n${markers.join("\n")}`;
+          console.log(`[wizard-setup] marcador(es) OAuth injetado(s):`, markers.join(", "));
         }
 
         // Fallback determinístico: Qwen 3 às vezes para no meio das tools.
