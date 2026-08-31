@@ -20,7 +20,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Activity, RefreshCcw, Loader2, AlertCircle, Plus, Trash2 } from "lucide-react";
+import { Activity, RefreshCcw, Loader2, AlertCircle, Plus, Trash2, Sparkles } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AddLLMFromCatalogDialog from "./AddLLMFromCatalogDialog";
 import {
   AlertDialog,
@@ -63,6 +64,9 @@ const AdminLLMsTab = () => {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<LLM | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Modelo da montagem de agentes (platform_config.wizard_model)
+  const [wizardModel, setWizardModel] = useState<string>("google/gemini-2.5-flash");
+  const [savingWizardModel, setSavingWizardModel] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -76,7 +80,28 @@ const AdminLLMsTab = () => {
     } else {
       setRows((data as LLM[]) || []);
     }
+    // Modelo da montagem
+    const { data: wm } = await (supabase.from("platform_config" as any) as any)
+      .select("value").eq("key", "wizard_model").maybeSingle();
+    if (wm?.value) setWizardModel(String(wm.value));
     setLoading(false);
+  };
+
+  const saveWizardModel = async (value: string) => {
+    setSavingWizardModel(true);
+    const prev = wizardModel;
+    setWizardModel(value);
+    const { error } = await (supabase.from("platform_config" as any) as any).upsert(
+      { key: "wizard_model", value, description: "Modelo de IA usado na montagem de agentes (wizard)", is_secret: false, updated_at: new Date().toISOString() },
+      { onConflict: "key" },
+    );
+    if (error) {
+      toast.error("Falha ao salvar: " + error.message);
+      setWizardModel(prev);
+    } else {
+      toast.success("Modelo da montagem atualizado");
+    }
+    setSavingWizardModel(false);
   };
 
   useEffect(() => {
@@ -154,6 +179,19 @@ const AdminLLMsTab = () => {
   }, [rows]);
 
   const alreadyAdded = useMemo(() => new Set(rows.map((r) => r.model_id)), [rows]);
+
+  // Opções pro seletor da montagem — ativos, tools-capable primeiro. Garante
+  // que o valor atual apareça mesmo que não esteja no catálogo.
+  const wizardModelOptions = useMemo(() => {
+    const opts = rows
+      .filter((r) => r.active)
+      .slice()
+      .sort((a, b) => Number(b.supports_tools) - Number(a.supports_tools) || a.priority - b.priority);
+    if (wizardModel && !opts.some((o) => o.model_id === wizardModel)) {
+      opts.unshift({ model_id: wizardModel, display_name: wizardModel, supports_tools: true } as LLM);
+    }
+    return opts;
+  }, [rows, wizardModel]);
 
   const renderTable = (data: LLM[], title: string) => (
     <Card>
@@ -308,6 +346,43 @@ const AdminLLMsTab = () => {
           </Button>
         </div>
       </div>
+
+      {/* Modelo da montagem de agentes (wizard) — troca a IA sem SQL */}
+      <Card className="border-primary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" /> Modelo da montagem de agentes
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            A IA que monta os agentes no wizard. Os padrões da criação (tabelas do negócio, seções, arquétipo) são garantidos pela camada determinística — pode trocar à vontade. Prefira um modelo com bom <strong>function-calling</strong> (tools).
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <Select value={wizardModel} onValueChange={saveWizardModel} disabled={savingWizardModel}>
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue placeholder="Selecione o modelo" />
+              </SelectTrigger>
+              <SelectContent>
+                {wizardModelOptions.map((m) => (
+                  <SelectItem key={m.model_id} value={m.model_id}>
+                    <span className="flex items-center gap-2">
+                      {m.display_name || m.model_id}
+                      {m.supports_tools ? (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0">tools</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-500/40">sem tools</Badge>
+                      )}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {savingWizardModel && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2 font-mono">Atual: {wizardModel}</p>
+        </CardContent>
+      </Card>
 
       <AddLLMFromCatalogDialog
         open={catalogOpen}
