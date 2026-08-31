@@ -353,6 +353,12 @@ serve(async (req) => {
         if (!existing.includes(integrationKey)) {
           newConfig = { ...newConfig, externalIntegrations: [...existing, integrationKey] };
         }
+        // Também registra em config.integrations (fonte que o painel "Conectores"
+        // do agente lê) — sem isso, conectar via OAuth não aparecia no painel.
+        const existingConns = (newConfig.integrations ?? []) as string[];
+        if (!existingConns.includes(intCfg.provider)) {
+          newConfig = { ...newConfig, integrations: [...existingConns, intCfg.provider] };
+        }
         // Checa estado real da integração via user_api_keys
         const { data: existingKey } = await admin
           .from("user_api_keys")

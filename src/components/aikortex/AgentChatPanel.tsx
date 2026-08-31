@@ -881,8 +881,24 @@ const AgentChatPanel = ({
                           <InlineOAuthButton
                             key={`${i}-oauth-${scope}`}
                             scope={scope as any}
+                            agentId={agentId}
                             onConnected={() => {
-                              // User conectou! Avisa o wizard pra prosseguir
+                              // Registra o conector NO AGENTE (aparece no painel
+                              // Conectores) — o OAuth só conecta no Composio (user).
+                              (async () => {
+                                try {
+                                  if (!agentId) return;
+                                  const { data: { session } } = await supabase.auth.getSession();
+                                  const token = session?.access_token;
+                                  if (!token) return;
+                                  await fetch(fnUrl("agent-vibe-mutate"), {
+                                    method: "POST",
+                                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                                    body: JSON.stringify({ agentId, action: "request_external_integration", params: { integration_key: scope } }),
+                                  });
+                                } catch { /* silencioso */ }
+                              })();
+                              // Avisa o wizard pra prosseguir
                               if (wizardSendMessage) {
                                 setTimeout(() => wizardSendMessage("pronto, conectei agora"), 600);
                               }
