@@ -1064,7 +1064,7 @@ export function inferNicheFromMessage(text: string | undefined | null): string |
   if (/\b(cont[áa]bil|contador|contadora|escrit[óo]rio cont[áa]bil|cont[áa]beis|fiscal|tributari|impostos|simples nacional|lucro presumido|das|darf|mei)\b/.test(t)) return "Contabilidade";
   if (/\b(cl[íi]nica|m[ée]dic[ao]|dentista|consult[óo]rio|paciente|consulta m[ée]dica|odonto|fisioterap|psic[óo]log|nutricion|sa[úu]de|ambulat[óo]ri|enfermag)\b/.test(t)) return "Saúde";
   if (/\b(advogad[ao]|jur[íi]dic|advocacia|processo judicial|tribunal|escrit[óo]rio de advocacia|peti[çc][ãa]o|audi[êe]ncia|prazos processuais|forense|cliente jur[íi]dico)\b/.test(t)) return "Advocacia";
-  if (/\b(imobili[áa]ri|im[óo]vel|im[óo]veis|corretor|corretora|aluguel|loca[çc][ãa]o|venda de im[óo]vel|apartamento|casa pra alugar|fian[çc]a locat[íi]cia|financiamento imobili[áa]rio)\b/.test(t)) return "Imobiliária";
+  if (/\b(imobili[áa]ri|im[óo]vel|im[óo]veis|corretor|corretora|aluguel|loca[çc][ãa]o|venda de im[óo]vel|apartamento|casa pra alugar|fian[çc]a locat[íi]cia|financiamento imobili[áa]rio|construtora|incorporadora|loteamento|lan[çc]amento imobili[áa]rio|na planta|unidade|empreendimento)\b/.test(t)) return "Imobiliária";
   return null;
 }
 

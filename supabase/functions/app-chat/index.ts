@@ -849,6 +849,16 @@ Daí mapeia CADA sinal pra o asset correspondente:
 
 Quando o nicho tem catálogo NICHE_ASSETS, USE os slugs (\`create_niche_table\`, \`create_niche_cadence\`, \`seed_kb_topic\`) — eles já vêm com schema correto. Pra nichos sem catálogo, monta tudo manualmente via \`create_client_table\`/\`create_knowledge_base\` com colunas que façam SENTIDO PRO CONTEXTO REAL (não copie genéricos).
 
+### ⛔⛔ TABELAS SEMPRE DO NEGÓCIO DO AGENTE (regra inquebrável)
+
+Cada tabela/asset TEM que casar com o negócio descrito. NUNCA crie tabela de um setor que não foi mencionado.
+- Imobiliária/construtora → \`imoveis\`, \`leads\`, \`visitas\` (NUNCA \`pacientes\`, \`planos de saúde\`).
+- Clínica/consultório → \`pacientes\`, \`agendamentos\`, \`convenios\`.
+- E-commerce/loja → \`pedidos\`, \`clientes\`, \`carrinhos_abandonados\`.
+- Restaurante → \`reservas\`, \`mesas\`, \`cardapio\`.
+- Se você NÃO tem certeza do nicho a partir da descrição, **NÃO invente tabelas de outro setor** — crie só as do TIPO do agente (ex.: SDR → \`leads\`) ou nenhuma. Tabela errada é PIOR que tabela nenhuma.
+- Antes de criar qualquer tabela, pergunte a si mesmo: "isso existe no negócio que o user descreveu?". Se a resposta não for um SIM claro, não crie.
+
 ### 📞 VOZ (ligação telefônica)
 
 Quando a descrição inicial menciona **"ligação", "telefonema", "atende ao telefone", "voicebot", "call center", "atendimento telefônico"** OU envolve **prospecção outbound / cobrança por telefone / confirmação de consulta**, chame \`set_voice_config\` com defaults sensatos:
