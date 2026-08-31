@@ -5,6 +5,7 @@ import EmptyIntegrationSection from "@/components/settings/EmptyIntegrationSecti
 import IntegrationEmailForm from "@/components/settings/IntegrationEmailForm";
 import VoiceProviderStatus from "./VoiceProviderStatus";
 import IntegrationWhatsAppForm from "@/components/settings/IntegrationWhatsAppForm";
+import MetaEmbeddedSignupButton from "@/components/settings/MetaEmbeddedSignupButton";
 import { Button } from "@/components/ui/button";
 import type { AgentType } from "@/types/agent-builder";
 import { CHANNELS_BY_AGENT_TYPE, TOOLS_BY_AGENT_TYPE } from "@/types/agent-builder";
@@ -1473,7 +1474,28 @@ const AgentRightPanel = ({
                     Conta WhatsApp Business via Meta Cloud API. Pra usar pra cadências, vá em <strong>Templates WhatsApp</strong> abaixo.
                   </p>
                 </div>
-                <IntegrationWhatsAppForm />
+
+                {/* 1-clique: Conectar via Meta (Embedded Signup) — recomendado */}
+                <div className="rounded-lg border border-[#25D366]/30 bg-[#25D366]/[0.05] p-4 space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Conexão rápida (recomendado)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Conecte sua conta WhatsApp Business em ~5 min, sem colar credenciais. O número, token e webhook são configurados automaticamente.
+                  </p>
+                  <MetaEmbeddedSignupButton
+                    onConnected={() => { toast.success("WhatsApp conectado! Atualize a página se não refletir."); }}
+                  />
+                </div>
+
+                {/* Conexão manual (avançado) — fallback pra número de teste / sem embed */}
+                <details className="group rounded-lg border border-border">
+                  <summary className="cursor-pointer list-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground flex items-center justify-between">
+                    <span>Conectar manualmente (avançado)</span>
+                    <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <div className="px-4 pb-4 pt-1 border-t border-border">
+                    <IntegrationWhatsAppForm />
+                  </div>
+                </details>
               </div>
             )}
 
