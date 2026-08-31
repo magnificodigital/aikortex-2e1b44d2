@@ -332,6 +332,8 @@ interface RunWizardWithToolsOptions {
   maxTokens?: number;
   maxIterations?: number;
   userJwt?: string | null;
+  /** Modelo da montagem (configurável). Default gemini-2.5-flash. */
+  model?: string;
 }
 
 /** Template fallback pras instruções — usado quando o LLM produz texto raso
@@ -618,10 +620,11 @@ export async function runWizardWithTools(opts: RunWizardWithToolsOptions): Promi
       messages,
       {
         tier: "free",
-        // Modelo FORTE e confiável na CRIAÇÃO (tool-calling). Free é péssimo em
-        // tools → oscila, alucina nicho e cai no determinístico. gemini-2.5-flash
-        // faz tool-calling nativo e cria assets RELEVANTES. Free fica de reserva.
-        preferredModel: "google/gemini-2.5-flash",
+        // Modelo FORTE e confiável na CRIAÇÃO (tool-calling), configurável via
+        // platform_config.wizard_model. Free é péssimo em tools → oscila e cai
+        // no determinístico. O modelo escolhido faz tool-calling nativo; free
+        // fica de reserva. Os PADRÕES são garantidos pela camada determinística.
+        preferredModel: opts.model || "google/gemini-2.5-flash",
         toolsRequired: iter < maxIterations,
         tools: iter < maxIterations ? (WIZARD_TOOL_DEFS as unknown as any[]) : undefined,
         toolChoice: iter < maxIterations ? "auto" : undefined,

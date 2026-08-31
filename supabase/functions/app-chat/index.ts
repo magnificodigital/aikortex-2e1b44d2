@@ -1925,6 +1925,18 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
       const preferred = (body as any).model as string | undefined;
       const userJwt = authHeader?.replace(/^Bearer\s+/i, "") ?? null;
 
+      // Modelo da MONTAGEM — configurável (fundador pode trocar a IA sem mexer
+      // no código, via platform_config.wizard_model). Default gemini-2.5-flash.
+      // A camada determinística (arquétipo + assets + identidade + trava de
+      // nicho) garante que os PADRÕES sejam seguidos INDEPENDENTE do modelo.
+      let wizardModel = "google/gemini-2.5-flash";
+      try {
+        const { data: wm } = await adminClient
+          .from("platform_config").select("value").eq("key", "wizard_model").maybeSingle();
+        const v = (wm as { value?: string } | null)?.value;
+        if (v && typeof v === "string" && v.trim()) wizardModel = v.trim();
+      } catch { /* usa default */ }
+
       let content = "";
       if (mode === "wizard-setup" && agentId && wizardPhase === "CRIACAO") {
         // Modo Vibe (Master v7.4 §13.2): só na fase CRIACAO (3ª+ mensagem do user,
@@ -1939,6 +1951,7 @@ ${connectorsInferred.length > 0 ? `**Conectores inferidos da descrição:** ${co
           maxTokens: 6000, // Instructions ≥1200 chars + tabelas + KBs + tools + resposta
           maxIterations: 14, // suporta até 8 tabelas + 5 KBs + tools de identidade
           userJwt,
+          model: wizardModel, // configurável; determinístico garante os padrões
         });
         content = wizContent;
         const llmFailed = !content || content.trim().length === 0;
@@ -2592,10 +2605,10 @@ _Pode ajustar tudo agora: me diga aqui ("muda o nome", "adiciona Instagram") ou 
           maxTokens: 3000,
           timeoutMs: 45000,
           tag: `wizard-${wizardPhase}`,
-          // Montagem usa modelo FORTE e confiável (Fase 3: qualidade garantida).
+          // Montagem usa o modelo configurável (default gemini-2.5-flash).
           // Custo por montagem é centavos e está capado pelas quotas. Free/paid
-          // ficam só como rede de segurança se o gemini cair.
-          primaryModel: "google/gemini-2.5-flash",
+          // ficam só como rede de segurança se o modelo escolhido cair.
+          primaryModel: wizardModel,
           fallbackToPaid: true,
         });
       } else if (agentId) {
