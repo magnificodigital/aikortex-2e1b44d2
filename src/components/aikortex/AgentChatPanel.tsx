@@ -1126,24 +1126,19 @@ const AgentChatPanel = ({
             </div>
           </div>
         )}
-        </div>
-      </div>
 
-      {/* Estado inicial do wizard: slider de exemplos + botões de sugestão.
-          Tira o "branco da página" — o user clica em vez de pensar do zero. */}
-      {wizardStep === "discover" && wizardSendMessage && !wizardIsStreaming &&
-        !displayMessages.some((m: any) => m.role === "user") && (
-        <div className="px-4 pb-3 shrink-0">
-          <div className="max-w-3xl mx-auto w-full">
-            {/* Slider — exemplo rotativo */}
-            <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground min-h-[20px]">
+        {/* Exemplos clicáveis LOGO ABAIXO da saudação — clicar já começa a montar
+            o agente (wizardSendMessage). Alinhado com o texto do balão (ml-11). */}
+        {wizardStep === "discover" && wizardSendMessage && !wizardIsStreaming &&
+          !displayMessages.some((m: any) => m.role === "user") && (
+          <div className="ml-11">
+            <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground min-h-[20px]">
               <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
               <span key={exampleIdx} className="animate-in fade-in slide-in-from-bottom-1 duration-500 italic truncate">
                 "{shuffledSuggestions[exampleIdx]?.prompt}"
               </span>
             </div>
-            {/* Botões de sugestão (entrada escalonada) */}
-            <p className="text-[10px] font-medium text-muted-foreground/60 mb-2 uppercase tracking-widest">Ou comece por um exemplo</p>
+            <p className="text-[10px] font-medium text-muted-foreground/60 mb-2 uppercase tracking-widest">Ou clique num exemplo pra começar</p>
             <div className="flex flex-wrap gap-2">
               {suggestionButtons.map((s, i) => (
                 <button
@@ -1159,8 +1154,9 @@ const AgentChatPanel = ({
               ))}
             </div>
           </div>
+        )}
         </div>
-      )}
+      </div>
 
       {/* Quick-reply chips (Master v7.4 §13.2: campos com domínio fechado) */}
       {quickReplies.length > 0 && wizardSendMessage && (
