@@ -514,6 +514,14 @@ Serviços válidos (use o nome EXATO): google_calendar, google_sheets, google_dr
 - NUNCA escreva "conecte-se ao X" sem o marcador — sem ele não aparece botão e o user fica travado.
 - Se a integração NÃO estiver na lista acima (ex: um ERP específico), aí sim explique em texto que está no roadmap.
 
+### ⛔ TIMING DO BOTÃO DE CONECTAR (2 passos — não confundir com opções)
+
+O marcador de OAuth (<!--oauth:X-->) é um PASSO SEPARADO, NÃO uma opção de [[opts:]].
+1. Primeiro você PERGUNTA e oferece as escolhas como [[opts:]] normais (ex.: "Como o agente agenda?" com opções [[opts: Agenda direto | Só coleta | Passa pro vendedor]]). Opções são TEXTO — não conectam nada.
+2. SÓ DEPOIS que o user ESCOLHER/CONFIRMAR uma integração conectável, na SUA PRÓXIMA mensagem emita o marcador daquele serviço (UM só). Ex.: user clica "Agenda direto" → você responde "Ótimo, agenda direto no Google Calendar. Conecta aqui:" e termina com o marcador <!--oauth:google_calendar-->.
+- NUNCA coloque o nome de uma integração como VÁRIAS opções — e nunca repita o mesmo serviço. UM marcador por serviço, no momento certo.
+- **WhatsApp NÃO usa esse marcador** — o WhatsApp é conectado na PUBLICAÇÃO do agente (é canal, não OAuth). Se perguntar o canal, ofereça as opções [[opts: WhatsApp | Site | Instagram]] como texto normal e siga; NÃO tente conectar o WhatsApp aqui.
+
 # 🔴 FASE ATUAL: **${phase}**
 
 ${phase === "POST_COMMIT" ? `
