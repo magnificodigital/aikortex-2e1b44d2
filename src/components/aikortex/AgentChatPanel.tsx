@@ -491,11 +491,6 @@ const AgentChatPanel = ({
     []
   );
   const suggestionButtons = shuffledSuggestions.slice(0, 8);
-  const [exampleIdx, setExampleIdx] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setExampleIdx((i) => (i + 1) % shuffledSuggestions.length), 2800);
-    return () => clearInterval(t);
-  }, [shuffledSuggestions.length]);
 
   /* ── Discover → Structure ── */
   const handleDiscover = useCallback(async (text: string) => {
@@ -1127,32 +1122,23 @@ const AgentChatPanel = ({
           </div>
         )}
 
-        {/* Exemplos clicáveis LOGO ABAIXO da saudação — clicar já começa a montar
-            o agente (wizardSendMessage). Alinhado com o texto do balão (ml-11). */}
+        {/* Exemplos randômicos como BOTÕES de frase completa, logo abaixo da
+            saudação. Clicar já começa a montar o agente (wizardSendMessage). */}
         {wizardStep === "discover" && wizardSendMessage && !wizardIsStreaming &&
           !displayMessages.some((m: any) => m.role === "user") && (
-          <div className="ml-11">
-            <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground min-h-[20px]">
-              <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span key={exampleIdx} className="animate-in fade-in slide-in-from-bottom-1 duration-500 italic truncate">
-                "{shuffledSuggestions[exampleIdx]?.prompt}"
-              </span>
-            </div>
-            <p className="text-[10px] font-medium text-muted-foreground/60 mb-2 uppercase tracking-widest">Ou clique num exemplo pra começar</p>
-            <div className="flex flex-wrap gap-2">
-              {suggestionButtons.map((s, i) => (
-                <button
-                  key={s.label}
-                  type="button"
-                  onClick={() => wizardSendMessage(s.prompt)}
-                  style={{ animationDelay: `${i * 60}ms` }}
-                  className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-card/60 hover:bg-primary/10 border border-border hover:border-primary/40 text-foreground hover:text-primary transition-colors"
-                >
-                  <span className="text-sm leading-none">{s.emoji}</span>
-                  {s.label}
-                </button>
-              ))}
-            </div>
+          <div className="ml-11 space-y-1.5">
+            {suggestionButtons.slice(0, 4).map((s, i) => (
+              <button
+                key={s.label}
+                type="button"
+                onClick={() => wizardSendMessage(s.prompt)}
+                style={{ animationDelay: `${i * 70}ms` }}
+                className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 flex items-start gap-2 w-full max-w-xl text-left px-3.5 py-2.5 rounded-xl text-[13px] leading-snug bg-card/60 hover:bg-primary/10 border border-border hover:border-primary/40 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <span className="text-sm shrink-0 mt-0.5">{s.emoji}</span>
+                <span className="italic">"{s.prompt}"</span>
+              </button>
+            ))}
           </div>
         )}
         </div>

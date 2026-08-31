@@ -870,16 +870,13 @@ Se user falar de algum desses, diga claramente o que falta.
     navState?.starkBubbleMode ? [] : [{
       role: "agent" as const,
       text: (() => {
+        // Só a pergunta — os exemplos viram BOTÕES clicáveis abaixo (AgentChatPanel).
         const greetings = [
-          `👋 O que seu agente precisa fazer?\n\n*Ex:* "SDR pra clínica odontológica que qualifica leads via WhatsApp."`,
-          `👋 Qual agente vamos criar hoje?\n\n*Ex:* "SAC pra e-commerce que resolve dúvidas e escala pra humano quando precisa."`,
-          `👋 Me descreve seu agente em uma frase.\n\n*Ex:* "Criador de posts pra Instagram de petshop com tom casual."`,
-          `👋 Qual é a missão do agente?\n\n*Ex:* "BDR pra prospectar SaaS B2B e agendar reuniões qualificadas."`,
-          `👋 O que esse agente vai resolver?\n\n*Ex:* "Atendimento imobiliário via WhatsApp que tira dúvidas e marca visitas."`,
-          `👋 Conta em uma frase o que ele faz.\n\n*Ex:* "CS que faz health check semanal e previne churn."`,
-          `👋 Pronto pra criar? Me descreve o agente.\n\n*Ex:* "Assistente jurídico que responde dúvidas trabalhistas básicas."`,
-          `👋 Qual agente quer montar?\n\n*Ex:* "Recepcionista de restaurante que reserva mesas via WhatsApp."`,
-          `👋 Em uma frase, o que esse agente faz?\n\n*Ex:* "Gestor financeiro que organiza boletos e envia lembretes de vencimento."`,
+          `👋 O que seu agente precisa fazer? Me descreve em uma frase — ou clique num exemplo abaixo.`,
+          `👋 Qual agente vamos criar hoje? Descreve em uma frase, ou escolhe um exemplo abaixo.`,
+          `👋 Me descreve seu agente em uma frase. Ou comece por um dos exemplos abaixo.`,
+          `👋 Qual é a missão do agente? Conta em uma frase, ou clique num exemplo abaixo.`,
+          `👋 O que esse agente vai resolver? Descreve, ou pega um exemplo abaixo pra começar.`,
         ];
         return greetings[Math.floor(Math.random() * greetings.length)];
       })(),
