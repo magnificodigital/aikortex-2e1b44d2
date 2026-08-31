@@ -166,6 +166,21 @@ const extractOAuthMarkers = (text: string): { clean: string; oauths: string[] } 
 // mensagem no formato [[opts: Opção A | Opção B | Opção C]]. Extraímos, limpamos
 // do texto exibido e renderizamos como chips. Também removemos um marker
 // INCOMPLETO durante o streaming (ex: "[[opts: Sim |") pra não piscar cru.
+// Quando uma opção clicável é uma INTEGRAÇÃO conectável, o chip vira botão de
+// conectar (OAuth) em vez de só mandar o texto. Mapeia o texto da opção → scope.
+const OPT_OAUTH_MAP: { match: RegExp; scope: string }[] = [
+  { match: /google\s*sheets|planilha\s*google|\bsheets\b/i, scope: "google_sheets" },
+  { match: /google\s*(calendar|agenda)|\bagenda\s*google/i, scope: "google_calendar" },
+  { match: /google\s*drive|\bdrive\b/i, scope: "google_drive" },
+  { match: /\bgmail\b/i, scope: "gmail" },
+  { match: /\bhubspot\b/i, scope: "hubspot" },
+  { match: /\bcalendly\b/i, scope: "calendly" },
+  { match: /\bnotion\b/i, scope: "notion" },
+  { match: /\bslack\b/i, scope: "slack" },
+];
+const optToOAuthScope = (opt: string): string | null =>
+  OPT_OAUTH_MAP.find((m) => m.match.test(opt))?.scope ?? null;
+
 const extractOptionsMarker = (text: string): { clean: string; opts: string[] } => {
   const match = text.match(/\[\[opts:\s*([^\]]*?)\s*\]\]/i);
   if (match) {
@@ -895,16 +910,33 @@ const AgentChatPanel = ({
                         Clicar envia como resposta; digitar continua opcional. */}
                     {showOpts && (
                       <div className="flex flex-wrap gap-1.5 ml-1 mt-1">
-                        {opts.map((opt, idx) => (
-                          <button
-                            key={`${i}-opt-${idx}`}
-                            type="button"
-                            onClick={() => wizardSendMessage && wizardSendMessage(opt)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 text-primary text-xs font-medium transition-colors"
-                          >
-                            {opt}
-                          </button>
-                        ))}
+                        {opts.map((opt, idx) => {
+                          // Opção conectável (Google Sheets, HubSpot…) → botão de
+                          // conectar (OAuth) ali mesmo, em vez de só mandar texto.
+                          const scope = optToOAuthScope(opt);
+                          if (scope && agentId) {
+                            return (
+                              <InlineOAuthButton
+                                key={`${i}-opt-${idx}`}
+                                scope={scope as any}
+                                agentId={agentId}
+                                onConnected={() => {
+                                  if (wizardSendMessage) setTimeout(() => wizardSendMessage(`pronto, conectei ${opt}`), 600);
+                                }}
+                              />
+                            );
+                          }
+                          return (
+                            <button
+                              key={`${i}-opt-${idx}`}
+                              type="button"
+                              onClick={() => wizardSendMessage && wizardSendMessage(opt)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 text-primary text-xs font-medium transition-colors"
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
