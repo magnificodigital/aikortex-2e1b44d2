@@ -16,6 +16,7 @@ import type { ChatMessage } from "@/hooks/use-agent-chat";
 import type { AgentType } from "@/types/agent-builder";
 import WizardThinkingCard from "@/components/aikortex/WizardThinkingCard";
 import InlineOAuthButton from "@/components/aikortex/InlineOAuthButton";
+import MetaEmbeddedSignupButton from "@/components/settings/MetaEmbeddedSignupButton";
 import { avatarImgClass } from "@/lib/agent-avatar";
 
 export interface StructuredAgentConfig {
@@ -911,6 +912,18 @@ const AgentChatPanel = ({
                     {showOpts && (
                       <div className="flex flex-wrap gap-1.5 ml-1 mt-1">
                         {opts.map((opt, idx) => {
+                          // WhatsApp → embed do Meta (conecta o canal na hora).
+                          if (/\bwhats\s?app\b/i.test(opt)) {
+                            return (
+                              <div key={`${i}-opt-${idx}`} className="w-full max-w-xs">
+                                <MetaEmbeddedSignupButton
+                                  onConnected={() => {
+                                    if (wizardSendMessage) setTimeout(() => wizardSendMessage("pronto, conectei o WhatsApp"), 600);
+                                  }}
+                                />
+                              </div>
+                            );
+                          }
                           // Opção conectável (Google Sheets, HubSpot…) → botão de
                           // conectar (OAuth) ali mesmo, em vez de só mandar texto.
                           const scope = optToOAuthScope(opt);
