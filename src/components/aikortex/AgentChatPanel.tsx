@@ -16,6 +16,7 @@ import type { ChatMessage } from "@/hooks/use-agent-chat";
 import type { AgentType } from "@/types/agent-builder";
 import WizardThinkingCard from "@/components/aikortex/WizardThinkingCard";
 import InlineOAuthButton from "@/components/aikortex/InlineOAuthButton";
+import MetaEmbeddedSignupButton from "@/components/settings/MetaEmbeddedSignupButton";
 import { avatarImgClass } from "@/lib/agent-avatar";
 
 export interface StructuredAgentConfig {
@@ -166,6 +167,24 @@ const extractOAuthMarkers = (text: string): { clean: string; oauths: string[] } 
 // mensagem no formato [[opts: Opção A | Opção B | Opção C]]. Extraímos, limpamos
 // do texto exibido e renderizamos como chips. Também removemos um marker
 // INCOMPLETO durante o streaming (ex: "[[opts: Sim |") pra não piscar cru.
+// Detecta MENÇÕES de integrações no texto do agente pra oferecer o botão de
+// conectar NA CONVERSA (mesmo sem marcador explícito). WhatsApp usa o embed do
+// Meta; os demais usam OAuth (Composio).
+const TEXT_OAUTH_HINTS: { match: RegExp; scope: string }[] = [
+  { match: /google\s*(calendar|agenda)/i, scope: "google_calendar" },
+  { match: /google\s*sheets|planilha\s*(do\s*)?google/i, scope: "google_sheets" },
+  { match: /google\s*drive/i, scope: "google_drive" },
+  { match: /\bgmail\b/i, scope: "gmail" },
+  { match: /\bhubspot\b/i, scope: "hubspot" },
+  { match: /\bcalendly\b/i, scope: "calendly" },
+  { match: /\bnotion\b/i, scope: "notion" },
+  { match: /\bslack\b/i, scope: "slack" },
+];
+const detectConnectablesInText = (text: string): { oauthScopes: string[]; whatsapp: boolean } => {
+  const oauthScopes = TEXT_OAUTH_HINTS.filter((h) => h.match.test(text)).map((h) => h.scope);
+  return { oauthScopes: [...new Set(oauthScopes)], whatsapp: /\bwhats\s?app\b/i.test(text) };
+};
+
 const extractOptionsMarker = (text: string): { clean: string; opts: string[] } => {
   const match = text.match(/\[\[opts:\s*([^\]]*?)\s*\]\]/i);
   if (match) {
@@ -835,6 +854,12 @@ const AgentChatPanel = ({
           // chips clicáveis só na ÚLTIMA mensagem do agente e fora do streaming
           const isLastMsg = i === displayMessages.length - 1;
           const showOpts = role === "agent" && isLastMsg && !wizardIsStreaming && wizardStep === "discover" && opts.length > 0;
+          // Botões de CONECTAR na conversa: detecta menção de integração no texto
+          // do agente (última msg, discover) e oferece o botão — sem depender de
+          // marcador. Dedupe com os markers <!--oauth:X--> já renderizados.
+          const showConnect = role === "agent" && isLastMsg && !wizardIsStreaming && wizardStep === "discover";
+          const detected = showConnect ? detectConnectablesInText(text || "") : { oauthScopes: [], whatsapp: false };
+          const extraOauthScopes = detected.oauthScopes.filter((s) => !oauths.includes(s));
           return (
             <div key={i}>
               {role === "user" ? (
@@ -905,6 +930,44 @@ const AgentChatPanel = ({
                             }}
                           />
                         ))}
+                      </div>
+                    )}
+                    {/* Botões de CONECTAR detectados no texto (Google Calendar,
+                        WhatsApp…) — aparecem na conversa mesmo sem marcador. */}
+                    {showConnect && (extraOauthScopes.length > 0 || detected.whatsapp) && (
+                      <div className="flex flex-col items-start gap-2 ml-1 mt-1">
+                        {extraOauthScopes.map((scope) => (
+                          <InlineOAuthButton
+                            key={`${i}-detect-${scope}`}
+                            scope={scope as any}
+                            agentId={agentId}
+                            onConnected={() => {
+                              (async () => {
+                                try {
+                                  if (!agentId) return;
+                                  const { data: { session } } = await supabase.auth.getSession();
+                                  const token = session?.access_token;
+                                  if (!token) return;
+                                  await fetch(fnUrl("agent-vibe-mutate"), {
+                                    method: "POST",
+                                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                                    body: JSON.stringify({ agentId, action: "request_external_integration", params: { integration_key: scope } }),
+                                  });
+                                } catch { /* silencioso */ }
+                              })();
+                              if (wizardSendMessage) setTimeout(() => wizardSendMessage("pronto, conectei agora"), 600);
+                            }}
+                          />
+                        ))}
+                        {detected.whatsapp && (
+                          <div className="w-full max-w-xs">
+                            <MetaEmbeddedSignupButton
+                              onConnected={() => {
+                                if (wizardSendMessage) setTimeout(() => wizardSendMessage("pronto, conectei o WhatsApp"), 600);
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                     {/* Click-to-answer (Fase 1): opções clicáveis que a IA sugeriu.
