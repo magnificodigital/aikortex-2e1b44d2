@@ -10,6 +10,7 @@ import AgentChatPanel, { type StructuredAgentConfig } from "@/components/aikorte
 import DashboardLayout from "@/components/DashboardLayout";
 import { StarkBubble } from "@/components/stark/StarkBubble";
 import WizardShowcasePanel from "@/components/aikortex/WizardShowcasePanel";
+import AgentConsolePanel from "@/components/aikortex/AgentConsolePanel";
 import { computeWizardProgress } from "@/lib/wizard-progress";
 import VoiceCallPanel from "@/components/aikortex/VoiceCallPanel";
 import TestAiGate from "@/components/aikortex/TestAiGate";
@@ -417,6 +418,23 @@ const AgentDetail = () => {
     if (!shouldPersistTemplateDraft) return "setup";
     try { return (localStorage.getItem(`${storagePrefix}-chatMode`) as "setup" | "test") || "setup"; } catch { return "setup"; }
   });
+
+  // Console de abas (estilo Clint): Resumo · Configurar · Testar · Analisar · Sessões · Histórico.
+  // Configurar/Testar mapeiam pro chatMode; as demais mostram um painel read-only por cima.
+  type ConsoleTab = "resumo" | "configurar" | "testar" | "analisar" | "sessoes" | "historico";
+  const [consoleTab, setConsoleTab] = useState<ConsoleTab>("configurar");
+  const isConsoleView = consoleTab === "resumo" || consoleTab === "analisar" || consoleTab === "sessoes" || consoleTab === "historico";
+  const selectConsoleTab = useCallback((t: ConsoleTab) => {
+    setConsoleTab(t);
+    if (t === "configurar") setChatMode("setup");
+    else if (t === "testar") setChatMode("test");
+  }, []);
+  // Mantém a aba em sincronia com o chatMode quando ele muda por fora (ex: entrar
+  // em teste via quick-reply). Só quando não estamos numa aba read-only.
+  useEffect(() => {
+    if (isConsoleView) return;
+    setConsoleTab(chatMode === "test" ? "testar" : "configurar");
+  }, [chatMode, isConsoleView]);
 
   // Split-screen layout state
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1423,7 +1441,54 @@ Se user falar de algum desses, diga claramente o que falta.
         </button>
       </div>
 
+      {/* Console de abas (estilo Clint) — só no estado done */}
+      {wizardStep === "done" && (
+        <div className="hidden lg:flex items-center gap-1 px-4 h-11 border-b border-border shrink-0 bg-card/20">
+          {([
+            ["resumo", "Resumo"],
+            ["configurar", "Configurar"],
+            ["testar", "Testar"],
+            ["analisar", "Analisar"],
+            ["sessoes", "Sessões"],
+            ["historico", "Histórico"],
+          ] as [ConsoleTab, string][]).map(([key, label]) => {
+            const active = consoleTab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => selectConsoleTab(key)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  active ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-card/60"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
+
+        {/* Console read-only (Resumo/Analisar/Sessões/Histórico) — overlay por cima
+            dos painéis, que ficam montados por baixo (preserva estado do chat). */}
+        {wizardStep === "done" && isConsoleView && (
+          <div className="absolute inset-0 z-20 bg-background">
+            <AgentConsolePanel
+              tab={consoleTab as "resumo" | "analisar" | "sessoes" | "historico"}
+              savedConfig={loadedAgent.savedConfig}
+              agentName={loadedAgent.name}
+              agentType={loadedAgent.agentType}
+              model={agentModel}
+              isPublished={isPublished}
+              publishedNumber={publishState?.publishedNumber ?? null}
+              testUsed={testQuota.used}
+              testLimit={testQuota.limit}
+              messagesCount={(chatMode === "test" ? testChat.messages : setupChat.messages).length}
+            />
+          </div>
+        )}
 
         {/* Layout adaptativo (Master v7.4 §13.3 + UX request):
             - discover: chat 55% + showcase 45% (preview do agente sendo construído)
@@ -1448,6 +1513,7 @@ Se user falar de algum desses, diga claramente o que falta.
             setStructuredConfig={setStructuredConfig}
             chatMode={chatMode}
             setChatMode={setChatMode as any}
+            hideModeTabs={wizardStep === "done"}
             testQuotaInfo={{
               used: testQuota.used,
               limit: testQuota.limit,

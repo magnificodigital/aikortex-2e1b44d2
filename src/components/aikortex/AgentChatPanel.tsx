@@ -50,6 +50,8 @@ interface AgentChatPanelProps {
   setChatMode: (mode: "setup" | "test" | "voice") => void;
   // Fase 3/#2 — info da quota de teste (sandbox) pra faixa de simulação.
   testQuotaInfo?: { used: number; limit: number; remaining: number; gated: boolean };
+  // Console de abas (AgentDetail) assume Configurar/Testar → esconde o pill interno.
+  hideModeTabs?: boolean;
   hasApiKey: boolean;
   hasAnyLLMKey: boolean;
   keysLoading: boolean;
@@ -266,6 +268,7 @@ const AgentChatPanel = ({
   setStructuredConfig,
   chatMode,
   testQuotaInfo,
+  hideModeTabs,
   setChatMode,
   hasApiKey,
   hasAnyLLMKey,
@@ -721,7 +724,7 @@ const AgentChatPanel = ({
             {configPanelVisible ? "Esconder configuração" : "Ver configuração"}
           </button>
         )}
-        {wizardStep === "done" && (
+        {wizardStep === "done" && !hideModeTabs && (
           <div className="flex items-center bg-muted rounded-lg p-0.5">
             <button
               onClick={() => setChatMode("setup")}
