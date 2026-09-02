@@ -126,8 +126,8 @@ export default function WizardShowcasePanel({
             const pulsing = pulseId === s.id;
             const clickable = !!onSectionClick;
             return (
+              <div key={s.id}>
               <button
-                key={s.id}
                 type="button"
                 onClick={() => onSectionClick?.(s.id)}
                 disabled={!clickable}
@@ -168,6 +168,20 @@ export default function WizardShowcasePanel({
                   </span>
                 )}
               </button>
+              {/* Preview de itens (ex: ferramentas que o agente vai usar) — Clint-style */}
+              {ready && s.items && s.items.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1 ml-11">
+                  {s.items.slice(0, 6).map((it, k) => (
+                    <span key={k} className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                      {it}
+                    </span>
+                  ))}
+                  {s.items.length > 6 && (
+                    <span className="text-[10px] text-muted-foreground/60 px-1">+{s.items.length - 6}</span>
+                  )}
+                </div>
+              )}
+              </div>
             );
           })}
         </div>

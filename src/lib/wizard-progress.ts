@@ -135,6 +135,7 @@ export interface WizardSection {
   subtitle: string;         // descrição curta do que é a seção
   status: WizardSectionStatus;
   detail?: string;          // resumo quando pronto (ex: "3 ativadas", "WhatsApp")
+  items?: string[];         // lista de itens (ex: ferramentas) pra mostrar como chips
   optional?: boolean;       // seções que podem ficar vazias sem problema
 }
 
@@ -161,6 +162,24 @@ export function computeWizardSections(savedConfig: Record<string, any> | null | 
     ? integrations
     : (integrations && typeof integrations === "object" ? Object.keys(integrations).filter((k) => integrations[k]) : []);
   const toolsCount = enabledTools.length + integrationList.length + (capsActive ? 1 : 0);
+
+  // Rótulos amigáveis das ferramentas (estilo "Ferramentas que o agente vai usar"
+  // da Clint) — mostra QUAIS ações o agente executa, não só a contagem.
+  const RUNTIME_TOOL_LABELS: Record<string, string> = {
+    table_write: "Salvar em tabela", table_read: "Consultar tabela",
+    knowledge_search: "Base de conhecimento", web_search: "Busca na web",
+    create_calendar_event: "Agendar reunião", send_email: "Enviar e-mail",
+    send_whatsapp: "Enviar WhatsApp", add_tag: "Adicionar tag",
+  };
+  const INTEGRATION_LABELS: Record<string, string> = {
+    google_calendar: "Google Calendar", google_sheets: "Google Sheets",
+    google_drive: "Google Drive", gmail: "Gmail", hubspot: "HubSpot",
+    calendly: "Calendly", notion: "Notion", slack: "Slack",
+  };
+  const toolItems: string[] = [
+    ...enabledTools.map((t: string) => RUNTIME_TOOL_LABELS[t] || t),
+    ...integrationList.map((p: string) => INTEGRATION_LABELS[p] || String(p).replace(/_/g, " ")),
+  ];
 
   const instructions = (cfg as any)?.profile?.instructions ?? cfg.instructions;
   const instrLen = typeof instructions === "string" ? instructions.length : 0;
@@ -200,7 +219,8 @@ export function computeWizardSections(savedConfig: Record<string, any> | null | 
     {
       id: "tools", label: "Ferramentas", subtitle: "Ações que ele executa",
       status: toolsCount > 0 ? "ready" : "empty",
-      detail: toolsCount > 0 ? capNum(toolsCount, "ativada", "ativadas") : undefined,
+      detail: toolItems.length > 0 ? toolItems.slice(0, 2).join(", ") + (toolItems.length > 2 ? ` +${toolItems.length - 2}` : "") : (toolsCount > 0 ? capNum(toolsCount, "ativada", "ativadas") : undefined),
+      items: toolItems.length > 0 ? toolItems : undefined,
       optional: true,
     },
     {
