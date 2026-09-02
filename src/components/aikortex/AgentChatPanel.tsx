@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   ArrowLeft, ArrowUp, Send, AlertTriangle, Square,
   Sparkles, Bot, Mic, MicOff, Check, Loader2, Pencil, RotateCw, Brain, Lock, ChevronDown,
-  Settings2, EyeOff, Paperclip, FileText as FileIcon,
+  Settings2, EyeOff, Paperclip, FileText as FileIcon, Globe,
 } from "lucide-react";
 import { ensureDefaultKb, uploadKbFile } from "@/hooks/use-agent-knowledge-bases";
 import { supabase } from "@/integrations/supabase/client";
@@ -510,6 +510,44 @@ const AgentChatPanel = ({
     []
   );
   const suggestionButtons = shuffledSuggestions.slice(0, 8);
+
+  // Auto-research (Clint-style): cola o site → a IA lê e já monta o agente pro
+  // negócio. Alimenta o wizard com o contexto extraído (não precisa digitar tudo).
+  const [researchUrl, setResearchUrl] = useState("");
+  const [researching, setResearching] = useState(false);
+  const handleResearch = useCallback(async () => {
+    const url = researchUrl.trim();
+    if (!url || researching || !wizardSendMessage) return;
+    setResearching(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("sessão expirada");
+      const resp = await fetch(fnUrl("agent-research"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json?.error || `HTTP ${resp.status}`);
+      const b = json.business || {};
+      const products = Array.isArray(b.products) ? b.products.join(", ") : "";
+      const desc = [
+        b.summary && `Negócio: ${b.summary}`,
+        b.company_name && `Empresa: ${b.company_name}`,
+        b.niche && `Nicho: ${b.niche}`,
+        products && `Produtos/serviços: ${products}`,
+        b.audience && `Público: ${b.audience}`,
+        b.tone && `Tom da marca: ${b.tone}`,
+      ].filter(Boolean).join(". ");
+      toast.success("Entendi seu negócio pelo site! Montando o agente…");
+      wizardSendMessage(`Crie o agente para este negócio (li o site ${url}). ${desc}`);
+    } catch (e) {
+      toast.error(`Não consegui ler o site: ${(e as Error).message}`);
+    } finally {
+      setResearching(false);
+    }
+  }, [researchUrl, researching, wizardSendMessage]);
 
   /* ── Discover → Structure ── */
   const handleDiscover = useCallback(async (text: string) => {
@@ -1205,7 +1243,34 @@ const AgentChatPanel = ({
             saudação. Clicar já começa a montar o agente (wizardSendMessage). */}
         {wizardStep === "discover" && wizardSendMessage && !wizardIsStreaming &&
           !displayMessages.some((m: any) => m.role === "user") && (
-          <div className="ml-11 space-y-1.5">
+          <div className="ml-11 space-y-2">
+            {/* Auto-research: cola o site → a IA entende o negócio sozinha */}
+            <div className="max-w-xl">
+              <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/[0.04] px-3 py-2 focus-within:border-primary/60 transition-colors">
+                <Globe className="w-4 h-4 text-primary shrink-0" />
+                <input
+                  value={researchUrl}
+                  onChange={(e) => setResearchUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleResearch(); }}
+                  placeholder="Cole o site da empresa e eu já entendo o negócio…"
+                  disabled={researching}
+                  className="flex-1 min-w-0 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground/60"
+                />
+                <button
+                  type="button"
+                  onClick={handleResearch}
+                  disabled={researching || !researchUrl.trim()}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {researching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  {researching ? "Lendo…" : "Analisar"}
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground/60 mt-1 ml-1">
+                Opcional — a IA lê seu site e já preenche o agente pro seu negócio.
+              </p>
+            </div>
+            <div className="space-y-1.5 pt-1">
             {suggestionButtons.slice(0, 4).map((s, i) => (
               <button
                 key={s.label}
@@ -1218,6 +1283,7 @@ const AgentChatPanel = ({
                 <span className="italic">"{s.prompt}"</span>
               </button>
             ))}
+            </div>
           </div>
         )}
         </div>
