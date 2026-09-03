@@ -11,6 +11,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { StarkBubble } from "@/components/stark/StarkBubble";
 import WizardShowcasePanel from "@/components/aikortex/WizardShowcasePanel";
 import AgentConsolePanel from "@/components/aikortex/AgentConsolePanel";
+import AgentTestBattery from "@/components/aikortex/AgentTestBattery";
 import { computeWizardProgress } from "@/lib/wizard-progress";
 import VoiceCallPanel from "@/components/aikortex/VoiceCallPanel";
 import TestAiGate from "@/components/aikortex/TestAiGate";
@@ -421,9 +422,9 @@ const AgentDetail = () => {
 
   // Console de abas (estilo Clint): Resumo · Configurar · Testar · Analisar · Sessões · Histórico.
   // Configurar/Testar mapeiam pro chatMode; as demais mostram um painel read-only por cima.
-  type ConsoleTab = "resumo" | "configurar" | "testar" | "analisar" | "sessoes" | "historico";
+  type ConsoleTab = "resumo" | "configurar" | "testar" | "bateria" | "analisar" | "sessoes" | "historico";
   const [consoleTab, setConsoleTab] = useState<ConsoleTab>("configurar");
-  const isConsoleView = consoleTab === "resumo" || consoleTab === "analisar" || consoleTab === "sessoes" || consoleTab === "historico";
+  const isConsoleView = consoleTab === "resumo" || consoleTab === "bateria" || consoleTab === "analisar" || consoleTab === "sessoes" || consoleTab === "historico";
   const selectConsoleTab = useCallback((t: ConsoleTab) => {
     setConsoleTab(t);
     if (t === "configurar") setChatMode("setup");
@@ -1448,6 +1449,7 @@ Se user falar de algum desses, diga claramente o que falta.
             ["resumo", "Resumo"],
             ["configurar", "Configurar"],
             ["testar", "Testar"],
+            ["bateria", "Bateria"],
             ["analisar", "Analisar"],
             ["sessoes", "Sessões"],
             ["historico", "Histórico"],
@@ -1475,18 +1477,22 @@ Se user falar de algum desses, diga claramente o que falta.
             dos painéis, que ficam montados por baixo (preserva estado do chat). */}
         {wizardStep === "done" && isConsoleView && (
           <div className="absolute inset-0 z-20 bg-background">
-            <AgentConsolePanel
-              tab={consoleTab as "resumo" | "analisar" | "sessoes" | "historico"}
-              savedConfig={loadedAgent.savedConfig}
-              agentName={loadedAgent.name}
-              agentType={loadedAgent.agentType}
-              model={agentModel}
-              isPublished={isPublished}
-              publishedNumber={publishState?.publishedNumber ?? null}
-              testUsed={testQuota.used}
-              testLimit={testQuota.limit}
-              messagesCount={(chatMode === "test" ? testChat.messages : setupChat.messages).length}
-            />
+            {consoleTab === "bateria" ? (
+              <AgentTestBattery agentId={agentId && !agentId.startsWith("new-") && agentId !== "new" ? agentId : undefined} />
+            ) : (
+              <AgentConsolePanel
+                tab={consoleTab as "resumo" | "analisar" | "sessoes" | "historico"}
+                savedConfig={loadedAgent.savedConfig}
+                agentName={loadedAgent.name}
+                agentType={loadedAgent.agentType}
+                model={agentModel}
+                isPublished={isPublished}
+                publishedNumber={publishState?.publishedNumber ?? null}
+                testUsed={testQuota.used}
+                testLimit={testQuota.limit}
+                messagesCount={(chatMode === "test" ? testChat.messages : setupChat.messages).length}
+              />
+            )}
           </div>
         )}
 
