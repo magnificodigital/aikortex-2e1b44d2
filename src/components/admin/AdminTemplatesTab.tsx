@@ -29,8 +29,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { LayoutTemplate, Plus, Pencil, Trash2, Loader2, X } from "lucide-react";
+import { LayoutTemplate, Plus, Pencil, Trash2, Loader2, X, Check, Wrench } from "lucide-react";
 import { toast } from "sonner";
+import { RUNTIME_TOOLS, INTEGRATION_TOOLS } from "@/lib/agent-runtime-tools";
 
 interface TemplateRow {
   id: string;
@@ -46,6 +47,8 @@ interface TemplateRow {
   is_exclusive: boolean | null;
   is_active: boolean | null;
   sort_order: number | null;
+  niche_id: string | null;
+  agent_config: Record<string, any> | null;
 }
 
 interface TemplateForm {
@@ -60,6 +63,15 @@ interface TemplateForm {
   thumbnail_url: string;
   is_exclusive: boolean;
   is_active: boolean;
+  // ── comportamento do agente modelo (só quando category === "agent") ──
+  niche_id: string;
+  agent_type: string;
+  tone_of_voice: string;
+  objective: string;
+  greeting: string;
+  instructions: string;
+  enabledTools: string[];
+  integrations: string[];
 }
 
 const emptyForm: TemplateForm = {
@@ -74,7 +86,22 @@ const emptyForm: TemplateForm = {
   thumbnail_url: "",
   is_exclusive: false,
   is_active: true,
+  niche_id: "",
+  agent_type: "custom",
+  tone_of_voice: "",
+  objective: "",
+  greeting: "",
+  instructions: "",
+  enabledTools: [],
+  integrations: [],
 };
+
+const AGENT_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "sdr", label: "Qualificador de Leads (SDR)" },
+  { value: "sac", label: "Suporte ao Cliente (SAC)" },
+  { value: "marketing", label: "Gestor de Conteúdos" },
+  { value: "custom", label: "Personalizado" },
+];
 
 const CATEGORY_LABELS: Record<string, string> = {
   agent: "Agente",
@@ -118,25 +145,39 @@ const AdminTemplatesTab = () => {
     },
   });
 
+  const { data: niches = [] } = useQuery({
+    queryKey: ["admin-template-niches-min"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("niche_categories")
+        .select("id, name_pt")
+        .order("display_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as { id: string; name_pt: string }[];
+    },
+  });
+
+  const toggleInList = (key: "enabledTools" | "integrations", id: string) =>
+    setForm((prev) => ({
+      ...prev,
+      [key]: prev[key].includes(id) ? prev[key].filter((x) => x !== id) : [...prev[key], id],
+    }));
+
   const upsertMutation = useMutation({
-    mutationFn: async (payload: { id?: string } & TemplateForm) => {
-      const { id, ...rest } = payload;
-      const row = {
-        ...rest,
-        features: rest.features as any,
-        updated_at: new Date().toISOString(),
-      };
+    mutationFn: async (payload: { id?: string; row: Record<string, any> }) => {
+      const { id, row } = payload;
+      const dbRow = { ...row, updated_at: new Date().toISOString() };
 
       if (id) {
         const { error } = await supabase
           .from("platform_templates")
-          .update(row as any)
+          .update(dbRow as any)
           .eq("id", id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("platform_templates")
-          .insert(row as any);
+          .insert(dbRow as any);
         if (error) throw error;
       }
     },
@@ -186,6 +227,14 @@ const AdminTemplatesTab = () => {
 
   const openEdit = (t: TemplateRow) => {
     setEditingTemplate(t);
+    const cfg = (t.agent_config ?? {}) as Record<string, any>;
+    const inner = (cfg.config ?? {}) as Record<string, any>;
+    const integrationsRaw = inner.integrations ?? cfg.integrations ?? [];
+    const integrationList: string[] = Array.isArray(integrationsRaw)
+      ? integrationsRaw
+      : (integrationsRaw && typeof integrationsRaw === "object"
+          ? Object.keys(integrationsRaw).filter((k) => integrationsRaw[k])
+          : []);
     setForm({
       name: t.name,
       slug: t.slug,
@@ -198,6 +247,14 @@ const AdminTemplatesTab = () => {
       thumbnail_url: t.thumbnail_url ?? "",
       is_exclusive: t.is_exclusive ?? false,
       is_active: t.is_active ?? true,
+      niche_id: t.niche_id ?? "",
+      agent_type: cfg.agent_type ?? "custom",
+      tone_of_voice: cfg.tone_of_voice ?? inner.toneOfVoice ?? inner?.businessContext?.toneOfVoice ?? "",
+      objective: inner?.profile?.primaryGoal ?? inner.objective ?? "",
+      greeting: inner?.businessContext?.greetingMessage ?? inner.greetingMessage ?? "",
+      instructions: inner?.profile?.instructions ?? inner.instructions ?? "",
+      enabledTools: Array.isArray(inner.enabledTools) ? inner.enabledTools : (Array.isArray(cfg.enabledTools) ? cfg.enabledTools : []),
+      integrations: integrationList,
     });
     setIsCreating(true);
   };
@@ -214,14 +271,56 @@ const AdminTemplatesTab = () => {
       toast.error("Nome e slug são obrigatórios");
       return;
     }
-    if (form.platform_price_monthly <= 0) {
-      toast.error("O preço deve ser maior que zero");
+    if (form.platform_price_monthly < 0) {
+      toast.error("O preço não pode ser negativo");
       return;
     }
-    upsertMutation.mutate({
-      id: editingTemplate?.id,
-      ...form,
-    });
+
+    // Colunas base da tabela
+    const row: Record<string, any> = {
+      name: form.name.trim(),
+      slug: form.slug.trim(),
+      description: form.description,
+      category: form.category,
+      min_tier: form.min_tier,
+      platform_price_monthly: form.platform_price_monthly,
+      features: form.features,
+      demo_url: form.demo_url,
+      thumbnail_url: form.thumbnail_url,
+      is_exclusive: form.is_exclusive,
+      is_active: form.is_active,
+      niche_id: form.niche_id || null,
+    };
+
+    // Cérebro do agente modelo — só pra category "agent". Fica em agent_config,
+    // com o config interno já no formato que a criação do agente e o preview leem
+    // (enabledTools/integrations em config.* pra sobreviverem à criação).
+    if (form.category === "agent") {
+      const nicheName = niches.find((n) => n.id === form.niche_id)?.name_pt ?? "";
+      row.agent_config = {
+        agent_type: form.agent_type,
+        description: form.description,
+        tone_of_voice: form.tone_of_voice,
+        model: "gemini-2.5-flash",
+        provider: "auto",
+        config: {
+          businessContext: {
+            niche: nicheName,
+            toneOfVoice: form.tone_of_voice,
+            greetingMessage: form.greeting,
+          },
+          profile: {
+            instructions: form.instructions,
+            primaryGoal: form.objective,
+          },
+          enabledTools: form.enabledTools,
+          integrations: form.integrations,
+          channels: ["whatsapp", "web"],
+        },
+      };
+    }
+
+    upsertMutation.mutate({ id: editingTemplate?.id, row });
   };
 
   const addFeature = () => {
@@ -461,6 +560,138 @@ const AdminTemplatesTab = () => {
                 }
               />
             </div>
+
+            {/* ── Comportamento do agente modelo ── */}
+            {form.category === "agent" && (
+              <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-3">
+                <div className="flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">Comportamento do agente modelo</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Tipo de agente</Label>
+                    <Select
+                      value={form.agent_type}
+                      onValueChange={(v) => setForm((prev) => ({ ...prev, agent_type: v }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {AGENT_TYPE_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Nicho</Label>
+                    <Select
+                      value={form.niche_id || "none"}
+                      onValueChange={(v) => setForm((prev) => ({ ...prev, niche_id: v === "none" ? "" : v }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Sem nicho" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem nicho</SelectItem>
+                        {niches.map((n) => (
+                          <SelectItem key={n.id} value={n.id}>{n.name_pt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Tom de voz</Label>
+                  <Input
+                    value={form.tone_of_voice}
+                    onChange={(e) => setForm((prev) => ({ ...prev, tone_of_voice: e.target.value }))}
+                    placeholder="Ex: consultivo e direto"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Objetivo</Label>
+                  <Input
+                    value={form.objective}
+                    onChange={(e) => setForm((prev) => ({ ...prev, objective: e.target.value }))}
+                    placeholder="Ex: qualificar leads frios e agendar reuniões"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Mensagem de saudação</Label>
+                  <Textarea
+                    value={form.greeting}
+                    onChange={(e) => setForm((prev) => ({ ...prev, greeting: e.target.value }))}
+                    rows={2}
+                    placeholder="Oi! Sou o assistente da [empresa]…"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Instruções (prompt operacional)</Label>
+                  <Textarea
+                    value={form.instructions}
+                    onChange={(e) => setForm((prev) => ({ ...prev, instructions: e.target.value }))}
+                    rows={6}
+                    placeholder="Como o agente deve agir, o que perguntar, o que evitar, quando encaminhar…"
+                  />
+                </div>
+
+                {/* Ferramentas */}
+                <div className="space-y-2">
+                  <Label>Ferramentas que o agente vai usar</Label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {Object.entries(RUNTIME_TOOLS).map(([id, meta]) => {
+                      const on = form.enabledTools.includes(id);
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => toggleInList("enabledTools", id)}
+                          className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-colors ${
+                            on ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <span className={`w-5 h-5 rounded grid place-items-center shrink-0 ${meta.tint}`}>
+                            <meta.Icon className="w-3 h-3" />
+                          </span>
+                          <span className="flex-1 min-w-0 truncate">{meta.label}</span>
+                          {on && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Integrações */}
+                <div className="space-y-2">
+                  <Label>Integrações conectadas</Label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {Object.entries(INTEGRATION_TOOLS).map(([id, meta]) => {
+                      const on = form.integrations.includes(id);
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => toggleInList("integrations", id)}
+                          className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-colors ${
+                            on ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <span className={`w-5 h-5 rounded grid place-items-center shrink-0 ${meta.tint}`}>
+                            <meta.Icon className="w-3 h-3" />
+                          </span>
+                          <span className="flex-1 min-w-0 truncate">{meta.label}</span>
+                          {on && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Features list */}
             <div className="space-y-2">
