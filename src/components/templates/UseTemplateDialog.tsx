@@ -12,11 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Building2, Plus } from "lucide-react";
+import { Loader2, Building2, Plus, ChevronLeft, Bot, Wrench } from "lucide-react";
 import { useActiveClient } from "@/hooks/use-active-client";
 import { supabase } from "@/integrations/supabase/client";
 import type { TemplateRow } from "@/types/templates";
 import { buildDefaultFlowForAgent } from "@/lib/agent-flow-builder";
+import { resolveTemplateTools } from "@/lib/agent-runtime-tools";
 
 type Props = {
   template: TemplateRow | null;
@@ -35,8 +36,11 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
   const [name, setName] = useState("");
   const [extra1, setExtra1] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // "preview" = modelo base + ferramentas (estilo Clint); "form" = adaptar/criar.
+  const [step, setStep] = useState<"preview" | "form">("preview");
 
   const isApp = template?.category === "app";
+  const tools = useMemo(() => resolveTemplateTools(template), [template]);
 
   // Effective target client (implicit in client mode, explicit in agency mode)
   const targetClient = useMemo(() => {
@@ -50,6 +54,7 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
 
   useEffect(() => {
     if (!open || !template) return;
+    setStep("preview");
     setSelectedClientId(null);
     const initialName = isAgencyMode
       ? template.name
@@ -168,9 +173,86 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl">
+        {/* ── ETAPA 1: PREVIEW DO MODELO (estilo Clint) ── */}
+        {step === "preview" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
+                  <Bot className="w-5 h-5" />
+                </span>
+                <span>{template.name}</span>
+              </DialogTitle>
+              {template.description && (
+                <DialogDescription className="pt-1">{template.description}</DialogDescription>
+              )}
+            </DialogHeader>
+
+            <div className="space-y-5 py-2 max-h-[60vh] overflow-y-auto">
+              {/* Modelo base */}
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Modelo base</p>
+                <p className="text-sm font-medium text-foreground">
+                  {template.niche_categories?.name_pt ?? template.name}
+                </p>
+                {template.description && (
+                  <p className="text-sm text-muted-foreground">{template.description}</p>
+                )}
+              </div>
+
+              {/* Ferramentas que o agente vai usar */}
+              {!isApp && tools.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                      <Wrench className="w-3.5 h-3.5" /> Ferramentas que o agente vai usar
+                    </p>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{tools.length}</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {tools.map((t) => (
+                      <div key={t.id} className="flex items-start gap-2.5 rounded-lg border border-border bg-card/40 p-2.5">
+                        <span className={`w-8 h-8 rounded-lg grid place-items-center shrink-0 ${t.tint}`}>
+                          <t.Icon className="w-4 h-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground leading-tight">{t.label}</p>
+                          <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{t.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/60">
+                    Você pode ativar, desativar e ajustar cada ferramenta depois de criar o agente.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+              <Button onClick={() => setStep("form")}>
+                Prosseguir para criação do {isApp ? "app" : "agente"} →
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+        /* ── ETAPA 2: ADAPTAR E CRIAR ── */
+        <>
         <DialogHeader>
-          <DialogTitle>Usar template: {template.name}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => !submitting && setStep("preview")}
+              className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+              disabled={submitting}
+              aria-label="Voltar ao preview"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            Usar template: {template.name}
+          </DialogTitle>
           <DialogDescription className="flex items-center gap-2 pt-1">
             {isAgencyMode ? (
               <span>Selecione o cliente que vai receber este {isApp ? "app" : "agente"}.</span>
@@ -256,6 +338,8 @@ const UseTemplateDialog = ({ template, open, onOpenChange }: Props) => {
             Criar {isApp ? "app" : "agente"} →
           </Button>
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
